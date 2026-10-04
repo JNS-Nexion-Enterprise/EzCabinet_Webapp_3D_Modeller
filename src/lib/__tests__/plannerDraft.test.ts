@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { PLANNER_CATALOGUE } from "@/lib/planner/catalogue";
+import { emptyRoom, roomEngine } from "@/lib/planner/room";
 import {
 	clearDraft,
 	loadDraft,
 	type PlannerDraft,
+	reconcileDraft,
 	saveDraft,
 } from "@/lib/plannerDraft";
 
@@ -132,5 +135,64 @@ describe("plannerDraft", () => {
 		].map((m) => m.id);
 		expect(ids.slice(0, 2)).toEqual(["m1", "m2"]);
 		expect(new Set(ids).size).toBe(ids.length);
+	});
+});
+
+describe("reconcileDraft", () => {
+	const engine = roomEngine(PLANNER_CATALOGUE);
+	const room = PLANNER_CATALOGUE.roomTypes[0];
+	const familyId = room.familyIds[0];
+	const two = engine.addModule(
+		engine.addModule(emptyRoom(4200), familyId, 0),
+		familyId,
+		2000,
+	);
+
+	it("keeps a draft the catalogue can still draw", () => {
+		const out = reconcileDraft(
+			{
+				version: 1,
+				roomId: room.id,
+				finishId: PLANNER_CATALOGUE.finishes[0].id,
+				rooms: { [room.id]: two },
+			},
+			PLANNER_CATALOGUE,
+		);
+		expect(out.roomId).toBe(room.id);
+		expect(out.finishId).toBe(PLANNER_CATALOGUE.finishes[0].id);
+		expect(engine.allPositions(out.rooms[room.id])).toHaveLength(2);
+	});
+
+	it("drops a cabinet whose design left the catalogue", () => {
+		const stale = structuredClone(two);
+		stale.runs[0].floor[0].familyId = "unpublished";
+		const out = reconcileDraft(
+			{
+				version: 1,
+				roomId: room.id,
+				finishId: "x",
+				rooms: { [room.id]: stale },
+			},
+			PLANNER_CATALOGUE,
+		);
+		const left = out.rooms[room.id].runs[0].floor;
+		expect(left.map((m) => m.familyId)).toEqual([familyId]);
+	});
+
+	it("forgets a room, a finish and a layout the catalogue cannot read", () => {
+		const out = reconcileDraft(
+			{
+				version: 1,
+				roomId: "attic",
+				finishId: "gone",
+				rooms: { attic: two, [room.id]: { runs: [] } },
+			},
+			PLANNER_CATALOGUE,
+		);
+		expect(out).toEqual({ roomId: undefined, finishId: undefined, rooms: {} });
+	});
+
+	it("is empty for no draft", () => {
+		expect(reconcileDraft(null, PLANNER_CATALOGUE)).toEqual({ rooms: {} });
 	});
 });

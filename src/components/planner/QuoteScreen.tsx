@@ -12,6 +12,7 @@ import type { FinishId, RoomTypeId } from "@/lib/planner/catalogue";
 import { doorStyleIn, ratesOf, roomTypeIn } from "@/lib/planner/catalogue";
 import { computePlannerPrice } from "@/lib/planner/pricing";
 import type { RoomLayout } from "@/lib/planner/room";
+import { clearDraft } from "@/lib/plannerDraft";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
 import { AdminLink, PlannerHeader } from "./PlannerHeader";
@@ -242,6 +243,8 @@ export function QuoteScreen({
 				totalRm: Math.round(totalRm),
 			});
 			created.current = { token: body.token, payment: body.payment ?? null };
+			// The design is an order now; the planner should not reopen on it.
+			clearDraft();
 		}
 
 		const { token, payment } = created.current;
