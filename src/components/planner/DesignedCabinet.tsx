@@ -376,6 +376,11 @@ function EndPanel({
 	const x = side === "left" ? carcassMm.min.x : carcassMm.max.x;
 	return (
 		<mesh
+			// Never a ray's answer: the measuring tool takes a face click as the
+			// surface the ray hit, and off this skin an 800 cabinet read 804 — two
+			// millimetres a side that the cabinet does not have. The ray carries
+			// on to the carcass side underneath, which is the real one.
+			raycast={() => null}
 			position={[
 				m(x) + (side === "left" ? -SKIN_M / 2 : SKIN_M / 2),
 				m((carcassMm.min.y + carcassMm.max.y) / 2),
@@ -393,8 +398,9 @@ function EndPanel({
 	);
 }
 
-/** Thin enough to add no measurable width to the run, thick enough not to
- * z-fight with the carcass side it sits on. */
+/** Thick enough not to z-fight with the carcass side it sits on. It is
+ * drawn outside the cabinet's width, so it opts out of raycasts — see
+ * `EndPanel`. */
 const SKIN_M = 0.002;
 
 export function DesignedCabinet({
