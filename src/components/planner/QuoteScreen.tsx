@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { GoogleSignInButton } from "@/app/[lang]/sign-in/GoogleSignInButton";
+import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { fill } from "@/lib/copy/fill";
@@ -559,6 +560,7 @@ export function QuoteScreen({
 									disabled={busy || payClient === undefined}
 									className="mt-1 flex min-h-12 items-center justify-center gap-2.5 rounded-[10px] bg-[#171717] px-3 font-medium text-[14px] text-white transition hover:bg-[#262626] active:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
 								>
+									{busy && <Spinner />}
 									{busy ? (
 										stripeClient ? (
 											t.quote.paying

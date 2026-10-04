@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 
 /**
@@ -54,6 +55,7 @@ export function GoogleSignInButton({
 				disabled={busy}
 				className="flex items-center justify-center gap-2 rounded-[9px] border border-neutral-300 bg-white py-2.5 font-medium text-sm disabled:opacity-60"
 			>
+				{busy && <Spinner />}
 				{label}
 			</button>
 			{failed && (

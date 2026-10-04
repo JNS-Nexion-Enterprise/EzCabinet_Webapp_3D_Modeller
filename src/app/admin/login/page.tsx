@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { safeNext } from "@/app/admin/login/safeNext";
+import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 import { HERO_EXPLODED_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
 
@@ -101,6 +102,7 @@ export default function AdminLoginPage() {
 						disabled={busy}
 						className="flex items-center justify-center gap-2 rounded-[9px] border border-neutral-300 bg-white py-2.5 font-medium text-sm disabled:opacity-60"
 					>
+						{busy && <Spinner />}
 						Continue with Google
 					</button>
 
@@ -147,6 +149,7 @@ export default function AdminLoginPage() {
 						disabled={busy || !email || !password}
 						className="rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white disabled:opacity-60"
 					>
+						{busy && <Spinner />}
 						{busy ? "Checking…" : "Sign in"}
 					</button>
 

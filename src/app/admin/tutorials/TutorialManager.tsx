@@ -2,6 +2,7 @@
 
 import * as UpChunk from "@mux/upchunk";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Spinner } from "@/components/Spinner";
 import {
 	CATEGORIES,
 	type CategoryId,
@@ -475,6 +476,7 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 								: "cursor-not-allowed bg-[#e4e2dd] text-[#8a857c]"
 						}`}
 					>
+						{busy && <Spinner />}
 						Publish tutorial
 					</button>
 				</div>

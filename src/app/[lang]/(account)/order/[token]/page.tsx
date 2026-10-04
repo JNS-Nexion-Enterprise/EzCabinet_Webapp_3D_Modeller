@@ -245,6 +245,7 @@ export default async function OrderPage({
 								payLabel={fill(o.payOnlineCta, { amount: rm(order.totalRm) })}
 								errorText={o.payOnlineError}
 								settlingText={o.bodyConfirming}
+								loadingText={t.quote.loading}
 							/>
 						</section>
 					)}

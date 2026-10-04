@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Spinner } from "@/components/Spinner";
 import { changeOwnPassword } from "./actions";
 
 const MIN_LENGTH = 12;
@@ -116,6 +117,7 @@ export function ChangePasswordForm() {
 				disabled={busy}
 				className="min-h-10 rounded-[9px] bg-neutral-900 font-medium text-sm text-white disabled:opacity-60"
 			>
+				{busy && <Spinner />}
 				{busy ? "Changing…" : "Change password"}
 			</button>
 		</form>
