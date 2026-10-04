@@ -87,6 +87,7 @@ import {
 } from "@/lib/planner/room";
 import { Cabinet } from "./Cabinet";
 import { useCatalogue, useEngine, useRoomEngine } from "./CatalogueContext";
+import { useCopy } from "./CopyContext";
 import { designPartBoxes, peekDesignMesh } from "./DesignedCabinet";
 import { useFrontSurface, useGrain } from "./grain";
 import {
@@ -2537,6 +2538,32 @@ export default function PlannerScene({
 	);
 	const [measured, setMeasured] = useState<Quality>("low");
 	const quality = forced ?? measured;
+	const t = useCopy();
+	// The GPU dropped the context: the canvas is blank and says nothing. The
+	// Canvas comes down rather than staying mounted under a message — the
+	// postprocessing composer throws on a lost context the moment anything
+	// re-renders — and the reload button mounts a fresh one.
+	const [contextLost, setContextLost] = useState(false);
+
+	if (contextLost) {
+		return (
+			<div
+				role="alert"
+				className="absolute inset-0 z-[7] flex flex-col items-center justify-center gap-3 bg-[#f4f2ee] p-6 text-center"
+			>
+				<p className="text-[13px] text-neutral-600">
+					{t.planner.canvas.contextLost}
+				</p>
+				<button
+					type="button"
+					onClick={() => setContextLost(false)}
+					className="min-h-11 rounded-[10px] bg-[#1f5138] px-4 font-semibold text-[13px] text-white hover:bg-[#17402c]"
+				>
+					{t.planner.canvas.contextReload}
+				</button>
+			</div>
+		);
+	}
 
 	return (
 		<Canvas
@@ -2550,15 +2577,17 @@ export default function PlannerScene({
 			// The mid-range-Android failure mode: the GPU drops the context and the
 			// scene goes blank without throwing, so nothing else would report it.
 			onCreated={({ gl }) => {
-				gl.domElement.addEventListener("webglcontextlost", () =>
-					captureError(new Error("webgl context lost")),
-				);
+				gl.domElement.addEventListener("webglcontextlost", () => {
+					captureError(new Error("webgl context lost"));
+					setContextLost(true);
+				});
 				// A restored context comes back with an empty shadow map — nothing
 				// else asks for a redraw, so the scene would stay unshadowed until
 				// something else moved.
-				gl.domElement.addEventListener("webglcontextrestored", () =>
-					markShadowsDirty(),
-				);
+				gl.domElement.addEventListener("webglcontextrestored", () => {
+					markShadowsDirty();
+					setContextLost(false);
+				});
 			}}
 			// Redrawn on demand, never per frame — see `SHADOW_MAP`.
 			shadows={SHADOW_MAP}

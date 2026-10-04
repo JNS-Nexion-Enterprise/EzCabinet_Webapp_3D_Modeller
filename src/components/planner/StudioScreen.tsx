@@ -782,7 +782,7 @@ export function StudioScreen({
 		<main className="flex h-[calc(100dvh-2.25rem)] flex-col bg-[#f4f3f1] text-neutral-900">
 			<PlannerHeader
 				trail={[
-					{ label: t.common.brand, href: "/" },
+					{ label: t.common.brand, href: `/${locale}` },
 					{ label: t.planner.crumbs.roomPlanner, onClick: onBackToStartAction },
 					{ label: t.planner.crumbs.studio },
 				]}

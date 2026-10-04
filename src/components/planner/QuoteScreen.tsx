@@ -36,7 +36,8 @@ const PlannerScene = dynamic(() => import("./PlannerScene"), {
 });
 
 const FIELD =
-	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 text-[14px] text-[#171717] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
+	// 16px below `sm`: iOS Safari zooms the page on focusing anything smaller.
+	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 text-base text-[#171717] sm:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
 const fieldClass = (error: string | undefined) =>
 	`${FIELD} ${error ? "border-[1.5px] border-[#b42318]" : "border border-[#d4d4d4]"}`;
 
@@ -320,7 +321,7 @@ export function QuoteScreen({
 		<main className="flex h-[calc(100dvh-2.25rem)] flex-col bg-[#e9e7e3] text-[#171717]">
 			<PlannerHeader
 				trail={[
-					{ label: t.common.brand, href: "/" },
+					{ label: t.common.brand, href: `/${locale}` },
 					{ label: t.planner.crumbs.roomPlanner, onClick: onBackToStartAction },
 					{ label: t.planner.crumbs.quote },
 				]}
@@ -495,6 +496,7 @@ export function QuoteScreen({
 										publishableKey={stripeClient.publishableKey}
 										amountSen={Math.round(totalRm * 100)}
 										apiRef={payApi}
+										locale={locale}
 									/>
 									<p className="text-[#5c574e] text-[12px]">
 										{t.quote.paymentSecure}
@@ -584,7 +586,7 @@ export function QuoteScreen({
 						</form>
 					</div>
 
-					<aside className="flex min-w-[300px] flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0">
+					<aside className="flex min-w-0 flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0">
 						<div className="relative h-[180px] overflow-hidden rounded-[10px] border border-[#e5e5e5] bg-[#efeeeb]">
 							<PlannerScene
 								layout={layout}

@@ -9,6 +9,8 @@ export const zh: Dictionary = {
 			"将真实的 EzCabinet 橱柜放入您自己房间的模型中，从各个角度查看，并即时获得报价。无需前往展厅。",
 	},
 	common: {
+		whatsappHelp: "通过 WhatsApp 联系我们",
+		copyValue: "复制{label}",
 		brand: "EzCabinet",
 		back: "返回",
 		next: "下一步",
@@ -232,6 +234,8 @@ export const zh: Dictionary = {
 			},
 		},
 		canvas: {
+			contextLost: "3D 视图已停止。您的设计已保存。",
+			contextReload: "重新加载 3D 视图",
 			selectHint: "点击柜子即可选中 · 右键查看操作",
 			runOfWall: "{wall} 米墙面上的 {run} 米布局",
 			loading: "正在载入三维视图……",

@@ -5,6 +5,7 @@ import {
 	priceLineDetail,
 	priceLineLabel,
 } from "@/components/planner/priceLineCopy";
+import { WhatsAppHelp } from "@/components/WhatsAppHelp";
 import { prisma } from "@/lib/catalogue/db";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
@@ -246,6 +247,7 @@ export default async function OrderPage({
 								errorText={o.payOnlineError}
 								settlingText={o.bodyConfirming}
 								loadingText={t.quote.loading}
+								locale={lang}
 							/>
 						</section>
 					)}
@@ -256,16 +258,27 @@ export default async function OrderPage({
 							<dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-2 text-[13px]">
 								{(
 									[
-										[o.payBank, pay.bank],
-										[o.payAccountName, pay.accountName],
-										[o.payAccountNumber, pay.accountNumber],
-										[o.payReference, pay.reference],
-										[o.payAmount, rm(pay.amountRm)],
+										[o.payBank, pay.bank, null],
+										[o.payAccountName, pay.accountName, null],
+										// The three a customer retypes into a banking app, where
+										// a wrong reference is a payment nobody can match.
+										[o.payAccountNumber, pay.accountNumber, pay.accountNumber],
+										[o.payReference, pay.reference, pay.reference],
+										[o.payAmount, rm(pay.amountRm), pay.amountRm.toFixed(2)],
 									] as const
-								).map(([label, value]) => (
+								).map(([label, value, copy]) => (
 									<div key={label} className="contents">
-										<dt className="text-[#5c574e]">{label}</dt>
-										<dd className="font-medium tabular-nums">{value}</dd>
+										<dt className="self-center text-[#5c574e]">{label}</dt>
+										<dd className="flex items-center gap-2 font-medium tabular-nums">
+											{value}
+											{copy && (
+												<CopyOrderId
+													value={copy}
+													label={fill(t.common.copyValue, { label })}
+													copiedLabel={o.copied}
+												/>
+											)}
+										</dd>
 									</div>
 								))}
 							</dl>
@@ -340,6 +353,7 @@ export default async function OrderPage({
 							{o.trackDelivery}
 						</Link>
 					)}
+					<WhatsAppHelp label={t.common.whatsappHelp} message={ref} />
 				</div>
 			</div>
 		</>

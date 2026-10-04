@@ -8,6 +8,8 @@ export const ms: Dictionary = {
 			"Letakkan unit EzCabinet sebenar ke dalam model bilik anda sendiri, lihat dari setiap sudut, dan dapatkan harga serta-merta. Tidak perlu ke bilik pameran.",
 	},
 	common: {
+		whatsappHelp: "Hubungi kami di WhatsApp",
+		copyValue: "Salin {label}",
 		brand: "EzCabinet",
 		back: "Kembali",
 		next: "Seterusnya",
@@ -247,6 +249,8 @@ export const ms: Dictionary = {
 			},
 		},
 		canvas: {
+			contextLost: "Paparan 3D terhenti. Reka bentuk anda selamat.",
+			contextReload: "Muat semula paparan 3D",
 			selectHint:
 				"Klik kabinet untuk memilihnya · klik kanan untuk tindakannya",
 			runOfWall: "Susunan {run} m pada dinding {wall} m",

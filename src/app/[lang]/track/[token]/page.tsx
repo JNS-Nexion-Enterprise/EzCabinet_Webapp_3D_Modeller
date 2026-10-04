@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { journeySteps } from "@/app/admin/logistics/tracking";
 import { SiteHeader } from "@/components/SiteHeader";
+import { WhatsAppHelp } from "@/components/WhatsAppHelp";
 import { prisma } from "@/lib/catalogue/db";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { htmlLang, isLocale, type Locale } from "@/lib/copy/locales";
@@ -436,6 +437,10 @@ export default async function TrackPage({
 						>
 							{t.track.backHome}
 						</Link>
+						<WhatsAppHelp
+							label={t.common.whatsappHelp}
+							message={orderRef(delivery.number)}
+						/>
 					</div>
 				</div>
 			</main>

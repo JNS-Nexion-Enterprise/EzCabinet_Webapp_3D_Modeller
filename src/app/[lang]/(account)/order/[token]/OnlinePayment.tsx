@@ -6,6 +6,7 @@ import {
 	StripePayment,
 } from "@/components/planner/StripePayment";
 import { Spinner } from "@/components/Spinner";
+import type { Locale } from "@/lib/copy/locales";
 import type { PaymentStart } from "@/lib/payments/types";
 import { RefreshWhileSettling } from "./RefreshWhileSettling";
 
@@ -28,6 +29,7 @@ export function OnlinePayment({
 	errorText,
 	settlingText,
 	loadingText,
+	locale,
 }: {
 	token: string;
 	payLabel: string;
@@ -35,6 +37,7 @@ export function OnlinePayment({
 	settlingText: string;
 	/** Shown while the payment step is being opened. */
 	loadingText: string;
+	locale: Locale;
 }) {
 	const [start, setStart] = useState<PaymentStart | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -92,6 +95,7 @@ export function OnlinePayment({
 						publishableKey={start.publishableKey}
 						clientSecret={start.clientSecret}
 						collectBilling
+						locale={locale}
 						apiRef={payApi}
 					/>
 					<button

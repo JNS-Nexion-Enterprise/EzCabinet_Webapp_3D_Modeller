@@ -13,6 +13,8 @@ export const en = {
 			"Drop real EzCabinet units onto a model of your own room, see it from every angle, and get an instant price. No showroom visit required.",
 	},
 	common: {
+		whatsappHelp: "Message us on WhatsApp",
+		copyValue: "Copy {label}",
 		brand: "EzCabinet",
 		back: "Back",
 		next: "Next",
@@ -245,6 +247,8 @@ export const en = {
 			},
 		},
 		canvas: {
+			contextLost: "The 3D view stopped. Your design is safe.",
+			contextReload: "Reload 3D view",
 			selectHint: "Click a cabinet to select it · right-click for its actions",
 			runOfWall: "{run} m run of {wall} m wall",
 			loading: "Loading 3D view…",
