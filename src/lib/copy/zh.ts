@@ -166,6 +166,7 @@ export const zh: Dictionary = {
 			fitFree: "墙面还剩 {mm} 毫米。",
 			fitOver: "整排比墙面长 {mm} 毫米。请移除一个柜子或加长墙面。",
 			moreSettings: "踢脚板、端板、悬挂高度……",
+			next: "下一步：添加柜子",
 			heading: "房间设置",
 			subtitle: "决定每个橱柜可容纳的空间。",
 			ceiling: "天花板高度",

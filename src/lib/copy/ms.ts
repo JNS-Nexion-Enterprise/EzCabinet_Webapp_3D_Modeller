@@ -174,6 +174,7 @@ export const ms: Dictionary = {
 			fitOver:
 				"Baris ini {mm} mm lebih panjang daripada dinding. Buang satu kabinet atau panjangkan dinding.",
 			moreSettings: "Papan kaki, hujung, ketinggian gantung…",
+			next: "Seterusnya: tambah kabinet",
 			heading: "Bilik",
 			subtitle: "Menetapkan ruang yang perlu dimuatkan oleh setiap kabinet.",
 			ceiling: "Siling",

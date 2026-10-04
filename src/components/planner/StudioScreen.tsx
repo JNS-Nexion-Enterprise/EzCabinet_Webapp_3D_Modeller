@@ -303,10 +303,11 @@ export function StudioScreen({
 	// used to be `measureMode`, and the other four open the overlay panel. One
 	// piece of state rather than two, so the rail and the panel can never
 	// disagree about what is open.
-	// An empty wall opens on the cabinet menu: a bare room gives no clue where
-	// cabinets come from, and adding one is the only useful first move.
+	// An empty room opens on the Room panel: a wall cannot shrink below what
+	// its cabinets need, so the room is measured before it is furnished. The
+	// panel's own "next" button leads on to the cabinet menu.
 	const [tool, setTool] = useState<StudioTool>(() =>
-		allPositions(layout).length === 0 ? "add" : "select",
+		allPositions(layout).length === 0 ? "room" : "select",
 	);
 	const panel = tool === "select" || tool === "measure" ? null : tool;
 	const measureMode = tool === "measure";
@@ -539,6 +540,7 @@ export function StudioScreen({
 				setLayoutAction((prev) => setCeilingHeight(prev, mm))
 			}
 			onOpenDefaultsAction={() => setTool("defaults")}
+			onNextAction={placed.length === 0 ? () => setTool("add") : undefined}
 		/>
 	);
 
@@ -833,7 +835,7 @@ export function StudioScreen({
 					// sizes in pixels. Narrowing the window left the canvas at its old
 					// width, the row stayed that wide, and the right panel was pushed
 					// off the screen edge rather than the scene giving ground.
-					className="relative min-h-[45vh] min-w-0 flex-1 bg-[#faf9f7]"
+					className="relative min-h-0 min-w-0 flex-1 bg-[#faf9f7]"
 					onDragOver={(e) => {
 						e.preventDefault();
 						e.dataTransfer.dropEffect = "copy";
@@ -1055,7 +1057,10 @@ export function StudioScreen({
 					</p>
 				</div>
 
-				<aside className="flex w-full shrink-0 flex-col border-neutral-200 border-t bg-white lg:h-full lg:w-[312px] lg:border-t-0 lg:border-l">
+				{/* Capped below `lg`, where it sits under the canvas: left at its
+				    content height it pushed the total and the quote button off the
+				    bottom of a phone. Its list scrolls; the price footer stays. */}
+				<aside className="flex w-full shrink-0 flex-col border-neutral-200 border-t bg-white max-lg:max-h-[50%] lg:h-full lg:w-[312px] lg:border-t-0 lg:border-l">
 					<div className="min-h-0 flex-1 overflow-y-auto">
 						{selection.length === 0 ? (
 							<DesignRecap

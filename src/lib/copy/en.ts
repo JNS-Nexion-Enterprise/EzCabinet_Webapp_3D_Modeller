@@ -175,6 +175,7 @@ export const en = {
 			fitOver:
 				"The run is {mm} mm longer than the wall. Remove a cabinet or lengthen the wall.",
 			moreSettings: "Skirting, ends, hang height…",
+			next: "Next: add cabinets",
 			heading: "The room",
 			subtitle: "Sets the space every cabinet has to fit in.",
 			ceiling: "Ceiling",
