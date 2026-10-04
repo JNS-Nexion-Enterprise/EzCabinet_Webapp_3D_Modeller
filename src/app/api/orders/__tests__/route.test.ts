@@ -5,8 +5,11 @@ vi.mock("@/lib/auth/session", () => ({ currentUser }));
 vi.mock("botid/server", () => ({
 	checkBotId: async () => ({ isBot: false }),
 }));
-// The 401 must come before any database work; an empty prisma proves it.
-vi.mock("@/lib/catalogue/db", () => ({ prisma: {} }));
+// The 401 must come before any database work: the only prisma call these
+// tests allow is the demo customer's upsert.
+const upsert = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { upsert } } }));
+vi.mock("server-only", () => ({}));
 
 const { POST } = await import("@/app/api/orders/route");
 
@@ -21,15 +24,34 @@ const post = () =>
 beforeEach(() => {
 	currentUser.mockReset();
 	currentUser.mockResolvedValue(null);
+	upsert.mockReset();
+	upsert.mockResolvedValue({ id: "demo-customer" });
 	vi.stubEnv("VERCEL_ENV", undefined);
 });
 afterEach(() => vi.unstubAllEnvs());
 
 describe("POST /api/orders without a signed-in user", () => {
-	it.each(["true", "false"])("401s with AUTH_ENABLED=%s", async (flag) => {
-		vi.stubEnv("AUTH_ENABLED", flag);
+	it("401s with auth enabled", async () => {
+		vi.stubEnv("AUTH_ENABLED", "true");
 		const response = await post();
 		expect(response.status).toBe(401);
 		expect(await response.json()).toEqual({ error: "sign_in_required" });
+		expect(upsert).not.toHaveBeenCalled();
+	});
+
+	it("401s on any Vercel deployment, whatever AUTH_ENABLED says", async () => {
+		vi.stubEnv("AUTH_ENABLED", "false");
+		vi.stubEnv("VERCEL_ENV", "preview");
+		const response = await post();
+		expect(response.status).toBe(401);
+		expect(upsert).not.toHaveBeenCalled();
+	});
+
+	it("gives a local order to the demo customer with AUTH_ENABLED=false", async () => {
+		vi.stubEnv("AUTH_ENABLED", "false");
+		const response = await post();
+		// Past the session check: the empty body is what is refused now.
+		expect(response.status).toBe(400);
+		expect(upsert).toHaveBeenCalledOnce();
 	});
 });

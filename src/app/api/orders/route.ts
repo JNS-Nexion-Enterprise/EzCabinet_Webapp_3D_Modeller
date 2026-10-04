@@ -1,6 +1,7 @@
 import { checkBotId } from "botid/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { demoCustomer } from "@/lib/auth/demoCustomer";
 import { currentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/catalogue/db";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
@@ -59,7 +60,9 @@ export async function POST(request: Request) {
 	// Every order belongs to an account, in every environment: AUTH_ENABLED=false
 	// opens the admin surface but never lets an ownerless order in, because
 	// an order nobody owns is an order nobody can be shown.
-	const user = await currentUser();
+	// The one exception is local: with AUTH_ENABLED off a signed-out checkout
+	// belongs to the seeded demo customer, so the order still has an owner.
+	const user = (await currentUser()) ?? (await demoCustomer());
 	if (!user) {
 		return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
 	}

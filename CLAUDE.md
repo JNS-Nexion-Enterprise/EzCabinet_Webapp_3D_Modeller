@@ -546,7 +546,10 @@ colleague's work address is the assertion that it is theirs.
 
 `AUTH_ENABLED=false` opens the admin surface and lets you open any customer
 order page, for local work. It never lets checkout take an anonymous order —
-every order needs an owner, so local checkout needs a Google sign-in. It is
+every order needs an owner. Signed out, a local order belongs to one seeded
+demo customer (`lib/auth/demoCustomer.ts`), so the planner can be demonstrated
+end to end without Google; the quote screen learns this from
+`/api/payments/config` and skips its sign-in card. It is
 ignored whenever `VERCEL_ENV` is set — preview included, since a preview is a
 public URL with real carrier credentials behind it. On customer order pages a
 real Google session still wins over the bypass user, so local My orders lists

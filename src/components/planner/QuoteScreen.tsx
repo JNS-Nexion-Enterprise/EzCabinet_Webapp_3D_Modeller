@@ -128,12 +128,16 @@ export function QuoteScreen({
 	// Which payment step to draw: the live gateway, asked at runtime (the
 	// `payment-gateway` flag). Undefined while asking; null = bank transfer.
 	const [payClient, setPayClient] = useState<PaymentClient | null>();
+	// False only on a local run with AUTH_ENABLED off, where a signed-out
+	// order goes to the demo customer and the sign-in card would be a lie.
+	const [signInRequired, setSignInRequired] = useState(true);
 	useEffect(() => {
 		fetch("/api/payments/config")
 			.then((res) => res.json())
-			.then((json: { client: PaymentClient | null }) =>
-				setPayClient(json.client),
-			)
+			.then((json: { client: PaymentClient | null; signIn?: boolean }) => {
+				setPayClient(json.client);
+				setSignInRequired(json.signIn !== false);
+			})
 			.catch(() => setPayClient(null));
 	}, []);
 	const stripeClient = payClient?.kind === "stripe-elements" ? payClient : null;
@@ -309,7 +313,9 @@ export function QuoteScreen({
 	}
 
 	const total = formatRm(totalRm);
-	const signedOut = !sessionPending && !session?.user;
+	// Unknown until both the session and the checkout config have answered.
+	const authPending = sessionPending || payClient === undefined;
+	const signedOut = !authPending && signInRequired && !session?.user;
 	const clearError = (key: keyof FieldErrors) =>
 		setFieldErrors((current) =>
 			current[key] ? { ...current, [key]: undefined } : current,
@@ -390,7 +396,7 @@ export function QuoteScreen({
 						)}
 						<form
 							noValidate
-							hidden={sessionPending || signedOut}
+							hidden={authPending || signedOut}
 							className="flex max-w-[480px] flex-col gap-7"
 							aria-describedby={error ? "order-error" : undefined}
 							onChange={(e) =>
