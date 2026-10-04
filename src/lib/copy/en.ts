@@ -417,7 +417,7 @@ export const en = {
 		oneOffPayment: "One-off payment",
 		errorGeneric: "We couldn't place your order. Please try again.",
 		errorPhone:
-			"That phone number doesn't look right. Include the area code, like 012-345 6789.",
+			"That phone number doesn't look right. Enter the 9 or 10 digits after +60, like 12 345 6789.",
 		errorDesign:
 			"Something in this design can't be ordered as it stands. Go back to editing and check your cabinets.",
 		subtotal: "Cabinets",

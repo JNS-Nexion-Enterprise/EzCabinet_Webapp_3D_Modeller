@@ -421,7 +421,7 @@ export const ms: Dictionary = {
 		oneOffPayment: "Bayaran sekali sahaja",
 		errorGeneric: "Pesanan anda tidak dapat dibuat. Sila cuba lagi.",
 		errorPhone:
-			"Nombor telefon itu kelihatan tidak betul. Sertakan kod kawasan, contohnya 012-345 6789.",
+			"Nombor telefon itu kelihatan tidak betul. Masukkan 9 atau 10 digit selepas +60, contohnya 12 345 6789.",
 		errorDesign:
 			"Ada bahagian reka bentuk ini yang tidak boleh dipesan seperti sedia ada. Kembali menyunting dan semak kabinet anda.",
 		subtotal: "Kabinet",

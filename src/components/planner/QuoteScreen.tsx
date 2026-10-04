@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { fill } from "@/lib/copy/fill";
 import { htmlLang } from "@/lib/copy/locales";
+import { malaysianNational, toE164 } from "@/lib/logistics/phone";
 import type { PaymentClient, PaymentStart } from "@/lib/payments/types";
 import type { FinishId, RoomTypeId } from "@/lib/planner/catalogue";
 import { doorStyleIn, ratesOf, roomTypeIn } from "@/lib/planner/catalogue";
@@ -151,6 +152,8 @@ export function QuoteScreen({
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
+	// The digits after +60 — see the phone field.
+	const [phone, setPhone] = useState("");
 	useEffect(() => {
 		if (!session?.user) return;
 		setName((current) => current || session.user.name || "");
@@ -169,7 +172,11 @@ export function QuoteScreen({
 		// in our words, next to its field. The server re-checks all of it.
 		const errors: FieldErrors = {};
 		if (!field("name")) errors.name = t.quote.errorNameRequired;
-		if (!field("phone")) errors.phone = t.quote.errorPhoneRequired;
+		// The field holds the national digits; +60 is ours to add.
+		const fullPhone = field("phone") && `+60${field("phone")}`;
+		if (!fullPhone) errors.phone = t.quote.errorPhoneRequired;
+		// The server's own reader, so the two cannot disagree about a number.
+		else if (toE164(fullPhone) === null) errors.phone = t.quote.errorPhone;
 		// Paying online sends a receipt, so the email stops being optional.
 		if (stripeClient && !field("email"))
 			errors.email = t.quote.errorEmailRequired;
@@ -218,7 +225,7 @@ export function QuoteScreen({
 					layout,
 					customer: {
 						name: field("name"),
-						phone: field("phone"),
+						phone: fullPhone,
 						email: field("email") || null,
 						siteAddress: field("siteAddress"),
 						addressNotes: field("addressNotes") || null,
@@ -292,7 +299,7 @@ export function QuoteScreen({
 			billing: {
 				name: field("name"),
 				email: field("email"),
-				phone: field("phone"),
+				phone: fullPhone,
 				address: field("siteAddress"),
 			},
 		});
@@ -418,16 +425,39 @@ export function QuoteScreen({
 								</label>
 								<label className="flex flex-col gap-1.5">
 									<span className={LABEL}>{t.quote.phone}</span>
-									<input
-										name="phone"
-										type="tel"
-										autoComplete="tel"
-										required
-										className={fieldClass(fieldErrors.phone)}
-										aria-invalid={!!fieldErrors.phone}
-										aria-describedby={describedBy("phone")}
-										placeholder="+60 12-345 6789"
-									/>
+									{/* +60 printed, not typed, and the box takes digits only:
+									    a free-text phone field is where wrong numbers come
+									    from, and WhatsApp delivers to the exact string or not
+									    at all. Malaysia is the only market delivered to. */}
+									<div
+										className={`${fieldClass(fieldErrors.phone)} flex items-center gap-2 focus-within:outline focus-within:outline-2 focus-within:outline-[#171717]`}
+									>
+										<span aria-hidden className="text-[#5c574e] tabular-nums">
+											+60
+										</span>
+										<input
+											name="phone"
+											type="tel"
+											inputMode="numeric"
+											autoComplete="tel-national"
+											required
+											className="min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-[#a3a3a3]"
+											aria-invalid={!!fieldErrors.phone}
+											aria-describedby={describedBy("phone")}
+											placeholder="12 345 6789"
+											value={phone}
+											onChange={(e) =>
+												setPhone(malaysianNational(e.target.value))
+											}
+											onBlur={() => {
+												if (phone && toE164(`+60${phone}`) === null)
+													setFieldErrors((current) => ({
+														...current,
+														phone: t.quote.errorPhone,
+													}));
+											}}
+										/>
+									</div>
 									{errorText("phone")}
 								</label>
 								<label className="flex flex-col gap-1.5">

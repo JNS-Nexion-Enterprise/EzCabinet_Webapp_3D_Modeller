@@ -396,7 +396,8 @@ export const zh: Dictionary = {
 			"每份订单都归属一个账户，方便您之后查看进度。您的设计已保存，登录后会直接回到这里。",
 		oneOffPayment: "一次性付款",
 		errorGeneric: "无法下单，请再试一次。",
-		errorPhone: "电话号码似乎不正确，请包含区号，例如 012-345 6789。",
+		errorPhone:
+			"电话号码似乎不正确，请输入 +60 之后的 9 或 10 位数字，例如 12 345 6789。",
 		errorDesign: "此设计中有部分内容无法按现状订购。请返回编辑并检查您的橱柜。",
 		subtotal: "橱柜",
 		delivery: "运费",
