@@ -312,6 +312,8 @@ export const zh: Dictionary = {
 			noDoorInline: "不装门板",
 			emptyHint: "尚未放置任何橱柜——请将柜体拖曳到墙面上。",
 			reset: "重置此房间",
+			resetConfirm:
+				"要重置此房间吗？所有柜子、房间形状和墙面颜色都会被清除，且无法撤销。",
 		},
 		price: {
 			breakdown: "明细",

@@ -17,7 +17,13 @@ export function CabinetMenu({
 }: {
 	x: number;
 	y: number;
-	items: { key: string; label: string; danger?: boolean; press: () => void }[];
+	items: {
+		key: string;
+		label: string;
+		danger?: boolean;
+		disabled?: boolean;
+		press: () => void;
+	}[];
 	onDismissAction: () => void;
 }) {
 	// Any click elsewhere closes it, including one that lands on the canvas —
@@ -39,7 +45,8 @@ export function CabinetMenu({
 					key={item.key}
 					type="button"
 					onClick={item.press}
-					className={`min-h-9 w-full rounded-md px-3.5 py-2 text-left text-[13px] hover:bg-[#f4f3f1] ${
+					disabled={item.disabled}
+					className={`min-h-9 w-full rounded-md px-3.5 py-2 text-left text-[13px] hover:bg-[#f4f3f1] disabled:cursor-not-allowed disabled:text-neutral-300 disabled:hover:bg-transparent ${
 						item.danger ? "text-[#8a2c1c]" : "text-neutral-900"
 					}`}
 				>

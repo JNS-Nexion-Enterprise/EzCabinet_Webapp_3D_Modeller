@@ -332,6 +332,8 @@ export const ms: Dictionary = {
 			noDoorInline: "tiada pintu",
 			emptyHint: "Belum ada yang diletakkan — seret badan kabinet ke dinding.",
 			reset: "Set semula bilik ini",
+			resetConfirm:
+				"Set semula bilik ini? Semua kabinet, bentuk bilik dan cat dinding akan dipadam. Ini tidak boleh dibuat asal.",
 		},
 		price: {
 			breakdown: "Perincian",

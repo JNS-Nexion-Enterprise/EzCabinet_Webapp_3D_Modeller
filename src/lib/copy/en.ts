@@ -328,6 +328,8 @@ export const en = {
 			noDoorInline: "no door",
 			emptyHint: "Nothing placed yet — drag a carcass onto the wall.",
 			reset: "Reset this room",
+			resetConfirm:
+				"Reset this room? Every cabinet, the room's shape and its wall paint will be cleared. This can't be undone.",
 		},
 		price: {
 			breakdown: "Breakdown",
