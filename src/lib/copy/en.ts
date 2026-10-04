@@ -404,6 +404,10 @@ export const en = {
 		paymentFailedBody:
 			"Nothing was charged. Your details are saved. Try again or choose another way to pay.",
 		errorEmailRequired: "Enter an email for your receipt.",
+		errorEmailInvalid: "That email address doesn't look right.",
+		signInTitle: "Sign in to place your order",
+		signInBody:
+			"Every order belongs to an account, so you can follow it afterwards. Your design is saved, and you'll come straight back here.",
 		oneOffPayment: "One-off payment",
 		errorGeneric: "We couldn't place your order. Please try again.",
 		errorPhone:

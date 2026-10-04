@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { GoogleSignInButton } from "@/app/[lang]/sign-in/GoogleSignInButton";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { fill } from "@/lib/copy/fill";
@@ -37,6 +38,11 @@ const FIELD =
 	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 text-[14px] text-[#171717] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
 const fieldClass = (error: string | undefined) =>
 	`${FIELD} ${error ? "border-[1.5px] border-[#b42318]" : "border border-[#d4d4d4]"}`;
+
+/** This page, as somewhere to come back to: `PlannerApp` reopens the quote
+ * for `#quote` rather than starting again at the room picker. */
+const quoteUrl = () =>
+	`${window.location.pathname}${window.location.search}#quote`;
 
 type FieldErrors = Partial<
 	Record<"name" | "phone" | "email" | "siteAddress" | "remeasure", string>
@@ -140,7 +146,7 @@ export function QuoteScreen({
 
 	// The person paying is not always the person whose Google account it is,
 	// so this only pre-fills the fields — both stay editable.
-	const { data: session } = authClient.useSession();
+	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	useEffect(() => {
@@ -165,13 +171,23 @@ export function QuoteScreen({
 		// Paying online sends a receipt, so the email stops being optional.
 		if (stripeClient && !field("email"))
 			errors.email = t.quote.errorEmailRequired;
+		else if (
+			!(form.elements.namedItem("email") as HTMLInputElement).validity.valid
+		)
+			errors.email = t.quote.errorEmailInvalid;
 		if (!field("siteAddress"))
 			errors.siteAddress = t.quote.errorAddressRequired;
 		else if (field("siteAddress").length < 5)
 			errors.siteAddress = t.quote.errorAddressShort;
 		if (field("remeasure") !== "on") errors.remeasure = t.quote.errorRemeasure;
 		setFieldErrors(errors);
-		if (Object.keys(errors).length > 0) return;
+		const firstBad = Object.keys(errors)[0];
+		if (firstBad) {
+			// Focus scrolls to it: on a phone the Pay button is a screen or more
+			// below the field that needs fixing.
+			(form.elements.namedItem(firstBad) as HTMLElement | null)?.focus();
+			return;
+		}
 
 		setBusy(true);
 		setError(null);
@@ -216,9 +232,7 @@ export function QuoteScreen({
 				// nothing to lose here — just send the customer to sign in and let
 				// the existing rehydrate bring it back on the way in.
 				router.push(
-					`/${locale}/sign-in?next=${encodeURIComponent(
-						window.location.pathname + window.location.search,
-					)}`,
+					`/${locale}/sign-in?next=${encodeURIComponent(quoteUrl())}`,
 				);
 				return;
 			}
@@ -226,6 +240,17 @@ export function QuoteScreen({
 				setBusy(false);
 				if (body?.error === "bad_phone") {
 					setFieldErrors({ phone: t.quote.errorPhone });
+					(form.elements.namedItem("phone") as HTMLElement | null)?.focus();
+					return;
+				}
+				// The server's email check is stricter than the browser's.
+				const issues: { path?: unknown[] }[] = body?.issues ?? [];
+				if (
+					body?.error === "invalid_body" &&
+					issues.some((issue) => issue.path?.join(".") === "customer.email")
+				) {
+					setFieldErrors({ email: t.quote.errorEmailInvalid });
+					(form.elements.namedItem("email") as HTMLElement | null)?.focus();
 					return;
 				}
 				setError(
@@ -275,6 +300,7 @@ export function QuoteScreen({
 	}
 
 	const total = formatRm(totalRm);
+	const signedOut = !sessionPending && !session?.user;
 	const clearError = (key: keyof FieldErrors) =>
 		setFieldErrors((current) =>
 			current[key] ? { ...current, [key]: undefined } : current,
@@ -333,8 +359,29 @@ export function QuoteScreen({
 							{stripeClient ? t.quote.descriptionOnline : t.quote.description}
 						</p>
 
+						{signedOut && (
+							// Before the form, not after it: the old stop was a 401 on
+							// Pay, which sent a customer to Google with every field
+							// they had just typed thrown away.
+							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
+								<div>
+									<p className="font-semibold text-[15px]">
+										{t.quote.signInTitle}
+									</p>
+									<p className="mt-1 text-[#5c574e] text-[13px] leading-[18px]">
+										{t.quote.signInBody}
+									</p>
+								</div>
+								<GoogleSignInButton
+									callbackURL={quoteUrl()}
+									label={t.signIn.continueWithGoogle}
+									errorMessage={t.signIn.error}
+								/>
+							</div>
+						)}
 						<form
 							noValidate
+							hidden={sessionPending || signedOut}
 							className="flex max-w-[480px] flex-col gap-7"
 							aria-describedby={error ? "order-error" : undefined}
 							onChange={(e) =>
@@ -347,25 +394,6 @@ export function QuoteScreen({
 								placeOrder(e.currentTarget);
 							}}
 						>
-							{paymentFailed !== null && (
-								<div
-									role="alert"
-									className="flex gap-2.5 rounded-[10px] border border-[#f0b4ae] bg-[#fdf1ef] px-3.5 py-3 text-[#3d3a34] text-[13px] leading-[18px]"
-								>
-									<div>
-										<p className="mb-0.5 font-semibold">
-											{t.quote.paymentFailedTitle}
-										</p>
-										<p>{t.quote.paymentFailedBody}</p>
-										{paymentFailed && (
-											<p className="mt-1 text-[#5c574e] text-[12px]">
-												{paymentFailed}
-											</p>
-										)}
-									</div>
-								</div>
-							)}
-
 							<fieldset className="flex flex-col gap-3" disabled={busy}>
 								<legend className="mb-3 font-semibold text-[15px]">
 									{t.quote.sectionContact}
@@ -496,6 +524,26 @@ export function QuoteScreen({
 									>
 										{fieldErrors.remeasure}
 									</p>
+								)}
+								{/* Beside the button, not at the top of the form: on a phone that
+								    is where the customer is looking when a payment fails. */}
+								{paymentFailed !== null && (
+									<div
+										role="alert"
+										className="flex gap-2.5 rounded-[10px] border border-[#f0b4ae] bg-[#fdf1ef] px-3.5 py-3 text-[#3d3a34] text-[13px] leading-[18px]"
+									>
+										<div>
+											<p className="mb-0.5 font-semibold">
+												{t.quote.paymentFailedTitle}
+											</p>
+											<p>{t.quote.paymentFailedBody}</p>
+											{paymentFailed && (
+												<p className="mt-1 text-[#5c574e] text-[12px]">
+													{paymentFailed}
+												</p>
+											)}
+										</div>
+									</div>
 								)}
 								{error && (
 									<p

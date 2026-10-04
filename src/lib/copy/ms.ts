@@ -408,6 +408,10 @@ export const ms: Dictionary = {
 		paymentFailedBody:
 			"Tiada caj dikenakan. Butiran anda telah disimpan. Cuba lagi atau pilih cara pembayaran lain.",
 		errorEmailRequired: "Masukkan e-mel untuk resit anda.",
+		errorEmailInvalid: "Alamat e-mel itu nampaknya tidak betul.",
+		signInTitle: "Log masuk untuk membuat pesanan",
+		signInBody:
+			"Setiap pesanan dimiliki oleh satu akaun supaya anda boleh mengikutinya kemudian. Reka bentuk anda disimpan, dan anda akan kembali terus ke sini.",
 		oneOffPayment: "Bayaran sekali sahaja",
 		errorGeneric: "Pesanan anda tidak dapat dibuat. Sila cuba lagi.",
 		errorPhone:

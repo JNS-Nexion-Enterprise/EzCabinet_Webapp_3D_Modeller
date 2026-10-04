@@ -108,6 +108,20 @@ function PlannerScreens({
 	);
 	const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
 
+	// Back from the sign-in checkout sends a signed-out customer to: straight
+	// to the quote they left, not the room picker. In an effect, not the
+	// initial state — the server cannot see a hash, so it would not hydrate.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: once, on arrival
+	useEffect(() => {
+		if (window.location.hash !== "#quote") return;
+		history.replaceState(
+			null,
+			"",
+			window.location.pathname + window.location.search,
+		);
+		if (allPositions(rooms[roomId]).length > 0) setScreen("quote");
+	}, []);
+
 	// One effect, not a call at each of the dozens of `setLayoutAction` sites:
 	// the draft only has to be correct by the time the page can be navigated
 	// away from, and React has already batched by then.

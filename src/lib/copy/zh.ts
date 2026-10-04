@@ -384,6 +384,10 @@ export const zh: Dictionary = {
 		paymentFailedBody:
 			"未产生任何扣款。您的资料已保存。请重试或选择其他付款方式。",
 		errorEmailRequired: "请输入用于接收收据的电子邮件。",
+		errorEmailInvalid: "电子邮件地址似乎不正确。",
+		signInTitle: "登录后即可下单",
+		signInBody:
+			"每份订单都归属一个账户，方便您之后查看进度。您的设计已保存，登录后会直接回到这里。",
 		oneOffPayment: "一次性付款",
 		errorGeneric: "无法下单，请再试一次。",
 		errorPhone: "电话号码似乎不正确，请包含区号，例如 012-345 6789。",
