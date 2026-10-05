@@ -11,6 +11,7 @@ type UserRow = {
 	name: string;
 	role: Role;
 	disabled: boolean;
+	twoFactorEnabled: boolean | null;
 	lastLoginAt: Date | string | null;
 };
 
@@ -59,6 +60,8 @@ export function UsersTable({
 	const [query, setQuery] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busyId, setBusyId] = useState<string | null>(null);
+	// Two presses, not a browser confirm: the first arms the row's button.
+	const [armedId, setArmedId] = useState<string | null>(null);
 
 	const reload = useCallback(async (q: string, s: ScopeFilter) => {
 		const params = new URLSearchParams({ staff: s === "staff" ? "1" : "0" });
@@ -111,6 +114,23 @@ export function UsersTable({
 			);
 			return;
 		}
+		await reload(query, scope);
+		router.refresh();
+	}
+
+	async function resetTwoFactor(id: string) {
+		setError(null);
+		setBusyId(id);
+		const res = await fetch(`/api/admin/users/${id}/reset-2fa`, {
+			method: "POST",
+		});
+		setBusyId(null);
+		setArmedId(null);
+		if (!res.ok) {
+			setError("Could not reset two-step sign-in.");
+			return;
+		}
+		// Resetting your own signs you out; the refresh lands on the login page.
 		await reload(query, scope);
 		router.refresh();
 	}
@@ -288,7 +308,22 @@ export function UsersTable({
 										? `Last in ${shortTime(new Date(user.lastLoginAt).toISOString())}`
 										: "Never signed in"}
 								</span>
-								<div className="flex w-[172px] justify-end gap-[7px]">
+								<div className="flex w-[172px] items-center justify-end gap-[7px]">
+									{user.twoFactorEnabled && (
+										<button
+											type="button"
+											disabled={busyId === user.id}
+											onClick={() =>
+												armedId === user.id
+													? resetTwoFactor(user.id)
+													: setArmedId(user.id)
+											}
+											onBlur={() => setArmedId(null)}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											{armedId === user.id ? "Confirm reset" : "Reset 2FA"}
+										</button>
+									)}
 									{user.role !== "CUSTOMER" && (
 										<button
 											type="button"

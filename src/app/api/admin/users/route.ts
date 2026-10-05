@@ -30,6 +30,7 @@ export const GET = withAuth("users:manage", async (request) => {
 			name: true,
 			role: true,
 			disabled: true,
+			twoFactorEnabled: true,
 			lastLoginAt: true,
 			createdAt: true,
 		},

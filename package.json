@@ -21,6 +21,7 @@
 		"db:migrate": "prisma migrate dev",
 		"db:seed": "tsx --env-file-if-exists=.env.local prisma/seed.ts",
 		"seed:superadmin": "tsx --conditions=react-server --env-file-if-exists=.env.local prisma/seedSuperadmin.ts",
+		"auth:reset-2fa": "tsx --conditions=react-server --env-file-if-exists=.env.local prisma/resetTwoFactor.ts",
 		"db:studio": "prisma studio"
 	},
 	"dependencies": {

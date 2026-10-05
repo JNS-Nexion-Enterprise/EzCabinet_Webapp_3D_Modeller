@@ -15,6 +15,7 @@ export default async function UsersPage() {
 			name: true,
 			role: true,
 			disabled: true,
+			twoFactorEnabled: true,
 			lastLoginAt: true,
 		},
 		orderBy: [{ role: "asc" }, { createdAt: "desc" }],
