@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import type { Dictionary } from "@/lib/copy/en";
 import { fill } from "@/lib/copy/fill";
@@ -74,6 +75,9 @@ export function TutorialsBrowser({
 	 * `CopyProvider`, unlike the planner tree. */
 	copy: Dictionary;
 }) {
+	// Not "/": the proxy re-negotiates that from Accept-Language, which sends
+	// someone who chose 中文 on an English phone back to English.
+	const { lang } = useParams<{ lang: string }>();
 	const [category, setCategory] = useState<string>(ALL);
 	const [activeId, setActiveId] = useState<string | null>(null);
 	// `filtered.map((t) => …)` below shadows the dictionary `t` with the
@@ -199,7 +203,7 @@ export function TutorialsBrowser({
 			<div className="mt-auto bg-neutral-900 text-neutral-200">
 				<div className="mx-auto flex max-w-[1180px] items-center justify-between px-8 py-7 text-[12px] text-neutral-400">
 					<span>{fill(t.tutorials.copyright, { brand: t.common.brand })}</span>
-					<Link href="/" className="text-neutral-400">
+					<Link href={`/${lang}`} className="text-neutral-400">
 						{t.tutorials.backToSite}
 					</Link>
 				</div>

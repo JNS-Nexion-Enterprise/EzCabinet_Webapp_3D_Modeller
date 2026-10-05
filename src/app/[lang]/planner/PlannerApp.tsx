@@ -17,7 +17,7 @@ import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
 import { wallsOf } from "@/lib/planner/floorplan";
 import { computePlannerPrice } from "@/lib/planner/pricing";
 import { emptyRoom, type RoomLayout } from "@/lib/planner/room";
-import { loadDraft, saveDraft } from "@/lib/plannerDraft";
+import { loadDraft, reconcileDraft, saveDraft } from "@/lib/plannerDraft";
 
 type Screen = "start" | "studio" | "quote";
 
@@ -89,26 +89,38 @@ function PlannerScreens({
 	// Restored once, from whatever autosave `plannerDraft.ts` left in
 	// localStorage — a sign-in redirect, a refresh or a crash all take the
 	// page's React state with them, and this is what survives that.
-	const [restored] = useState(() => loadDraft());
+	// Reconciled against the live catalogue: a publish since the draft was
+	// saved may have dropped its room, its finish or one of its cabinets.
+	const [restored] = useState(() => reconcileDraft(loadDraft(), catalogue));
 	const [roomId, setRoomId] = useState<RoomTypeId>(
-		(restored?.roomId as RoomTypeId) ?? initialRoomId,
+		(restored.roomId as RoomTypeId) ?? initialRoomId,
 	);
 	// One layout per room, so switching to the foyer and back does not throw
 	// away the kitchen the customer just arranged.
-	const [rooms, setRooms] = useState<Record<RoomTypeId, RoomLayout>>(() =>
-		restored
-			? ({ ...initialRooms(catalogue), ...restored.rooms } as Record<
-					RoomTypeId,
-					RoomLayout
-				>)
-			: initialRooms(catalogue),
-	);
+	const [rooms, setRooms] = useState<Record<RoomTypeId, RoomLayout>>(() => ({
+		...initialRooms(catalogue),
+		...restored.rooms,
+	}));
 	// Defaults to whatever the catalogue lists first — hardcoding an id here
 	// would render an unstyled room for any catalogue that drops it.
 	const [finish, setFinish] = useState<FinishId>(
-		(restored?.finishId as FinishId) ?? catalogue.finishes[0].id,
+		(restored.finishId as FinishId) ?? catalogue.finishes[0].id,
 	);
 	const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
+
+	// Back from the sign-in checkout sends a signed-out customer to: straight
+	// to the quote they left, not the room picker. In an effect, not the
+	// initial state — the server cannot see a hash, so it would not hydrate.
+	// biome-ignore lint/correctness/useExhaustiveDependencies: once, on arrival
+	useEffect(() => {
+		if (window.location.hash !== "#quote") return;
+		history.replaceState(
+			null,
+			"",
+			window.location.pathname + window.location.search,
+		);
+		if (allPositions(rooms[roomId]).length > 0) setScreen("quote");
+	}, []);
 
 	// One effect, not a call at each of the dozens of `setLayoutAction` sites:
 	// the draft only has to be correct by the time the page can be navigated

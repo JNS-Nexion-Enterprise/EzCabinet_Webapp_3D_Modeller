@@ -3,15 +3,19 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { GoogleSignInButton } from "@/app/[lang]/sign-in/GoogleSignInButton";
+import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { fill } from "@/lib/copy/fill";
 import { htmlLang } from "@/lib/copy/locales";
+import { malaysianNational, toE164 } from "@/lib/logistics/phone";
 import type { PaymentClient, PaymentStart } from "@/lib/payments/types";
 import type { FinishId, RoomTypeId } from "@/lib/planner/catalogue";
 import { doorStyleIn, ratesOf, roomTypeIn } from "@/lib/planner/catalogue";
 import { computePlannerPrice } from "@/lib/planner/pricing";
 import type { RoomLayout } from "@/lib/planner/room";
+import { clearDraft } from "@/lib/plannerDraft";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
 import { AdminLink, PlannerHeader } from "./PlannerHeader";
@@ -33,9 +37,15 @@ const PlannerScene = dynamic(() => import("./PlannerScene"), {
 });
 
 const FIELD =
-	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 text-[14px] text-[#171717] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
+	// 16px below `sm`: iOS Safari zooms the page on focusing anything smaller.
+	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 text-base text-[#171717] sm:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
 const fieldClass = (error: string | undefined) =>
 	`${FIELD} ${error ? "border-[1.5px] border-[#b42318]" : "border border-[#d4d4d4]"}`;
+
+/** This page, as somewhere to come back to: `PlannerApp` reopens the quote
+ * for `#quote` rather than starting again at the room picker. */
+const quoteUrl = () =>
+	`${window.location.pathname}${window.location.search}#quote`;
 
 type FieldErrors = Partial<
 	Record<"name" | "phone" | "email" | "siteAddress" | "remeasure", string>
@@ -118,12 +128,16 @@ export function QuoteScreen({
 	// Which payment step to draw: the live gateway, asked at runtime (the
 	// `payment-gateway` flag). Undefined while asking; null = bank transfer.
 	const [payClient, setPayClient] = useState<PaymentClient | null>();
+	// False only on a local run with AUTH_ENABLED off, where a signed-out
+	// order goes to the demo customer and the sign-in card would be a lie.
+	const [signInRequired, setSignInRequired] = useState(true);
 	useEffect(() => {
 		fetch("/api/payments/config")
 			.then((res) => res.json())
-			.then((json: { client: PaymentClient | null }) =>
-				setPayClient(json.client),
-			)
+			.then((json: { client: PaymentClient | null; signIn?: boolean }) => {
+				setPayClient(json.client);
+				setSignInRequired(json.signIn !== false);
+			})
 			.catch(() => setPayClient(null));
 	}, []);
 	const stripeClient = payClient?.kind === "stripe-elements" ? payClient : null;
@@ -139,9 +153,11 @@ export function QuoteScreen({
 
 	// The person paying is not always the person whose Google account it is,
 	// so this only pre-fills the fields — both stay editable.
-	const { data: session } = authClient.useSession();
+	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
+	// The digits after +60 — see the phone field.
+	const [phone, setPhone] = useState("");
 	useEffect(() => {
 		if (!session?.user) return;
 		setName((current) => current || session.user.name || "");
@@ -160,17 +176,31 @@ export function QuoteScreen({
 		// in our words, next to its field. The server re-checks all of it.
 		const errors: FieldErrors = {};
 		if (!field("name")) errors.name = t.quote.errorNameRequired;
-		if (!field("phone")) errors.phone = t.quote.errorPhoneRequired;
+		// The field holds the national digits; +60 is ours to add.
+		const fullPhone = field("phone") && `+60${field("phone")}`;
+		if (!fullPhone) errors.phone = t.quote.errorPhoneRequired;
+		// The server's own reader, so the two cannot disagree about a number.
+		else if (toE164(fullPhone) === null) errors.phone = t.quote.errorPhone;
 		// Paying online sends a receipt, so the email stops being optional.
 		if (stripeClient && !field("email"))
 			errors.email = t.quote.errorEmailRequired;
+		else if (
+			!(form.elements.namedItem("email") as HTMLInputElement).validity.valid
+		)
+			errors.email = t.quote.errorEmailInvalid;
 		if (!field("siteAddress"))
 			errors.siteAddress = t.quote.errorAddressRequired;
 		else if (field("siteAddress").length < 5)
 			errors.siteAddress = t.quote.errorAddressShort;
 		if (field("remeasure") !== "on") errors.remeasure = t.quote.errorRemeasure;
 		setFieldErrors(errors);
-		if (Object.keys(errors).length > 0) return;
+		const firstBad = Object.keys(errors)[0];
+		if (firstBad) {
+			// Focus scrolls to it: on a phone the Pay button is a screen or more
+			// below the field that needs fixing.
+			(form.elements.namedItem(firstBad) as HTMLElement | null)?.focus();
+			return;
+		}
 
 		setBusy(true);
 		setError(null);
@@ -199,7 +229,7 @@ export function QuoteScreen({
 					layout,
 					customer: {
 						name: field("name"),
-						phone: field("phone"),
+						phone: fullPhone,
 						email: field("email") || null,
 						siteAddress: field("siteAddress"),
 						addressNotes: field("addressNotes") || null,
@@ -215,9 +245,7 @@ export function QuoteScreen({
 				// nothing to lose here — just send the customer to sign in and let
 				// the existing rehydrate bring it back on the way in.
 				router.push(
-					`/${locale}/sign-in?next=${encodeURIComponent(
-						window.location.pathname + window.location.search,
-					)}`,
+					`/${locale}/sign-in?next=${encodeURIComponent(quoteUrl())}`,
 				);
 				return;
 			}
@@ -225,6 +253,17 @@ export function QuoteScreen({
 				setBusy(false);
 				if (body?.error === "bad_phone") {
 					setFieldErrors({ phone: t.quote.errorPhone });
+					(form.elements.namedItem("phone") as HTMLElement | null)?.focus();
+					return;
+				}
+				// The server's email check is stricter than the browser's.
+				const issues: { path?: unknown[] }[] = body?.issues ?? [];
+				if (
+					body?.error === "invalid_body" &&
+					issues.some((issue) => issue.path?.join(".") === "customer.email")
+				) {
+					setFieldErrors({ email: t.quote.errorEmailInvalid });
+					(form.elements.namedItem("email") as HTMLElement | null)?.focus();
 					return;
 				}
 				setError(
@@ -242,6 +281,8 @@ export function QuoteScreen({
 				totalRm: Math.round(totalRm),
 			});
 			created.current = { token: body.token, payment: body.payment ?? null };
+			// The design is an order now; the planner should not reopen on it.
+			clearDraft();
 		}
 
 		const { token, payment } = created.current;
@@ -262,7 +303,7 @@ export function QuoteScreen({
 			billing: {
 				name: field("name"),
 				email: field("email"),
-				phone: field("phone"),
+				phone: fullPhone,
 				address: field("siteAddress"),
 			},
 		});
@@ -272,6 +313,9 @@ export function QuoteScreen({
 	}
 
 	const total = formatRm(totalRm);
+	// Unknown until both the session and the checkout config have answered.
+	const authPending = sessionPending || payClient === undefined;
+	const signedOut = !authPending && signInRequired && !session?.user;
 	const clearError = (key: keyof FieldErrors) =>
 		setFieldErrors((current) =>
 			current[key] ? { ...current, [key]: undefined } : current,
@@ -290,7 +334,7 @@ export function QuoteScreen({
 		<main className="flex h-[calc(100dvh-2.25rem)] flex-col bg-[#e9e7e3] text-[#171717]">
 			<PlannerHeader
 				trail={[
-					{ label: t.common.brand, href: "/" },
+					{ label: t.common.brand, href: `/${locale}` },
 					{ label: t.planner.crumbs.roomPlanner, onClick: onBackToStartAction },
 					{ label: t.planner.crumbs.quote },
 				]}
@@ -330,8 +374,29 @@ export function QuoteScreen({
 							{stripeClient ? t.quote.descriptionOnline : t.quote.description}
 						</p>
 
+						{signedOut && (
+							// Before the form, not after it: the old stop was a 401 on
+							// Pay, which sent a customer to Google with every field
+							// they had just typed thrown away.
+							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
+								<div>
+									<p className="font-semibold text-[15px]">
+										{t.quote.signInTitle}
+									</p>
+									<p className="mt-1 text-[#5c574e] text-[13px] leading-[18px]">
+										{t.quote.signInBody}
+									</p>
+								</div>
+								<GoogleSignInButton
+									callbackURL={quoteUrl()}
+									label={t.signIn.continueWithGoogle}
+									errorMessage={t.signIn.error}
+								/>
+							</div>
+						)}
 						<form
 							noValidate
+							hidden={authPending || signedOut}
 							className="flex max-w-[480px] flex-col gap-7"
 							aria-describedby={error ? "order-error" : undefined}
 							onChange={(e) =>
@@ -344,25 +409,6 @@ export function QuoteScreen({
 								placeOrder(e.currentTarget);
 							}}
 						>
-							{paymentFailed !== null && (
-								<div
-									role="alert"
-									className="flex gap-2.5 rounded-[10px] border border-[#f0b4ae] bg-[#fdf1ef] px-3.5 py-3 text-[#3d3a34] text-[13px] leading-[18px]"
-								>
-									<div>
-										<p className="mb-0.5 font-semibold">
-											{t.quote.paymentFailedTitle}
-										</p>
-										<p>{t.quote.paymentFailedBody}</p>
-										{paymentFailed && (
-											<p className="mt-1 text-[#5c574e] text-[12px]">
-												{paymentFailed}
-											</p>
-										)}
-									</div>
-								</div>
-							)}
-
 							<fieldset className="flex flex-col gap-3" disabled={busy}>
 								<legend className="mb-3 font-semibold text-[15px]">
 									{t.quote.sectionContact}
@@ -385,16 +431,39 @@ export function QuoteScreen({
 								</label>
 								<label className="flex flex-col gap-1.5">
 									<span className={LABEL}>{t.quote.phone}</span>
-									<input
-										name="phone"
-										type="tel"
-										autoComplete="tel"
-										required
-										className={fieldClass(fieldErrors.phone)}
-										aria-invalid={!!fieldErrors.phone}
-										aria-describedby={describedBy("phone")}
-										placeholder="+60 12-345 6789"
-									/>
+									{/* +60 printed, not typed, and the box takes digits only:
+									    a free-text phone field is where wrong numbers come
+									    from, and WhatsApp delivers to the exact string or not
+									    at all. Malaysia is the only market delivered to. */}
+									<div
+										className={`${fieldClass(fieldErrors.phone)} flex items-center gap-2 focus-within:outline focus-within:outline-2 focus-within:outline-[#171717]`}
+									>
+										<span aria-hidden className="text-[#5c574e] tabular-nums">
+											+60
+										</span>
+										<input
+											name="phone"
+											type="tel"
+											inputMode="numeric"
+											autoComplete="tel-national"
+											required
+											className="min-w-0 flex-1 bg-transparent tabular-nums outline-none placeholder:text-[#a3a3a3]"
+											aria-invalid={!!fieldErrors.phone}
+											aria-describedby={describedBy("phone")}
+											placeholder="12 345 6789"
+											value={phone}
+											onChange={(e) =>
+												setPhone(malaysianNational(e.target.value))
+											}
+											onBlur={() => {
+												if (phone && toE164(`+60${phone}`) === null)
+													setFieldErrors((current) => ({
+														...current,
+														phone: t.quote.errorPhone,
+													}));
+											}}
+										/>
+									</div>
 									{errorText("phone")}
 								</label>
 								<label className="flex flex-col gap-1.5">
@@ -463,6 +532,7 @@ export function QuoteScreen({
 										publishableKey={stripeClient.publishableKey}
 										amountSen={Math.round(totalRm * 100)}
 										apiRef={payApi}
+										locale={locale}
 									/>
 									<p className="text-[#5c574e] text-[12px]">
 										{t.quote.paymentSecure}
@@ -494,6 +564,26 @@ export function QuoteScreen({
 										{fieldErrors.remeasure}
 									</p>
 								)}
+								{/* Beside the button, not at the top of the form: on a phone that
+								    is where the customer is looking when a payment fails. */}
+								{paymentFailed !== null && (
+									<div
+										role="alert"
+										className="flex gap-2.5 rounded-[10px] border border-[#f0b4ae] bg-[#fdf1ef] px-3.5 py-3 text-[#3d3a34] text-[13px] leading-[18px]"
+									>
+										<div>
+											<p className="mb-0.5 font-semibold">
+												{t.quote.paymentFailedTitle}
+											</p>
+											<p>{t.quote.paymentFailedBody}</p>
+											{paymentFailed && (
+												<p className="mt-1 text-[#5c574e] text-[12px]">
+													{paymentFailed}
+												</p>
+											)}
+										</div>
+									</div>
+								)}
 								{error && (
 									<p
 										id="order-error"
@@ -508,6 +598,7 @@ export function QuoteScreen({
 									disabled={busy || payClient === undefined}
 									className="mt-1 flex min-h-12 items-center justify-center gap-2.5 rounded-[10px] bg-[#171717] px-3 font-medium text-[14px] text-white transition hover:bg-[#262626] active:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
 								>
+									{busy && <Spinner />}
 									{busy ? (
 										stripeClient ? (
 											t.quote.paying
@@ -531,7 +622,7 @@ export function QuoteScreen({
 						</form>
 					</div>
 
-					<aside className="flex min-w-[300px] flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0">
+					<aside className="flex min-w-0 flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0">
 						<div className="relative h-[180px] overflow-hidden rounded-[10px] border border-[#e5e5e5] bg-[#efeeeb]">
 							<PlannerScene
 								layout={layout}

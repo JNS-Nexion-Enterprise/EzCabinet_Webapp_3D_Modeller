@@ -5,6 +5,8 @@ import {
 	type StripePayApi,
 	StripePayment,
 } from "@/components/planner/StripePayment";
+import { Spinner } from "@/components/Spinner";
+import type { Locale } from "@/lib/copy/locales";
 import type { PaymentStart } from "@/lib/payments/types";
 import { RefreshWhileSettling } from "./RefreshWhileSettling";
 
@@ -26,11 +28,16 @@ export function OnlinePayment({
 	payLabel,
 	errorText,
 	settlingText,
+	loadingText,
+	locale,
 }: {
 	token: string;
 	payLabel: string;
 	errorText: string;
 	settlingText: string;
+	/** Shown while the payment step is being opened. */
+	loadingText: string;
+	locale: Locale;
 }) {
 	const [start, setStart] = useState<PaymentStart | null>(null);
 	const [error, setError] = useState<string | null>(null);
@@ -76,12 +83,19 @@ export function OnlinePayment({
 					{error}
 				</p>
 			)}
+			{!start && !error && (
+				<p role="status" className="text-[#5c574e] text-[13px]">
+					<Spinner />
+					{loadingText}
+				</p>
+			)}
 			{start?.kind === "stripe-elements" && (
 				<div className="flex flex-col gap-4">
 					<StripePayment
 						publishableKey={start.publishableKey}
 						clientSecret={start.clientSecret}
 						collectBilling
+						locale={locale}
 						apiRef={payApi}
 					/>
 					<button
@@ -90,6 +104,7 @@ export function OnlinePayment({
 						disabled={busy}
 						className="flex min-h-12 w-full items-center justify-center rounded-[10px] bg-neutral-900 px-3 font-semibold text-[14px] text-white tabular-nums hover:bg-neutral-800 disabled:opacity-50"
 					>
+						{busy && <Spinner />}
 						{payLabel}
 					</button>
 				</div>

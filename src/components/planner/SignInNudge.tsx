@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { useCopy } from "./CopyContext";
@@ -89,6 +90,7 @@ export function SignInNudge({ cabinetCount }: { cabinetCount: number }) {
 					disabled={busy}
 					className="whitespace-nowrap rounded-[8px] bg-neutral-900 px-3 py-1.5 font-medium text-[12px] text-white disabled:opacity-60"
 				>
+					{busy && <Spinner />}
 					{t.signIn.continueWithGoogle}
 				</button>
 				<button

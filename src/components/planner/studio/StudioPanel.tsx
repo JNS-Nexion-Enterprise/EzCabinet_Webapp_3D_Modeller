@@ -23,6 +23,10 @@ export type PanelKind = Exclude<StudioTool, "select" | "measure">;
  * full-height column was white space taken from the one thing on this page
  * worth looking at. Height now fits the content and is capped at the canvas,
  * so the scene shows through underneath.
+ *
+ * Below `lg` it is a bottom sheet instead, over the sidebar rather than the
+ * canvas: at 300px on a 360px phone the card hid the room its own controls
+ * were resizing, and the cabinet a tap had just added.
  */
 export function StudioPanel({
 	kind,
@@ -53,7 +57,7 @@ export function StudioPanel({
 	}[kind];
 
 	return (
-		<div className="absolute top-3 left-3 z-10 flex max-h-[calc(100%-1.5rem)] w-[300px] max-w-[calc(100%-1.5rem)] flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(0,0,0,.10)]">
+		<div className="z-10 flex flex-col overflow-hidden border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(0,0,0,.10)] max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[45dvh] max-lg:rounded-t-xl lg:absolute lg:top-3 lg:left-3 lg:max-h-[calc(100%-1.5rem)] lg:w-[300px] lg:rounded-xl">
 			<div className="flex items-start justify-between gap-2.5 border-[#eeece8] border-b px-4 pt-3.5 pb-3">
 				<div>
 					<p className="font-semibold text-[14px]">{title}</p>

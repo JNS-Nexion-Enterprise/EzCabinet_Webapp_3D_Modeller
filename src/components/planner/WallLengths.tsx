@@ -1,6 +1,7 @@
 "use client";
 
 import { Html } from "@react-three/drei";
+import { useEffect, useState } from "react";
 import { fill } from "@/lib/copy/fill";
 import { type FloorPlan, wallLabelMm, wallsOf } from "@/lib/planner/floorplan";
 import { useCopy } from "./CopyContext";
@@ -78,6 +79,18 @@ export function WallNumbers({
 	onPickAction?: (wall: number) => void;
 }) {
 	const t = useCopy();
+	// Held back to a task of their own. drei's `Html` owns a react-dom root and
+	// unmounts it in a layout-effect cleanup, which StrictMode runs once on
+	// mount in development. An empty room opens with the Room panel, so these
+	// badges would mount while react-dom is still committing the studio, and
+	// React refuses that unmount ("Attempted to synchronously unmount a root
+	// while React was already rendering"). A timer lands clear of that commit.
+	const [ready, setReady] = useState(false);
+	useEffect(() => {
+		const id = setTimeout(() => setReady(true));
+		return () => clearTimeout(id);
+	}, []);
+	if (!ready) return null;
 	return (
 		<>
 			{wallsOf(plan).map((wall, i) => {

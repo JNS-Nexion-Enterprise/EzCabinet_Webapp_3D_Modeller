@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { fieldClass } from "@/components/admin/styles";
+import { Spinner } from "@/components/Spinner";
 import type {
 	NotificationKind,
 	NotificationStatus,
@@ -233,6 +234,7 @@ export function OrderDetail({ order }: { order: OrderView }) {
 										disabled={busy !== null}
 										onClick={() => act("paid")}
 									>
+										{busy === "paid" && <Spinner />}
 										{busy === "paid" ? "Marking paid…" : "Mark paid"}
 									</button>
 									<button
@@ -241,6 +243,7 @@ export function OrderDetail({ order }: { order: OrderView }) {
 										disabled={busy !== null}
 										onClick={() => act("cancel")}
 									>
+										{busy === "cancel" && <Spinner />}
 										Cancel order
 									</button>
 								</div>
@@ -285,6 +288,7 @@ export function OrderDetail({ order }: { order: OrderView }) {
 										)
 									}
 								>
+									{busy === "stage" && <Spinner />}
 									{busy === "stage"
 										? "Saving…"
 										: `Advance to: ${STAGE_LABEL[upcoming]}`}
@@ -393,6 +397,7 @@ export function OrderDetail({ order }: { order: OrderView }) {
 													)
 												}
 											>
+												{busy === n.id && <Spinner />}
 												{busy === n.id ? "Resending…" : "Resend"}
 											</button>
 										)}

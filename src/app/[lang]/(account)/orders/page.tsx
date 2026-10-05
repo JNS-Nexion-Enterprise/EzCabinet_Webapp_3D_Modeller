@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { DEMO_CUSTOMER_ID } from "@/lib/auth/demoCustomer";
+import { BYPASS_USER } from "@/lib/auth/requireAuth";
 import { prisma } from "@/lib/catalogue/db";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
@@ -41,7 +43,11 @@ export default async function OrdersPage({
 
 	const [orders, t] = await Promise.all([
 		prisma.order.findMany({
-			where: { userId: viewer.id },
+			// The local bypass viewer has no orders of its own: a signed-out
+			// local checkout belongs to the demo customer, so list theirs.
+			where: {
+				userId: viewer.id === BYPASS_USER.id ? DEMO_CUSTOMER_ID : viewer.id,
+			},
 			orderBy: { createdAt: "desc" },
 			select: {
 				publicToken: true,

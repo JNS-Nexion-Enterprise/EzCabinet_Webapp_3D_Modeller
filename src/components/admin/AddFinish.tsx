@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Spinner } from "@/components/Spinner";
 import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
 
 /**
@@ -129,6 +130,7 @@ export function AddFinish() {
 						onClick={add}
 						className="rounded-full bg-neutral-900 px-3 py-1.5 text-[12px] text-white disabled:opacity-40"
 					>
+						{busy && <Spinner />}
 						{busy ? "Adding…" : "Add"}
 					</button>
 					<button

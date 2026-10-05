@@ -25,7 +25,9 @@ export function CopyOrderId({
 		<button
 			type="button"
 			aria-label={copied ? copiedLabel : label}
-			className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-[#f4f3f1] text-[11px] text-neutral-700 hover:bg-[#ecebe7]"
+			// The disc stays 30px; the pseudo-element grows what a thumb can hit
+			// to 44.
+			className="relative flex h-[30px] w-[30px] shrink-0 after:absolute after:-inset-[7px] after:content-[''] items-center justify-center rounded-full bg-[#f4f3f1] text-[11px] text-neutral-700 hover:bg-[#ecebe7]"
 			onClick={() => {
 				// No catch: a clipboard the browser refuses leaves the icon
 				// unchanged, which is the honest signal that nothing was copied.

@@ -41,6 +41,7 @@ export function SelectionPanel({
 	onToggleDoorAction,
 	onHingeAction,
 	onDoorStyleAction,
+	canDuplicate,
 	onDuplicateAction,
 	onRemoveAction,
 }: {
@@ -60,6 +61,8 @@ export function SelectionPanel({
 		label: string;
 		meta: string;
 		current: boolean;
+		/** Whether the engine would accept the swap where the cabinet stands. */
+		fits: boolean;
 	}[];
 	doorsOpen: boolean;
 	hingeOptions: { side: HingeSide; label: string }[];
@@ -82,6 +85,8 @@ export function SelectionPanel({
 	onToggleDoorAction: () => void;
 	onHingeAction: (side: HingeSide) => void;
 	onDoorStyleAction: (doorStyleId: string) => void;
+	/** Whether there is wall left for a copy. */
+	canDuplicate: boolean;
 	onDuplicateAction: () => void;
 	onRemoveAction: () => void;
 }) {
@@ -144,8 +149,9 @@ export function SelectionPanel({
 					{
 						key: "duplicate" as const,
 						label: t.planner.selection.duplicate,
-						meta: "⌘D",
+						meta: canDuplicate ? "⌘D" : t.planner.selection.noRoom,
 						press: onDuplicateAction,
+						disabled: !canDuplicate,
 					},
 				]),
 		{
@@ -245,12 +251,14 @@ export function SelectionPanel({
 							key={option.id}
 							type="button"
 							onClick={() => onReplaceAction(option.id)}
+							disabled={!option.fits}
 							aria-pressed={option.current}
-							className={verbBtn(option.current)}
+							className={`${verbBtn(option.current)} disabled:cursor-not-allowed disabled:text-neutral-300`}
 						>
 							<span className="font-medium text-[13px]">{option.label}</span>
 							<span className="ml-auto text-[11px] text-[#8a857c]">
 								{option.meta}
+								{!option.fits && ` · ${t.planner.selection.noRoom}`}
 							</span>
 						</button>
 					))}
@@ -328,12 +336,11 @@ export function SelectionPanel({
 									: t.planner.selection.standsAt}
 							</label>
 							<span className="flex items-center gap-1">
-								<input
+								<GapInput
 									id="hangatmm"
-									type="number"
 									step={10}
-									value={hangAtMm}
-									onChange={(e) => onHangAtAction(Number(e.target.value))}
+									valueMm={hangAtMm}
+									onCommit={onHangAtAction}
 									className="w-[70px] rounded-[7px] border border-neutral-300 px-2 py-1.5 text-right text-[12px]"
 								/>
 								<span className="text-[11px] text-[#8a857c]">mm</span>
@@ -352,12 +359,12 @@ export function SelectionPanel({
 							{t.planner.selection.turnedBy}
 						</label>
 						<span className="flex items-center gap-1">
-							<input
+							<GapInput
 								id="rotationdeg"
-								type="number"
+								min={-360}
 								step={15}
-								value={selected.placed.rotationDeg ?? 0}
-								onChange={(e) => onRotationAction(Number(e.target.value))}
+								valueMm={selected.placed.rotationDeg ?? 0}
+								onCommit={onRotationAction}
 								className="w-[70px] rounded-[7px] border border-neutral-300 px-2 py-1.5 text-right text-[12px]"
 							/>
 							<span className="text-[11px] text-[#8a857c]">°</span>

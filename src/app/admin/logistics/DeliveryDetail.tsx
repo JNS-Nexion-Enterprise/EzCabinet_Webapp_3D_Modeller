@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fieldClass } from "@/components/admin/styles";
+import { Spinner as ButtonSpinner } from "@/components/Spinner";
 import { CARRIERS, KIND, LABEL } from "@/lib/logistics/carriers";
 import { type PinState, pinState } from "@/lib/logistics/coords";
 import { LABEL_FALLBACK } from "@/lib/logistics/label";
@@ -854,6 +855,7 @@ export function DeliveryDetail({
 									}
 									onClick={commitSplit}
 								>
+									{busy === "split" && <ButtonSpinner />}
 									{busy === "split" ? "Splitting…" : "Split into two jobs"}
 								</button>
 								<button
@@ -1236,6 +1238,7 @@ export function DeliveryDetail({
 												onClick={checkPickup}
 												disabled={busy !== null}
 											>
+												{busy === "pickup" && <ButtonSpinner />}
 												{busy === "pickup"
 													? "Checking…"
 													: pickup === null
@@ -1302,6 +1305,7 @@ export function DeliveryDetail({
 											onClick={refreshFromCarrier}
 											disabled={busy === "track"}
 										>
+											{busy === "track" && <ButtonSpinner />}
 											{busy === "track"
 												? "Asking carrier…"
 												: "Refresh from carrier"}
@@ -1313,6 +1317,7 @@ export function DeliveryDetail({
 												onClick={() => advance(nextStep)}
 												disabled={busy === nextStep}
 											>
+												{busy === nextStep && <ButtonSpinner />}
 												Mark {STATUS_LABEL[nextStep].toLowerCase()}
 											</button>
 										)}

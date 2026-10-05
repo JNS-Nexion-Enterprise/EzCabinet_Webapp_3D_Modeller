@@ -1,5 +1,5 @@
 import "server-only";
-import Mux from "@mux/mux-node";
+import Mux from "@mux/ts";
 
 /**
  * The Mux client, provisioned by the `JNSMUX` Marketplace integration on the

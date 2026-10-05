@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { authEnabled } from "@/lib/auth/enabled";
 import { activeGateway } from "@/lib/payments/registry";
 
 export const runtime = "nodejs";
@@ -14,7 +15,9 @@ export const dynamic = "force-dynamic";
 export async function GET() {
 	const gateway = await activeGateway();
 	return NextResponse.json(
-		{ client: gateway?.client ?? null },
+		// `signIn`: whether checkout needs an account. False only with
+		// AUTH_ENABLED off, which is local only — see `demoCustomer`.
+		{ client: gateway?.client ?? null, signIn: authEnabled() },
 		{ headers: { "Cache-Control": "no-store" } },
 	);
 }

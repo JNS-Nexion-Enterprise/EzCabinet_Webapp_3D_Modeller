@@ -13,6 +13,8 @@ export const en = {
 			"Drop real EzCabinet units onto a model of your own room, see it from every angle, and get an instant price. No showroom visit required.",
 	},
 	common: {
+		whatsappHelp: "Message us on WhatsApp",
+		copyValue: "Copy {label}",
 		brand: "EzCabinet",
 		back: "Back",
 		next: "Next",
@@ -175,6 +177,7 @@ export const en = {
 			fitOver:
 				"The run is {mm} mm longer than the wall. Remove a cabinet or lengthen the wall.",
 			moreSettings: "Skirting, ends, hang height…",
+			next: "Next: add cabinets",
 			heading: "The room",
 			subtitle: "Sets the space every cabinet has to fit in.",
 			ceiling: "Ceiling",
@@ -244,6 +247,8 @@ export const en = {
 			},
 		},
 		canvas: {
+			contextLost: "The 3D view stopped. Your design is safe.",
+			contextReload: "Reload 3D view",
 			selectHint: "Click a cabinet to select it · right-click for its actions",
 			runOfWall: "{run} m run of {wall} m wall",
 			loading: "Loading 3D view…",
@@ -327,6 +332,8 @@ export const en = {
 			noDoorInline: "no door",
 			emptyHint: "Nothing placed yet — drag a carcass onto the wall.",
 			reset: "Reset this room",
+			resetConfirm:
+				"Reset this room? Every cabinet, the room's shape and its wall paint will be cleared. This can't be undone.",
 		},
 		price: {
 			breakdown: "Breakdown",
@@ -403,10 +410,14 @@ export const en = {
 		paymentFailedBody:
 			"Nothing was charged. Your details are saved. Try again or choose another way to pay.",
 		errorEmailRequired: "Enter an email for your receipt.",
+		errorEmailInvalid: "That email address doesn't look right.",
+		signInTitle: "Sign in to place your order",
+		signInBody:
+			"Every order belongs to an account, so you can follow it afterwards. Your design is saved, and you'll come straight back here.",
 		oneOffPayment: "One-off payment",
 		errorGeneric: "We couldn't place your order. Please try again.",
 		errorPhone:
-			"That phone number doesn't look right. Include the area code, like 012-345 6789.",
+			"That phone number doesn't look right. Enter the 9 or 10 digits after +60, like 12 345 6789.",
 		errorDesign:
 			"Something in this design can't be ordered as it stands. Go back to editing and check your cabinets.",
 		subtotal: "Cabinets",

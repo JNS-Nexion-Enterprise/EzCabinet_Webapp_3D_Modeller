@@ -1,7 +1,7 @@
 import { fill } from "@/lib/copy/fill";
 import type { RoomTypeId } from "@/lib/planner/catalogue";
 import { useCatalogue } from "./CatalogueContext";
-import { useCopy } from "./CopyContext";
+import { useCopy, useLocale } from "./CopyContext";
 import { AdminLink, PlannerHeader } from "./PlannerHeader";
 
 const ROOM_ICON_PATHS: Record<RoomTypeId, React.ReactNode> = {
@@ -140,6 +140,7 @@ export function StartScreen({
 	onStart: () => void;
 }) {
 	const t = useCopy();
+	const locale = useLocale();
 	const catalogue = useCatalogue();
 	const plannable = (id: RoomTypeId) =>
 		(catalogue.roomTypes.find((r) => r.id === id)?.familyIds.length ?? 0) > 0;
@@ -154,7 +155,7 @@ export function StartScreen({
 		<main className="flex h-[calc(100dvh-2.25rem)] flex-col bg-[#e9e7e3] text-neutral-900">
 			<PlannerHeader
 				trail={[
-					{ label: t.common.brand, href: "/" },
+					{ label: t.common.brand, href: `/${locale}` },
 					{ label: t.planner.crumbs.roomPlanner },
 				]}
 			>

@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { Spinner } from "@/components/Spinner";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
 
 function generatePassword(): string {
@@ -170,6 +171,7 @@ export function InviteStaff() {
 							disabled={submitting}
 							className="min-h-10 flex-none rounded-full bg-[#1f5138] px-5 py-[11px] font-semibold text-[13px] text-white hover:bg-[#193f2c] disabled:cursor-not-allowed disabled:opacity-50"
 						>
+							{submitting && <Spinner />}
 							{submitting ? "Inviting…" : "Invite"}
 						</button>
 					</div>

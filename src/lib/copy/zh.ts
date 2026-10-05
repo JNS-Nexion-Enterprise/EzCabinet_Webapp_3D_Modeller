@@ -9,6 +9,8 @@ export const zh: Dictionary = {
 			"将真实的 EzCabinet 橱柜放入您自己房间的模型中，从各个角度查看，并即时获得报价。无需前往展厅。",
 	},
 	common: {
+		whatsappHelp: "通过 WhatsApp 联系我们",
+		copyValue: "复制{label}",
 		brand: "EzCabinet",
 		back: "返回",
 		next: "下一步",
@@ -166,6 +168,7 @@ export const zh: Dictionary = {
 			fitFree: "墙面还剩 {mm} 毫米。",
 			fitOver: "整排比墙面长 {mm} 毫米。请移除一个柜子或加长墙面。",
 			moreSettings: "踢脚板、端板、悬挂高度……",
+			next: "下一步：添加柜子",
 			heading: "房间设置",
 			subtitle: "决定每个橱柜可容纳的空间。",
 			ceiling: "天花板高度",
@@ -231,6 +234,8 @@ export const zh: Dictionary = {
 			},
 		},
 		canvas: {
+			contextLost: "3D 视图已停止。您的设计已保存。",
+			contextReload: "重新加载 3D 视图",
 			selectHint: "点击柜子即可选中 · 右键查看操作",
 			runOfWall: "{wall} 米墙面上的 {run} 米布局",
 			loading: "正在载入三维视图……",
@@ -311,6 +316,8 @@ export const zh: Dictionary = {
 			noDoorInline: "不装门板",
 			emptyHint: "尚未放置任何橱柜——请将柜体拖曳到墙面上。",
 			reset: "重置此房间",
+			resetConfirm:
+				"要重置此房间吗？所有柜子、房间形状和墙面颜色都会被清除，且无法撤销。",
 		},
 		price: {
 			breakdown: "明细",
@@ -383,9 +390,14 @@ export const zh: Dictionary = {
 		paymentFailedBody:
 			"未产生任何扣款。您的资料已保存。请重试或选择其他付款方式。",
 		errorEmailRequired: "请输入用于接收收据的电子邮件。",
+		errorEmailInvalid: "电子邮件地址似乎不正确。",
+		signInTitle: "登录后即可下单",
+		signInBody:
+			"每份订单都归属一个账户，方便您之后查看进度。您的设计已保存，登录后会直接回到这里。",
 		oneOffPayment: "一次性付款",
 		errorGeneric: "无法下单，请再试一次。",
-		errorPhone: "电话号码似乎不正确，请包含区号，例如 012-345 6789。",
+		errorPhone:
+			"电话号码似乎不正确，请输入 +60 之后的 9 或 10 位数字，例如 12 345 6789。",
 		errorDesign: "此设计中有部分内容无法按现状订购。请返回编辑并检查您的橱柜。",
 		subtotal: "橱柜",
 		delivery: "运费",

@@ -8,6 +8,8 @@ export const ms: Dictionary = {
 			"Letakkan unit EzCabinet sebenar ke dalam model bilik anda sendiri, lihat dari setiap sudut, dan dapatkan harga serta-merta. Tidak perlu ke bilik pameran.",
 	},
 	common: {
+		whatsappHelp: "Hubungi kami di WhatsApp",
+		copyValue: "Salin {label}",
 		brand: "EzCabinet",
 		back: "Kembali",
 		next: "Seterusnya",
@@ -174,6 +176,7 @@ export const ms: Dictionary = {
 			fitOver:
 				"Baris ini {mm} mm lebih panjang daripada dinding. Buang satu kabinet atau panjangkan dinding.",
 			moreSettings: "Papan kaki, hujung, ketinggian gantung…",
+			next: "Seterusnya: tambah kabinet",
 			heading: "Bilik",
 			subtitle: "Menetapkan ruang yang perlu dimuatkan oleh setiap kabinet.",
 			ceiling: "Siling",
@@ -246,6 +249,8 @@ export const ms: Dictionary = {
 			},
 		},
 		canvas: {
+			contextLost: "Paparan 3D terhenti. Reka bentuk anda selamat.",
+			contextReload: "Muat semula paparan 3D",
 			selectHint:
 				"Klik kabinet untuk memilihnya · klik kanan untuk tindakannya",
 			runOfWall: "Susunan {run} m pada dinding {wall} m",
@@ -331,6 +336,8 @@ export const ms: Dictionary = {
 			noDoorInline: "tiada pintu",
 			emptyHint: "Belum ada yang diletakkan — seret badan kabinet ke dinding.",
 			reset: "Set semula bilik ini",
+			resetConfirm:
+				"Set semula bilik ini? Semua kabinet, bentuk bilik dan cat dinding akan dipadam. Ini tidak boleh dibuat asal.",
 		},
 		price: {
 			breakdown: "Perincian",
@@ -407,10 +414,14 @@ export const ms: Dictionary = {
 		paymentFailedBody:
 			"Tiada caj dikenakan. Butiran anda telah disimpan. Cuba lagi atau pilih cara pembayaran lain.",
 		errorEmailRequired: "Masukkan e-mel untuk resit anda.",
+		errorEmailInvalid: "Alamat e-mel itu nampaknya tidak betul.",
+		signInTitle: "Log masuk untuk membuat pesanan",
+		signInBody:
+			"Setiap pesanan dimiliki oleh satu akaun supaya anda boleh mengikutinya kemudian. Reka bentuk anda disimpan, dan anda akan kembali terus ke sini.",
 		oneOffPayment: "Bayaran sekali sahaja",
 		errorGeneric: "Pesanan anda tidak dapat dibuat. Sila cuba lagi.",
 		errorPhone:
-			"Nombor telefon itu kelihatan tidak betul. Sertakan kod kawasan, contohnya 012-345 6789.",
+			"Nombor telefon itu kelihatan tidak betul. Masukkan 9 atau 10 digit selepas +60, contohnya 12 345 6789.",
 		errorDesign:
 			"Ada bahagian reka bentuk ini yang tidak boleh dipesan seperti sedia ada. Kembali menyunting dan semak kabinet anda.",
 		subtotal: "Kabinet",

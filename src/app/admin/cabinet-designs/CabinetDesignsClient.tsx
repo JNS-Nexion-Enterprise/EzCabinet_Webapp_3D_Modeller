@@ -9,6 +9,7 @@ import {
 	type SettingsTab,
 } from "@/components/admin/CatalogueSettings";
 import { chipClass, fieldClass } from "@/components/admin/styles";
+import { Spinner } from "@/components/Spinner";
 import { buildCatalogue } from "@/lib/catalogue/buildCatalogue";
 import {
 	CATEGORIES,
@@ -1142,6 +1143,7 @@ function CabinetDesigns() {
 									onClick={publish}
 									className="rounded-[9px] bg-neutral-900 px-3.5 py-2 font-medium text-[13px] text-white disabled:opacity-50"
 								>
+									{publishing && <Spinner />}
 									{publishing ? "Publishing…" : "Publish now"}
 								</button>
 							</div>
@@ -1837,6 +1839,7 @@ function CabinetDesigns() {
 								disabled={saving}
 								className="rounded-lg bg-neutral-900 px-4.5 py-2.5 font-medium text-sm text-white disabled:opacity-50"
 							>
+								{saving && <Spinner />}
 								{saving
 									? "Saving…"
 									: batch

@@ -294,6 +294,7 @@ export function RoomPanel({
 	onTargetWallAction,
 	onCeilingAction,
 	onOpenDefaultsAction,
+	onNextAction,
 }: {
 	catalogue: PlannerCatalogue;
 	roomId: RoomTypeId;
@@ -317,6 +318,9 @@ export function RoomPanel({
 	onTargetWallAction: (wall: number) => void;
 	onCeilingAction: (mm: number) => void;
 	onOpenDefaultsAction: () => void;
+	/** On to the cabinet menu. Passed only while the room is still empty —
+	 * the first visit, when setting the room up is the step before it. */
+	onNextAction?: () => void;
 }) {
 	const t = useCopy();
 	const palette = wallColoursOf(catalogue);
@@ -471,6 +475,16 @@ export function RoomPanel({
 					{t.planner.room.moreSettings}
 				</button>
 			</div>
+
+			{onNextAction && (
+				<button
+					type="button"
+					onClick={onNextAction}
+					className="sticky bottom-0 min-h-11 rounded-[10px] bg-[#1f5138] px-3 py-2.5 font-semibold text-[14px] text-white shadow-[0_-8px_12px_white,0_16px_0_white] hover:bg-[#17402c]"
+				>
+					{t.planner.room.next}
+				</button>
+			)}
 		</div>
 	);
 }

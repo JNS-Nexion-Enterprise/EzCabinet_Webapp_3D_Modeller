@@ -13,6 +13,7 @@ import {
 	type StripeElementsOptions,
 } from "@stripe/stripe-js";
 import { type RefObject, useEffect } from "react";
+import type { Locale } from "@/lib/copy/locales";
 
 /**
  * Stripe's Payment Element: only the payment method — FPX bank, GrabPay,
@@ -90,6 +91,7 @@ export function StripePayment({
 	clientSecret,
 	collectBilling,
 	apiRef,
+	locale,
 }: {
 	publishableKey: string;
 	/**
@@ -105,9 +107,11 @@ export function StripePayment({
 	 */
 	collectBilling?: boolean;
 	apiRef: RefObject<StripePayApi | null>;
+	/** The site's language. Without it Stripe's fields follow the browser's. */
+	locale?: Locale;
 }) {
 	const options: StripeElementsOptions = clientSecret
-		? { clientSecret, appearance: APPEARANCE, fonts: FONTS }
+		? { clientSecret, appearance: APPEARANCE, fonts: FONTS, locale }
 		: {
 				mode: "payment",
 				amount: amountSen ?? 0,
@@ -115,6 +119,7 @@ export function StripePayment({
 				paymentMethodTypes: METHODS,
 				appearance: APPEARANCE,
 				fonts: FONTS,
+				locale,
 			};
 	return (
 		<Elements stripe={stripeFor(publishableKey)} options={options}>

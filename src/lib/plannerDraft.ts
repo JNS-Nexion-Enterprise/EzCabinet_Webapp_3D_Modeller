@@ -15,7 +15,11 @@
  * is the correct outcome there, not a crash.
  */
 
+import { roomLayoutSchema } from "@/lib/orders/layoutSchema";
+import { familyIn } from "@/lib/planner/catalogue";
+import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
 import { newId } from "@/lib/planner/layout";
+import { type RoomLayout, roomEngine } from "@/lib/planner/room";
 
 const KEY = "ezcabinet.planner.draft";
 const VERSION = 1;
@@ -52,6 +56,47 @@ export function loadDraft(): PlannerDraft | null {
 	} catch {
 		return null;
 	}
+}
+
+/**
+ * A draft outlives the catalogue it was drawn against: a publish can drop a
+ * room, a finish or a cabinet while the draft sits in someone's browser. What
+ * comes back is only what the live catalogue can still draw and sell — an
+ * unknown room throws in `roomTypeIn`, and a cabinet whose design is gone is
+ * invisible in the scene yet refused at checkout, with nothing to delete.
+ */
+export function reconcileDraft(
+	draft: PlannerDraft | null,
+	catalogue: PlannerCatalogue,
+): { roomId?: string; finishId?: string; rooms: Record<string, RoomLayout> } {
+	if (!draft) return { rooms: {} };
+	const { removeModules } = roomEngine(catalogue);
+	const rooms: Record<string, RoomLayout> = {};
+	for (const { id } of catalogue.roomTypes) {
+		const parsed = roomLayoutSchema.safeParse(draft.rooms[id]);
+		if (!parsed.success) continue;
+		const room = parsed.data as RoomLayout;
+		const modules = [
+			...room.runs.flatMap((run) => [...run.floor, ...run.wall]),
+			...room.corners.flatMap((corner) => [corner.floor, corner.wall]),
+			...room.free,
+		];
+		rooms[id] = removeModules(
+			room,
+			modules.flatMap((m) =>
+				m && !familyIn(catalogue, m.familyId) ? [m.id] : [],
+			),
+		);
+	}
+	return {
+		roomId: catalogue.roomTypes.some((r) => r.id === draft.roomId)
+			? draft.roomId
+			: undefined,
+		finishId: catalogue.finishes.some((f) => f.id === draft.finishId)
+			? draft.finishId
+			: undefined,
+		rooms,
+	};
 }
 
 /**

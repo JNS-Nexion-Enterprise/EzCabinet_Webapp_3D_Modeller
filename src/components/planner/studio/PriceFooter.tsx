@@ -57,7 +57,7 @@ export function PriceFooter({
 				</span>
 			</button>
 
-			<p className="flex items-center gap-1.5 text-[#b45309] text-[11px] leading-4">
+			<p className="flex items-center gap-1.5 text-[#b45309] text-[11px] leading-4 max-sm:hidden">
 				<span className="rounded border border-[#b45309] px-1 py-0.5 font-semibold">
 					{t.planner.price.estimateBadge}
 				</span>{" "}

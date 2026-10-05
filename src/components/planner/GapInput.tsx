@@ -30,10 +30,12 @@ export function GapInput({
 
 	return (
 		<input
+			// Before `rest`, so a caller whose figure can be negative (a turn)
+			// can lower it.
+			min={0}
 			{...rest}
 			type="number"
 			inputMode="numeric"
-			min={0}
 			value={draft ?? Math.round(valueMm)}
 			onChange={(e) => setDraft(e.target.value)}
 			onKeyDown={(e) => {
