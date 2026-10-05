@@ -29,6 +29,7 @@ describe("account layout", () => {
 			role: "ADMIN",
 			disabled: false,
 			mustChangePassword: false,
+			mustSetupTwoFactor: false,
 		});
 		await open();
 		expect(count).toHaveBeenCalledWith({ where: { userId: "staff-1" } });

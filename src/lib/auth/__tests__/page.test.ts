@@ -32,6 +32,7 @@ const user: AuthUser = {
 	role: "ADMIN",
 	disabled: false,
 	mustChangePassword: false,
+	mustSetupTwoFactor: false,
 };
 
 describe("requirePage", () => {
@@ -76,6 +77,23 @@ describe("requirePage", () => {
 		requireAuth.mockResolvedValue({ ...user, mustChangePassword: true });
 		await expect(requirePage("catalogue:read")).rejects.toThrow("redirect");
 		expect(redirect).toHaveBeenCalledWith("/admin/change-password");
+	});
+
+	it("redirects to /admin/setup-2fa while setup is owed", async () => {
+		requireAuth.mockResolvedValue({ ...user, mustSetupTwoFactor: true });
+		await expect(requirePage("catalogue:read")).rejects.toThrow("redirect");
+		expect(redirect).toHaveBeenCalledWith("/admin/setup-2fa");
+	});
+
+	it("sends a forced password change first when both are owed", async () => {
+		requireAuth.mockResolvedValue({
+			...user,
+			mustChangePassword: true,
+			mustSetupTwoFactor: true,
+		});
+		await expect(requirePage("catalogue:read")).rejects.toThrow("redirect");
+		expect(redirect).toHaveBeenCalledWith("/admin/change-password");
+		expect(redirect).not.toHaveBeenCalledWith("/admin/setup-2fa");
 	});
 
 	it("does not redirect when mustChangePassword is false", async () => {

@@ -22,6 +22,7 @@ const user = (over: Partial<AuthUser>): AuthUser => ({
 	role: "CUSTOMER",
 	disabled: false,
 	mustChangePassword: false,
+	mustSetupTwoFactor: false,
 	...over,
 });
 

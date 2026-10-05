@@ -41,6 +41,14 @@ export function withAuth<Ctx>(
 				{ status: 403 },
 			);
 		}
+		// Same reasoning, second gate. Enrolment itself talks to /api/auth, not
+		// to anything behind `withAuth`, so this cannot lock it out either.
+		if (user.mustSetupTwoFactor) {
+			return NextResponse.json(
+				{ error: "two_factor_setup_required" },
+				{ status: 403 },
+			);
+		}
 		return handler(request, context, user);
 	};
 }

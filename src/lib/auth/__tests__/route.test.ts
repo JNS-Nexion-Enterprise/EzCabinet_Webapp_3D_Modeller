@@ -21,6 +21,7 @@ const user: AuthUser = {
 	role: "ADMIN",
 	disabled: false,
 	mustChangePassword: false,
+	mustSetupTwoFactor: false,
 };
 
 describe("withAuth", () => {
@@ -94,6 +95,31 @@ describe("withAuth", () => {
 			error: "password_change_required",
 		});
 		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it("403s with two_factor_setup_required while setup is owed", async () => {
+		requireAuth.mockResolvedValue({ ...user, mustSetupTwoFactor: true });
+		const handler = vi.fn();
+		const wrapped = withAuth("catalogue:read", handler);
+		const response = await wrapped(new Request("http://x"), {});
+		expect(response.status).toBe(403);
+		await expect(response.json()).resolves.toEqual({
+			error: "two_factor_setup_required",
+		});
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it("reports the password change first when both are owed", async () => {
+		requireAuth.mockResolvedValue({
+			...user,
+			mustChangePassword: true,
+			mustSetupTwoFactor: true,
+		});
+		const wrapped = withAuth("catalogue:read", vi.fn());
+		const response = await wrapped(new Request("http://x"), {});
+		await expect(response.json()).resolves.toEqual({
+			error: "password_change_required",
+		});
 	});
 
 	it("runs the handler when mustChangePassword is false", async () => {

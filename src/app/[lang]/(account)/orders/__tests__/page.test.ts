@@ -28,6 +28,7 @@ const as = (id: string, role: AuthUser["role"]): AuthUser => ({
 	role,
 	disabled: false,
 	mustChangePassword: false,
+	mustSetupTwoFactor: false,
 });
 
 const open = () => OrdersPage({ params: Promise.resolve({ lang: "en" }) });

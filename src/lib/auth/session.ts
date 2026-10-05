@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import type { $Enums } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
 import type { Role } from "@/lib/auth/permissions";
+import { needsTwoFactorSetup } from "@/lib/auth/twoFactor";
 import { prisma } from "@/lib/catalogue/db";
 
 export type AuthUser = {
@@ -13,6 +14,8 @@ export type AuthUser = {
 	role: Role;
 	disabled: boolean;
 	mustChangePassword: boolean;
+	/** Derived on every read, never stored — see `needsTwoFactorSetup`. */
+	mustSetupTwoFactor: boolean;
 };
 
 /** Compile-time proof that our Role union and Prisma's generated enum agree.
@@ -38,7 +41,7 @@ export async function currentUser(): Promise<AuthUser | null> {
 	const session = await auth.api.getSession({ headers: await headers() });
 	if (!session?.user?.id) return null;
 
-	const user = await prisma.user.findUnique({
+	const row = await prisma.user.findUnique({
 		where: { id: session.user.id },
 		select: {
 			id: true,
@@ -48,8 +51,23 @@ export async function currentUser(): Promise<AuthUser | null> {
 			role: true,
 			disabled: true,
 			mustChangePassword: true,
+			twoFactorEnabled: true,
+			// "Has a password" is "has a credential account". One row is enough.
+			accounts: {
+				where: { providerId: "credential" },
+				select: { id: true },
+				take: 1,
+			},
 		},
 	});
-	if (!user || user.disabled) return null;
-	return user;
+	if (!row || row.disabled) return null;
+	const { accounts, twoFactorEnabled, ...user } = row;
+	return {
+		...user,
+		mustSetupTwoFactor: needsTwoFactorSetup({
+			role: user.role,
+			hasPassword: accounts.length > 0,
+			twoFactorEnabled: twoFactorEnabled === true,
+		}),
+	};
 }

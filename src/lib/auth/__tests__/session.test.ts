@@ -19,6 +19,19 @@ const row = {
 	role: "ADMIN",
 	disabled: false,
 	mustChangePassword: false,
+	twoFactorEnabled: false,
+	accounts: [] as { id: string }[],
+};
+
+const user = {
+	id: "u1",
+	email: "a@b.com",
+	name: "A",
+	image: null,
+	role: "ADMIN",
+	disabled: false,
+	mustChangePassword: false,
+	mustSetupTwoFactor: false,
 };
 
 beforeEach(() => {
@@ -27,10 +40,41 @@ beforeEach(() => {
 });
 
 describe("currentUser", () => {
-	it("returns the row for a live session", async () => {
+	it("returns the user for a live session", async () => {
 		getSession.mockResolvedValue({ user: { id: "u1" } });
 		findUnique.mockResolvedValue(row);
-		await expect(currentUser()).resolves.toEqual(row);
+		await expect(currentUser()).resolves.toEqual(user);
+	});
+
+	it("asks staff with a password and no second factor to set one up", async () => {
+		getSession.mockResolvedValue({ user: { id: "u1" } });
+		findUnique.mockResolvedValue({ ...row, accounts: [{ id: "acc1" }] });
+		await expect(currentUser()).resolves.toEqual({
+			...user,
+			mustSetupTwoFactor: true,
+		});
+	});
+
+	it("does not ask once the second factor is enabled", async () => {
+		getSession.mockResolvedValue({ user: { id: "u1" } });
+		findUnique.mockResolvedValue({
+			...row,
+			accounts: [{ id: "acc1" }],
+			twoFactorEnabled: true,
+		});
+		await expect(currentUser()).resolves.toEqual(user);
+	});
+
+	it("treats a null twoFactorEnabled as not enabled", async () => {
+		getSession.mockResolvedValue({ user: { id: "u1" } });
+		findUnique.mockResolvedValue({
+			...row,
+			accounts: [{ id: "acc1" }],
+			twoFactorEnabled: null,
+		});
+		await expect(currentUser()).resolves.toMatchObject({
+			mustSetupTwoFactor: true,
+		});
 	});
 
 	it("is null when there is no session", async () => {

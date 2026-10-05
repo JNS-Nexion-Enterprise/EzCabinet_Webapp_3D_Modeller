@@ -17,7 +17,7 @@ export const DEMO_CUSTOMER_ID = "demo-customer";
  */
 export async function demoCustomer(): Promise<AuthUser | null> {
 	if (authEnabled()) return null;
-	return prisma.user.upsert({
+	const row = await prisma.user.upsert({
 		where: { email: "demo-customer@localhost" },
 		update: {},
 		create: {
@@ -36,4 +36,6 @@ export async function demoCustomer(): Promise<AuthUser | null> {
 			mustChangePassword: true,
 		},
 	});
+	// A CUSTOMER never owes 2FA setup.
+	return { ...row, mustSetupTwoFactor: false };
 }
