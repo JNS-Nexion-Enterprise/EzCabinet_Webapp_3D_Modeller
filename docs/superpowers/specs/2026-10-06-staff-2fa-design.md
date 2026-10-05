@@ -36,7 +36,7 @@ goal; the Google door relies on Google.
 
 - `src/lib/auth.ts`: add `twoFactor({ issuer: "EzCabinet Admin" })` from
   `better-auth/plugins`. Already shipped inside the installed `better-auth`
-  1.7.5 — no new dependency.
+  1.7.5. The only new dependency is `uqr`, to draw the enrolment QR code.
 - `src/lib/auth/client.ts`: add `twoFactorClient()`.
 - Migration, hand-written (Known issue 12) and checked with
   `prisma migrate diff --from-config-datasource --to-schema`:
@@ -66,7 +66,8 @@ goal; the Google door relies on Google.
   `currentUser()` directly so it cannot redirect to itself.
 - `/admin/users`: a "Reset 2FA" action on a staff row, behind `users:manage`.
   `POST /api/admin/users/[id]/reset-2fa` deletes the user's `twoFactor` row,
-  clears `twoFactorEnabled` and deletes their sessions. Their next sign-in
+  clears `twoFactorEnabled`, deletes their sessions and forgets their trusted
+  devices. Their next sign-in
   forces enrolment again.
 
 ## Forgot password
@@ -74,8 +75,8 @@ goal; the Google door relies on Google.
 Resend is the mail sender. Only staff have passwords, so this is a staff
 feature; customers sign in with Google and have nothing to reset.
 
-- New dependency `resend`. One sender, `src/lib/email.ts` (`server-only`),
-  reading `RESEND_API_KEY` and `EMAIL_FROM`. The verified sending domain is
+- One sender, `src/lib/email.ts` (`server-only`), a single `fetch` to
+  Resend's HTTP API — no SDK — reading `RESEND_API_KEY` and `EMAIL_FROM`. The verified sending domain is
   still to be supplied; until both are set the sender logs and sends nothing.
   Preview deployments never get `RESEND_API_KEY`, the same rule as
   `WHATSAPP_TOKEN`.
@@ -87,7 +88,10 @@ feature; customers sign in with Google and have nothing to reset.
   has none (`node_modules/better-auth/dist/api/routes/password.mjs`), so an
   open reset would let any customer give themselves a password.
   `sendResetPassword` sends only when the user has a staff role, is not
-  disabled, and already has a credential account. Otherwise it sends nothing.
+  disabled, already has a credential account, and has 2FA enabled. Otherwise
+  it sends nothing. The last condition closes the window before enrolment: a
+  stolen mailbox could otherwise set a password, sign in and enrol the
+  thief's own authenticator. Unenrolled staff ask a superadmin, as today.
   The page shows the same "If that address has an account, we have sent a
   link" either way.
 - A reset does not touch `twoFactor`. The new password still needs a code,
