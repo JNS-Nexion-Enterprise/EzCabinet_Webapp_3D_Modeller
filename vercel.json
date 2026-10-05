@@ -1,4 +1,5 @@
 {
+	"buildCommand": "prisma migrate deploy && pnpm build",
 	"crons": [
 		{
 			"path": "/api/cron/track-deliveries",
