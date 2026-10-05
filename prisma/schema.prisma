@@ -452,6 +452,8 @@ model User {
   mustChangePassword Boolean   @default(false)
   invitedById        String?
   lastLoginAt        DateTime?
+  twoFactorEnabled   Boolean?  @default(false)
+  twoFactors         TwoFactor[]
   sessions           Session[]
   accounts           Account[]
 
@@ -508,6 +510,24 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+/// Better Auth's two-factor plugin. `secret` and `backupCodes` are encrypted
+/// with BETTER_AUTH_SECRET. Columns are the plugin's own
+/// (node_modules/better-auth/dist/plugins/two-factor/schema.mjs).
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
 }
 
 /// The factory steps an admin advances an order through. Placeholders until

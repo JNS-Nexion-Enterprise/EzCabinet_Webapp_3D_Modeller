@@ -2,6 +2,7 @@ import "server-only";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { twoFactor } from "better-auth/plugins";
 import { prisma } from "@/lib/catalogue/db";
 
 /**
@@ -41,7 +42,10 @@ export const auth = betterAuth({
 	// HTTP route only — the invite and the seed call `auth.api.signUpEmail`
 	// server-side, which never passes through the router.
 	// (`emailAndPassword.disableSignUp` would close the server call too.)
-	disabledPaths: ["/sign-up/email"],
+	// `/two-factor/disable`: a second factor a staff member can switch off
+	// with the password alone is not a second factor. Only a superadmin's
+	// Reset 2FA (`lib/auth/resetTwoFactor.ts`) removes one.
+	disabledPaths: ["/sign-up/email", "/two-factor/disable"],
 	emailAndPassword: {
 		enabled: true,
 		// See the module comment above: this is the line that stops a staff
@@ -122,5 +126,6 @@ export const auth = betterAuth({
 			},
 		},
 	},
-	plugins: [nextCookies()],
+	// `nextCookies()` stays last: it must see the cookies every other plugin sets.
+	plugins: [twoFactor({ issuer: "EzCabinet Admin" }), nextCookies()],
 });
