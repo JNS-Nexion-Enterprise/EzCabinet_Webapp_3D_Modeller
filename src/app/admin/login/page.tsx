@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { safeNext } from "@/app/admin/login/safeNext";
+import { twoFactorMessage } from "@/app/admin/login/twoFactorMessage";
 import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 import { HERO_EXPLODED_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
@@ -14,11 +15,22 @@ export default function AdminLoginPage() {
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
+	const [step, setStep] = useState<"password" | "code">("password");
+	const [code, setCode] = useState("");
+	const [useBackup, setUseBackup] = useState(false);
+	const [trustDevice, setTrustDevice] = useState(false);
+
+	function enter() {
+		// `next` comes from the query string, so it is attacker-controllable — see
+		// safeNext's own comment for why a prefix check isn't enough.
+		const next = new URLSearchParams(window.location.search).get("next");
+		router.push(safeNext(next, window.location.origin));
+	}
 
 	async function login() {
 		setBusy(true);
 		setError(null);
-		const { error: failure } = await authClient.signIn.email({
+		const { data, error: failure } = await authClient.signIn.email({
 			email,
 			password,
 		});
@@ -29,10 +41,29 @@ export default function AdminLoginPage() {
 			setError("Wrong email or password");
 			return;
 		}
-		// `next` comes from the query string, so it is attacker-controllable — see
-		// safeNext's own comment for why a prefix check isn't enough.
-		const next = new URLSearchParams(window.location.search).get("next");
-		router.push(safeNext(next, window.location.origin));
+		// The password was right but no session exists yet: the plugin holds
+		// the sign-in in a short-lived cookie until a code verifies.
+		if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+			setPassword("");
+			setStep("code");
+			return;
+		}
+		enter();
+	}
+
+	async function verifyCode() {
+		setBusy(true);
+		setError(null);
+		const body = { code: code.trim(), trustDevice };
+		const { error: failure } = useBackup
+			? await authClient.twoFactor.verifyBackupCode(body)
+			: await authClient.twoFactor.verifyTotp(body);
+		setBusy(false);
+		if (failure) {
+			setError(twoFactorMessage(failure.code));
+			return;
+		}
+		enter();
 	}
 
 	async function continueWithGoogle() {
@@ -66,7 +97,8 @@ export default function AdminLoginPage() {
 				<form
 					onSubmit={(e) => {
 						e.preventDefault();
-						login();
+						if (step === "code") verifyCode();
+						else login();
 					}}
 					className="flex w-full max-w-[340px] flex-col gap-5"
 				>
@@ -96,62 +128,145 @@ export default function AdminLoginPage() {
 						</p>
 					</div>
 
-					<button
-						type="button"
-						onClick={continueWithGoogle}
-						disabled={busy}
-						className="flex items-center justify-center gap-2 rounded-[9px] border border-neutral-300 bg-white py-2.5 font-medium text-sm disabled:opacity-60"
-					>
-						{busy && <Spinner />}
-						Continue with Google
-					</button>
+					{step === "password" && (
+						<>
+							<button
+								type="button"
+								onClick={continueWithGoogle}
+								disabled={busy}
+								className="flex items-center justify-center gap-2 rounded-[9px] border border-neutral-300 bg-white py-2.5 font-medium text-sm disabled:opacity-60"
+							>
+								{busy && <Spinner />}
+								Continue with Google
+							</button>
 
-					<div className="flex items-center gap-3 text-neutral-400 text-xs">
-						<span className="h-px flex-1 bg-neutral-200" />
-						or
-						<span className="h-px flex-1 bg-neutral-200" />
-					</div>
+							<div className="flex items-center gap-3 text-neutral-400 text-xs">
+								<span className="h-px flex-1 bg-neutral-200" />
+								or
+								<span className="h-px flex-1 bg-neutral-200" />
+							</div>
 
-					<label className="flex flex-col gap-1.5">
-						<span className="font-medium text-neutral-700 text-xs">Email</span>
-						<input
-							type="email"
-							value={email}
-							onChange={(e) => setEmail(e.target.value)}
-							placeholder="you@ezcabinet.com"
-							autoComplete="username"
-							className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
-						/>
-					</label>
+							<label className="flex flex-col gap-1.5">
+								<span className="font-medium text-neutral-700 text-xs">
+									Email
+								</span>
+								<input
+									type="email"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+									placeholder="you@ezcabinet.com"
+									autoComplete="username"
+									className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
+								/>
+							</label>
 
-					<label className="flex flex-col gap-1.5">
-						<span className="font-medium text-neutral-700 text-xs">
-							Password
-						</span>
-						<input
-							type="password"
-							value={password}
-							onChange={(e) => setPassword(e.target.value)}
-							placeholder="Your password"
-							autoComplete="current-password"
-							className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
-						/>
-					</label>
+							<label className="flex flex-col gap-1.5">
+								<span className="font-medium text-neutral-700 text-xs">
+									Password
+								</span>
+								<input
+									type="password"
+									value={password}
+									onChange={(e) => setPassword(e.target.value)}
+									placeholder="Your password"
+									autoComplete="current-password"
+									className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
+								/>
+							</label>
 
-					{error && (
-						<p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm">
-							{error}.
-						</p>
+							{error && (
+								<p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm">
+									{error}.
+								</p>
+							)}
+
+							<button
+								type="submit"
+								disabled={busy || !email || !password}
+								className="rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white disabled:opacity-60"
+							>
+								{busy && <Spinner />}
+								{busy ? "Checking…" : "Sign in"}
+							</button>
+						</>
 					)}
+					{step === "code" && (
+						<>
+							<label className="flex flex-col gap-1.5">
+								<span className="font-medium text-neutral-700 text-xs">
+									{useBackup ? "Backup code" : "6-digit code"}
+								</span>
+								<input
+									// Remounted on the switch so the keyboard and autofill
+									// hints follow the kind of code being asked for.
+									key={useBackup ? "backup" : "totp"}
+									inputMode={useBackup ? "text" : "numeric"}
+									autoComplete="one-time-code"
+									// biome-ignore lint/a11y/noAutofocus: the only field on this step
+									autoFocus
+									value={code}
+									onChange={(e) => setCode(e.target.value)}
+									placeholder={
+										useBackup
+											? "One of your saved codes"
+											: "From your authenticator app"
+									}
+									className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
+								/>
+							</label>
 
-					<button
-						type="submit"
-						disabled={busy || !email || !password}
-						className="rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white disabled:opacity-60"
-					>
-						{busy && <Spinner />}
-						{busy ? "Checking…" : "Sign in"}
-					</button>
+							<label className="flex items-center gap-2 text-neutral-700 text-xs">
+								<input
+									type="checkbox"
+									checked={trustDevice}
+									onChange={(e) => setTrustDevice(e.target.checked)}
+								/>
+								Trust this device for 30 days
+							</label>
+
+							{error && (
+								<p
+									role="alert"
+									className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm"
+								>
+									{error}.
+								</p>
+							)}
+
+							<button
+								type="submit"
+								disabled={busy || !code.trim()}
+								className="rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white disabled:opacity-60"
+							>
+								{busy && <Spinner />}
+								{busy ? "Checking…" : "Verify"}
+							</button>
+
+							<button
+								type="button"
+								onClick={() => {
+									setUseBackup(!useBackup);
+									setCode("");
+									setError(null);
+								}}
+								className="text-center text-neutral-500 text-xs hover:text-neutral-900"
+							>
+								{useBackup ? "Use your authenticator app" : "Use a backup code"}
+							</button>
+
+							<button
+								type="button"
+								onClick={() => {
+									setStep("password");
+									setCode("");
+									setError(null);
+								}}
+								className="text-center text-neutral-500 text-xs hover:text-neutral-900"
+							>
+								← Sign in as someone else
+							</button>
+						</>
+					)}
 
 					<Link
 						href="/"
