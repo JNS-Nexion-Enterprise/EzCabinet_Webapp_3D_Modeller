@@ -10,7 +10,10 @@ orders paid, book carriers or read customer details.
 ## Decisions (agreed 2026-10-06)
 
 - Method: TOTP from an authenticator app, plus one-time backup codes. No SMS
-  or email codes — the app runs no messaging vendor for staff.
+  or email codes: a staff mailbox is usually the same Google account, so a
+  code sent there is not a second factor.
+- A forgotten password is reset by an emailed link (Resend). The link resets
+  the password only, never the second factor.
 - Mandatory for every staff account that has a password. Staff who sign in
   only with Google are exempt: Google carries its own second factor.
 - A lost device is fixed by a superadmin reset, not by self-service.
@@ -66,6 +69,34 @@ goal; the Google door relies on Google.
   clears `twoFactorEnabled` and deletes their sessions. Their next sign-in
   forces enrolment again.
 
+## Forgot password
+
+Resend is the mail sender. Only staff have passwords, so this is a staff
+feature; customers sign in with Google and have nothing to reset.
+
+- New dependency `resend`. One sender, `src/lib/email.ts` (`server-only`),
+  reading `RESEND_API_KEY` and `EMAIL_FROM`. The verified sending domain is
+  still to be supplied; until both are set the sender logs and sends nothing.
+  Preview deployments never get `RESEND_API_KEY`, the same rule as
+  `WHATSAPP_TOKEN`.
+- `emailAndPassword.sendResetPassword` in `src/lib/auth.ts`, with
+  `resetPasswordTokenExpiresIn` of one hour and
+  `revokeSessionsOnPasswordReset: true`. This replaces the "No reset mail"
+  comment there.
+- **Guard.** Better Auth's reset creates a credential account when the user
+  has none (`node_modules/better-auth/dist/api/routes/password.mjs`), so an
+  open reset would let any customer give themselves a password.
+  `sendResetPassword` sends only when the user has a staff role, is not
+  disabled, and already has a credential account. Otherwise it sends nothing.
+  The page shows the same "If that address has an account, we have sent a
+  link" either way.
+- A reset does not touch `twoFactor`. The new password still needs a code,
+  so a stolen mailbox alone does not open the admin surface.
+- A successful reset clears `mustChangePassword`.
+- Pages: `/admin/forgot-password` (email field) and `/admin/reset-password`
+  (new password, 12-character minimum from the existing config). A "Forgot
+  password?" link on `/admin/login`.
+
 ## Recovery
 
 1. Backup code at the login prompt.
@@ -82,6 +113,9 @@ goal; the Google door relies on Google.
 - Reset route: gated by `users:manage`, clears the row, the flag and the
   sessions.
 - The admin-route coverage test passes with the new route.
+- Reset guard truth table: role × disabled × has password. No mail for a
+  customer row or a Google-only staff row; the response is identical.
+- A reset revokes sessions and leaves the `twoFactor` row intact.
 
 ## Rollout
 
@@ -90,4 +124,5 @@ next page load. Tell them first.
 
 ## Out of scope
 
-2FA for Google-only staff, SMS or email codes, customer accounts (piece 2).
+2FA for Google-only staff, SMS or email codes, emailed staff invites,
+customer accounts (piece 2).
