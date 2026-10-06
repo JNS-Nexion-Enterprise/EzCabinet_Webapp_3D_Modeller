@@ -8,7 +8,7 @@ import { prisma } from "@/lib/catalogue/db";
  * in-app back door.
  */
 async function main() {
-	const email = process.argv[2];
+	const email = process.argv[2]?.trim().toLowerCase();
 	if (!email) throw new Error("Usage: pnpm auth:reset-2fa <email>");
 
 	const user = await prisma.user.findUnique({

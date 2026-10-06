@@ -76,10 +76,28 @@ export async function sendStaffReset(
 	});
 }
 
-/** A password the owner just chose by reset is no longer a handed-over one. */
-export async function clearForcedChange(userId: string): Promise<void> {
-	await prisma.user.update({
-		where: { id: userId },
-		data: { mustChangePassword: false },
-	});
+/**
+ * A password the owner just chose by reset is no longer a handed-over one, and
+ * every device trusted under the old one is forgotten: a trusted laptop plus
+ * its mailbox would otherwise be enough to reset and sign in with no code.
+ */
+export async function afterPasswordReset(userId: string): Promise<void> {
+	await prisma.$transaction([
+		prisma.user.update({
+			where: { id: userId },
+			data: { mustChangePassword: false },
+		}),
+		prisma.verification.deleteMany({
+			where: { identifier: { startsWith: "trust-device-" }, value: userId },
+		}),
+	]);
+}
+
+/**
+ * Better Auth's own `url` carries a `callbackURL` the requester chose, so a
+ * stranger could make the genuine mail land the token on any same-origin
+ * page. The link is built from the token alone instead.
+ */
+export function resetLink(base: string, token: string): string {
+	return `${base.replace(/\/+$/, "")}/admin/reset-password?token=${encodeURIComponent(token)}`;
 }

@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { resetTwoFactor } from "@/lib/auth/resetTwoFactor";
+import { removePassword } from "@/lib/auth/removePassword";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
 
 export const runtime = "nodejs";
 
 /**
- * A colleague lost their phone and their backup codes. There is no
- * self-service path by design — whoever could trigger one alone would not
- * need the second factor in the first place.
+ * Makes a Google-linked staff account Google-only — the way out for someone
+ * who never uses their invite password and so cannot enrol 2FA. Nobody can
+ * set another person's password, so removal is all there is.
  */
 export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 	"users:manage",
@@ -21,9 +21,11 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		if (!target) {
 			return NextResponse.json({ error: "not_found" }, { status: 404 });
 		}
-		await resetTwoFactor(target.id);
+		if ((await removePassword(target.id)) === "no_other_sign_in") {
+			return NextResponse.json({ error: "no_other_sign_in" }, { status: 409 });
+		}
 		// Ids only, no emails.
-		console.info("Two-factor reset", { actor: actor.id, target: target.id });
+		console.info("Password removed", { actor: actor.id, target: target.id });
 		return NextResponse.json({ ok: true });
 	},
 );

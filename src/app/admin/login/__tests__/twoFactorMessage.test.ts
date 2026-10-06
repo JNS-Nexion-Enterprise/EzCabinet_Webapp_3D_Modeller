@@ -19,4 +19,10 @@ describe("twoFactorMessage", () => {
 			"That took too long. Sign in again",
 		);
 	});
+	it("treats a 429 as a throttle whatever the code — the code was never checked", () => {
+		const throttled =
+			"Too many attempts. Wait a few minutes, then sign in again";
+		expect(twoFactorMessage(undefined, 429)).toBe(throttled);
+		expect(twoFactorMessage("INVALID_CODE", 429)).toBe(throttled);
+	});
 });

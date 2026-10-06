@@ -3,17 +3,23 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findUnique = vi.hoisted(() => vi.fn());
 const update = vi.hoisted(() => vi.fn());
 const count = vi.hoisted(() => vi.fn());
+const deleteMany = vi.hoisted(() => vi.fn(() => "trust"));
+const $transaction = vi.hoisted(() => vi.fn(async () => []));
 const sendEmail = vi.hoisted(() =>
 	vi.fn(async (_message: { to: string; text: string }) => true),
 );
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/catalogue/db", () => ({
-	prisma: { user: { findUnique, update }, verification: { count } },
+	prisma: {
+		user: { findUnique, update },
+		verification: { count, deleteMany },
+		$transaction,
+	},
 }));
 vi.mock("@/lib/email", () => ({ sendEmail }));
 
-const { sendStaffReset, clearForcedChange } = await import(
+const { sendStaffReset, afterPasswordReset, resetLink } = await import(
 	"@/lib/auth/passwordReset"
 );
 
@@ -93,12 +99,36 @@ describe("sendStaffReset", () => {
 	});
 });
 
-describe("clearForcedChange", () => {
-	it("clears mustChangePassword — the owner has now chosen the password", async () => {
-		await clearForcedChange("u1");
+describe("afterPasswordReset", () => {
+	it("clears mustChangePassword and forgets trusted devices, in one transaction", async () => {
+		update.mockReturnValue("user");
+		await afterPasswordReset("u1");
 		expect(update).toHaveBeenCalledWith({
 			where: { id: "u1" },
 			data: { mustChangePassword: false },
 		});
+		// A trusted laptop plus its mailbox must not be enough to skip the code.
+		expect(deleteMany).toHaveBeenCalledWith({
+			where: { identifier: { startsWith: "trust-device-" }, value: "u1" },
+		});
+		expect($transaction).toHaveBeenCalledWith(["user", "trust"]);
+	});
+});
+
+describe("resetLink", () => {
+	it("builds the link from the base and token alone", () => {
+		expect(resetLink("https://x.test", "tok")).toBe(
+			"https://x.test/admin/reset-password?token=tok",
+		);
+	});
+	it("tolerates a trailing slash on the base", () => {
+		expect(resetLink("https://x.test/", "tok")).toBe(
+			"https://x.test/admin/reset-password?token=tok",
+		);
+	});
+	it("encodes the token", () => {
+		expect(resetLink("https://x.test", "a&b=c d")).toBe(
+			"https://x.test/admin/reset-password?token=a%26b%3Dc%20d",
+		);
 	});
 });

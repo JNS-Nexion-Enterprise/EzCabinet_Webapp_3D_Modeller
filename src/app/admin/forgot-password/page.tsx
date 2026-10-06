@@ -29,8 +29,8 @@ export default function ForgotPasswordPage() {
 				{sent ? (
 					<p className="mt-3 text-neutral-700 text-sm">
 						If that address has a staff account with two-step sign-in set up, we
-						have sent it a link. It works once, for one hour. No email? Ask a
-						superadmin to set a new password for you.
+						have sent it a link. It works once, for one hour. No email? Talk to
+						a superadmin.
 					</p>
 				) : (
 					<form

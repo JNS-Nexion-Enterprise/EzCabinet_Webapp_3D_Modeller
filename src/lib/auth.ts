@@ -4,7 +4,11 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
 import { after } from "next/server";
-import { clearForcedChange, sendStaffReset } from "@/lib/auth/passwordReset";
+import {
+	afterPasswordReset,
+	resetLink,
+	sendStaffReset,
+} from "@/lib/auth/passwordReset";
 import { prisma } from "@/lib/catalogue/db";
 
 /**
@@ -58,9 +62,18 @@ export const auth = betterAuth({
 		// Scheduled, not awaited: Better Auth awaits this callback, and only
 		// eligible staff would reach the lookup and the Resend call, so awaiting
 		// would let response time tell a requester who is staff.
-		sendResetPassword: async ({ user, url }) => {
+		// Better Auth's `url` is ignored: it carries a requester-chosen
+		// `callbackURL`. The link is built here from the token and our own origin.
+		sendResetPassword: async ({ user, token }, request) => {
+			const base =
+				process.env.BETTER_AUTH_URL ??
+				(request ? new URL(request.url).origin : undefined);
+			if (!base) {
+				console.error("Reset mail not sent: no BETTER_AUTH_URL and no request");
+				return;
+			}
 			after(() =>
-				sendStaffReset(user.id, url).catch((error) =>
+				sendStaffReset(user.id, resetLink(base, token)).catch((error) =>
 					console.error("Reset mail failed", error),
 				),
 			);
@@ -69,7 +82,7 @@ export const auth = betterAuth({
 		// Whoever knew the old password is out, on every device.
 		revokeSessionsOnPasswordReset: true,
 		onPasswordReset: async ({ user }) => {
-			await clearForcedChange(user.id);
+			await afterPasswordReset(user.id);
 		},
 		//
 		// Better Auth's own default is 8

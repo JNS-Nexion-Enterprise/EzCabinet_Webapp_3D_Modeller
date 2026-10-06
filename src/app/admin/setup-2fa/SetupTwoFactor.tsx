@@ -59,7 +59,11 @@ export function SetupTwoFactor() {
 		});
 		setBusy(false);
 		if (failure) {
-			setError("That code didn't work. Check the app and try again.");
+			setError(
+				failure.status === 429
+					? "Too many attempts. Wait a few seconds and try again."
+					: "That code didn't work. Check the app and try again.",
+			);
 			return;
 		}
 		setStep("codes");
@@ -130,9 +134,11 @@ export function SetupTwoFactor() {
 					<input
 						inputMode="numeric"
 						autoComplete="one-time-code"
-						maxLength={6}
 						value={code}
-						onChange={(e) => setCode(e.target.value)}
+						onChange={(e) =>
+							// A pasted "123 456" must work: digits only, six of them.
+							setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
+						}
 						className={FIELD}
 					/>
 				</label>
@@ -170,13 +176,17 @@ export function SetupTwoFactor() {
 			</label>
 			{/* A full navigation, not router.push: verifying rotated the session
 			    cookie, and the next page must be rendered against the new one. */}
-			<a
-				href="/admin/cabinet-designs"
-				aria-disabled={!saved}
-				className={`${PRIMARY} text-center ${saved ? "" : "pointer-events-none opacity-60"}`}
-			>
-				Continue
-			</a>
+			{saved ? (
+				<a href="/admin/cabinet-designs" className={`${PRIMARY} text-center`}>
+					Continue
+				</a>
+			) : (
+				// A real disabled button: an `<a>` with pointer-events off is still
+				// activatable from the keyboard.
+				<button type="button" disabled className={PRIMARY}>
+					Continue
+				</button>
+			)}
 		</div>
 	);
 }

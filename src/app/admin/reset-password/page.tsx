@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 
 /** Matches `emailAndPassword.minPasswordLength`; the server enforces it. */
 const MIN_LENGTH = 12;
+const DEAD_LINK =
+	"This link has expired or was already used. Request a new one.";
 
 export default function ResetPasswordPage() {
 	const [newPassword, setNewPassword] = useState("");
@@ -14,6 +16,14 @@ export default function ResetPasswordPage() {
 	const [error, setError] = useState<string | null>(null);
 	const [done, setDone] = useState(false);
 	const [busy, setBusy] = useState(false);
+	const [deadLink, setDeadLink] = useState(false);
+
+	// Better Auth sends a bad link here as ?error=…, and a hand-typed address
+	// has no token: say so now instead of after the form is filled in.
+	useEffect(() => {
+		const query = new URLSearchParams(window.location.search);
+		if (query.has("error") || !query.get("token")) setDeadLink(true);
+	}, []);
 
 	async function submit() {
 		setError(null);
@@ -28,7 +38,7 @@ export default function ResetPasswordPage() {
 		// Better Auth's link lands here as ?token=…, or ?error=INVALID_TOKEN.
 		const token = new URLSearchParams(window.location.search).get("token");
 		if (!token) {
-			setError("This link has expired or was already used. Request a new one.");
+			setError(DEAD_LINK);
 			return;
 		}
 		setBusy(true);
@@ -41,7 +51,7 @@ export default function ResetPasswordPage() {
 			setError(
 				failure.code === "PASSWORD_TOO_SHORT"
 					? `New password must be at least ${MIN_LENGTH} characters.`
-					: "This link has expired or was already used. Request a new one.",
+					: DEAD_LINK,
 			);
 			return;
 		}
@@ -52,7 +62,11 @@ export default function ResetPasswordPage() {
 		<main className="flex min-h-screen items-center justify-center bg-[#f4f3f1] p-6 text-neutral-900">
 			<div className="w-full max-w-[380px] rounded-2xl border border-[#e4e2df] bg-white p-8">
 				<h1 className="font-semibold text-[19px]">Choose a new password</h1>
-				{done ? (
+				{deadLink ? (
+					<p role="alert" className="mt-3 text-neutral-700 text-sm">
+						{DEAD_LINK}
+					</p>
+				) : done ? (
 					<p className="mt-3 text-neutral-700 text-sm">
 						Password changed. You have been signed out everywhere — sign in with
 						the new password and your authenticator code.

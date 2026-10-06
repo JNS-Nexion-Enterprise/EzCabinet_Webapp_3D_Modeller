@@ -69,6 +69,12 @@ goal; the Google door relies on Google.
   clears `twoFactorEnabled`, deletes their sessions and forgets their trusted
   devices. Their next sign-in
   forces enrolment again.
+- `/admin/users`: a "Remove password" action on a staff row that has one,
+  behind `users:manage`. `POST /api/admin/users/[id]/remove-password` deletes
+  the credential account, clears `mustChangePassword` and runs the Reset 2FA
+  writes, making the account Google-only. Refused (409) when the user has no
+  other linked sign-in. A "2FA not set up" pill marks rows that have a
+  password but no second factor.
 
 ## Forgot password
 
@@ -91,7 +97,7 @@ feature; customers sign in with Google and have nothing to reset.
   disabled, already has a credential account, and has 2FA enabled. Otherwise
   it sends nothing. The last condition closes the window before enrolment: a
   stolen mailbox could otherwise set a password, sign in and enrol the
-  thief's own authenticator. Unenrolled staff ask a superadmin, as today.
+  thief's own authenticator. Unenrolled staff who use Google ask a superadmin to remove their password; there is no way to set another person's password.
   The page shows the same "If that address has an account, we have sent a
   link" either way.
 - A reset does not touch `twoFactor`. The new password still needs a code,

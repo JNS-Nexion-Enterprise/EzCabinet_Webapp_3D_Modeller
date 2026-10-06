@@ -119,6 +119,9 @@ describe("every admin surface is gated", () => {
 			// a user with `mustChangePassword` set straight back to this page,
 			// which would loop forever.
 			if (f === "src/app/admin/change-password/page.tsx") return false;
+			// Same reason: `requirePage` redirects a user who owes 2FA setup
+			// straight back here. It reads `currentUser()` itself.
+			if (f === "src/app/admin/setup-2fa/page.tsx") return false;
 			const source = readFileSync(f, "utf8");
 			return !source.includes("requireAuth") && !source.includes("requirePage");
 		});

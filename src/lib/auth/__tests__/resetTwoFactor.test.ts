@@ -3,7 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const twoFactorDeleteMany = vi.hoisted(() => vi.fn(() => "2fa"));
 const userUpdate = vi.hoisted(() => vi.fn(() => "user"));
 const sessionDeleteMany = vi.hoisted(() => vi.fn(() => "sessions"));
-const verificationDeleteMany = vi.hoisted(() => vi.fn(() => "trust"));
+const verificationDeleteMany = vi.hoisted(() =>
+	vi.fn((arg: { where: { identifier: { startsWith: string } } }) =>
+		arg.where.identifier.startsWith === "trust-device-" ? "trust" : "links",
+	),
+);
 const $transaction = vi.hoisted(() => vi.fn(async () => []));
 
 vi.mock("@/lib/catalogue/db", () => ({
@@ -35,11 +39,17 @@ describe("resetTwoFactor", () => {
 		expect(verificationDeleteMany).toHaveBeenCalledWith({
 			where: { identifier: { startsWith: "trust-device-" }, value: "u1" },
 		});
+		// A mailed reset link must not outlive the reset: reset links are only
+		// sent to enrolled staff, and this puts the account back to "not enrolled".
+		expect(verificationDeleteMany).toHaveBeenCalledWith({
+			where: { identifier: { startsWith: "reset-password:" }, value: "u1" },
+		});
 		expect($transaction).toHaveBeenCalledWith([
 			"2fa",
 			"user",
 			"sessions",
 			"trust",
+			"links",
 		]);
 	});
 });

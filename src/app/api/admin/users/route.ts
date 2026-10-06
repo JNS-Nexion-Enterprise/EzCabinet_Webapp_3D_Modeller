@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { inviteSchema } from "@/lib/auth/invite";
 import { BYPASS_USER } from "@/lib/auth/requireAuth";
 import { withAuth } from "@/lib/auth/route";
+import { HAS_PASSWORD_SELECT, withHasPassword } from "@/lib/auth/userRow";
 import { prisma } from "@/lib/catalogue/db";
 
 export const runtime = "nodejs";
@@ -33,11 +34,12 @@ export const GET = withAuth("users:manage", async (request) => {
 			twoFactorEnabled: true,
 			lastLoginAt: true,
 			createdAt: true,
+			...HAS_PASSWORD_SELECT,
 		},
 		orderBy: [{ role: "asc" }, { createdAt: "desc" }],
 		take: 200,
 	});
-	return NextResponse.json({ users });
+	return NextResponse.json({ users: users.map(withHasPassword) });
 });
 
 /**

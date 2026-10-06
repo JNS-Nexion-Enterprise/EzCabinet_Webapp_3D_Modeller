@@ -54,13 +54,24 @@ export default function AdminLoginPage() {
 	async function verifyCode() {
 		setBusy(true);
 		setError(null);
-		const body = { code: code.trim(), trustDevice };
+		// Backup codes look like `abcde-12345`: strip spaces, keep the hyphen.
+		const body = { code: code.replace(/\s+/g, ""), trustDevice };
 		const { error: failure } = useBackup
 			? await authClient.twoFactor.verifyBackupCode(body)
 			: await authClient.twoFactor.verifyTotp(body);
 		setBusy(false);
 		if (failure) {
-			setError(twoFactorMessage(failure.code));
+			setError(twoFactorMessage(failure.code, failure.status));
+			// The challenge cookie is spent or gone: another code cannot work, so
+			// go back to the password. The error paragraph renders on that step
+			// too, so the reason stays visible.
+			if (
+				failure.code === "INVALID_TWO_FACTOR_COOKIE" ||
+				failure.code === "TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE"
+			) {
+				setCode("");
+				setStep("password");
+			}
 			return;
 		}
 		enter();
@@ -211,7 +222,14 @@ export default function AdminLoginPage() {
 									// biome-ignore lint/a11y/noAutofocus: the only field on this step
 									autoFocus
 									value={code}
-									onChange={(e) => setCode(e.target.value)}
+									onChange={(e) =>
+										// A pasted "123 456" must work: digits only, six of them.
+										setCode(
+											useBackup
+												? e.target.value
+												: e.target.value.replace(/\D/g, "").slice(0, 6),
+										)
+									}
 									placeholder={
 										useBackup
 											? "One of your saved codes"
@@ -265,6 +283,8 @@ export default function AdminLoginPage() {
 								onClick={() => {
 									setStep("password");
 									setCode("");
+									setUseBackup(false);
+									setTrustDevice(false);
 									setError(null);
 								}}
 								className="text-center text-neutral-500 text-xs hover:text-neutral-900"

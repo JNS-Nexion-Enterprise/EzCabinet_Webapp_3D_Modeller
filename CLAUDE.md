@@ -570,7 +570,11 @@ beside `mustChangePassword` — `withAuth` refuses, `requirePage` redirects to
 Google account can still enter through Google without a code: accepted.
 `/two-factor/disable` is closed; the only way to remove a second factor is a
 superadmin's **Reset 2FA** on `/admin/users`, or `pnpm auth:reset-2fa <email>`
-when the last superadmin is the one locked out.
+when the last superadmin is the one locked out. A superadmin can also press
+**Remove password** on `/admin/users` to make a Google-linked staff account
+Google-only (refused when it has no other sign-in), which the 2FA rule exempts
+— the way out for staff who only use Google and never learned the invite
+password. Both Reset 2FA and Remove password log the actor's and target's ids.
 
 **Forgot password is email, staff only, and only after enrolment.**
 `sendStaffReset` (`lib/auth/passwordReset.ts`) mails a link through Resend
@@ -619,7 +623,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 11. **`advance` takes its actor from the session; `book` and `split` still take a client-typed one.** `DeliveryDetail.tsx`'s name field feeds `bookedBy` and `split`'s `actor`, and `split` falls back to the literal `"Admin"` when the field is left blank — so the delivery activity log has mixed provenance, a session user's real name on some rows and whatever an admin typed (or nothing) on others. Narrowed, not closed.
 12. **`prisma.config.ts` sets no `shadowDatabaseUrl`.** That is why `prisma migrate dev` refuses non-interactively and `prisma migrate diff --from-migrations` cannot run — both need a shadow database to diff against. Until it is set, a migration written outside an interactive terminal has to be hand-written and independently verified (`prisma migrate diff --from-config-datasource --to-schema`) rather than generated. The fix is two lines in `prisma.config.ts` pointing at a disposable shadow database URL; not done here.
 13. **FedEx's sandbox cannot check our requests.** It answers only its own canned inputs — any request that differs from a documented example returns `SERVICE.PACKAGECOMBINATION.INVALID`, and its canned Malaysian rates are USD — so `adapters/fedex.ts` is tested against fixtures built from FedEx's documented shapes, not against FedEx. `pnpm fedex:ping` against **production** checks only the token, rate and track calls — it never ships. Ship, pickup, both cancels and the label fetch are first exercised by the first real booking: run it once production credentials exist, watch it with FedEx Ship Manager open, and cancel it there if anything looks wrong. Production also needs label certification with FedEx, which can take weeks.
-14. **Forgot-password throttling is per account, not per network.** `sendStaffReset` runs after the response (`after()`), so the answer and its timing are the same whoever asked, and it sends nothing once an account has more than three live reset links (about three mails an hour). What remains: Better Auth's own limit on `/request-password-reset` is per IP and memory-backed, so it does not hold across serverless instances, and a requester can still create unsent reset tokens in the `verification` table for any address. Low value with three staff; the fix is `rateLimit: { storage: "database" }` and its table.
+14. **Forgot-password throttling is per account, not per network.** `sendStaffReset` runs after the response (`after()`), so the answer and its timing are the same whoever asked, and it sends nothing once an account has more than three live reset links (about three mails an hour). What remains: Better Auth's own limit on `/request-password-reset` is per IP and memory-backed, so it does not hold across serverless instances, and a requester can still create unsent reset tokens in the `verification` table for any address. The three-link cap counts those unsent requests too, so about four requests an hour from anyone suppress a staff member's own reset mail while the page still says it was sent. Low value with three staff; the fix is `rateLimit: { storage: "database" }` and its table.
 
 ## Open questions — resolve before trusting pricing.ts
 

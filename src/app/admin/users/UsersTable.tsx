@@ -12,6 +12,7 @@ type UserRow = {
 	role: Role;
 	disabled: boolean;
 	twoFactorEnabled: boolean | null;
+	hasPassword: boolean;
 	lastLoginAt: Date | string | null;
 };
 
@@ -61,7 +62,8 @@ export function UsersTable({
 	const [error, setError] = useState<string | null>(null);
 	const [busyId, setBusyId] = useState<string | null>(null);
 	// Two presses, not a browser confirm: the first arms the row's button.
-	const [armedId, setArmedId] = useState<string | null>(null);
+	// Keyed `${action}:${id}` so arming one button disarms the other.
+	const [armed, setArmed] = useState<string | null>(null);
 
 	const reload = useCallback(async (q: string, s: ScopeFilter) => {
 		const params = new URLSearchParams({ staff: s === "staff" ? "1" : "0" });
@@ -125,12 +127,32 @@ export function UsersTable({
 			method: "POST",
 		});
 		setBusyId(null);
-		setArmedId(null);
+		setArmed(null);
 		if (!res.ok) {
 			setError("Could not reset two-step sign-in.");
 			return;
 		}
 		// Resetting your own signs you out; the refresh lands on the login page.
+		await reload(query, scope);
+		router.refresh();
+	}
+
+	async function removePassword(id: string) {
+		setError(null);
+		setBusyId(id);
+		const res = await fetch(`/api/admin/users/${id}/remove-password`, {
+			method: "POST",
+		});
+		setBusyId(null);
+		setArmed(null);
+		if (!res.ok) {
+			setError(
+				res.status === 409
+					? "This account has no other way to sign in. Link Google first."
+					: "Could not remove the password.",
+			);
+			return;
+		}
 		await reload(query, scope);
 		router.refresh();
 	}
@@ -270,6 +292,13 @@ export function UsersTable({
 													Suspended
 												</span>
 											)}
+											{user.role !== "CUSTOMER" &&
+												user.hasPassword &&
+												!user.twoFactorEnabled && (
+													<span className="shrink-0 rounded-full bg-[#fffbeb] px-2 py-0.5 font-semibold text-[#92400e] text-[10px] tracking-[.04em]">
+														2FA not set up
+													</span>
+												)}
 										</span>
 										<span className="block truncate text-[#737373] text-[12px]">
 											{user.email}
@@ -308,21 +337,30 @@ export function UsersTable({
 										? `Last in ${shortTime(new Date(user.lastLoginAt).toISOString())}`
 										: "Never signed in"}
 								</span>
-								<div className="flex w-[172px] items-center justify-end gap-[7px]">
+								<div className="flex w-[172px] flex-col items-end gap-1">
 									{user.twoFactorEnabled && (
-										<button
-											type="button"
+										<ArmedButton
+											action="reset"
+											id={user.id}
+											armed={armed}
+											setArmed={setArmed}
 											disabled={busyId === user.id}
-											onClick={() =>
-												armedId === user.id
-													? resetTwoFactor(user.id)
-													: setArmedId(user.id)
-											}
-											onBlur={() => setArmedId(null)}
-											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
-										>
-											{armedId === user.id ? "Confirm reset" : "Reset 2FA"}
-										</button>
+											label="Reset 2FA"
+											confirmLabel="Confirm reset"
+											onConfirm={() => resetTwoFactor(user.id)}
+										/>
+									)}
+									{user.role !== "CUSTOMER" && user.hasPassword && (
+										<ArmedButton
+											action="remove-password"
+											id={user.id}
+											armed={armed}
+											setArmed={setArmed}
+											disabled={busyId === user.id}
+											label="Remove password"
+											confirmLabel="Confirm remove"
+											onConfirm={() => removePassword(user.id)}
+										/>
 									)}
 									{user.role !== "CUSTOMER" && (
 										<button
@@ -359,5 +397,38 @@ export function UsersTable({
 				</div>
 			</div>
 		</div>
+	);
+}
+
+function ArmedButton({
+	action,
+	id,
+	armed,
+	setArmed,
+	disabled,
+	label,
+	confirmLabel,
+	onConfirm,
+}: {
+	action: string;
+	id: string;
+	armed: string | null;
+	setArmed: (key: string | null) => void;
+	disabled: boolean;
+	label: string;
+	confirmLabel: string;
+	onConfirm: () => void;
+}) {
+	const key = `${action}:${id}`;
+	return (
+		<button
+			type="button"
+			disabled={disabled}
+			onClick={() => (armed === key ? onConfirm() : setArmed(key))}
+			onBlur={() => setArmed(null)}
+			className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+		>
+			{armed === key ? confirmLabel : label}
+		</button>
 	);
 }
