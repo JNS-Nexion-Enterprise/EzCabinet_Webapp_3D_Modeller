@@ -1,9 +1,20 @@
 import "server-only";
+import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import {
+	APIError,
+	createAuthMiddleware,
+	getSessionFromCtx,
+} from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
 import { after } from "next/server";
+import {
+	assertPasskeyOwner,
+	checkPasskeyRequest,
+	markSessionVerified,
+} from "@/lib/auth/passkeyHooks";
 import {
 	afterPasswordReset,
 	resetLink,
@@ -119,10 +130,65 @@ export const auth = betterAuth({
 		// lifetime, and the spec requires a role change or a disable to bite on
 		// the very next request.
 		cookieCache: { enabled: false },
+		// Set only by the hooks below, never by a request body.
+		additionalFields: {
+			passkeyVerified: { type: "boolean", input: false, defaultValue: false },
+		},
+	},
+	hooks: {
+		// Every passkey write goes through `checkPasskeyRequest` first — see
+		// that function for why the plugin's defaults are not enough.
+		before: createAuthMiddleware(async (ctx) => {
+			if (!ctx.path.startsWith("/passkey/")) return;
+			// `createSession` makes the plugin mint a second, unverified session
+			// and swap the cookie to it, undoing the verified stamp below. Nothing
+			// in the app asks for it, so refuse it rather than chase it.
+			if (
+				ctx.path === "/passkey/verify-registration" &&
+				(ctx.body as { createSession?: boolean } | undefined)?.createSession
+			) {
+				throw new APIError("BAD_REQUEST", {
+					message: "createSession is not supported",
+				});
+			}
+			const current = await getSessionFromCtx(ctx);
+			await checkPasskeyRequest(
+				ctx.path,
+				current
+					? {
+							userId: current.user.id,
+							// `additionalFields` types this on the built instance, not
+							// inside the config that defines it.
+							verified:
+								(current.session as { passkeyVerified?: boolean | null })
+									.passkeyVerified === true,
+						}
+					: null,
+			);
+		}),
+		// Enrolling the account's first passkey is itself the proof of
+		// possession, so the enrolling session becomes verified. Only on
+		// success: a failed registration leaves an APIError in `returned`.
+		after: createAuthMiddleware(async (ctx) => {
+			if (ctx.path !== "/passkey/verify-registration") return;
+			if (ctx.context.returned instanceof APIError) return;
+			const current = await getSessionFromCtx(ctx);
+			if (current) await markSessionVerified(current.session.token);
+		}),
 	},
 	databaseHooks: {
 		session: {
 			create: {
+				// A session born from a passkey ceremony is a verified one. The
+				// plugin creates it with `internalAdapter.createSession`, so this
+				// is the one place the flag can be set atomically with the row.
+				// `ctx` is the endpoint context
+				// (node_modules/better-auth/dist/db/with-hooks.mjs passes it as
+				// the second argument); it is null outside a request.
+				before: async (session, ctx) => {
+					if (ctx?.path !== "/passkey/verify-authentication") return;
+					return { data: { ...session, passkeyVerified: true } };
+				},
 				// Stamped on session creation rather than on each request:
 				// /admin/users wants "has anyone used this account lately", not a
 				// precise last-seen, and a write per request would be a write per
@@ -157,5 +223,17 @@ export const auth = betterAuth({
 		},
 	},
 	// `nextCookies()` stays last: it must see the cookies every other plugin sets.
-	plugins: [twoFactor({ issuer: "EzCabinet Admin" }), nextCookies()],
+	plugins: [
+		twoFactor({ issuer: "EzCabinet Admin" }),
+		passkey({
+			rpName: "EzCabinet",
+			authentication: {
+				afterVerification: async ({ ctx, clientData }) => {
+					const current = await getSessionFromCtx(ctx);
+					await assertPasskeyOwner(current?.user.id ?? null, clientData.id);
+				},
+			},
+		}),
+		nextCookies(),
+	],
 });
