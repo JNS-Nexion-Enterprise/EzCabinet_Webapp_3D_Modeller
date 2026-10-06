@@ -113,7 +113,8 @@ type HookContext = Parameters<Parameters<typeof createAuthMiddleware>[0]>[0];
 
 /** `hooks.before`: every passkey write is checked before the plugin sees it. */
 export async function passkeyBeforeHook(ctx: HookContext): Promise<void> {
-	if (!ctx.path.startsWith("/passkey/")) return;
+	// An endpoint with no path (internal calls) is none of ours.
+	if (!ctx.path?.startsWith("/passkey/")) return;
 	// `createSession` makes the plugin mint a second, unverified session
 	// and swap the cookie to it, undoing the verified stamp in the after hook.
 	// Nothing in the app asks for it, so refuse it rather than chase it.
@@ -161,7 +162,12 @@ export async function passkeyAfterHook(ctx: HookContext): Promise<void> {
 	const enrolled = await prisma.passkey.count({
 		where: { userId: current.user.id },
 	});
-	if (enrolled > 0) await markSessionVerified(current.session.token);
+	if (enrolled > 0) {
+		await markSessionVerified(current.session.token);
+		// Id only. An enrolment on an account with orders leaves a trace, as a
+		// reset does.
+		console.info("Passkey enrolled", { user: current.user.id });
+	}
 }
 
 /**

@@ -40,7 +40,7 @@ describe("POST /api/admin/users/[id]/reset-passkey", () => {
 
 	it("asks for users:manage", async () => {
 		requireAuth.mockResolvedValue(superadmin);
-		findUnique.mockResolvedValue({ id: "c1" });
+		findUnique.mockResolvedValue({ id: "c1", role: "CUSTOMER" });
 		await call("c1");
 		expect(requireAuth).toHaveBeenCalledWith("users:manage");
 	});
@@ -58,9 +58,16 @@ describe("POST /api/admin/users/[id]/reset-passkey", () => {
 		expect(resetPasskeys).not.toHaveBeenCalled();
 	});
 
+	it("404s for staff: they have no passkey step, a reset would only sign them out", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue({ id: "s1", role: "ADMIN" });
+		expect((await call("s1")).status).toBe(404);
+		expect(resetPasskeys).not.toHaveBeenCalled();
+	});
+
 	it("resets the named user and records who did it", async () => {
 		requireAuth.mockResolvedValue(superadmin);
-		findUnique.mockResolvedValue({ id: "c1" });
+		findUnique.mockResolvedValue({ id: "c1", role: "CUSTOMER" });
 		expect((await call("c1")).status).toBe(200);
 		expect(resetPasskeys).toHaveBeenCalledWith("c1");
 		expect(console.info).toHaveBeenCalledWith("Passkeys reset", {

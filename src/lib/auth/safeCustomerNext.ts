@@ -15,11 +15,12 @@ const BASE = "https://site.invalid";
  * result must re-parse to itself on our origin.
  */
 export function safeCustomerNext(
-	next: string | undefined,
+	next: string | string[] | undefined,
 	lang: string,
 ): string {
 	const fallback = `/${lang}/orders`;
-	if (!next?.startsWith("/")) return fallback;
+	// A repeated `?next=a&next=b` arrives as an array: not ours to guess at.
+	if (typeof next !== "string" || !next.startsWith("/")) return fallback;
 	// Control characters and backslashes are never in a path we link to.
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: matching them is the point
 	if (/[\u0000-\u001f\u007f\\]/.test(next)) return fallback;

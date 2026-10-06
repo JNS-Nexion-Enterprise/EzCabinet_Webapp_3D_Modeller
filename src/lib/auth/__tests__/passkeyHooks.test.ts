@@ -4,6 +4,13 @@ const count = vi.hoisted(() => vi.fn());
 const findFirst = vi.hoisted(() => vi.fn());
 const sessionUpdate = vi.hoisted(() => vi.fn());
 
+const getSessionFromCtx = vi.hoisted(() => vi.fn());
+vi.mock("better-auth/api", async () => ({
+	...(await vi.importActual<typeof import("better-auth/api")>(
+		"better-auth/api",
+	)),
+	getSessionFromCtx,
+}));
 vi.mock("@/lib/catalogue/db", () => ({
 	prisma: {
 		passkey: { count, findFirst },
@@ -16,6 +23,8 @@ const {
 	assertPasskeyOwner,
 	checkPasskeyRequest,
 	markSessionVerified,
+	passkeyAfterHook,
+	passkeyBeforeHook,
 } = await import("@/lib/auth/passkeyHooks");
 
 const code = async (run: () => Promise<unknown>) => {
@@ -177,6 +186,40 @@ describe("assertPasskeyOwner", () => {
 		expect(await code(() => assertPasskeyOwner("u1", "cred"))).toBe(
 			"PASSKEY_NOT_YOURS",
 		);
+	});
+});
+
+// The hooks take Better Auth's context; only what they read is faked.
+const hookCtx = (path: string | undefined, returned: unknown = {}) =>
+	({ path, context: { returned } }) as never;
+
+describe("hooks on an endpoint with no path", () => {
+	it("pass it untouched instead of throwing", async () => {
+		await expect(
+			passkeyBeforeHook(hookCtx(undefined)),
+		).resolves.toBeUndefined();
+		await expect(passkeyAfterHook(hookCtx(undefined))).resolves.toBeUndefined();
+		expect(getSessionFromCtx).not.toHaveBeenCalled();
+	});
+});
+
+describe("passkeyAfterHook, first enrolment", () => {
+	beforeEach(() => vi.clearAllMocks());
+
+	it("verifies the session and leaves a trace with the user id only", async () => {
+		const info = vi.spyOn(console, "info").mockImplementation(() => {});
+		getSessionFromCtx.mockResolvedValue({
+			user: { id: "u1", email: "a@x.com" },
+			session: { token: "tok" },
+		});
+		count.mockResolvedValue(1);
+		await passkeyAfterHook(hookCtx("/passkey/verify-registration"));
+		expect(sessionUpdate).toHaveBeenCalledWith({
+			where: { token: "tok" },
+			data: { passkeyVerified: true },
+		});
+		expect(info).toHaveBeenCalledWith("Passkey enrolled", { user: "u1" });
+		info.mockRestore();
 	});
 });
 

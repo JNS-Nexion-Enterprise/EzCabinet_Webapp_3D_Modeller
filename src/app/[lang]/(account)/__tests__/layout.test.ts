@@ -76,6 +76,13 @@ describe("account layout", () => {
 		);
 	});
 
+	it("queries nothing for a customer who owes the passkey step", async () => {
+		currentUser.mockResolvedValue({ ...signedIn, mustVerifyPasskey: true });
+		await open();
+		expect(count).not.toHaveBeenCalled();
+		expect(passkeyCount).not.toHaveBeenCalled();
+	});
+
 	it("does not query when nobody is signed in (the page redirects)", async () => {
 		currentUser.mockResolvedValue(null);
 		await open();

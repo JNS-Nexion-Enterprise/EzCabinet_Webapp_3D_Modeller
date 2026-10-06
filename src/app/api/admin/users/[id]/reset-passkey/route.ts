@@ -12,9 +12,10 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		const { id } = await params;
 		const target = await prisma.user.findUnique({
 			where: { id },
-			select: { id: true },
+			select: { id: true, role: true },
 		});
-		if (!target) {
+		// Staff have no passkey step; resetting one would only sign them out.
+		if (!target || target.role !== "CUSTOMER") {
 			return NextResponse.json({ error: "not_found" }, { status: 404 });
 		}
 		await resetPasskeys(target.id);

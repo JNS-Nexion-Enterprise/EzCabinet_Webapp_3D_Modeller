@@ -18,7 +18,7 @@ export default async function VerifyPage({
 	searchParams,
 }: {
 	params: Promise<{ lang: string }>;
-	searchParams: Promise<{ next?: string }>;
+	searchParams: Promise<{ next?: string | string[] }>;
 }) {
 	const [{ lang }, { next }] = await Promise.all([params, searchParams]);
 	if (!isLocale(lang)) notFound();

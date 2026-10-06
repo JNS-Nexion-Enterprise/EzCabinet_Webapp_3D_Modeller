@@ -59,7 +59,18 @@ export const auth = betterAuth({
 	// `/two-factor/disable`: a second factor a staff member can switch off
 	// with the password alone is not a second factor. Only a superadmin's
 	// Reset 2FA (`lib/auth/resetTwoFactor.ts`) removes one.
-	disabledPaths: ["/sign-up/email", "/two-factor/disable"],
+	// Session management: the app calls none of these, and a Google-only
+	// session could otherwise list the owner's session rows or sign the owner
+	// out of every other device.
+	disabledPaths: [
+		"/sign-up/email",
+		"/two-factor/disable",
+		"/list-sessions",
+		"/revoke-session",
+		"/revoke-sessions",
+		"/revoke-other-sessions",
+		"/update-session",
+	],
 	emailAndPassword: {
 		enabled: true,
 		// See the module comment above: this is the line that stops a staff

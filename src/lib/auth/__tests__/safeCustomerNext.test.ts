@@ -32,7 +32,10 @@ describe("safeCustomerNext", () => {
 		["empty segment in the middle", "/en///orders"],
 		["dot slash only", "/./"],
 		["bare slash", "/"],
-	])("falls back to My orders for %s", (_label, next) => {
+		// `?next=a&next=b` reaches the page as an array.
+		["a repeated parameter", ["/en/orders", "/en/order/x"]],
+		["a non-string", 42],
+	] as [string, never][])("falls back to My orders for %s", (_label, next) => {
 		expect(safeCustomerNext(next, "zh")).toBe("/zh/orders");
 	});
 	it("returns the normalised path, never the raw input", () => {
