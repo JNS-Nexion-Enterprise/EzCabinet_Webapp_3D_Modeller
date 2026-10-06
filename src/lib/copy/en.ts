@@ -612,6 +612,7 @@ export const en = {
 	account: {
 		navHeading: "Your account",
 		myOrders: "My orders",
+		passkeys: "Passkeys",
 		signIn: "Sign in",
 		signOut: "Sign out",
 		menuLabel: "Account menu",
@@ -642,6 +643,32 @@ export const en = {
 		nudge: "Saved on this device. Sign in to check out.",
 		nudgeDismiss: "Not now",
 		back: "Back to home",
+	},
+	/** The second step after Google — see docs/superpowers/specs/2026-10-06-customer-passkey-design.md. */
+	passkey: {
+		heading: "One more step",
+		enrolBody:
+			"Set up a passkey so only you can open your orders. It uses this device's fingerprint, face or screen lock.",
+		enrolButton: "Set up passkey",
+		promptBody: "Confirm it's you with your passkey.",
+		promptButton: "Use passkey",
+		working: "Waiting for your device…",
+		failed: "That didn't work. Try again",
+		wrongAccount: "That passkey belongs to a different account",
+		unsupported:
+			"This browser can't use passkeys. Open this page in Chrome or Safari.",
+		lostDevice: "Lost your device? Contact EzCabinet",
+		listHeading: "Passkeys",
+		listBody: "The devices that can confirm it's you.",
+		unnamed: "Passkey",
+		added: "Added {date}",
+		add: "Add another device",
+		rename: "Rename",
+		save: "Save",
+		cancel: "Cancel",
+		remove: "Remove",
+		removeLast: "You need at least one passkey",
+		nameLabel: "Device name",
 	},
 } as const;
 

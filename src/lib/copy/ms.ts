@@ -602,6 +602,7 @@ export const ms: Dictionary = {
 	account: {
 		navHeading: "Akaun anda",
 		myOrders: "Pesanan saya",
+		passkeys: "Kunci laluan",
 		signIn: "Log masuk",
 		signOut: "Log keluar",
 		menuLabel: "Menu akaun",
@@ -630,5 +631,30 @@ export const ms: Dictionary = {
 		nudge: "Disimpan pada peranti ini. Log masuk untuk membuat pesanan.",
 		nudgeDismiss: "Bukan sekarang",
 		back: "Kembali ke laman utama",
+	},
+	passkey: {
+		heading: "Satu langkah lagi",
+		enrolBody:
+			"Sediakan kunci laluan supaya hanya anda boleh membuka pesanan anda. Ia menggunakan cap jari, wajah atau kunci skrin peranti ini.",
+		enrolButton: "Sediakan kunci laluan",
+		promptBody: "Sahkan ini anda dengan kunci laluan anda.",
+		promptButton: "Guna kunci laluan",
+		working: "Menunggu peranti anda…",
+		failed: "Tidak berjaya. Cuba lagi",
+		wrongAccount: "Kunci laluan itu milik akaun lain",
+		unsupported:
+			"Pelayar ini tidak menyokong kunci laluan. Buka halaman ini dalam Chrome atau Safari.",
+		lostDevice: "Peranti hilang? Hubungi EzCabinet",
+		listHeading: "Kunci laluan",
+		listBody: "Peranti yang boleh mengesahkan ini anda.",
+		unnamed: "Kunci laluan",
+		added: "Ditambah {date}",
+		add: "Tambah peranti lain",
+		rename: "Namakan semula",
+		save: "Simpan",
+		cancel: "Batal",
+		remove: "Buang",
+		removeLast: "Anda perlukan sekurang-kurangnya satu kunci laluan",
+		nameLabel: "Nama peranti",
 	},
 };
