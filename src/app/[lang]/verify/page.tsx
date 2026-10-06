@@ -45,6 +45,7 @@ export default async function VerifyPage({
 				<h1 className="font-semibold text-[22px]">{t.passkey.heading}</h1>
 				<PasskeyGate
 					mode={enrolled > 0 ? "prompt" : "enrol"}
+					lang={lang}
 					next={target}
 					copy={t.passkey}
 					helpHref={sales ? `https://wa.me/${sales}` : null}

@@ -16,8 +16,21 @@ describe("safeCustomerNext", () => {
 		["backslash trick", "/\\evil.example"],
 		["no leading slash", "en/orders"],
 		["javascript", "javascript:alert(1)"],
+		["tab after the slash", "/\t/evil.example"],
+		["newline after the slash", "/\n/evil.example"],
+		["carriage return after the slash", "/\r/evil.example"],
+		["double backslash", "\\\\evil.example"],
+		["encoded verify", "/en/%76erify"],
+		["dot segment before verify", "/en/./verify"],
+		["empty segment before verify", "/en//verify"],
+		["upper-case verify", "/en/VERIFY?next=x"],
+		["malformed encoding", "/%E0%A4%A"],
 	])("falls back to My orders for %s", (_label, next) => {
 		expect(safeCustomerNext(next, "zh")).toBe("/zh/orders");
+	});
+	it("returns the normalised path, never the raw input", () => {
+		expect(safeCustomerNext("/en/orders#top", "en")).toBe("/en/orders#top");
+		expect(safeCustomerNext("/en/orders/../orders", "en")).toBe("/en/orders");
 	});
 	it("never sends the customer back to the verify page itself", () => {
 		expect(safeCustomerNext("/en/verify?next=/en/verify", "en")).toBe(

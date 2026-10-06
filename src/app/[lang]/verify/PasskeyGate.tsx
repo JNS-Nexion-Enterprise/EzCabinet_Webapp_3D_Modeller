@@ -5,6 +5,7 @@ import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import type { Dictionary } from "@/lib/copy/en";
+import { failureReason } from "./failureReason";
 import { passkeysSupported } from "./passkeySupport";
 
 /**
@@ -18,11 +19,13 @@ import { passkeysSupported } from "./passkeySupport";
  */
 export function PasskeyGate({
 	mode,
+	lang,
 	next,
 	copy,
 	helpHref,
 }: {
 	mode: "enrol" | "prompt";
+	lang: string;
 	next: string;
 	copy: Dictionary["passkey"];
 	helpHref: string | null;
@@ -31,6 +34,7 @@ export function PasskeyGate({
 	const [supported, setSupported] = useState<boolean | null>(null);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [stale, setStale] = useState(false);
 
 	useEffect(() => {
 		setSupported(passkeysSupported(window));
@@ -55,9 +59,18 @@ export function PasskeyGate({
 			failure = {};
 		}
 		if (failure) {
+			const reason = failureReason(failure.code);
 			track(
 				mode === "enrol" ? "passkey_enrol_failed" : "passkey_verify_failed",
+				{ reason },
 			);
+			if (reason === "stale") {
+				// Enrolling needs a session under a day old; a new Google sign-in
+				// makes one and lands back here.
+				setStale(true);
+				setBusy(false);
+				return;
+			}
 			setError(
 				failure.code === "PASSKEY_NOT_YOURS" ? copy.wrongAccount : copy.failed,
 			);
@@ -66,6 +79,23 @@ export function PasskeyGate({
 		}
 		if (mode === "enrol") track("passkey_enrol_completed");
 		window.location.assign(next);
+	}
+
+	if (stale) {
+		const back = `/${lang}/verify?next=${encodeURIComponent(next)}`;
+		return (
+			<>
+				<p role="alert" className="text-[14px] text-neutral-700 leading-5">
+					{copy.sessionStale}
+				</p>
+				<a
+					href={`/${lang}/sign-in?next=${encodeURIComponent(back)}`}
+					className="flex items-center justify-center rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white"
+				>
+					{copy.signInAgain}
+				</a>
+			</>
+		);
 	}
 
 	if (supported === false) {

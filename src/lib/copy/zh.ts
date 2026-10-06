@@ -604,6 +604,8 @@ export const zh: Dictionary = {
 		working: "正在等待您的设备…",
 		failed: "未能完成，请重试",
 		wrongAccount: "该通行密钥属于另一个账户",
+		sessionStale: "为了您的安全，请重新使用 Google 登录以设置通行密钥",
+		signInAgain: "重新登录",
 		unsupported: "此浏览器不支持通行密钥。请在 Chrome 或 Safari 中打开此页面。",
 		lostDevice: "设备丢失？请联系 EzCabinet",
 		listHeading: "通行密钥",

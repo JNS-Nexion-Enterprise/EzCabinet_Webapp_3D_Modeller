@@ -642,6 +642,9 @@ export const ms: Dictionary = {
 		working: "Menunggu peranti anda…",
 		failed: "Tidak berjaya. Cuba lagi",
 		wrongAccount: "Kunci laluan itu milik akaun lain",
+		sessionStale:
+			"Demi keselamatan anda, log masuk semula dengan Google untuk menyediakan kunci laluan",
+		signInAgain: "Log masuk semula",
 		unsupported:
 			"Pelayar ini tidak menyokong kunci laluan. Buka halaman ini dalam Chrome atau Safari.",
 		lostDevice: "Peranti hilang? Hubungi EzCabinet",

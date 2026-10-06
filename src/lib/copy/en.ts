@@ -655,6 +655,9 @@ export const en = {
 		working: "Waiting for your device…",
 		failed: "That didn't work. Try again",
 		wrongAccount: "That passkey belongs to a different account",
+		sessionStale:
+			"For your security, sign in with Google again to set up your passkey",
+		signInAgain: "Sign in again",
 		unsupported:
 			"This browser can't use passkeys. Open this page in Chrome or Safari.",
 		lostDevice: "Lost your device? Contact EzCabinet",
