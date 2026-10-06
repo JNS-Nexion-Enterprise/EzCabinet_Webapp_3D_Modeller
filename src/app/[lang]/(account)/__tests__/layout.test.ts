@@ -80,5 +80,6 @@ describe("account layout", () => {
 		currentUser.mockResolvedValue(null);
 		await open();
 		expect(count).not.toHaveBeenCalled();
+		expect(passkeyCount).not.toHaveBeenCalled();
 	});
 });

@@ -6,6 +6,7 @@ import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 import type { Dictionary } from "@/lib/copy/en";
 import { fill } from "@/lib/copy/fill";
+import { passkeyDate } from "./passkeyDate";
 
 type Row = { id: string; name: string | null; createdAt: string | null };
 
@@ -68,11 +69,7 @@ export function PasskeyList({
 		});
 
 	const date = (iso: string | null) =>
-		iso
-			? fill(copy.added, {
-					date: new Date(iso).toLocaleDateString(lang, { dateStyle: "medium" }),
-				})
-			: "";
+		iso ? fill(copy.added, { date: passkeyDate(iso, lang) }) : "";
 
 	return (
 		<div className="mt-5 flex flex-col gap-3">
