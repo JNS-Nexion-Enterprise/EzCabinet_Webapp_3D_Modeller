@@ -76,3 +76,27 @@ Every row above is one line in a plain text file
 (`src/lib/copy/zh.ts` or `src/lib/copy/ms.ts`). Changing any of them is a
 one-line edit with no code change and no risk to how the site works — we can
 turn around a batch of corrections the same day you send them.
+
+## Legal pages (added 2026-10-07)
+
+Three pages are now translated in full and need a native read **and** a legal
+one — these are the words a customer agrees to before paying:
+
+- **Terms of sale** — `/ms/terms`, `/zh/terms`
+- **Refund policy** — `/ms/refunds`, `/zh/refunds`
+- **Privacy notice** — `/ms/privacy`, `/zh/privacy` (seven new sections: your
+  account, your orders, who else receives your data, what you must give us,
+  how long we keep it, your rights, other laws)
+
+The English is a draft pending your counsel's review, and the Malay and
+Chinese were drafted from it by AI. Where the three disagree, tell us which
+one says what you mean. Terms worth checking by name:
+
+| English | Malay | Chinese |
+| --- | --- | --- |
+| Terms of sale | Terma jualan | 销售条款 |
+| Refund policy | Polisi bayaran balik | 退款政策 |
+| Re-measure | Ukur semula | 上门复尺 |
+| Made to order | Dibuat mengikut tempahan | 定制 |
+| Tribunal for Consumer Claims Malaysia | Tribunal Tuntutan Pengguna Malaysia | 马来西亚消费者索偿仲裁庭 |
+| Personal Data Protection Act 2010 | Akta Perlindungan Data Peribadi 2010 | 《2010 年个人数据保护法》 |
