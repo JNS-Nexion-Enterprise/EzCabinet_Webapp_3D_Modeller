@@ -106,6 +106,8 @@ export const ms: Dictionary = {
 			contactHeading: "Hubungi kami",
 			email: "hello@ezcabinet.com",
 			privacy: "Privasi",
+			terms: "Terma jualan",
+			refunds: "Polisi bayaran balik",
 			adminSignIn: "Log masuk admin",
 			copyright: "© 2026 {brand}. Hak cipta terpelihara.",
 		},
@@ -400,6 +402,11 @@ export const ms: Dictionary = {
 		errorAddressRequired: "Masukkan alamat penghantaran.",
 		errorAddressShort: "Alamat itu kelihatan terlalu pendek.",
 		errorRemeasure: "Tandakan ini untuk meneruskan.",
+		termsAgree: "Saya bersetuju dengan terma jualan dan polisi bayaran balik.",
+		termsLink: "Terma jualan",
+		refundsLink: "Polisi bayaran balik",
+		errorTerms: "Tandakan ini untuk membuat pesanan.",
+		soldBy: "Dijual oleh {address}. Hubungi {email} atau {phone}.",
 		submitting: "Sedang membuat pesanan…",
 		descriptionOnline:
 			"Pereka akan mengukur semula di tapak sebelum apa-apa dibina.",
@@ -586,6 +593,27 @@ export const ms: Dictionary = {
 		whatsappHeading: "Kemas kini pesanan melalui WhatsApp",
 		whatsapp:
 			"Jika anda menanda kotak semasa pembayaran, kami akan menghantar kemas kini tentang pesanan anda — bayaran, langkah pengeluaran dan penghantaran — ke nombor telefon anda melalui WhatsApp. WhatsApp dikendalikan oleh Meta Platforms, yang memproses nombor anda dan mesej ini, mungkin di luar Malaysia. Kami tidak menghantar apa-apa lagi, dan anda boleh menghentikan kemas kini dengan menyekat nombor tersebut.",
+		accountHeading: "Akaun anda",
+		account:
+			"Apabila anda log masuk dengan Google, kami menerima nama, alamat e-mel dan foto profil anda, dan menyimpannya sebagai akaun anda.",
+		ordersHeading: "Pesanan anda",
+		orders:
+			"Apabila anda membuat pesanan, kami menyimpan nama, nombor telefon, e-mel, alamat penghantaran, reka bentuk yang dipesan dan harganya sebagai rekod jualan.",
+		recipientsHeading: "Siapa lagi yang menerima data anda",
+		recipients:
+			"Pemproses pembayaran kami menerima butiran kad dan bil anda — butiran ini tidak sampai ke pelayan kami. Syarikat kurier yang menghantar pesanan anda menerima nama, nombor telefon dan alamat anda. Google mengendalikan log masuk. Mux menstrim video tutorial kami dan oleh itu melihat alamat IP penonton. Sebahagian syarikat ini memproses data di luar Malaysia.",
+		obligatoryHeading: "Apa yang anda mesti berikan",
+		obligatory:
+			"Semua ini datang terus daripada anda, atau daripada Google apabila anda log masuk. Melayari dan merancang tidak memerlukan apa-apa data. Untuk membuat pesanan, anda mesti memberikan nama, nombor telefon dan alamat penghantaran — tanpanya kami tidak dapat menghantar pesanan. E-mel dan kemas kini WhatsApp adalah pilihan.",
+		retentionHeading: "Tempoh simpanan",
+		retention:
+			"Rekod pesanan disimpan selama yang dikehendaki oleh undang-undang cukai dan perakaunan. Akaun tanpa pesanan disimpan sehingga anda meminta kami memadamnya.",
+		rightsHeading: "Hak anda",
+		rights:
+			"Anda boleh meminta untuk melihat data peribadi yang kami simpan tentang anda, membetulkannya, menerima salinan dalam bentuk mudah alih, menarik balik persetujuan, atau meminta kami berhenti menggunakannya untuk pemasaran langsung. Tulis kepada alamat hubungan di bawah.",
+		otherLawsHeading: "Undang-undang lain",
+		otherLaws:
+			"Notis ini diberikan di bawah Akta Perlindungan Data Peribadi 2010 Malaysia. Penyedia analitik kami memproses data penggunaan di Kesatuan Eropah di bawah perjanjian pemprosesan datanya sendiri; EzCabinet menjual di Malaysia sahaja.",
 		choiceHeading: "Pilihan anda",
 		choice:
 			"Jika anda menolak, kami hanya mengira lawatan tanpa kuki atau storan tempatan, dengan pengecam yang ditetapkan semula setiap hari, dan tiada rakaman dibuat. Anda boleh menukar pilihan pada bila-bila masa dengan memadam data laman ini dalam pelayar anda.",
@@ -593,6 +621,62 @@ export const ms: Dictionary = {
 		contact:
 			"Pertanyaan, atau permintaan untuk mengakses atau membetulkan data anda: {email}",
 		back: "Kembali ke laman utama",
+	},
+	terms: {
+		title: "Terma jualan",
+		intro:
+			"Terma ini terpakai apabila anda memesan kabinet melalui perancang EzCabinet. Sila baca bersama polisi bayaran balik sebelum membayar.",
+		sellerHeading: "Penjual",
+		seller: "{address}. E-mel {email}, telefon {phone}.",
+		goodsHeading: "Apa yang anda beli",
+		goods:
+			"Kabinet yang dibuat mengikut tempahan berdasarkan reka bentuk yang anda hantar. Paparan 3D ialah ilustrasi; ukuran akhir disahkan apabila kami mengukur semula tapak anda.",
+		priceHeading: "Harga",
+		price:
+			"Harga adalah dalam Ringgit Malaysia (RM) dan dipaparkan sepenuhnya semasa pembayaran, termasuk caj penghantaran dan sebarang cukai yang dikenakan. Harga yang dikenakan ialah harga yang dikira oleh sistem kami semasa pesanan dibuat.",
+		paymentHeading: "Pembayaran",
+		payment:
+			"Anda boleh membayar dengan kad melalui penyedia pembayaran kami, atau melalui pindahan bank jika ditawarkan. Pesanan anda disahkan setelah kami menerima bayaran penuh.",
+		remeasureHeading: "Ukur semula",
+		remeasure:
+			"Pereka akan mengukur tapak anda sebelum pengeluaran. Jika reka bentuk perlu diubah, kami akan memberi sebut harga perubahan itu dan mendapatkan persetujuan anda sebelum pengeluaran bermula.",
+		deliveryHeading: "Penghantaran",
+		delivery:
+			"Kami menghantar ke alamat yang anda berikan semasa pembayaran, biasanya dalam masa 4 hingga 6 minggu selepas ukur semula, dan memaklumkan anda apabila penghantaran ditempah. Sila pastikan ada orang untuk menerimanya.",
+		changesHeading: "Membetulkan pesanan anda",
+		changes:
+			"Anda boleh mengubah reka bentuk dan butiran anda pada bila-bila masa sebelum membayar. Jika anda menyedari kesilapan selepas itu, tulis kepada {email} dengan segera; kami boleh membetulkannya sehingga pengeluaran bermula.",
+		rightsHeading: "Hak anda sebagai pengguna",
+		rights:
+			"Tiada apa-apa dalam terma ini atau polisi bayaran balik yang mengehadkan hak anda di bawah Akta Perlindungan Pengguna 1999, termasuk jaminan bahawa barangan berkualiti boleh terima dan menepati perihalannya.",
+		complaintsHeading: "Aduan",
+		complaints:
+			"Tulis kepada {email} dengan rujukan pesanan anda dan kami akan membalas. Jika kami tidak dapat menyelesaikannya, anda boleh membawa perkara itu ke Tribunal Tuntutan Pengguna Malaysia.",
+		lawHeading: "Undang-undang yang mentadbir",
+		law: "Terma ini ditadbir oleh undang-undang Malaysia.",
+	},
+	refunds: {
+		title: "Polisi bayaran balik",
+		intro:
+			"Kabinet kami dibuat mengikut tempahan, jadi sama ada pesanan boleh dibayar balik bergantung pada sama ada pengeluaran telah bermula.",
+		beforeHeading: "Membatalkan sebelum pengeluaran bermula",
+		before:
+			"Anda boleh membatalkan dengan bayaran balik penuh pada bila-bila masa sebelum pengeluaran bermula. Halaman pesanan anda menunjukkan bila ia bermula.",
+		afterHeading: "Membatalkan selepas pengeluaran bermula",
+		after:
+			"Setelah pengeluaran bermula, pesanan tidak boleh dibatalkan atau dibayar balik kerana kabinet sedang dibuat mengikut reka bentuk anda.",
+		damagedHeading: "Rosak atau cacat semasa penghantaran",
+		damaged:
+			"Maklumkan kami dalam masa 7 hari selepas penghantaran, bersama gambar. Kami akan membaiki atau menggantikan kabinet yang terjejas tanpa kos kepada anda, termasuk penghantaran semula.",
+		remeasureHeading: "Jika reka bentuk berubah semasa ukur semula",
+		remeasure:
+			"Kami memberi sebut harga baharu untuk reka bentuk yang diubah. Sebarang perbezaan dibayar balik kepada anda atau dicaj sebelum pengeluaran bermula.",
+		howPaidHeading: "Cara bayaran balik dibuat",
+		howPaid:
+			"Bayaran balik dikembalikan ke kaedah pembayaran yang anda gunakan, dalam masa 14 hari bekerja selepas kami bersetuju dengan bayaran balik itu.",
+		howToAskHeading: "Cara memohon",
+		howToAsk:
+			"Tulis kepada {email} dengan rujukan pesanan anda, contohnya IC-20261007-001.",
 	},
 	whatsapp: {
 		autoReply:
@@ -630,5 +714,6 @@ export const ms: Dictionary = {
 		nudge: "Disimpan pada peranti ini. Log masuk untuk membuat pesanan.",
 		nudgeDismiss: "Bukan sekarang",
 		back: "Kembali ke laman utama",
+		privacyNote: "Dengan meneruskan, anda bersetuju dengan",
 	},
 };

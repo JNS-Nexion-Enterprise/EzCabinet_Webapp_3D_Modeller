@@ -157,6 +157,27 @@ export function UsersTable({
 		router.refresh();
 	}
 
+	async function deleteUser(id: string) {
+		setError(null);
+		setBusyId(id);
+		const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
+		setBusyId(null);
+		setArmed(null);
+		if (!res.ok) {
+			const reason = (await res.json().catch(() => null))?.error;
+			setError(
+				reason === "has_orders"
+					? "This account has orders, so it can't be deleted. Suspend it instead."
+					: reason === "not_yourself"
+						? "You can't delete yourself."
+						: "Could not delete that account.",
+			);
+			return;
+		}
+		await reload(query, scope);
+		router.refresh();
+	}
+
 	// `staff=0` on the GET route means "no role filter", not "customers
 	// only" — there is no server-side customer-only param. So the
 	// Staff/Customers pill is a client-side split on top of that superset:
@@ -379,6 +400,18 @@ export function UsersTable({
 										>
 											{user.disabled ? "Restore" : "Suspend"}
 										</button>
+									)}
+									{!isSelf && (
+										<ArmedButton
+											action="delete"
+											id={user.id}
+											armed={armed}
+											setArmed={setArmed}
+											disabled={busyId === user.id}
+											label="Delete"
+											confirmLabel="Confirm delete"
+											onConfirm={() => deleteUser(user.id)}
+										/>
 									)}
 								</div>
 							</li>

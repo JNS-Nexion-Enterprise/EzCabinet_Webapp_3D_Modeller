@@ -360,6 +360,11 @@ model Order {
   /// Ticked by the customer at checkout. No opt-in, no WhatsApp message.
   whatsappOptIn      Boolean          @default(false)
   whatsappOptInAt    DateTime?
+  /// `TERMS_VERSION` (`lib/orders/terms.ts`) as it stood when the customer
+  /// ticked the terms box, and when. Null on orders placed before the terms
+  /// existed.
+  termsVersion       String?
+  termsAcceptedAt    DateTime?
   /// The site language the customer checked out in (`LOCALES`), which picks
   /// the WhatsApp template language. A string, not an enum, so adding a
   /// language is not a migration.
@@ -379,7 +384,10 @@ model Order {
   user         User    @relation("OrderCustomer", fields: [userId], references: [id], onDelete: Restrict)
   /// Null on a pre-cutover order marked paid before accounts existed.
   paidByUserId String?
-  paidByUser   User?   @relation("OrderPaidBy", fields: [paidByUserId], references: [id])
+  paidByUser   User?   @relation("OrderPaidBy", fields: [paidByUserId], references: [id], onDelete: SetNull)
+  /// Who marked it paid, by name, written with `paidByUserId`. The id goes
+  /// null when that account is deleted (`lib/auth/deleteUser.ts`); this stays.
+  paidByName   String?
 
   @@index([status, createdAt])
   @@index([userId, createdAt])

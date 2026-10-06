@@ -18,7 +18,8 @@ const bodySchema = z.object({
  * mark it, and a cancelled order cannot be revived as paid.
  *
  * `BYPASS_USER.id` is not a real row, so it must not go into a foreign key —
- * a bypass admin marking an order paid still leaves `paidByUserId` null.
+ * a bypass admin marking an order paid still leaves `paidByUserId` null,
+ * and `paidByName` with it.
  */
 export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 	"orders:markPaid",
@@ -32,8 +33,10 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			);
 		}
 
+		const bypass = user.id === BYPASS_USER.id;
 		const marked = await markOrderPaid(id, {
-			paidByUserId: user.id === BYPASS_USER.id ? null : user.id,
+			paidByUserId: bypass ? null : user.id,
+			paidByName: bypass ? null : user.name,
 			paymentRef: parsed.data.paymentRef,
 		});
 		if (marked) return NextResponse.json({ ok: true });

@@ -9,6 +9,7 @@ import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { fill } from "@/lib/copy/fill";
 import { htmlLang } from "@/lib/copy/locales";
+import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 import { malaysianNational, toE164 } from "@/lib/logistics/phone";
 import type { PaymentClient, PaymentStart } from "@/lib/payments/types";
 import type { FinishId, RoomTypeId } from "@/lib/planner/catalogue";
@@ -48,7 +49,10 @@ const quoteUrl = () =>
 	`${window.location.pathname}${window.location.search}#quote`;
 
 type FieldErrors = Partial<
-	Record<"name" | "phone" | "email" | "siteAddress" | "remeasure", string>
+	Record<
+		"name" | "phone" | "email" | "siteAddress" | "remeasure" | "terms",
+		string
+	>
 >;
 
 /**
@@ -193,6 +197,7 @@ export function QuoteScreen({
 		else if (field("siteAddress").length < 5)
 			errors.siteAddress = t.quote.errorAddressShort;
 		if (field("remeasure") !== "on") errors.remeasure = t.quote.errorRemeasure;
+		if (field("terms") !== "on") errors.terms = t.quote.errorTerms;
 		setFieldErrors(errors);
 		const firstBad = Object.keys(errors)[0];
 		if (firstBad) {
@@ -235,6 +240,8 @@ export function QuoteScreen({
 						addressNotes: field("addressNotes") || null,
 					},
 					remeasureAccepted: true,
+					// Reached only past the validation above, like the line before it.
+					termsAccepted: true,
 					whatsappOptIn: field("whatsappOptIn") === "on",
 					locale,
 				}),
@@ -564,6 +571,59 @@ export function QuoteScreen({
 										{fieldErrors.remeasure}
 									</p>
 								)}
+								<label className="flex min-h-9 cursor-pointer items-start gap-[9px]">
+									<input
+										name="terms"
+										type="checkbox"
+										required
+										disabled={busy}
+										aria-invalid={!!fieldErrors.terms}
+										aria-describedby={describedBy("terms")}
+										className="mt-px h-4 w-4 shrink-0 accent-[#171717]"
+									/>
+									{/* New tabs: the typed form and the design must still be
+									    here when the customer comes back from reading. */}
+									<span className="text-[#5c574e] text-[12px] leading-[17px]">
+										{t.quote.termsAgree}{" "}
+										<a
+											href={`/${locale}/terms`}
+											target="_blank"
+											rel="noopener"
+											className="underline"
+										>
+											{t.quote.termsLink}
+										</a>
+										{" · "}
+										<a
+											href={`/${locale}/refunds`}
+											target="_blank"
+											rel="noopener"
+											className="underline"
+										>
+											{t.quote.refundsLink}
+										</a>
+									</span>
+								</label>
+								{fieldErrors.terms && (
+									<p
+										id="err-terms"
+										role="alert"
+										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
+									>
+										{fieldErrors.terms}
+									</p>
+								)}
+								{/* The seller's name, address and contact, before the button
+								    rather than one click away — the Consumer Protection
+								    (Electronic Trade Transactions) Regulations 2024 want them
+								    disclosed before purchase. */}
+								<p className="text-[#5c574e] text-[12px] leading-[17px]">
+									{fill(t.quote.soldBy, {
+										address: WORKSHOP_ADDRESS,
+										email: t.landing.footer.email,
+										phone: WORKSHOP_PHONE,
+									})}
+								</p>
 								{/* Beside the button, not at the top of the form: on a phone that
 								    is where the customer is looking when a payment fails. */}
 								{paymentFailed !== null && (

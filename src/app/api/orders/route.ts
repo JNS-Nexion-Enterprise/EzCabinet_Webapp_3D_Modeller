@@ -13,6 +13,7 @@ import {
 } from "@/lib/orders/layoutSchema";
 import { PAYMENT_PROVIDER } from "@/lib/orders/payment";
 import { priceOrder } from "@/lib/orders/price";
+import { TERMS_VERSION } from "@/lib/orders/terms";
 import { validateOrder } from "@/lib/orders/validate";
 import { startPayment } from "@/lib/payments/start";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
@@ -43,6 +44,8 @@ const orderInputSchema = z.object({
 	}),
 	/** The re-measure notice is a condition of the order, not a preference. */
 	remeasureAccepted: z.literal(true),
+	/** The terms of sale and refund policy, linked beside the box. Required the same way. */
+	termsAccepted: z.literal(true),
 	/** Unticked by default. No opt-in, no WhatsApp message — PDPA and Meta both require it. */
 	whatsappOptIn: z.boolean().default(false),
 	/** The site language, so messages arrive in it. */
@@ -123,6 +126,10 @@ export async function POST(request: Request) {
 				userId: user.id,
 				whatsappOptIn,
 				whatsappOptInAt: whatsappOptIn ? new Date() : null,
+				// The schema above already refused anything but `true`. The version
+				// is ours — the body has no field for it.
+				termsVersion: TERMS_VERSION,
+				termsAcceptedAt: new Date(),
 				locale,
 			},
 			select: NOTIFY_ORDER_SELECT,
