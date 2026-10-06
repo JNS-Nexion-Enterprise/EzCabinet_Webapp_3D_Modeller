@@ -540,7 +540,7 @@ next request.
 
 An invited staff row is created with `emailVerified: true`. That is not
 cosmetic: Better Auth refuses to link a Google account to a row whose email is
-unverified, and this app deliberately runs no email vendor, so without it no
+unverified, and this app deliberately sends no verification email, so without it no
 staff member could ever use the Google button. The superadmin typing a
 colleague's work address is the assertion that it is theirs.
 
@@ -560,6 +560,25 @@ Public password sign-up is closed (`disabledPaths: ["/sign-up/email"]` in
 which the router never sees. Promoting an existing customer row strips any
 password and session it carries before granting the role — a customer row
 with a password was made by someone other than the address's owner.
+
+**Staff with a password need a second factor.** Better Auth's `twoFactor`
+plugin (TOTP + backup codes); `AuthUser.mustSetupTwoFactor` is derived on
+every read by `needsTwoFactorSetup` (`lib/auth/twoFactor.ts`) and enforced
+beside `mustChangePassword` — `withAuth` refuses, `requirePage` redirects to
+`/admin/setup-2fa`. Google-only staff are exempt, and the plugin gates
+`/sign-in/email` only, so a staff member with both a password and a linked
+Google account can still enter through Google without a code: accepted.
+`/two-factor/disable` is closed; the only way to remove a second factor is a
+superadmin's **Reset 2FA** on `/admin/users`, or `pnpm auth:reset-2fa <email>`
+when the last superadmin is the one locked out.
+
+**Forgot password is email, staff only, and only after enrolment.**
+`sendStaffReset` (`lib/auth/passwordReset.ts`) mails a link through Resend
+(`lib/email.ts`, one `fetch`) when `canEmailReset` allows it: staff role, not
+disabled, has a password, 2FA enabled. Better Auth's reset would otherwise
+create a password on a customer row, and a mailbox alone must not be enough
+to enrol an authenticator. The link never touches the second factor.
+`RESEND_API_KEY` and `EMAIL_FROM` are production-only, like `WHATSAPP_TOKEN`.
 
 Design: `docs/superpowers/specs/2026-09-20-rbac-design.md`.
 
@@ -600,6 +619,14 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 11. **`advance` takes its actor from the session; `book` and `split` still take a client-typed one.** `DeliveryDetail.tsx`'s name field feeds `bookedBy` and `split`'s `actor`, and `split` falls back to the literal `"Admin"` when the field is left blank — so the delivery activity log has mixed provenance, a session user's real name on some rows and whatever an admin typed (or nothing) on others. Narrowed, not closed.
 12. **`prisma.config.ts` sets no `shadowDatabaseUrl`.** That is why `prisma migrate dev` refuses non-interactively and `prisma migrate diff --from-migrations` cannot run — both need a shadow database to diff against. Until it is set, a migration written outside an interactive terminal has to be hand-written and independently verified (`prisma migrate diff --from-config-datasource --to-schema`) rather than generated. The fix is two lines in `prisma.config.ts` pointing at a disposable shadow database URL; not done here.
 13. **FedEx's sandbox cannot check our requests.** It answers only its own canned inputs — any request that differs from a documented example returns `SERVICE.PACKAGECOMBINATION.INVALID`, and its canned Malaysian rates are USD — so `adapters/fedex.ts` is tested against fixtures built from FedEx's documented shapes, not against FedEx. `pnpm fedex:ping` against **production** checks only the token, rate and track calls — it never ships. Ship, pickup, both cancels and the label fetch are first exercised by the first real booking: run it once production credentials exist, watch it with FedEx Ship Manager open, and cancel it there if anything looks wrong. Production also needs label certification with FedEx, which can take weeks.
+14. **The forgot-password response time differs by who asked.** Better Auth
+    awaits `sendResetPassword`, and only an eligible staff address reaches
+    Resend, so that request is slower than one for a customer or a made-up
+    address. The page text is identical, but a patient observer could time
+    it to learn which addresses are enrolled staff. Better Auth's default
+    rate limit on `/request-password-reset` is memory-backed and does not
+    hold across serverless instances. Three staff addresses, low value;
+    the fix is to queue the mail with `after()` and a database-backed limit.
 
 ## Open questions — resolve before trusting pricing.ts
 
