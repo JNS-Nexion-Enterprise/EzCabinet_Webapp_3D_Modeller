@@ -43,7 +43,7 @@
 | --- | --- |
 | `src/lib/auth/passkeyRules.ts` (new) | Pure rules: who owes a passkey check; what a session may do to passkeys |
 | `src/lib/auth/passkeyHooks.ts` (new) | Server glue between Better Auth and the rules: request guard, owner check, session stamps |
-| `prisma/schema.prisma`, `prisma/migrations/20261006010000_customer_passkey/` | `passkey` table, `session.passkeyVerified` |
+| `prisma/schema.prisma`, `prisma/migrations/20261006020000_customer_passkey/` | `passkey` table, `session.passkeyVerified` |
 | `src/lib/auth.ts`, `src/lib/auth/client.ts` | Plugin and hook wiring |
 | `src/lib/auth/session.ts`, `src/lib/orders/access.ts`, `src/app/api/orders/route.ts`, `src/app/api/orders/[token]/pay/route.ts` | The derived flag and its enforcement |
 | `src/app/[lang]/verify/` (new) | Enrol-or-prompt screen |
@@ -210,7 +210,7 @@ git commit -m "feat(auth): rules for the customer passkey step"
 
 **Files:**
 - Modify: `package.json` (add `@better-auth/passkey@1.7.5`)
-- Modify: `prisma/schema.prisma`; Create: `prisma/migrations/20261006010000_customer_passkey/migration.sql`
+- Modify: `prisma/schema.prisma`; Create: `prisma/migrations/20261006020000_customer_passkey/migration.sql`
 - Create: `src/lib/auth/passkeyHooks.ts`; Test: `src/lib/auth/__tests__/passkeyHooks.test.ts`
 - Modify: `src/lib/auth.ts`, `src/lib/auth/client.ts`
 
@@ -268,7 +268,7 @@ model Passkey {
 - [ ] **Step 3: Migration, by hand**
 
 ```sql
--- prisma/migrations/20261006010000_customer_passkey/migration.sql
+-- prisma/migrations/20261006020000_customer_passkey/migration.sql
 ALTER TABLE "session" ADD COLUMN "passkeyVerified" BOOLEAN DEFAULT false;
 
 CREATE TABLE "passkey" (
@@ -629,7 +629,7 @@ Run: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`
 Expected: all pass. No behaviour has changed for anyone yet: nothing reads `passkeyVerified`.
 
 ```bash
-git add package.json pnpm-lock.yaml prisma/schema.prisma prisma/migrations/20261006010000_customer_passkey src/lib/auth/passkeyHooks.ts src/lib/auth/__tests__/passkeyHooks.test.ts src/lib/auth.ts src/lib/auth/client.ts
+git add package.json pnpm-lock.yaml prisma/schema.prisma prisma/migrations/20261006020000_customer_passkey src/lib/auth/passkeyHooks.ts src/lib/auth/__tests__/passkeyHooks.test.ts src/lib/auth.ts src/lib/auth/client.ts
 git commit -m "feat(auth): passkey plugin, table, and the guard around its write paths"
 ```
 
