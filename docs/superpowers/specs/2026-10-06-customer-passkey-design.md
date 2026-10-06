@@ -49,6 +49,10 @@ demo customer when `AUTH_ENABLED=false`.
 - An `after` hook on `/passkey/verify-authentication` and
   `/passkey/verify-registration` sets `passkeyVerified` on the resulting
   session.
+- A passkey ceremony needs an existing Google session, and the passkey must
+  belong to that same account: it is a second step, never a sign-in on its
+  own, and on a shared device it must not switch the browser to another
+  person's account.
 - **Load-bearing guard**, a `before` hook. Out of the box the plugin lets any
   fresh session register another passkey and any session delete one, so a
   Google-only session could add its own passkey and verify with it. Therefore:
