@@ -188,6 +188,12 @@ export default function AdminLoginPage() {
 								{busy && <Spinner />}
 								{busy ? "Checking…" : "Sign in"}
 							</button>
+							<Link
+								href="/admin/forgot-password"
+								className="text-center text-neutral-500 text-xs hover:text-neutral-900"
+							>
+								Forgot password?
+							</Link>
 						</>
 					)}
 					{step === "code" && (

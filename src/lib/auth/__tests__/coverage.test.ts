@@ -111,6 +111,10 @@ describe("every admin surface is gated", () => {
 
 		const ungated = files.filter((f) => {
 			if (f === "src/app/admin/login/page.tsx") return false; // the sign-in page itself
+			// Signed-out by design: the visitor has no session. Both are
+			// listed in `SIGNED_OUT_ADMIN_PAGES` (`proxy.ts`).
+			if (f === "src/app/admin/forgot-password/page.tsx") return false;
+			if (f === "src/app/admin/reset-password/page.tsx") return false;
 			// Calls `currentUser()` directly instead: `requirePage` now redirects
 			// a user with `mustChangePassword` set straight back to this page,
 			// which would loop forever.

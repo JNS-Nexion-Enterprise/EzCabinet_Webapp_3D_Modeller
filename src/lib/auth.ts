@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
+import { clearForcedChange, sendStaffReset } from "@/lib/auth/passwordReset";
 import { prisma } from "@/lib/catalogue/db";
 
 /**
@@ -51,9 +52,17 @@ export const auth = betterAuth({
 		// See the module comment above: this is the line that stops a staff
 		// invite from signing the inviting superadmin in as the invitee.
 		autoSignIn: false,
-		// No reset mail: three internal users in one office, and the superadmin
-		// sets the initial password by hand. Adding self-serve reset means
-		// adding an email vendor.
+		// Reset by emailed link, staff only — `sendStaffReset` decides who is
+		// mailed, and why it is not simply "everyone with a row".
+		sendResetPassword: async ({ user, url }) => {
+			await sendStaffReset(user.id, url);
+		},
+		resetPasswordTokenExpiresIn: 60 * 60,
+		// Whoever knew the old password is out, on every device.
+		revokeSessionsOnPasswordReset: true,
+		onPasswordReset: async ({ user }) => {
+			await clearForcedChange(user.id);
+		},
 		//
 		// Better Auth's own default is 8
 		// (node_modules/better-auth/dist/context/create-context.mjs:

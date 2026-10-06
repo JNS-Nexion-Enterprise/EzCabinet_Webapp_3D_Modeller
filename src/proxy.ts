@@ -4,6 +4,13 @@ import { NextResponse } from "next/server";
 import { authEnabled } from "@/lib/auth/enabled";
 import { needsLocaleRedirect, negotiateLocale } from "@/lib/copy/locales";
 
+/** Admin pages a signed-out visitor must reach: there is no session to ask for. */
+const SIGNED_OUT_ADMIN_PAGES = [
+	"/admin/login",
+	"/admin/forgot-password",
+	"/admin/reset-password",
+];
+
 /**
  * Two jobs, deliberately kept apart.
  *
@@ -20,7 +27,7 @@ export async function proxy(request: NextRequest) {
 
 	if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
 		if (!authEnabled()) return NextResponse.next();
-		if (pathname === "/admin/login") return NextResponse.next();
+		if (SIGNED_OUT_ADMIN_PAGES.includes(pathname)) return NextResponse.next();
 
 		if (getSessionCookie(request)) return NextResponse.next();
 
