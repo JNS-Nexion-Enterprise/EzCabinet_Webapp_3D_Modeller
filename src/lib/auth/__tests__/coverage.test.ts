@@ -128,3 +128,19 @@ describe("every admin surface is gated", () => {
 		expect(ungated).toEqual([]);
 	});
 });
+
+describe("every account page goes through viewerOf", () => {
+	it("calls viewerOf in each page under the (account) group", async () => {
+		const pages = (await walk("src/app/[lang]/(account)")).filter((f) =>
+			f.endsWith("page.tsx"),
+		);
+		expect(pages.length).toBeGreaterThan(1);
+		// `viewerOf` is the one place a signed-out visitor is sent to sign in
+		// and an unverified customer to the passkey step. A page that reads
+		// `currentUser()` itself skips both.
+		const ungated = pages.filter(
+			(file) => !/\bviewerOf\(/.test(readFileSync(file, "utf8")),
+		);
+		expect(ungated).toEqual([]);
+	});
+});

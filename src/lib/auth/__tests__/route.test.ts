@@ -22,6 +22,7 @@ const user: AuthUser = {
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 };
 
 describe("withAuth", () => {

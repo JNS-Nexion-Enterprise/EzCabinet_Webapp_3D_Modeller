@@ -27,6 +27,7 @@ const customer = (id: string): AuthUser => ({
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 });
 
 const delivery = (order: { userId: string } | null) => ({

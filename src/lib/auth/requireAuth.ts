@@ -20,6 +20,7 @@ export const BYPASS_USER: AuthUser = {
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 };
 
 /**

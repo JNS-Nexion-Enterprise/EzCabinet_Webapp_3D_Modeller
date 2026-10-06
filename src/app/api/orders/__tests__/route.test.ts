@@ -55,3 +55,18 @@ describe("POST /api/orders without a signed-in user", () => {
 		expect(upsert).toHaveBeenCalledOnce();
 	});
 });
+
+describe("POST /api/orders for a customer who has not passed a passkey", () => {
+	it("401s passkey_required and writes nothing", async () => {
+		vi.stubEnv("AUTH_ENABLED", "true");
+		currentUser.mockResolvedValue({
+			id: "u1",
+			role: "CUSTOMER",
+			mustVerifyPasskey: true,
+		});
+		const response = await post();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "passkey_required" });
+		expect(upsert).not.toHaveBeenCalled();
+	});
+});

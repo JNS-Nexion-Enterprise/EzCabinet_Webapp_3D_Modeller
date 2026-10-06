@@ -30,6 +30,7 @@ describe("account layout", () => {
 			disabled: false,
 			mustChangePassword: false,
 			mustSetupTwoFactor: false,
+			mustVerifyPasskey: false,
 		});
 		await open();
 		expect(count).toHaveBeenCalledWith({ where: { userId: "staff-1" } });

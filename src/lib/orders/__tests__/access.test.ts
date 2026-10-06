@@ -23,6 +23,7 @@ const user = (over: Partial<AuthUser>): AuthUser => ({
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 	...over,
 });
 
@@ -89,6 +90,28 @@ describe("viewerOf", () => {
 		currentUser.mockResolvedValue(user({ id: "owner" }));
 		await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({
 			id: "owner",
+		});
+	});
+
+	it("sends a customer who has not passed a passkey to the verify page, and back", async () => {
+		currentUser.mockResolvedValue(user({ mustVerifyPasskey: true }));
+		await expect(viewerOf("en", "/en/orders")).rejects.toThrow(
+			"REDIRECT:/en/verify?next=%2Fen%2Forders",
+		);
+	});
+
+	it("lets a verified customer through", async () => {
+		currentUser.mockResolvedValue(user({}));
+		await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({
+			id: "u1",
+		});
+	});
+
+	it("does not ask for a passkey with AUTH_ENABLED off", async () => {
+		vi.stubEnv("AUTH_ENABLED", "false");
+		currentUser.mockResolvedValue(user({ mustVerifyPasskey: true }));
+		await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({
+			id: "u1",
 		});
 	});
 });

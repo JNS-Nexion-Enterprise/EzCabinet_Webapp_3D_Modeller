@@ -249,6 +249,12 @@ export function QuoteScreen({
 				);
 				return;
 			}
+			if (res?.status === 401 && body?.error === "passkey_required") {
+				// Signed in with Google but not yet past the passkey. Same detour
+				// as sign-in: the design is on disk and comes back on return.
+				router.push(`/${locale}/verify?next=${encodeURIComponent(quoteUrl())}`);
+				return;
+			}
 			if (!res?.ok || typeof body?.token !== "string") {
 				setBusy(false);
 				if (body?.error === "bad_phone") {
