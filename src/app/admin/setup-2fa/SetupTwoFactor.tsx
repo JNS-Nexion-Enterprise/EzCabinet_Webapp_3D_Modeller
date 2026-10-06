@@ -108,9 +108,22 @@ export function SetupTwoFactor() {
 				}}
 				className="mt-5 flex flex-col gap-4"
 			>
-				<p className="text-neutral-700 text-sm">
-					Scan this with your authenticator app, then enter the 6-digit code it
-					shows.
+				{/* Spelled out as steps because the reflex is to point the phone's
+				    camera at any QR code — which opens nothing useful, or files the
+				    account somewhere the person will not look for it. */}
+				<ol className="list-decimal space-y-1 pl-5 text-neutral-700 text-sm">
+					<li>
+						Open your authenticator app (Google Authenticator, Microsoft
+						Authenticator or 1Password). Install one first if you have none.
+					</li>
+					<li>
+						In the app, tap <strong>+</strong> or <strong>Add account</strong>,
+						then <strong>Scan a QR code</strong>.
+					</li>
+					<li>Scan the code below and enter the 6-digit code the app shows.</li>
+				</ol>
+				<p className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-amber-900 text-xs">
+					Scan from inside the authenticator app, not with your phone's camera.
 				</p>
 				{/* SVG built by `uqr` from a URI our own server returned — no user
 				    input reaches this markup. */}
