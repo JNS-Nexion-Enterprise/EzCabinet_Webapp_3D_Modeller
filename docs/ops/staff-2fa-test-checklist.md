@@ -131,6 +131,115 @@ Invite one more account with role **Admin**, enrol it, sign in as it.
 - [ ] `/admin/users` → 404
 - [ ] In the console: `fetch("/api/admin/users/ANY_ID/reset-2fa", { method: "POST" }).then((r) => r.status)` → `403`
 
+## Customer passkey
+
+A customer who signs in with Google must also prove a passkey before their session counts. Design: `docs/superpowers/specs/2026-10-06-customer-passkey-design.md`. Sections continue the lettering above.
+
+### Setup (this part)
+
+- [ ] `AUTH_ENABLED=true` in `.env.local`, and `BETTER_AUTH_URL=http://localhost:3000` (a passkey is bound to the hostname; `localhost` is allowed over http)
+- [ ] A customer Google account that is **not** staff, and has never signed in here (or whose passkeys were reset)
+- [ ] A browser with a passkey provider: Chrome with the device's screen lock or Touch ID. To test without a second device, use Chrome DevTools → **More tools → WebAuthn → Enable virtual authenticator environment** and add an authenticator (CTAP2, internal, resident key and user verification on). A second virtual authenticator stands in for "another device"
+- [ ] A second customer Google account, for the "different account" step in section K
+
+## I. Enrolling and signing in
+
+- [ ] Sign in with the customer Google account for the first time → lands on `/en/verify` ("One more step"), not My orders
+- [ ] **Set up passkey** → the browser sheet opens; approve it → lands on My orders
+- [ ] Repeat on a fresh account, cancel the browser sheet → stays on the verify page with "That didn't work. Try again"; **Set up passkey** works the second time
+- [ ] Sign out, sign in with Google again → the verify page now says "Confirm it's you with your passkey." with **Use passkey**; approve → lands on My orders
+- [ ] In a private window, sign in with Google (no passkey available there) → still on the verify page; nothing under My orders opens
+- [ ] While signed in but unverified (verify page showing), open each of `/en/orders`, an `/en/order/<token>` of that customer, and `/en/track/<token>` of one of their deliveries → each bounces to `/en/verify`
+- [ ] Verify, then open the same three pages → all open
+- [ ] A **staff** account (invited, with password and 2FA) signs in → never sent to `/en/verify`; opening `/en/verify` while signed in as staff redirects away to My orders
+
+## J. Checkout
+
+- [ ] Signed out, build a design, press the quote button → asked to sign in; after Google lands on `/en/verify` for a first-time customer
+- [ ] Complete the passkey → returns to the quote screen with the design intact
+- [ ] Place the order → order page opens
+- [ ] Signed in but unverified, press **Place order** (or **Pay**) on the quote screen → sent to `/en/verify`, not an order. (The API answer `401 passkey_required` is covered by tests; a bare console `fetch` to `/api/orders` is stopped by the bot check first, so it is not a useful manual step)
+
+## K. Things that must fail
+
+Run these from the console while signed in as the customer, on any `/en/...` page.
+
+- [ ] Unverified session (Google just done, verify page still showing) that **already has a passkey**, ask for registration options:
+
+  ```js
+  fetch("/api/auth/passkey/generate-register-options", { credentials: "include" }).then((r) => r.status);
+  ```
+
+  → `403` (only the first passkey may be registered unverified)
+- [ ] Same unverified session, delete a passkey:
+
+  ```js
+  fetch("/api/auth/passkey/delete-passkey", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: "anything" }),
+  }).then((r) => r.status);
+  ```
+
+  → `403`
+- [ ] Verified session, customer with exactly one passkey, same delete call → `400` ("An account keeps at least one passkey")
+- [ ] Verified session, an unknown plugin route:
+
+  ```js
+  fetch("/api/auth/passkey/some-new-route", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: "{}",
+  }).then((r) => r.status);
+  ```
+
+  → `403` (unknown `/passkey/*` routes are refused)
+- [ ] On a device that holds a passkey for **another** account (second Google account enrolled on the same browser or virtual authenticator), sign in as the first account and press **Use passkey**, choosing the other account's passkey → "That passkey belongs to a different account"; still not verified, still the first account
+
+## L. Passkeys page
+
+- [ ] My orders → "Your account" side nav → **Passkeys** (`/en/passkeys`) lists the passkey with an "Added …" date
+- [ ] The date is the Malaysia date: change the machine clock or compare after 16:00 UTC; the page loads with no hydration warning in the console
+- [ ] **Rename** → type a name → **Save** → the new name shows after reload
+- [ ] **Add another device** → the browser sheet opens → a second passkey is listed
+- [ ] With two passkeys, **Remove** one → gone. With one left, **Remove** → "You need at least one passkey" and it stays
+- [ ] Session older than a day (see below): **Add another device** asks for the existing passkey first, then the new one, with no sign-out
+
+## M. Stale session on the verify screen
+
+Enrolling needs a Google session under one day old. To provoke it locally, age the session in the local database (there is no UI for it). Use a customer with **no** passkey, sign in with Google, stop on the verify page, then run:
+
+```sql
+UPDATE "session"
+SET "createdAt" = now() - interval '2 days'
+WHERE "userId" = (SELECT "id" FROM "user" WHERE "email" = 'customer@example.com')
+  AND "passkeyVerified" IS NOT TRUE;
+```
+
+- [ ] Press **Set up passkey** → the page shows "For your security, sign in with Google again to set up your passkey" and a **Sign in again** link
+- [ ] **Sign in again** → Google → back on the verify page with a new session; **Set up passkey** now works
+
+## N. Redirects
+
+- [ ] Verified customer opens `/en/verify?next=//example.com` → lands on `/en/orders`, not another site
+- [ ] `/en/verify?next=/a/..//example.com` → lands on `/en/orders`
+- [ ] `/en/verify?next=/en/passkeys` → lands on `/en/passkeys` (a same-site path is followed)
+
+## O. Lost device — Reset passkey
+
+- [ ] As a **superadmin**, `/admin/users` → the customer's row shows their recent order numbers and phone, and **Reset passkey**
+- [ ] As an **Admin** (not superadmin) → `/admin/users` is 404, so neither the phone line nor **Reset passkey** is visible; in the console `fetch("/api/admin/users/ANY_ID/reset-passkey", { method: "POST" }).then((r) => r.status)` → `403`
+- [ ] A customer with no passkey has no **Reset passkey** button
+- [ ] **Reset passkey** → **Confirm reset** → the customer is signed out in their open browser (next page load goes to sign-in)
+- [ ] The customer signs in with Google → on `/en/verify` with **Set up passkey** (enrolling again, not "Use passkey")
+- [ ] Dev server terminal shows a `Passkeys reset` line with actor and target ids
+
+## P. Browsers and languages
+
+- [ ] Open `/en/verify` inside an in-app browser (WhatsApp, Facebook or Instagram link) → "This browser can't use passkeys. Open this page in Chrome or Safari." and no button
+- [ ] `/zh/verify` and `/ms/verify` render translated, as do the Passkeys page and its error messages
+- [ ] Known and accepted: a customer inside an in-app browser cannot order there at all
+
 ## Known and accepted
 
 - A staff member with both a password and a linked Google account can still enter through Google without a code. Their password door is closed; the Google door relies on Google.
