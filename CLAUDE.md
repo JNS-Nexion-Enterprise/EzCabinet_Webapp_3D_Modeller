@@ -596,6 +596,23 @@ order surfaces with `AUTH_ENABLED=false` (`viewerOf` and the two order routes
 check `authEnabled()`); the guard on `/passkey/*` and the verify page still
 enforce.
 
+`/api/payments/config` tells the quote screen when the passkey step is owed
+(`passkeyRequired`), so `QuoteScreen` shows a passkey card in place of the
+form, as it does for sign-in, and nothing typed is lost at the detour. The
+401 `passkey_required` handling there is only the backstop.
+
+**The limit: the first passkey is enrolled by whoever holds the Google
+account.** Until an account has a passkey, anyone who can sign in to it can
+set one up; that covers every existing customer on launch day and any
+customer just after a reset. A passkey protects the account from then on,
+not before. Operators read `docs/ops/customer-passkey-runbook.md` (reset
+procedure, ring-back, deploy checklist).
+
+Better Auth's session-management routes (`/list-sessions`, `/revoke-session`,
+`/revoke-sessions`, `/revoke-other-sessions`, `/update-session`) are in
+`disabledPaths`: the app calls none of them, and a Google-only session could
+otherwise list the owner's sessions or sign the owner out everywhere.
+
 The plugin's defaults would undo this, so `hooks.before` in `lib/auth.ts`
 runs `passkeyBeforeHook` (`lib/auth/passkeyHooks.ts`), which calls
 `checkPasskeyRequest` on every `/passkey/*` write: an unverified session may
@@ -696,6 +713,13 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
     in Chrome or Safari (`passkeySupport.ts`); they cannot order from inside
     the in-app browser at all. `passkey_enrol_started` against
     `passkey_enrol_completed` in PostHog is the measure of what this costs.
+16. **A verified customer session is long-lived and only staff can end it.** A
+    verified session slides for seven days, the customer cannot sign other
+    devices out (the session routes are disabled), and the only way to end a
+    stolen verified session is a staff reset. Within a day of its creation
+    such a session could also add its own passkey and remove the owner's.
+    That is outside this feature's threat (someone holding only the Google
+    account), recorded so it is not mistaken for covered.
 
 ## Open questions — resolve before trusting pricing.ts
 

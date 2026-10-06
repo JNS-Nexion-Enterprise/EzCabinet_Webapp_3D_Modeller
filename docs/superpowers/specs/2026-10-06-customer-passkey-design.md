@@ -21,6 +21,10 @@ passkey registered to the account.
 A `CUSTOMER` session counts as signed in only when
 `session.passkeyVerified = true`.
 
+Limit: until an account has its first passkey, whoever can sign in to the
+Google account sets it up. A passkey protects the account from then on, not
+before.
+
 Applies to `/[lang]/orders`, `/[lang]/order/[token]`, an order-owned
 `/[lang]/track/[token]`, `POST /api/orders` and payment start. The planner,
 pricing and landing pages stay anonymous.
@@ -36,8 +40,9 @@ demo customer when `AUTH_ENABLED=false`.
 4. A passkey exists: the browser prompts; the plugin's
    `/passkey/verify-authentication` creates a fresh session, which is stamped
    verified.
-5. Back to `next`. The planner draft survives the detour the same way it
-   survives today's sign-in bounce (`lib/plannerDraft.ts`).
+5. Back to `next`. At checkout the quote screen shows a passkey card in place
+   of the form (`/api/payments/config` says the step is owed), so nothing the
+   customer typed is lost.
 
 ## Server
 

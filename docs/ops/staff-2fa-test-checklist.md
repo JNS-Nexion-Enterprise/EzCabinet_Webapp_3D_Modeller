@@ -155,11 +155,14 @@ A customer who signs in with Google must also prove a passkey before their sessi
 
 ## J. Checkout
 
-- [ ] Signed out, build a design, sign in with Google from the quote screen → back on the quote screen with the checkout form
-- [ ] Press **Place order** (or **Pay**) as a customer who has not passed a passkey → sent to `/en/verify`
-- [ ] Complete the passkey → returns to the quote screen with the design intact
-- [ ] Press **Place order** (or **Pay**) again → the order is placed and its order page opens
-- [ ] Signed in but unverified, press **Place order** (or **Pay**) on the quote screen → sent to `/en/verify`, not an order. (The API answer `401 passkey_required` is covered by tests; a bare console `fetch` to `/api/orders` is stopped by the bot check first, so it is not a useful manual step)
+Run this section on a Vercel preview — placing an order cannot be tested on a local production build.
+
+- [ ] Signed out, build a design, sign in with Google from the quote screen → back on the quote screen showing the "One more step before you pay" card, not the form
+- [ ] Press **Continue** → `/en/verify`; complete the passkey → back on the quote screen with the design intact and the checkout form showing
+- [ ] Press **Place order** (or **Pay**) → the order is placed and its order page opens
+- [ ] As an already verified customer, the quote screen shows the form straight away, with no card
+- [ ] Reload the quote screen while the card is showing → still the card, never a flash of the form
+- [ ] The old backstop (`401 passkey_required` sending the customer to `/en/verify` after Pay) is covered by tests; a bare console `fetch` to `/api/orders` is stopped by the bot check first, so it is not a useful manual step
 
 ## K. Things that must fail
 

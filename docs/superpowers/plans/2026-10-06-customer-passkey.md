@@ -1766,6 +1766,9 @@ Against a production build on a spare port with `AUTH_ENABLED=true` and `BETTER_
 ## Rollout
 
 1. Decide the production domain first. Passkeys are tied to it; a later change strands every customer.
-2. Deploy. Every existing customer session becomes unverified: at their next visit to an order page they are asked to set up a passkey. Tell EzCabinet's sales team this is coming and what the screen looks like.
-3. Staff resetting a customer's passkey must confirm identity from the order number and the phone on the order, by phone — never on the strength of an email or a WhatsApp message alone.
-4. Watch `passkey_enrol_started` → `passkey_enrol_completed` in PostHog for the first week. That drop is the price of this feature at checkout.
+2. Deploy. Every existing customer session becomes unverified: at their next visit to an order page they are asked to set up a passkey. Customers whose Google session is more than a day old get one extra Google round-trip first, because enrolling needs a fresh session. Tell EzCabinet's sales team this is coming and what the screen looks like.
+3. Resetting a customer's passkey follows `docs/ops/customer-passkey-runbook.md` (ring back the phone on the order, confirm an order number, stay on the line).
+4. Set `BETTER_AUTH_URL` to the one canonical production address and redirect every other hostname to it before launch; `www` and the bare domain are different to a passkey. Never change it afterwards.
+5. Set `WHATSAPP_SALES_NUMBER`: the "Lost your device?" link on the passkey screen needs it.
+6. Only a superadmin can reset a customer's passkey (`users:manage`); an admin takes the call and passes it on.
+7. Watch `passkey_enrol_started` → `passkey_enrol_completed` in PostHog for the first week. That drop is the price of this feature at checkout.
