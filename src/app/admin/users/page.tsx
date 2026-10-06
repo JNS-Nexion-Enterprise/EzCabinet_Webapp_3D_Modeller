@@ -1,6 +1,6 @@
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import { requirePage } from "@/lib/auth/page";
-import { HAS_PASSWORD_SELECT, withHasPassword } from "@/lib/auth/userRow";
+import { toUserRow, USER_ROW_SELECT } from "@/lib/auth/userRow";
 import { prisma } from "@/lib/catalogue/db";
 import { InviteStaff } from "./InviteStaff";
 import { UsersTable } from "./UsersTable";
@@ -10,16 +10,7 @@ export default async function UsersPage() {
 
 	const users = await prisma.user.findMany({
 		where: { NOT: { role: "CUSTOMER" } },
-		select: {
-			id: true,
-			email: true,
-			name: true,
-			role: true,
-			disabled: true,
-			twoFactorEnabled: true,
-			lastLoginAt: true,
-			...HAS_PASSWORD_SELECT,
-		},
+		select: USER_ROW_SELECT,
 		orderBy: [{ role: "asc" }, { createdAt: "desc" }],
 		take: 200,
 	});
@@ -36,7 +27,7 @@ export default async function UsersPage() {
 					</p>
 				</div>
 				<InviteStaff />
-				<UsersTable initial={users.map(withHasPassword)} selfId={actor.id} />
+				<UsersTable initial={users.map(toUserRow)} selfId={actor.id} />
 			</main>
 		</div>
 	);
