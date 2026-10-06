@@ -21,9 +21,11 @@ Do not trust a caller because they rang you.
 
 Never reset because of an inbound call, an email or a WhatsApp message.
 
+The phone and order number appear on the row only when the customer has placed an order. If the row shows neither, there is nothing on file to ring back, and no order history to protect. Reset only after you have confirmed the Google account's email address with the caller.
+
 ## Stay on the line
 
-Stay with the customer until they have signed in again and the row shows a passkey. Between the reset and their new passkey, anyone who holds their Google account could set one up first.
+Ask the customer to sign in and set up their passkey while you wait. The list does not update by itself, so reload **People**, then **Customers**. When the **Reset passkey** button is back on their row, their new passkey is in place. Between the reset and their new passkey, anyone who holds their Google account could set one up first.
 
 ## What a passkey does not protect
 

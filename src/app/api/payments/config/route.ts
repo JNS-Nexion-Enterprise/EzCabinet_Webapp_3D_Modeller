@@ -18,8 +18,16 @@ export async function GET() {
 	// `passkeyRequired`: a signed-in customer who still owes the passkey step.
 	// The quote screen shows a card for it instead of the form, so nothing a
 	// customer types is lost at the detour. One boolean, no other user data.
-	const passkeyRequired =
-		authEnabled() && (await currentUser())?.mustVerifyPasskey === true;
+	// A failed user read must not take the gateway down with it (the screen
+	// would fall back to bank transfer): the server's 401 on Pay is the real check.
+	let passkeyRequired = false;
+	if (authEnabled()) {
+		try {
+			passkeyRequired = (await currentUser())?.mustVerifyPasskey === true;
+		} catch (error) {
+			console.error("payments/config: could not read the user", error);
+		}
+	}
 	return NextResponse.json(
 		// `signIn`: whether checkout needs an account. False only with
 		// AUTH_ENABLED off, which is local only — see `demoCustomer`.

@@ -164,8 +164,8 @@ export async function passkeyAfterHook(ctx: HookContext): Promise<void> {
 	});
 	if (enrolled > 0) {
 		await markSessionVerified(current.session.token);
-		// Id only. An enrolment on an account with orders leaves a trace, as a
-		// reset does.
+		// Every successful registration, a second device included. Id only: an
+		// enrolment on an account with orders leaves a trace, as a reset does.
 		console.info("Passkey enrolled", { user: current.user.id });
 	}
 }

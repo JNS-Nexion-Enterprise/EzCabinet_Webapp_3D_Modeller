@@ -3,8 +3,9 @@ import type { AuthUser } from "@/lib/auth/session";
 
 const currentUser = vi.hoisted(() => vi.fn<() => Promise<AuthUser | null>>());
 vi.mock("@/lib/auth/session", () => ({ currentUser }));
+const CLIENT = { kind: "stripe-elements", publishableKey: "pk_test" };
 vi.mock("@/lib/payments/registry", () => ({
-	activeGateway: async () => null,
+	activeGateway: async () => ({ client: CLIENT }),
 }));
 
 const { GET } = await import("../route");
@@ -44,6 +45,25 @@ describe("GET /api/payments/config, passkeyRequired", () => {
 		const response = await GET();
 		expect((await response.json()).passkeyRequired).toBe(true);
 		expect(response.headers.get("Cache-Control")).toBe("no-store");
+	});
+
+	it("is false for staff", async () => {
+		currentUser.mockResolvedValue({ ...customer(false), role: "ADMIN" });
+		expect((await (await GET()).json()).passkeyRequired).toBe(false);
+	});
+
+	it("still answers 200 with the gateway when reading the user fails", async () => {
+		const error = vi.spyOn(console, "error").mockImplementation(() => {});
+		currentUser.mockRejectedValue(new Error("db down"));
+		const response = await GET();
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			client: CLIENT,
+			signIn: true,
+			passkeyRequired: false,
+		});
+		expect(error).toHaveBeenCalled();
+		error.mockRestore();
 	});
 
 	it("is false with AUTH_ENABLED off, without reading the user", async () => {

@@ -203,7 +203,7 @@ describe("hooks on an endpoint with no path", () => {
 	});
 });
 
-describe("passkeyAfterHook, first enrolment", () => {
+describe("passkeyAfterHook, any successful registration", () => {
 	beforeEach(() => vi.clearAllMocks());
 
 	it("verifies the session and leaves a trace with the user id only", async () => {

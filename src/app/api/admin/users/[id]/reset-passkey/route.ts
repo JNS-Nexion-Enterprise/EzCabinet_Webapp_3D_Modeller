@@ -15,7 +15,7 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			select: { id: true, role: true },
 		});
 		// Staff have no passkey step; resetting one would only sign them out.
-		if (!target || target.role !== "CUSTOMER") {
+		if (target?.role !== "CUSTOMER") {
 			return NextResponse.json({ error: "not_found" }, { status: 404 });
 		}
 		await resetPasskeys(target.id);
