@@ -9,6 +9,10 @@ const BASE = "https://site.invalid";
  * anywhere in a URL, so "/\t/evil.example" reads as `//evil.example`. So the
  * input is parsed the way a browser will, must stay on our origin, and what
  * is returned is the parsed form, never the raw string.
+ *
+ * Dot segments are the other trap: "/a/..//evil.example" resolves to
+ * "//evil.example", so an empty path segment is refused outright and the
+ * result must re-parse to itself on our origin.
  */
 export function safeCustomerNext(
 	next: string | undefined,
@@ -31,5 +35,23 @@ export function safeCustomerNext(
 	if (url.origin !== BASE) return fallback;
 	// The verify page itself, however it is spelled (%76erify, VERIFY, ./, //).
 	if (segments[1]?.toLowerCase() === "verify") return fallback;
-	return url.pathname + url.search + url.hash;
+	// Dot segments are resolved but an empty segment survives them:
+	// "/a/..//evil.example" parses to "//evil.example", which a browser reads
+	// as another site. Refuse any empty segment rather than repair it.
+	if (url.pathname === "/" || url.pathname.includes("//")) return fallback;
+
+	// Second, independent proof: what we return must re-parse to itself, on
+	// our origin.
+	const result = url.pathname + url.search + url.hash;
+	try {
+		const again = new URL(result, BASE);
+		if (
+			again.origin !== BASE ||
+			again.pathname + again.search + again.hash !== result
+		)
+			return fallback;
+	} catch {
+		return fallback;
+	}
+	return result;
 }

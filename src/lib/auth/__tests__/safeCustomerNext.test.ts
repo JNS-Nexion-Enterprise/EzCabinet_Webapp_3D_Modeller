@@ -25,12 +25,20 @@ describe("safeCustomerNext", () => {
 		["empty segment before verify", "/en//verify"],
 		["upper-case verify", "/en/VERIFY?next=x"],
 		["malformed encoding", "/%E0%A4%A"],
+		["dot segments leave an empty one", "/a/..//evil.example"],
+		["current dir then empty segment", "/.//evil.example"],
+		["parent dir then empty segment", "/..//evil.example"],
+		["dot segments with a path", "/en/..//evil.example/path"],
+		["empty segment in the middle", "/en///orders"],
+		["dot slash only", "/./"],
+		["bare slash", "/"],
 	])("falls back to My orders for %s", (_label, next) => {
 		expect(safeCustomerNext(next, "zh")).toBe("/zh/orders");
 	});
 	it("returns the normalised path, never the raw input", () => {
 		expect(safeCustomerNext("/en/orders#top", "en")).toBe("/en/orders#top");
 		expect(safeCustomerNext("/en/orders/../orders", "en")).toBe("/en/orders");
+		expect(safeCustomerNext("/en/orders/", "en")).toBe("/en/orders/");
 	});
 	it("never sends the customer back to the verify page itself", () => {
 		expect(safeCustomerNext("/en/verify?next=/en/verify", "en")).toBe(
