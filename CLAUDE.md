@@ -465,7 +465,7 @@ Three screens. Rooms open on an **empty wall**: there is no invented starter run
 
 **An order is priced on the server, never by the client.** `POST /api/orders` (public, guarded by BotID) runs `validateOrder` — the engine forgives an unknown family or an off-ladder width silently, which is fine on a canvas and wrong for a payment — then `priceOrder` against the published catalogue, and stores the design as `{ schemaVersion, layout }` with the catalogue version it was priced against. A paid order's **Create delivery** (`/admin/logistics?fromOrder=`) fills the delivery form with one row per cabinet at its designed size and the design row's weight; the delivery create route refuses an order that is not paid.
 
-**No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A first-time customer then meets one more step, `/[lang]/verify`, to set up a passkey before the order is placed. A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
+**No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A customer whose session has not passed a passkey then meets one more step, `/[lang]/verify`, before the order is placed — a first-time customer sets one up, a returning one uses theirs. A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
 
 **An order is its owner's.** Every order carries the account that placed it
 (`Order.userId`, `NOT NULL`). `/[lang]/orders` lists the signed-in customer's
@@ -587,11 +587,14 @@ to enrol an authenticator. The link never touches the second factor.
 **A customer's Google session is not enough; a passkey is.** After Google
 sign-in a `CUSTOMER` session counts only once `session.passkeyVerified` is
 set, which only a passkey ceremony does (`@better-auth/passkey`).
-`AuthUser.mustVerifyPasskey` is derived on every read
-(`lib/auth/passkeyRules.ts`) and enforced where customer surfaces read the
+`AuthUser.mustVerifyPasskey` is derived on every read in
+`lib/auth/session.ts` from `needsPasskeyCheck` (`lib/auth/passkeyRules.ts`)
+and enforced where customer surfaces read the
 viewer: `viewerOf` redirects to `/[lang]/verify`, and `POST /api/orders` and
-the pay route answer 401 `passkey_required`. Staff are exempt, and so is
-everything with `AUTH_ENABLED=false`.
+the pay route answer 401 `passkey_required`. Staff are exempt. So are the
+order surfaces with `AUTH_ENABLED=false` (`viewerOf` and the two order routes
+check `authEnabled()`); the guard on `/passkey/*` and the verify page still
+enforce.
 
 The plugin's defaults would undo this, so `hooks.before` in `lib/auth.ts`
 runs `passkeyBeforeHook` (`lib/auth/passkeyHooks.ts`), which calls
@@ -617,8 +620,10 @@ Three rules in those hooks look like candidates for tidying and are not:
   upgrade that adds a route needs it allow-listed in `passkeyHooks.ts`, or
   that route is a 403.
 - **`createSession: true` on registration is refused**, because it would mint
-  a second, unverified session and swap the cookie to it. `Passkey.credentialID`
-  is `@@unique` for the same reason: one credential, one account.
+  a second, unverified session and swap the cookie to it. Separately,
+  `Passkey.credentialID` is `@@unique`: one credential belongs to one account,
+  and lookups by credential id are unordered, so a duplicate id registered on
+  another account could break the real owner's passkey step.
 
 Enrolling needs a Google session under one day old — Better Auth's
 fresh-session rule, kept deliberately so that a stolen old session cannot
@@ -628,8 +633,8 @@ the session with a passkey prompt instead.
 
 `safeCustomerNext` (`lib/auth/safeCustomerNext.ts`) decides where the verify
 page sends a customer afterwards: only a same-site path, refusing control
-characters, backslashes, empty path segments and anything that does not
-re-parse to itself. It was broken twice in review (tab stripping, then dot
+characters, backslashes, empty path segments, a bare `/`, the verify page
+itself in any spelling, and anything that does not re-parse to itself. It was broken twice in review (tab stripping, then dot
 segments like `/a/..//example.com`), so any change must extend the
 hostile-input tests in `__tests__/safeCustomerNext.test.ts`.
 

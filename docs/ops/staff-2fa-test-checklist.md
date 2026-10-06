@@ -148,16 +148,17 @@ A customer who signs in with Google must also prove a passkey before their sessi
 - [ ] **Set up passkey** → the browser sheet opens; approve it → lands on My orders
 - [ ] Repeat on a fresh account, cancel the browser sheet → stays on the verify page with "That didn't work. Try again"; **Set up passkey** works the second time
 - [ ] Sign out, sign in with Google again → the verify page now says "Confirm it's you with your passkey." with **Use passkey**; approve → lands on My orders
-- [ ] In a private window, sign in with Google (no passkey available there) → still on the verify page; nothing under My orders opens
+- [ ] Open the order link in a private window, sign in with Google, and do not approve the passkey prompt → the order page does not open
 - [ ] While signed in but unverified (verify page showing), open each of `/en/orders`, an `/en/order/<token>` of that customer, and `/en/track/<token>` of one of their deliveries → each bounces to `/en/verify`
 - [ ] Verify, then open the same three pages → all open
 - [ ] A **staff** account (invited, with password and 2FA) signs in → never sent to `/en/verify`; opening `/en/verify` while signed in as staff redirects away to My orders
 
 ## J. Checkout
 
-- [ ] Signed out, build a design, press the quote button → asked to sign in; after Google lands on `/en/verify` for a first-time customer
+- [ ] Signed out, build a design, sign in with Google from the quote screen → back on the quote screen with the checkout form
+- [ ] Press **Place order** (or **Pay**) as a customer who has not passed a passkey → sent to `/en/verify`
 - [ ] Complete the passkey → returns to the quote screen with the design intact
-- [ ] Place the order → order page opens
+- [ ] Press **Place order** (or **Pay**) again → the order is placed and its order page opens
 - [ ] Signed in but unverified, press **Place order** (or **Pay**) on the quote screen → sent to `/en/verify`, not an order. (The API answer `401 passkey_required` is covered by tests; a bare console `fetch` to `/api/orders` is stopped by the bot check first, so it is not a useful manual step)
 
 ## K. Things that must fail
@@ -183,17 +184,8 @@ Run these from the console while signed in as the customer, on any `/en/...` pag
 
   → `403`
 - [ ] Verified session, customer with exactly one passkey, same delete call → `400` ("An account keeps at least one passkey")
-- [ ] Verified session, an unknown plugin route:
+Unknown passkey routes are refused by default; this cannot be provoked by hand and is covered by `src/lib/auth/__tests__/passkeyHooks.test.ts`.
 
-  ```js
-  fetch("/api/auth/passkey/some-new-route", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: "{}",
-  }).then((r) => r.status);
-  ```
-
-  → `403` (unknown `/passkey/*` routes are refused)
 - [ ] On a device that holds a passkey for **another** account (second Google account enrolled on the same browser or virtual authenticator), sign in as the first account and press **Use passkey**, choosing the other account's passkey → "That passkey belongs to a different account"; still not verified, still the first account
 
 ## L. Passkeys page
@@ -202,8 +194,17 @@ Run these from the console while signed in as the customer, on any `/en/...` pag
 - [ ] The date is the Malaysia date: change the machine clock or compare after 16:00 UTC; the page loads with no hydration warning in the console
 - [ ] **Rename** → type a name → **Save** → the new name shows after reload
 - [ ] **Add another device** → the browser sheet opens → a second passkey is listed
-- [ ] With two passkeys, **Remove** one → gone. With one left, **Remove** → "You need at least one passkey" and it stays
-- [ ] Session older than a day (see below): **Add another device** asks for the existing passkey first, then the new one, with no sign-out
+- [ ] With two passkeys, **Remove** one → gone. With one left, **Remove** is disabled and hovering it shows "You need at least one passkey" as a tooltip (the server refusal is the console check in section K)
+- [ ] Verified session older than a day: age it, then reload the Passkeys page (do not sign out):
+
+  ```sql
+  UPDATE "session"
+  SET "createdAt" = now() - interval '2 days'
+  WHERE "userId" = (SELECT "id" FROM "user" WHERE "email" = 'customer@example.com')
+    AND "passkeyVerified" IS TRUE;
+  ```
+
+  Press **Add another device** → the browser first asks for an existing passkey (this renews the session), then asks to register the new one → a second passkey is listed, with no sign-out
 
 ## M. Stale session on the verify screen
 
@@ -227,7 +228,7 @@ WHERE "userId" = (SELECT "id" FROM "user" WHERE "email" = 'customer@example.com'
 
 ## O. Lost device — Reset passkey
 
-- [ ] As a **superadmin**, `/admin/users` → the customer's row shows their recent order numbers and phone, and **Reset passkey**
+- [ ] As a **superadmin**, `/admin/users` opens on the **Staff** filter: press **Customers** first. The customer's row shows **Reset passkey** once they hold a passkey, and the order-number-and-phone line only if they have placed at least one order (use one who has, or expect no line)
 - [ ] As an **Admin** (not superadmin) → `/admin/users` is 404, so neither the phone line nor **Reset passkey** is visible; in the console `fetch("/api/admin/users/ANY_ID/reset-passkey", { method: "POST" }).then((r) => r.status)` → `403`
 - [ ] A customer with no passkey has no **Reset passkey** button
 - [ ] **Reset passkey** → **Confirm reset** → the customer is signed out in their open browser (next page load goes to sign-in)
