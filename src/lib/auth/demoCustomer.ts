@@ -37,5 +37,5 @@ export async function demoCustomer(): Promise<AuthUser | null> {
 		},
 	});
 	// A CUSTOMER never owes 2FA setup.
-	return { ...row, mustSetupTwoFactor: false };
+	return { ...row, mustSetupTwoFactor: false, mustVerifyPasskey: false };
 }

@@ -43,7 +43,7 @@
 | --- | --- |
 | `src/lib/auth/passkeyRules.ts` (new) | Pure rules: who owes a passkey check; what a session may do to passkeys |
 | `src/lib/auth/passkeyHooks.ts` (new) | Server glue between Better Auth and the rules: request guard, owner check, session stamps |
-| `prisma/schema.prisma`, `prisma/migrations/20261006010000_customer_passkey/` | `passkey` table, `session.passkeyVerified` |
+| `prisma/schema.prisma`, `prisma/migrations/20261006020000_customer_passkey/` | `passkey` table, `session.passkeyVerified` |
 | `src/lib/auth.ts`, `src/lib/auth/client.ts` | Plugin and hook wiring |
 | `src/lib/auth/session.ts`, `src/lib/orders/access.ts`, `src/app/api/orders/route.ts`, `src/app/api/orders/[token]/pay/route.ts` | The derived flag and its enforcement |
 | `src/app/[lang]/verify/` (new) | Enrol-or-prompt screen |
@@ -210,7 +210,7 @@ git commit -m "feat(auth): rules for the customer passkey step"
 
 **Files:**
 - Modify: `package.json` (add `@better-auth/passkey@1.7.5`)
-- Modify: `prisma/schema.prisma`; Create: `prisma/migrations/20261006010000_customer_passkey/migration.sql`
+- Modify: `prisma/schema.prisma`; Create: `prisma/migrations/20261006020000_customer_passkey/migration.sql`
 - Create: `src/lib/auth/passkeyHooks.ts`; Test: `src/lib/auth/__tests__/passkeyHooks.test.ts`
 - Modify: `src/lib/auth.ts`, `src/lib/auth/client.ts`
 
@@ -268,7 +268,7 @@ model Passkey {
 - [ ] **Step 3: Migration, by hand**
 
 ```sql
--- prisma/migrations/20261006010000_customer_passkey/migration.sql
+-- prisma/migrations/20261006020000_customer_passkey/migration.sql
 ALTER TABLE "session" ADD COLUMN "passkeyVerified" BOOLEAN DEFAULT false;
 
 CREATE TABLE "passkey" (
@@ -629,7 +629,7 @@ Run: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`
 Expected: all pass. No behaviour has changed for anyone yet: nothing reads `passkeyVerified`.
 
 ```bash
-git add package.json pnpm-lock.yaml prisma/schema.prisma prisma/migrations/20261006010000_customer_passkey src/lib/auth/passkeyHooks.ts src/lib/auth/__tests__/passkeyHooks.test.ts src/lib/auth.ts src/lib/auth/client.ts
+git add package.json pnpm-lock.yaml prisma/schema.prisma prisma/migrations/20261006020000_customer_passkey src/lib/auth/passkeyHooks.ts src/lib/auth/__tests__/passkeyHooks.test.ts src/lib/auth.ts src/lib/auth/client.ts
 git commit -m "feat(auth): passkey plugin, table, and the guard around its write paths"
 ```
 
@@ -1766,6 +1766,9 @@ Against a production build on a spare port with `AUTH_ENABLED=true` and `BETTER_
 ## Rollout
 
 1. Decide the production domain first. Passkeys are tied to it; a later change strands every customer.
-2. Deploy. Every existing customer session becomes unverified: at their next visit to an order page they are asked to set up a passkey. Tell EzCabinet's sales team this is coming and what the screen looks like.
-3. Staff resetting a customer's passkey must confirm identity from the order number and the phone on the order, by phone — never on the strength of an email or a WhatsApp message alone.
-4. Watch `passkey_enrol_started` → `passkey_enrol_completed` in PostHog for the first week. That drop is the price of this feature at checkout.
+2. Deploy. Every existing customer session becomes unverified: at their next visit to an order page they are asked to set up a passkey. Customers whose Google session is more than a day old get one extra Google round-trip first, because enrolling needs a fresh session. Tell EzCabinet's sales team this is coming and what the screen looks like.
+3. Resetting a customer's passkey follows `docs/ops/customer-passkey-runbook.md` (ring back the phone on the order, confirm an order number, stay on the line).
+4. Set `BETTER_AUTH_URL` to the one canonical production address and redirect every other hostname to it before launch; `www` and the bare domain are different to a passkey. Never change it afterwards.
+5. Set `WHATSAPP_SALES_NUMBER`: the "Lost your device?" link on the passkey screen needs it.
+6. Only a superadmin can reset a customer's passkey (`users:manage`); an admin takes the call and passes it on.
+7. Watch `passkey_enrol_started` → `passkey_enrol_completed` in PostHog for the first week. That drop is the price of this feature at checkout.

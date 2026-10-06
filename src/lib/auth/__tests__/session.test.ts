@@ -32,6 +32,7 @@ const user = {
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 };
 
 beforeEach(() => {
@@ -41,13 +42,19 @@ beforeEach(() => {
 
 describe("currentUser", () => {
 	it("returns the user for a live session", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue(row);
 		await expect(currentUser()).resolves.toEqual(user);
 	});
 
 	it("asks staff with a password and no second factor to set one up", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue({ ...row, accounts: [{ id: "acc1" }] });
 		await expect(currentUser()).resolves.toEqual({
 			...user,
@@ -56,7 +63,10 @@ describe("currentUser", () => {
 	});
 
 	it("does not ask once the second factor is enabled", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue({
 			...row,
 			accounts: [{ id: "acc1" }],
@@ -66,7 +76,10 @@ describe("currentUser", () => {
 	});
 
 	it("treats a null twoFactorEnabled as not enabled", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue({
 			...row,
 			accounts: [{ id: "acc1" }],
@@ -84,22 +97,75 @@ describe("currentUser", () => {
 	});
 
 	it("is null when the session names a row that is gone", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue(null);
 		await expect(currentUser()).resolves.toBeNull();
 	});
 
 	it("is null for a disabled user holding a valid session", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue({ ...row, disabled: true });
 		await expect(currentUser()).resolves.toBeNull();
 	});
 
 	it("reads the row on every call, never a cached role", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue(row);
 		await currentUser();
 		await currentUser();
 		expect(findUnique).toHaveBeenCalledTimes(2);
+	});
+
+	it("asks a customer whose session has not passed a passkey", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: true,
+		});
+	});
+
+	it("does not ask once the session is passkey-verified", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: true },
+		});
+		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: false,
+		});
+	});
+
+	it("treats a null flag as not verified", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: null },
+		});
+		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: true,
+		});
+	});
+
+	it("never asks staff, whatever the session says", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue(row);
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: false,
+		});
 	});
 });

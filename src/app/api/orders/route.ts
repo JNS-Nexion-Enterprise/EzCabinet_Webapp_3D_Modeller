@@ -2,6 +2,7 @@ import { checkBotId } from "botid/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { demoCustomer } from "@/lib/auth/demoCustomer";
+import { authEnabled } from "@/lib/auth/enabled";
 import { currentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/catalogue/db";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
@@ -68,6 +69,11 @@ export async function POST(request: Request) {
 	const user = (await currentUser()) ?? (await demoCustomer());
 	if (!user) {
 		return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
+	}
+	// Same boundary as the order pages. `authEnabled()` keeps local checkout
+	// working with AUTH_ENABLED off, where the demo customer never has one.
+	if (authEnabled() && user.mustVerifyPasskey) {
+		return NextResponse.json({ error: "passkey_required" }, { status: 401 });
 	}
 
 	const parsed = orderInputSchema.safeParse(

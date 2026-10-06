@@ -13,6 +13,8 @@ type UserRow = {
 	disabled: boolean;
 	twoFactorEnabled: boolean | null;
 	hasPassword: boolean;
+	passkeyCount: number;
+	recentOrders: { ref: string; phone: string }[];
 	lastLoginAt: Date | string | null;
 };
 
@@ -133,6 +135,22 @@ export function UsersTable({
 			return;
 		}
 		// Resetting your own signs you out; the refresh lands on the login page.
+		await reload(query, scope);
+		router.refresh();
+	}
+
+	async function resetPasskey(id: string) {
+		setError(null);
+		setBusyId(id);
+		const res = await fetch(`/api/admin/users/${id}/reset-passkey`, {
+			method: "POST",
+		});
+		setBusyId(null);
+		setArmed(null);
+		if (!res.ok) {
+			setError("Could not reset the passkey.");
+			return;
+		}
 		await reload(query, scope);
 		router.refresh();
 	}
@@ -324,6 +342,14 @@ export function UsersTable({
 										<span className="block truncate text-[#737373] text-[12px]">
 											{user.email}
 										</span>
+										{user.role === "CUSTOMER" &&
+											user.recentOrders.length > 0 && (
+												<span className="block truncate text-[#a3a3a3] text-[11px]">
+													{user.recentOrders
+														.map((o) => `${o.ref} · ${o.phone}`)
+														.join(", ")}
+												</span>
+											)}
 									</span>
 								</div>
 								{user.role === "CUSTOMER" ? (
@@ -369,6 +395,18 @@ export function UsersTable({
 											label="Reset 2FA"
 											confirmLabel="Confirm reset"
 											onConfirm={() => resetTwoFactor(user.id)}
+										/>
+									)}
+									{user.role === "CUSTOMER" && user.passkeyCount > 0 && (
+										<ArmedButton
+											action="passkey"
+											id={user.id}
+											armed={armed}
+											setArmed={setArmed}
+											disabled={busyId === user.id}
+											label="Reset passkey"
+											confirmLabel="Confirm reset"
+											onConfirm={() => resetPasskey(user.id)}
 										/>
 									)}
 									{user.role !== "CUSTOMER" && user.hasPassword && (

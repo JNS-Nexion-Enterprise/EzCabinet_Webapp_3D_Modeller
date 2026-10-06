@@ -475,7 +475,7 @@ meaning. Both pages and the privacy notice are **drafts**, rendered by
 `Order.productionStage` being set. There is no refund or cancel flow in the
 app.
 
-**No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
+**No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A customer whose session has not passed a passkey then meets one more step, `/[lang]/verify`, before the order is placed — a first-time customer sets one up, a returning one uses theirs. A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
 
 **An order is its owner's.** Every order carries the account that placed it
 (`Order.userId`, `NOT NULL`). `/[lang]/orders` lists the signed-in customer's
@@ -601,6 +601,90 @@ create a password on a customer row, and a mailbox alone must not be enough
 to enrol an authenticator. The link never touches the second factor.
 `RESEND_API_KEY` and `EMAIL_FROM` are production-only, like `WHATSAPP_TOKEN`.
 
+**A customer's Google session is not enough; a passkey is.** After Google
+sign-in a `CUSTOMER` session counts only once `session.passkeyVerified` is
+set, which only a passkey ceremony does (`@better-auth/passkey`).
+`AuthUser.mustVerifyPasskey` is derived on every read in
+`lib/auth/session.ts` from `needsPasskeyCheck` (`lib/auth/passkeyRules.ts`)
+and enforced where customer surfaces read the
+viewer: `viewerOf` redirects to `/[lang]/verify`, and `POST /api/orders` and
+the pay route answer 401 `passkey_required`. Staff are exempt. So are the
+order surfaces with `AUTH_ENABLED=false` (`viewerOf` and the two order routes
+check `authEnabled()`); the guard on `/passkey/*` and the verify page still
+enforce.
+
+`/api/payments/config` tells the quote screen when the passkey step is owed
+(`passkeyRequired`), so `QuoteScreen` shows a passkey card in place of the
+form, as it does for sign-in, and nothing typed is lost at the detour. The
+401 `passkey_required` handling there is only the backstop.
+
+**The limit: the first passkey is enrolled by whoever holds the Google
+account.** Until an account has a passkey, anyone who can sign in to it can
+set one up; that covers every existing customer on launch day and any
+customer just after a reset. A passkey protects the account from then on,
+not before. Operators read `docs/ops/customer-passkey-runbook.md` (reset
+procedure, ring-back, deploy checklist).
+
+Better Auth's session-management routes (`/list-sessions`, `/revoke-session`,
+`/revoke-sessions`, `/revoke-other-sessions`, `/update-session`) are in
+`disabledPaths`: the app calls none of them, and a Google-only session could
+otherwise list the owner's sessions or sign the owner out everywhere.
+
+The plugin's defaults would undo this, so `hooks.before` in `lib/auth.ts`
+runs `passkeyBeforeHook` (`lib/auth/passkeyHooks.ts`), which calls
+`checkPasskeyRequest` on every `/passkey/*` write: an unverified session may
+register only the account's first passkey, never delete or rename one, and
+the last passkey is never deleted. `assertPasskeyOwner` (wired as the
+plugin's `authentication.afterVerification`) refuses a passkey that belongs
+to a different account than the Google session. Do not remove either to make
+a flow easier. The hook bodies are exported functions (`passkeyBeforeHook`,
+`passkeyAfterHook`, `verifiedIfPasskeySession`) wired in `auth.ts`, and
+`__tests__/passkeyWiring.test.ts` drives them through the real plugin on
+Better Auth's in-memory adapter — keep it passing; the unit tests alone
+passed while a real bug shipped.
+
+Three rules in those hooks look like candidates for tidying and are not:
+
+- **A session is marked verified after a registration only on positive
+  evidence** — the result is not an API error by `isAPIError`, *and* the
+  account now has at least one passkey row. An earlier `instanceof APIError`
+  check missed validation errors, so a malformed request could mark a session
+  verified with no passkey at all. Do not simplify it back.
+- **Unknown `/passkey/*` routes are refused** (fail closed). A plugin
+  upgrade that adds a route needs it allow-listed in `passkeyHooks.ts`, or
+  that route is a 403.
+- **`createSession: true` on registration is refused**, because it would mint
+  a second, unverified session and swap the cookie to it. Separately,
+  `Passkey.credentialID` is `@@unique`: one credential belongs to one account,
+  and lookups by credential id are unordered, so a duplicate id registered on
+  another account could break the real owner's passkey step.
+
+Enrolling needs a Google session under one day old — Better Auth's
+fresh-session rule, kept deliberately so that a stolen old session cannot
+enrol the thief's passkey. The verify screen sends a stale session back
+through Google sign-in; adding another device from the Passkeys page renews
+the session with a passkey prompt instead.
+
+`safeCustomerNext` (`lib/auth/safeCustomerNext.ts`) decides where the verify
+page sends a customer afterwards: only a same-site path, refusing control
+characters, backslashes, empty path segments, a bare `/`, the verify page
+itself in any spelling, and anything that does not re-parse to itself. It was broken twice in review (tab stripping, then dot
+segments like `/a/..//example.com`), so any change must extend the
+hostile-input tests in `__tests__/safeCustomerNext.test.ts`.
+
+Recovery is a staff action only — **Reset passkey** on a customer's row in
+`/admin/users`, which shows their recent order numbers and phone so staff can
+confirm who is calling. It needs `users:manage`, which only `SUPERADMIN`
+holds: an `ADMIN` cannot reset a customer's passkey or see the phone line.
+There is deliberately no self-service path: anything a customer could do
+with only their Google account, so could whoever took it.
+
+Passkeys are bound to the site's hostname (from `BETTER_AUTH_URL`). Changing
+the production domain invalidates every customer's passkey, and a passkey
+made on one preview URL does not work on another. Passkey dates on the
+account page are pinned to Malaysia time (`passkeyDate.ts`), so the server
+and the browser render the same day.
+
 Design: `docs/superpowers/specs/2026-09-20-rbac-design.md`.
 
 ## Relationship to Factory Tracker
@@ -641,6 +725,18 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 12. **`prisma.config.ts` sets no `shadowDatabaseUrl`.** That is why `prisma migrate dev` refuses non-interactively and `prisma migrate diff --from-migrations` cannot run — both need a shadow database to diff against. Until it is set, a migration written outside an interactive terminal has to be hand-written and independently verified (`prisma migrate diff --from-config-datasource --to-schema`) rather than generated. The fix is two lines in `prisma.config.ts` pointing at a disposable shadow database URL; not done here.
 13. **FedEx's sandbox cannot check our requests.** It answers only its own canned inputs — any request that differs from a documented example returns `SERVICE.PACKAGECOMBINATION.INVALID`, and its canned Malaysian rates are USD — so `adapters/fedex.ts` is tested against fixtures built from FedEx's documented shapes, not against FedEx. `pnpm fedex:ping` against **production** checks only the token, rate and track calls — it never ships. Ship, pickup, both cancels and the label fetch are first exercised by the first real booking: run it once production credentials exist, watch it with FedEx Ship Manager open, and cancel it there if anything looks wrong. Production also needs label certification with FedEx, which can take weeks.
 14. **Forgot-password throttling is per account, not per network.** `sendStaffReset` runs after the response (`after()`), so the answer and its timing are the same whoever asked, and it sends nothing once an account has more than three live reset links (about three mails an hour). What remains: Better Auth's own limit on `/request-password-reset` is per IP and memory-backed, so it does not hold across serverless instances, and a requester can still create unsent reset tokens in the `verification` table for any address. The three-link cap counts those unsent requests too, so about four requests an hour from anyone suppress a staff member's own reset mail while the page still says it was sent. Low value with three staff; the fix is `rateLimit: { storage: "database" }` and its table.
+15. **In-app browsers cannot do passkeys.** A customer who opens an order or
+    tracking link inside WhatsApp, Facebook or Instagram is told to open it
+    in Chrome or Safari (`passkeySupport.ts`); they cannot order from inside
+    the in-app browser at all. `passkey_enrol_started` against
+    `passkey_enrol_completed` in PostHog is the measure of what this costs.
+16. **A verified customer session is long-lived and only staff can end it.** A
+    verified session slides for seven days, the customer cannot sign other
+    devices out (the session routes are disabled), and the only way to end a
+    stolen verified session is a staff reset. Within a day of its creation
+    such a session could also add its own passkey and remove the owner's.
+    That is outside this feature's threat (someone holding only the Google
+    account), recorded so it is not mistaken for covered.
 
 ## Open questions — resolve before trusting pricing.ts
 

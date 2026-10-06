@@ -462,6 +462,7 @@ model User {
   lastLoginAt        DateTime?
   twoFactorEnabled   Boolean?  @default(false)
   twoFactors         TwoFactor[]
+  passkeys           Passkey[]
   sessions           Session[]
   accounts           Account[]
 
@@ -480,6 +481,8 @@ model Session {
   updatedAt DateTime @updatedAt
   ipAddress String?
   userAgent String?
+  /// Set only by a passkey ceremony on this session — see `lib/auth/passkeyHooks.ts`.
+  passkeyVerified Boolean? @default(false)
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -536,6 +539,26 @@ model TwoFactor {
   @@index([secret])
   @@index([userId])
   @@map("twoFactor")
+}
+
+/// Better Auth's passkey plugin (`@better-auth/passkey`). One row per device.
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+  aaguid       String?
+
+  @@index([userId])
+  @@unique([credentialID])
+  @@map("passkey")
 }
 
 /// The factory steps an admin advances an order through. Placeholders until

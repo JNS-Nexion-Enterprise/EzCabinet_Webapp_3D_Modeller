@@ -1,9 +1,17 @@
 import "server-only";
+import { passkey } from "@better-auth/passkey";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
 import { after } from "next/server";
+import {
+	assertPasskeyOwner,
+	passkeyAfterHook,
+	passkeyBeforeHook,
+	verifiedIfPasskeySession,
+} from "@/lib/auth/passkeyHooks";
 import {
 	afterPasswordReset,
 	resetLink,
@@ -51,7 +59,18 @@ export const auth = betterAuth({
 	// `/two-factor/disable`: a second factor a staff member can switch off
 	// with the password alone is not a second factor. Only a superadmin's
 	// Reset 2FA (`lib/auth/resetTwoFactor.ts`) removes one.
-	disabledPaths: ["/sign-up/email", "/two-factor/disable"],
+	// Session management: the app calls none of these, and a Google-only
+	// session could otherwise list the owner's session rows or sign the owner
+	// out of every other device.
+	disabledPaths: [
+		"/sign-up/email",
+		"/two-factor/disable",
+		"/list-sessions",
+		"/revoke-session",
+		"/revoke-sessions",
+		"/revoke-other-sessions",
+		"/update-session",
+	],
 	emailAndPassword: {
 		enabled: true,
 		// See the module comment above: this is the line that stops a staff
@@ -119,10 +138,21 @@ export const auth = betterAuth({
 		// lifetime, and the spec requires a role change or a disable to bite on
 		// the very next request.
 		cookieCache: { enabled: false },
+		// Set only by the hooks below, never by a request body.
+		additionalFields: {
+			passkeyVerified: { type: "boolean", input: false, defaultValue: false },
+		},
+	},
+	hooks: {
+		// Every passkey write goes through `checkPasskeyRequest` first — see
+		// that function for why the plugin's defaults are not enough.
+		before: createAuthMiddleware(passkeyBeforeHook),
+		after: createAuthMiddleware(passkeyAfterHook),
 	},
 	databaseHooks: {
 		session: {
 			create: {
+				before: verifiedIfPasskeySession,
 				// Stamped on session creation rather than on each request:
 				// /admin/users wants "has anyone used this account lately", not a
 				// precise last-seen, and a write per request would be a write per
@@ -157,5 +187,17 @@ export const auth = betterAuth({
 		},
 	},
 	// `nextCookies()` stays last: it must see the cookies every other plugin sets.
-	plugins: [twoFactor({ issuer: "EzCabinet Admin" }), nextCookies()],
+	plugins: [
+		twoFactor({ issuer: "EzCabinet Admin" }),
+		passkey({
+			rpName: "EzCabinet",
+			authentication: {
+				afterVerification: async ({ ctx, clientData }) => {
+					const current = await getSessionFromCtx(ctx);
+					await assertPasskeyOwner(current?.user.id ?? null, clientData.id);
+				},
+			},
+		}),
+		nextCookies(),
+	],
 });

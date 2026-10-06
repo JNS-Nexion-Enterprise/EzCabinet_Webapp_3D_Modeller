@@ -17,6 +17,7 @@ const user = (over: Partial<AuthUser>): AuthUser => ({
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 	...over,
 });
 

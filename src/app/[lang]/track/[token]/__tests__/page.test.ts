@@ -27,6 +27,7 @@ const customer = (id: string): AuthUser => ({
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 });
 
 const delivery = (order: { userId: string } | null) => ({
@@ -73,6 +74,17 @@ describe("track page access", () => {
 		currentUser.mockResolvedValue(customer("owner"));
 		findUnique.mockResolvedValue(delivery({ userId: "owner" }));
 		await expect(open()).resolves.toBeTruthy();
+	});
+
+	it("sends an owner who has not passed the passkey to the verify step", async () => {
+		currentUser.mockResolvedValue({
+			...customer("owner"),
+			mustVerifyPasskey: true,
+		});
+		findUnique.mockResolvedValue(delivery({ userId: "owner" }));
+		await expect(open()).rejects.toThrow(
+			"REDIRECT:/en/verify?next=%2Fen%2Ftrack%2Fd1",
+		);
 	});
 
 	it("404s an order's delivery for another customer", async () => {

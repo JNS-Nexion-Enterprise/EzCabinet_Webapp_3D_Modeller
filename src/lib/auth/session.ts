@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import type { $Enums } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
+import { needsPasskeyCheck } from "@/lib/auth/passkeyRules";
 import type { Role } from "@/lib/auth/permissions";
 import { needsTwoFactorSetup } from "@/lib/auth/twoFactor";
 import { prisma } from "@/lib/catalogue/db";
@@ -16,6 +17,8 @@ export type AuthUser = {
 	mustChangePassword: boolean;
 	/** Derived on every read, never stored — see `needsTwoFactorSetup`. */
 	mustSetupTwoFactor: boolean;
+	/** Derived on every read from the session row — see `needsPasskeyCheck`. */
+	mustVerifyPasskey: boolean;
 };
 
 /** Compile-time proof that our Role union and Prisma's generated enum agree.
@@ -68,6 +71,13 @@ export async function currentUser(): Promise<AuthUser | null> {
 			role: user.role,
 			hasPassword: accounts.length > 0,
 			twoFactorEnabled: twoFactorEnabled === true,
+		}),
+		mustVerifyPasskey: needsPasskeyCheck({
+			role: user.role,
+			// `additionalFields` types this on the built instance only.
+			sessionVerified:
+				(session.session as { passkeyVerified?: boolean | null })
+					.passkeyVerified === true,
 		}),
 	};
 }
