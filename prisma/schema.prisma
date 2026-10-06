@@ -549,7 +549,7 @@ model Passkey {
   aaguid       String?
 
   @@index([userId])
-  @@index([credentialID])
+  @@unique([credentialID])
   @@map("passkey")
 }
 

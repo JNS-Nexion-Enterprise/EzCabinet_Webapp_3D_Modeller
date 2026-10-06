@@ -1,5 +1,10 @@
 import "server-only";
-import { APIError } from "better-auth/api";
+import {
+	APIError,
+	type createAuthMiddleware,
+	getSessionFromCtx,
+	isAPIError,
+} from "better-auth/api";
 import { type PasskeyAction, passkeyDecision } from "@/lib/auth/passkeyRules";
 import { prisma } from "@/lib/catalogue/db";
 
@@ -12,6 +17,9 @@ const ACTIONS: Record<string, PasskeyAction> = {
 	"/passkey/delete-passkey": "delete",
 	"/passkey/update-passkey": "manage",
 };
+
+/** Read-only; the plugin itself requires a session for it. */
+const LIST_PATH = "/passkey/list-user-passkeys";
 
 export function actionFor(path: string): PasskeyAction | null {
 	return ACTIONS[path] ?? null;
@@ -34,7 +42,12 @@ export async function checkPasskeyRequest(
 	session: { userId: string; verified: boolean } | null,
 ): Promise<void> {
 	const action = actionFor(path);
-	if (action === null) return;
+	if (action === null) {
+		if (!path.startsWith("/passkey/") || path === LIST_PATH) return;
+		// Fail closed: a write route a later plugin version adds must not be
+		// born unguarded.
+		throw refuse("FORBIDDEN", "PASSKEY_ROUTE_REFUSED", "Route not allowed");
+	}
 
 	const passkeyCount = session
 		? await prisma.passkey.count({ where: { userId: session.userId } })
@@ -93,4 +106,75 @@ export async function markSessionVerified(token: string): Promise<void> {
 		where: { token },
 		data: { passkeyVerified: true },
 	});
+}
+
+/** The context Better Auth hands a `hooks.before` / `hooks.after` body. */
+type HookContext = Parameters<Parameters<typeof createAuthMiddleware>[0]>[0];
+
+/** `hooks.before`: every passkey write is checked before the plugin sees it. */
+export async function passkeyBeforeHook(ctx: HookContext): Promise<void> {
+	if (!ctx.path.startsWith("/passkey/")) return;
+	// `createSession` makes the plugin mint a second, unverified session
+	// and swap the cookie to it, undoing the verified stamp in the after hook.
+	// Nothing in the app asks for it, so refuse it rather than chase it.
+	if (
+		ctx.path === "/passkey/verify-registration" &&
+		(ctx.body as { createSession?: boolean } | undefined)?.createSession
+	) {
+		throw refuse(
+			"BAD_REQUEST",
+			"PASSKEY_CREATE_SESSION_REFUSED",
+			"createSession is not supported",
+		);
+	}
+	const current = await getSessionFromCtx(ctx);
+	await checkPasskeyRequest(
+		ctx.path,
+		current
+			? {
+					userId: current.user.id,
+					// `additionalFields` types this on the built instance, not
+					// inside the config that defines it.
+					verified:
+						(current.session as { passkeyVerified?: boolean | null })
+							.passkeyVerified === true,
+				}
+			: null,
+	);
+}
+
+/**
+ * `hooks.after`: enrolling the account's first passkey is itself the proof of
+ * possession, so the enrolling session becomes verified. Only on success: a
+ * failed registration leaves an APIError in `returned`.
+ */
+export async function passkeyAfterHook(ctx: HookContext): Promise<void> {
+	if (ctx.path !== "/passkey/verify-registration") return;
+	// `instanceof APIError` is not enough: a body that fails validation makes
+	// better-call throw its base APIError, which is not an instance of Better
+	// Auth's subclass, and dispatch hands it to this hook all the same.
+	if (isAPIError(ctx.context.returned)) return;
+	const current = await getSessionFromCtx(ctx);
+	if (!current) return;
+	// Positive evidence too: the account must now hold a passkey. A result
+	// that is merely "not an error" is not proof anything was enrolled.
+	const enrolled = await prisma.passkey.count({
+		where: { userId: current.user.id },
+	});
+	if (enrolled > 0) await markSessionVerified(current.session.token);
+}
+
+/**
+ * `databaseHooks.session.create.before`: a session born from a passkey
+ * ceremony is a verified one. The plugin creates it with
+ * `internalAdapter.createSession`, so this is the one place the flag can be
+ * set atomically with the row. `ctx` is the endpoint context
+ * (better-auth/dist/db/with-hooks.mjs); it is null outside a request.
+ */
+export async function verifiedIfPasskeySession<T extends object>(
+	session: T,
+	ctx: { path?: string } | null,
+): Promise<{ data: T & { passkeyVerified: true } } | undefined> {
+	if (ctx?.path !== "/passkey/verify-authentication") return undefined;
+	return { data: { ...session, passkeyVerified: true } };
 }

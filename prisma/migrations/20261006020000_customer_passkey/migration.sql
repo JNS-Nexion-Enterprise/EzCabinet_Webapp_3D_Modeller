@@ -17,7 +17,7 @@ CREATE TABLE "passkey" (
 );
 
 CREATE INDEX "passkey_userId_idx" ON "passkey"("userId");
-CREATE INDEX "passkey_credentialID_idx" ON "passkey"("credentialID");
+CREATE UNIQUE INDEX "passkey_credentialID_key" ON "passkey"("credentialID");
 
 ALTER TABLE "passkey" ADD CONSTRAINT "passkey_userId_fkey"
     FOREIGN KEY ("userId") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -54,6 +54,18 @@ describe("checkPasskeyRequest", () => {
 		expect(count).not.toHaveBeenCalled();
 	});
 
+	it("lets the read-only list through, and refuses any other passkey path", async () => {
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/list-user-passkeys", unverified),
+			),
+		).toBe("allowed");
+		expect(
+			await code(() => checkPasskeyRequest("/passkey/some-new-route", null)),
+		).toBe("PASSKEY_ROUTE_REFUSED");
+		expect(count).not.toHaveBeenCalled();
+	});
+
 	it("refuses every passkey path when signed out", async () => {
 		expect(
 			await code(() =>
