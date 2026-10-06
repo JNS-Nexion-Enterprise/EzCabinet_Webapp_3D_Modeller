@@ -27,7 +27,6 @@ export default async function OrderAdminPage({
 					select: { id: true, number: true, status: true },
 					orderBy: { createdAt: "desc" },
 				},
-				paidByUser: { select: { name: true } },
 				notifications: {
 					orderBy: { createdAt: "asc" },
 					select: {
@@ -89,7 +88,7 @@ export default async function OrderAdminPage({
 					paymentProvider: order.paymentProvider,
 					paymentRef: order.paymentRef,
 					paidAt: order.paidAt?.toISOString() ?? null,
-					paidByName: order.paidByUser?.name ?? null,
+					paidByName: order.paidByName,
 					deliveries: order.deliveries,
 					productionStage: order.productionStage,
 					whatsappOptIn: order.whatsappOptIn,

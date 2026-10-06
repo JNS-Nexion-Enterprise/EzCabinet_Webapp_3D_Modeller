@@ -709,6 +709,18 @@ export default async function Home({
 								{t.landing.footer.privacy}
 							</Link>
 							<Link
+								href={`/${lang}/terms`}
+								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
+							>
+								{t.landing.footer.terms}
+							</Link>
+							<Link
+								href={`/${lang}/refunds`}
+								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
+							>
+								{t.landing.footer.refunds}
+							</Link>
+							<Link
 								href="/admin/login"
 								className="text-[13px] text-neutral-500 transition-colors hover:text-neutral-300"
 							>

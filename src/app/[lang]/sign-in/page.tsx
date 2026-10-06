@@ -46,6 +46,12 @@ export default async function SignInPage({
 					label={s.continueWithGoogle}
 					errorMessage={s.error}
 				/>
+				<p className="text-center text-[12px] text-neutral-500 leading-[17px]">
+					{s.privacyNote}{" "}
+					<Link href={`/${lang}/privacy`} className="underline">
+						{t.privacy.title}
+					</Link>
+				</p>
 
 				<Link
 					href={`/${lang}`}

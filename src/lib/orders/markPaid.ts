@@ -16,6 +16,8 @@ export async function markOrderPaid(
 	data: {
 		paymentRef: string | null;
 		paidByUserId?: string | null;
+		/** Kept beside the id so the order still says who, once that account is deleted. */
+		paidByName?: string | null;
 		paymentProvider?: string;
 	},
 ): Promise<boolean> {

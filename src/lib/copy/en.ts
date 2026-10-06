@@ -109,6 +109,8 @@ export const en = {
 			contactHeading: "Contact",
 			email: "hello@ezcabinet.com",
 			privacy: "Privacy",
+			terms: "Terms of sale",
+			refunds: "Refund policy",
 			adminSignIn: "Admin sign in",
 			copyright: "© 2026 {brand}. All rights reserved.",
 		},
@@ -396,6 +398,11 @@ export const en = {
 		errorAddressRequired: "Enter the delivery address.",
 		errorAddressShort: "That address looks too short.",
 		errorRemeasure: "Tick this to continue.",
+		termsAgree: "I agree to the terms of sale and the refund policy.",
+		termsLink: "Terms of sale",
+		refundsLink: "Refund policy",
+		errorTerms: "Tick this to place your order.",
+		soldBy: "Sold by {address}. Contact {email} or {phone}.",
 		submitting: "Placing your order…",
 		descriptionOnline:
 			"A designer re-measures on site before anything is built.",
@@ -596,12 +603,91 @@ export const en = {
 		whatsappHeading: "WhatsApp order updates",
 		whatsapp:
 			"If you tick the box at checkout, we send updates about your order — payment, production steps and delivery — to your phone number on WhatsApp. WhatsApp is operated by Meta Platforms, which processes your number and these messages, possibly outside Malaysia. We send nothing else, and you can stop the updates by blocking the number.",
+		accountHeading: "Your account",
+		account:
+			"When you sign in with Google we receive your name, email address and profile photo, and keep them as your account.",
+		ordersHeading: "Your orders",
+		orders:
+			"When you place an order we keep your name, phone number, email, delivery address, the design you ordered and the price, as the record of the sale.",
+		recipientsHeading: "Who else receives your data",
+		recipients:
+			"Our payment processor receives your card and billing details — these never reach our servers. The courier that delivers your order receives your name, phone number and address. Google handles sign-in. Mux streams our tutorial videos and so sees a viewer's IP address. Some of these companies process data outside Malaysia.",
+		obligatoryHeading: "What you must give us",
+		obligatory:
+			"All of this comes from you directly, or from Google when you sign in. Browsing and planning need none of it. To place an order you must give your name, phone number and delivery address — without them we cannot deliver it. Email and WhatsApp updates are optional.",
+		retentionHeading: "How long we keep it",
+		retention:
+			"Order records are kept for as long as tax and accounting law requires. An account with no orders is kept until you ask us to delete it.",
+		rightsHeading: "Your rights",
+		rights:
+			"You may ask to see the personal data we hold about you, correct it, receive a copy in a portable form, withdraw your consent, or tell us to stop using it for direct marketing. Write to the contact address below.",
+		otherLawsHeading: "Other laws",
+		otherLaws:
+			"This notice is given under Malaysia's Personal Data Protection Act 2010. Our analytics provider processes usage data in the European Union under its own data processing agreement; EzCabinet sells in Malaysia only.",
 		choiceHeading: "Your choice",
 		choice:
 			"If you decline, we only count visits without cookies or local storage, with an identifier that resets daily, and no recordings are made. You can change your choice at any time by clearing this site's data in your browser.",
 		contactHeading: "Contact",
 		contact: "Questions, or requests to access or correct your data: {email}",
 		back: "Back to home",
+	},
+	/** Draft wording — EzCabinet's counsel approves it before production. */
+	terms: {
+		title: "Terms of sale",
+		intro:
+			"These terms apply when you order cabinets through the EzCabinet planner. Please read them with the refund policy before you pay.",
+		sellerHeading: "Who you are buying from",
+		seller: "{address}. Email {email}, phone {phone}.",
+		goodsHeading: "What you are buying",
+		goods:
+			"Cabinets made to order from the design you submit. The 3D view is an illustration; final dimensions are confirmed when we re-measure your site.",
+		priceHeading: "Price",
+		price:
+			"Prices are in Ringgit Malaysia (RM) and are shown in full at checkout, including the delivery fee and any applicable taxes. The price you are charged is the one our system calculates when the order is placed.",
+		paymentHeading: "Payment",
+		payment:
+			"You can pay by card through our payment provider, or by bank transfer where offered. Your order is confirmed once we have received payment in full.",
+		remeasureHeading: "Re-measure",
+		remeasure:
+			"A designer measures your site before production. If the design has to change, we quote the change and agree it with you before production starts.",
+		deliveryHeading: "Delivery",
+		delivery:
+			"We deliver to the address you give at checkout, normally within 4 to 6 weeks of the re-measure, and tell you when the delivery is booked. Please make sure someone can receive it.",
+		changesHeading: "Correcting your order",
+		changes:
+			"You can change your design and your details at any time before you pay. If you notice a mistake afterwards, write to {email} straight away; we can correct it until production starts.",
+		rightsHeading: "Your rights as a consumer",
+		rights:
+			"Nothing in these terms or the refund policy limits the rights you have under the Consumer Protection Act 1999, including the guarantees that goods are of acceptable quality and match their description.",
+		complaintsHeading: "Complaints",
+		complaints:
+			"Write to {email} with your order reference and we will respond. If we cannot resolve it, you may bring the matter to the Tribunal for Consumer Claims Malaysia.",
+		lawHeading: "Governing law",
+		law: "These terms are governed by the laws of Malaysia.",
+	},
+	/** Draft wording — the windows are our defaults, not EzCabinet's. */
+	refunds: {
+		title: "Refund policy",
+		intro:
+			"Our cabinets are made to order, so whether an order can be refunded depends on whether production has started.",
+		beforeHeading: "Cancelling before production starts",
+		before:
+			"You may cancel for a full refund at any time before production starts. Your order page shows when it has.",
+		afterHeading: "Cancelling after production starts",
+		after:
+			"Once production has started the order cannot be cancelled or refunded, because the cabinets are being made to your design.",
+		damagedHeading: "Damaged or defective on delivery",
+		damaged:
+			"Tell us within 7 days of delivery, with photos. We will repair or replace the affected cabinet at no cost to you, re-delivery included.",
+		remeasureHeading: "If the design changes at re-measure",
+		remeasure:
+			"We re-quote the changed design. Any difference is refunded to you or charged before production starts.",
+		howPaidHeading: "How refunds are paid",
+		howPaid:
+			"Refunds go back to the payment method you used, within 14 working days of our agreeing the refund.",
+		howToAskHeading: "How to ask",
+		howToAsk:
+			"Write to {email} with your order reference, which looks like IC-20261007-001.",
 	},
 	/** Server-sent WhatsApp text — `lib/whatsapp/outbox.ts`. */
 	whatsapp: {
@@ -643,6 +729,7 @@ export const en = {
 		nudge: "Saved on this device. Sign in to check out.",
 		nudgeDismiss: "Not now",
 		back: "Back to home",
+		privacyNote: "By continuing you agree to our",
 	},
 	/** The second step after Google — see docs/superpowers/specs/2026-10-06-customer-passkey-design.md. */
 	passkey: {

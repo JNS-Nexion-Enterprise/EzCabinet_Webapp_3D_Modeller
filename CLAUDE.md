@@ -465,6 +465,16 @@ Three screens. Rooms open on an **empty wall**: there is no invented starter run
 
 **An order is priced on the server, never by the client.** `POST /api/orders` (public, guarded by BotID) runs `validateOrder` — the engine forgives an unknown family or an off-ladder width silently, which is fine on a canvas and wrong for a payment — then `priceOrder` against the published catalogue, and stores the design as `{ schemaVersion, layout }` with the catalogue version it was priced against. A paid order's **Create delivery** (`/admin/logistics?fromOrder=`) fills the delivery form with one row per cabinet at its designed size and the design row's weight; the delivery create route refuses an order that is not paid.
 
+**An order records the terms it was placed under.** Checkout requires a
+ticked terms box; `POST /api/orders` refuses a body without
+`termsAccepted: true` and stamps `Order.termsVersion` (`TERMS_VERSION`,
+`lib/orders/terms.ts`) and `termsAcceptedAt`. Bump `TERMS_VERSION` by hand
+whenever the wording of `/[lang]/terms` or `/[lang]/refunds` changes in
+meaning. Both pages and the privacy notice are **drafts**, rendered by
+`components/LegalPage.tsx` from `lib/copy`; the refund policy's boundary is
+`Order.productionStage` being set. There is no refund or cancel flow in the
+app.
+
 **No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A customer whose session has not passed a passkey then meets one more step, `/[lang]/verify`, before the order is placed — a first-time customer sets one up, a returning one uses theirs. A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
 
 **An order is its owner's.** Every order carries the account that placed it
@@ -575,6 +585,13 @@ when the last superadmin is the one locked out. A superadmin can also press
 Google-only (refused when it has no other sign-in), which the 2FA rule exempts
 — the way out for staff who only use Google and never learned the invite
 password. Both Reset 2FA and Remove password log the actor's and target's ids.
+
+**Suspend is reversible; Delete is not.** A superadmin's **Delete** on
+`/admin/users` (`lib/auth/deleteUser.ts`) removes the row with its sessions,
+sign-ins and second factor. It is refused on your own row and on any account
+that placed orders — `Order.userId` is `Restrict`, so that account can only
+be suspended. Orders a deleted staff member marked paid keep the name in
+`Order.paidByName`; only `paidByUserId` goes null.
 
 **Forgot password is email, staff only, and only after enrolment.**
 `sendStaffReset` (`lib/auth/passwordReset.ts`) mails a link through Resend
@@ -772,7 +789,21 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 - **The delivery fee.** `RATES.deliveryFlatRm` is `85`, the figure from the client's Order Confirmation design; set the real one in the catalogue settings. It is flat — one fee whatever the load or the distance.
 - **What happens when a paid design changes at re-measure?** The customer pays full price up front; there is no refund or top-up flow, so a re-measure that changes the cabinets is handled outside the app today.
 - **Weights.** Parcel partners price by the kilogram. A design row's optional weight pre-fills its delivery rows; every design without one leaves the admin typing it per delivery.
-- **The privacy notice at `/[lang]/privacy` is a draft.** EzCabinet is the PDPA data controller: their counsel approves the wording, and the PostHog DPA should be signed in their legal name. Ask too whether behavioural analytics counts as "systematic monitoring" under the DPO guideline.
+- **The privacy notice, terms of sale and refund policy are drafts**
+  (`/[lang]/privacy`, `/terms`, `/refunds`). EzCabinet is the seller and the
+  PDPA data controller: their counsel approves the wording, and the PostHog
+  DPA should be signed in their legal name. Ask too whether behavioural
+  analytics counts as "systematic monitoring" under the DPO guideline, and
+  whether their data volumes require appointing a DPO at all. The refund
+  windows (7 days to report damage, 14 working days to pay) and the delivery
+  estimate (4 to 6 weeks from re-measure) are our defaults; whether the price
+  carries SST, and the company's SSM registration number for the seller
+  block, are theirs to supply.
+  The seller block on the terms page and at checkout reads
+  `WORKSHOP_ADDRESS` and `WORKSHOP_PHONE`, both still placeholders — the
+  Consumer Protection (Electronic Trade Transactions) Regulations 2024 want
+  the registered address there, and the Malay page is the one the law reads. GDPR was checked and does not apply: an
+  EU-hosted processor does not bring a Malaysian seller under it.
 
 ## Conventions
 
