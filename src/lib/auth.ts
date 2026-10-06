@@ -3,6 +3,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { twoFactor } from "better-auth/plugins";
+import { after } from "next/server";
 import { clearForcedChange, sendStaffReset } from "@/lib/auth/passwordReset";
 import { prisma } from "@/lib/catalogue/db";
 
@@ -54,8 +55,15 @@ export const auth = betterAuth({
 		autoSignIn: false,
 		// Reset by emailed link, staff only — `sendStaffReset` decides who is
 		// mailed, and why it is not simply "everyone with a row".
+		// Scheduled, not awaited: Better Auth awaits this callback, and only
+		// eligible staff would reach the lookup and the Resend call, so awaiting
+		// would let response time tell a requester who is staff.
 		sendResetPassword: async ({ user, url }) => {
-			await sendStaffReset(user.id, url);
+			after(() =>
+				sendStaffReset(user.id, url).catch((error) =>
+					console.error("Reset mail failed", error),
+				),
+			);
 		},
 		resetPasswordTokenExpiresIn: 60 * 60,
 		// Whoever knew the old password is out, on every device.

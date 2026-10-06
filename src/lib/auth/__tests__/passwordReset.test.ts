@@ -2,13 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findUnique = vi.hoisted(() => vi.fn());
 const update = vi.hoisted(() => vi.fn());
+const count = vi.hoisted(() => vi.fn());
 const sendEmail = vi.hoisted(() =>
 	vi.fn(async (_message: { to: string; text: string }) => true),
 );
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/catalogue/db", () => ({
-	prisma: { user: { findUnique, update } },
+	prisma: { user: { findUnique, update }, verification: { count } },
 }));
 vi.mock("@/lib/email", () => ({ sendEmail }));
 
@@ -27,7 +28,10 @@ const URL_ =
 	"https://x.test/api/auth/reset-password/tok?callbackURL=%2Fadmin%2Freset-password";
 
 describe("sendStaffReset", () => {
-	beforeEach(() => vi.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		count.mockResolvedValue(1);
+	});
 
 	it("mails the link to enrolled staff who have a password", async () => {
 		findUnique.mockResolvedValue(staff);
@@ -54,6 +58,32 @@ describe("sendStaffReset", () => {
 		findUnique.mockResolvedValue({ ...staff, ...change });
 		await sendStaffReset("u1", URL_);
 		expect(sendEmail).not.toHaveBeenCalled();
+	});
+
+	it("sends when the account has three live links", async () => {
+		findUnique.mockResolvedValue(staff);
+		count.mockResolvedValue(3);
+		await sendStaffReset("u1", URL_);
+		expect(sendEmail).toHaveBeenCalledTimes(1);
+	});
+
+	it("sends nothing when the account already has more than three live links", async () => {
+		findUnique.mockResolvedValue(staff);
+		count.mockResolvedValue(4);
+		await sendStaffReset("u1", URL_);
+		expect(sendEmail).not.toHaveBeenCalled();
+	});
+
+	it("counts only this user's unexpired reset links", async () => {
+		findUnique.mockResolvedValue(staff);
+		await sendStaffReset("u1", URL_);
+		expect(count).toHaveBeenCalledWith({
+			where: {
+				identifier: { startsWith: "reset-password:" },
+				value: "u1",
+				expiresAt: { gt: expect.any(Date) },
+			},
+		});
 	});
 
 	it("sends nothing when the row is gone", async () => {

@@ -4,6 +4,12 @@ import { prisma } from "@/lib/catalogue/db";
 import { sendEmail } from "@/lib/email";
 
 /**
+ * Mails allowed per account per hour. Better Auth's own limiter is per IP and
+ * memory-backed, so it does not stop a flood aimed at one inbox.
+ */
+const MAX_LIVE_RESET_LINKS = 3;
+
+/**
  * Better Auth calls this for *every* address that has a user row — customer
  * rows included — and its reset endpoint will happily create a password on a
  * row that never had one. Whether a link goes out is therefore decided here,
@@ -40,6 +46,20 @@ export async function sendStaffReset(
 		twoFactorEnabled: row.twoFactorEnabled === true,
 	});
 	if (!allowed) return;
+
+	// Better Auth stores each link as a `verification` row (identifier
+	// `reset-password:<token>`, value the user id) and creates it *before*
+	// calling us, so the current request is already counted: `>` allows three
+	// mails per hour per account and drops the fourth. A used link is consumed
+	// and stops counting.
+	const live = await prisma.verification.count({
+		where: {
+			identifier: { startsWith: "reset-password:" },
+			value: userId,
+			expiresAt: { gt: new Date() },
+		},
+	});
+	if (live > MAX_LIVE_RESET_LINKS) return;
 
 	await sendEmail({
 		to: row.email,
