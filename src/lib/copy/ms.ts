@@ -641,13 +641,20 @@ export const ms: Dictionary = {
 		promptButton: "Guna kunci laluan",
 		working: "Menunggu peranti anda…",
 		failed: "Tidak berjaya. Cuba lagi",
+		failedHint: "Jika ini berulang, buka halaman ini dalam Chrome atau Safari",
 		wrongAccount: "Kunci laluan itu milik akaun lain",
 		sessionStale:
 			"Demi keselamatan anda, log masuk semula dengan Google untuk menyediakan kunci laluan",
 		signInAgain: "Log masuk semula",
 		unsupported:
 			"Pelayar ini tidak menyokong kunci laluan. Buka halaman ini dalam Chrome atau Safari.",
+		otherDevice:
+			"Disediakan pada peranti lain? Pilih peranti itu apabila pelayar bertanya, atau log masuk di sana dan tambah peranti ini di bawah Kunci laluan",
 		lostDevice: "Peranti hilang? Hubungi EzCabinet",
+		checkoutHeading: "Satu langkah lagi sebelum membayar",
+		checkoutBody:
+			"Sahkan ini anda dengan kunci laluan. Ia hanya mengambil beberapa saat dan reka bentuk anda kekal seperti sedia ada.",
+		checkoutButton: "Teruskan",
 		listHeading: "Kunci laluan",
 		listBody: "Peranti yang boleh mengesahkan ini anda.",
 		unnamed: "Kunci laluan",

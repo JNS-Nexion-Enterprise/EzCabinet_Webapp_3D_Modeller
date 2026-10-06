@@ -119,6 +119,10 @@ export function PasskeyGate({
 					{error}.
 				</p>
 			)}
+			{error === copy.failed && (
+				// Some in-app browsers expose WebAuthn and then fail the ceremony.
+				<p className="text-[12px] text-neutral-500">{copy.failedHint}</p>
+			)}
 			<button
 				type="button"
 				onClick={run}
@@ -132,6 +136,12 @@ export function PasskeyGate({
 						? copy.enrolButton
 						: copy.promptButton}
 			</button>
+			{mode === "prompt" && (
+				// A passkey made on a laptop does not help a customer on a phone.
+				<p className="text-center text-[12px] text-neutral-500 leading-4">
+					{copy.otherDevice}
+				</p>
+			)}
 			{mode === "prompt" &&
 				(helpHref ? (
 					<a

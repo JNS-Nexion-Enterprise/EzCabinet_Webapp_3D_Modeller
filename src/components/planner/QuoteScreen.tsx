@@ -131,13 +131,24 @@ export function QuoteScreen({
 	// False only on a local run with AUTH_ENABLED off, where a signed-out
 	// order goes to the demo customer and the sign-in card would be a lie.
 	const [signInRequired, setSignInRequired] = useState(true);
+	// True for a customer signed in with Google who still owes the passkey
+	// step. Like the sign-in card, it replaces the form rather than following
+	// a failed Pay, so nothing they typed is thrown away by the detour.
+	const [passkeyRequired, setPasskeyRequired] = useState(false);
 	useEffect(() => {
 		fetch("/api/payments/config")
 			.then((res) => res.json())
-			.then((json: { client: PaymentClient | null; signIn?: boolean }) => {
-				setPayClient(json.client);
-				setSignInRequired(json.signIn !== false);
-			})
+			.then(
+				(json: {
+					client: PaymentClient | null;
+					signIn?: boolean;
+					passkeyRequired?: boolean;
+				}) => {
+					setPayClient(json.client);
+					setSignInRequired(json.signIn !== false);
+					setPasskeyRequired(json.passkeyRequired === true);
+				},
+			)
 			.catch(() => setPayClient(null));
 	}, []);
 	const stripeClient = payClient?.kind === "stripe-elements" ? payClient : null;
@@ -250,8 +261,10 @@ export function QuoteScreen({
 				return;
 			}
 			if (res?.status === 401 && body?.error === "passkey_required") {
-				// Signed in with Google but not yet past the passkey. Same detour
-				// as sign-in: the design is on disk and comes back on return.
+				// Backstop only: the passkey card normally replaces the form, so
+				// this fires only if it was bypassed (config fetch failed, or the
+				// session changed in another tab). The design is on disk and comes
+				// back, but what was typed in the form is lost.
 				router.push(`/${locale}/verify?next=${encodeURIComponent(quoteUrl())}`);
 				return;
 			}
@@ -322,6 +335,7 @@ export function QuoteScreen({
 	// Unknown until both the session and the checkout config have answered.
 	const authPending = sessionPending || payClient === undefined;
 	const signedOut = !authPending && signInRequired && !session?.user;
+	const needsPasskey = !authPending && passkeyRequired;
 	const clearError = (key: keyof FieldErrors) =>
 		setFieldErrors((current) =>
 			current[key] ? { ...current, [key]: undefined } : current,
@@ -400,9 +414,27 @@ export function QuoteScreen({
 								/>
 							</div>
 						)}
+						{needsPasskey && (
+							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
+								<div>
+									<p className="font-semibold text-[15px]">
+										{t.passkey.checkoutHeading}
+									</p>
+									<p className="mt-1 text-[#5c574e] text-[13px] leading-[18px]">
+										{t.passkey.checkoutBody}
+									</p>
+								</div>
+								<a
+									href={`/${locale}/verify?next=${encodeURIComponent(quoteUrl())}`}
+									className="flex items-center justify-center rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white"
+								>
+									{t.passkey.checkoutButton}
+								</a>
+							</div>
+						)}
 						<form
 							noValidate
-							hidden={authPending || signedOut}
+							hidden={authPending || signedOut || needsPasskey}
 							className="flex max-w-[480px] flex-col gap-7"
 							aria-describedby={error ? "order-error" : undefined}
 							onChange={(e) =>

@@ -654,13 +654,20 @@ export const en = {
 		promptButton: "Use passkey",
 		working: "Waiting for your device…",
 		failed: "That didn't work. Try again",
+		failedHint: "If this keeps happening, open this page in Chrome or Safari",
 		wrongAccount: "That passkey belongs to a different account",
 		sessionStale:
 			"For your security, sign in with Google again to set up your passkey",
 		signInAgain: "Sign in again",
 		unsupported:
 			"This browser can't use passkeys. Open this page in Chrome or Safari.",
+		otherDevice:
+			"Set it up on another device? Choose that device when your browser asks, or sign in there and add this one under Passkeys",
 		lostDevice: "Lost your device? Contact EzCabinet",
+		checkoutHeading: "One more step before you pay",
+		checkoutBody:
+			"Confirm it's you with a passkey. It takes a few seconds and your design stays as it is.",
+		checkoutButton: "Continue",
 		listHeading: "Passkeys",
 		listBody: "The devices that can confirm it's you.",
 		unnamed: "Passkey",
