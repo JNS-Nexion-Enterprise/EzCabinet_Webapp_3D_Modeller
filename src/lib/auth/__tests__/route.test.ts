@@ -123,6 +123,49 @@ describe("withAuth", () => {
 		});
 	});
 
+	it("403s with step_up_required when a guarded route has no recent passkey ceremony", async () => {
+		requireAuth.mockResolvedValue(user);
+		const handler = vi.fn();
+		const wrapped = withAuth("catalogue:read", handler, { stepUp: true });
+		const response = await wrapped(new Request("http://x"), {});
+		expect(response.status).toBe(403);
+		await expect(response.json()).resolves.toEqual({
+			error: "step_up_required",
+		});
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it("403s a guarded route when the ceremony is stale", async () => {
+		requireAuth.mockResolvedValue({
+			...user,
+			passkeyVerifiedAt: new Date(Date.now() - 6 * 60_000),
+		});
+		const handler = vi.fn();
+		const wrapped = withAuth("catalogue:read", handler, { stepUp: true });
+		const response = await wrapped(new Request("http://x"), {});
+		expect(response.status).toBe(403);
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it("runs a guarded route straight after a passkey ceremony", async () => {
+		requireAuth.mockResolvedValue({ ...user, passkeyVerifiedAt: new Date() });
+		const handler = vi.fn(async () => NextResponse.json({ ok: true }));
+		const wrapped = withAuth("catalogue:read", handler, { stepUp: true });
+		const response = await wrapped(new Request("http://x"), {});
+		expect(response.status).toBe(200);
+	});
+
+	it("skips the step-up with auth off, where no session exists to pass one", async () => {
+		vi.stubEnv("AUTH_ENABLED", "false");
+		vi.stubEnv("VERCEL_ENV", "");
+		requireAuth.mockResolvedValue(user);
+		const handler = vi.fn(async () => NextResponse.json({ ok: true }));
+		const wrapped = withAuth("catalogue:read", handler, { stepUp: true });
+		const response = await wrapped(new Request("http://x"), {});
+		expect(response.status).toBe(200);
+		vi.unstubAllEnvs();
+	});
+
 	it("runs the handler when mustChangePassword is false", async () => {
 		requireAuth.mockResolvedValue({ ...user, mustChangePassword: false });
 		const handler = vi.fn(async () => NextResponse.json({ ok: true }));

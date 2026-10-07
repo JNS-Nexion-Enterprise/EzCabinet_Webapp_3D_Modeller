@@ -176,11 +176,19 @@ export async function passkeyAfterHook(ctx: HookContext): Promise<void> {
  * `internalAdapter.createSession`, so this is the one place the flag can be
  * set atomically with the row. `ctx` is the endpoint context
  * (better-auth/dist/db/with-hooks.mjs); it is null outside a request.
+ *
+ * `passkeyVerifiedAt` is stamped here and nowhere else: an enrolment marks
+ * its session verified without it, so the time always means "authenticated
+ * with a passkey then" — what a step-up check needs (`stepUp.ts`).
  */
 export async function verifiedIfPasskeySession<T extends object>(
 	session: T,
 	ctx: { path?: string } | null,
-): Promise<{ data: T & { passkeyVerified: true } } | undefined> {
+): Promise<
+	{ data: T & { passkeyVerified: true; passkeyVerifiedAt: Date } } | undefined
+> {
 	if (ctx?.path !== "/passkey/verify-authentication") return undefined;
-	return { data: { ...session, passkeyVerified: true } };
+	return {
+		data: { ...session, passkeyVerified: true, passkeyVerifiedAt: new Date() },
+	};
 }

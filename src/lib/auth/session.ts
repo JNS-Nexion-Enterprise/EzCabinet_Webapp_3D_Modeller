@@ -19,6 +19,11 @@ export type AuthUser = {
 	mustSetupTwoFactor: boolean;
 	/** Derived on every read from the session row — see `needsPasskeyCheck`. */
 	mustVerifyPasskey: boolean;
+	/**
+	 * When this session passed a passkey authentication, if it ever did —
+	 * what `withAuth`'s `stepUp` reads. Absent means never.
+	 */
+	passkeyVerifiedAt?: Date | null;
 };
 
 /** Compile-time proof that our Role union and Prisma's generated enum agree.
@@ -65,8 +70,16 @@ export async function currentUser(): Promise<AuthUser | null> {
 	});
 	if (!row || row.disabled) return null;
 	const { accounts, twoFactorEnabled, ...user } = row;
+	// `additionalFields` types these on the built instance only.
+	const sessionRow = session.session as {
+		passkeyVerified?: boolean | null;
+		passkeyVerifiedAt?: Date | string | null;
+	};
 	return {
 		...user,
+		passkeyVerifiedAt: sessionRow.passkeyVerifiedAt
+			? new Date(sessionRow.passkeyVerifiedAt)
+			: null,
 		mustSetupTwoFactor: needsTwoFactorSetup({
 			role: user.role,
 			hasPassword: accounts.length > 0,
@@ -74,10 +87,7 @@ export async function currentUser(): Promise<AuthUser | null> {
 		}),
 		mustVerifyPasskey: needsPasskeyCheck({
 			role: user.role,
-			// `additionalFields` types this on the built instance only.
-			sessionVerified:
-				(session.session as { passkeyVerified?: boolean | null })
-					.passkeyVerified === true,
+			sessionVerified: sessionRow.passkeyVerified === true,
 		}),
 	};
 }

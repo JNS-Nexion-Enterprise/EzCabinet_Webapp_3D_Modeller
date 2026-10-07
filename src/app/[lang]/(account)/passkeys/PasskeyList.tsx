@@ -41,7 +41,15 @@ export function PasskeyList({
 		setError(null);
 		let failure: { status?: number; code?: string } | null = null;
 		try {
-			failure = (await run())?.error ?? null;
+			let outcome = await run();
+			// A staff session has not passed a passkey at sign-in the way a
+			// customer's has, and every change here needs one: prompt, then
+			// repeat the action once.
+			if (outcome?.error?.code === "PASSKEY_VERIFICATION_REQUIRED") {
+				const proved: Outcome = await authClient.signIn.passkey();
+				outcome = proved?.error ? proved : await run();
+			}
+			failure = outcome?.error ?? null;
 		} catch {
 			failure = {};
 		}

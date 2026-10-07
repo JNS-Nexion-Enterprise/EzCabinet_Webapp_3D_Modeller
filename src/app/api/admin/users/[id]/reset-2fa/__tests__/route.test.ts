@@ -25,6 +25,8 @@ const superadmin = {
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	// The route is step-up guarded: a passkey ceremony moments ago.
+	passkeyVerifiedAt: new Date(),
 };
 const call = (id: string) =>
 	POST(new Request("http://x", { method: "POST" }), {

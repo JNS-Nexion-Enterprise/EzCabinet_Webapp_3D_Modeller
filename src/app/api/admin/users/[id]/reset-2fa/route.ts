@@ -26,4 +26,5 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		console.info("Two-factor reset", { actor: actor.id, target: target.id });
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
 );

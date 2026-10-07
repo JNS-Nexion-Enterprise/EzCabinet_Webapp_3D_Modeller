@@ -97,4 +97,5 @@ export const DELETE = withAuth<{ params: Promise<{ id: string }> }>(
 		console.info("User deleted", { actor: actor.id, target: target.id });
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
 );

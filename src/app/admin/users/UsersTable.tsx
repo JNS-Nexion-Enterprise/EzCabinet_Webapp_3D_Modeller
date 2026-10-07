@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { fetchGuarded, PASSKEY_FAILED } from "@/components/admin/stepUp";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
 import { shortTime } from "../logistics/time";
 
@@ -63,9 +65,9 @@ export function UsersTable({
 	const [query, setQuery] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busyId, setBusyId] = useState<string | null>(null);
-	// Two presses, not a browser confirm: the first arms the row's button.
-	// Keyed `${action}:${id}` so arming one button disarms the other.
-	const [armed, setArmed] = useState<string | null>(null);
+	// The four actions that remove access are step-up guarded, so they ask
+	// in a dialog and may prompt for the admin's passkey.
+	const [confirming, setConfirming] = useState<Confirm | null>(null);
 
 	const reload = useCallback(async (q: string, s: ScopeFilter) => {
 		const params = new URLSearchParams({ staff: s === "staff" ? "1" : "0" });
@@ -122,79 +124,55 @@ export function UsersTable({
 		router.refresh();
 	}
 
-	async function resetTwoFactor(id: string) {
-		setError(null);
-		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}/reset-2fa`, {
-			method: "POST",
-		});
-		setBusyId(null);
-		setArmed(null);
+	/**
+	 * One guarded call. The dialog shows whatever message comes back; null is
+	 * success. Resetting your own sign-in signs you out, and the refresh then
+	 * lands on the login page.
+	 */
+	async function guarded(
+		path: string,
+		method: "POST" | "DELETE",
+		failure: (reason: string | undefined) => string,
+	): Promise<string | null> {
+		const res = await fetchGuarded(`/api/admin/users/${path}`, { method });
+		if (!res) return PASSKEY_FAILED;
 		if (!res.ok) {
-			setError("Could not reset two-step sign-in.");
-			return;
+			return failure((await res.json().catch(() => null))?.error);
 		}
-		// Resetting your own signs you out; the refresh lands on the login page.
 		await reload(query, scope);
 		router.refresh();
+		return null;
 	}
 
-	async function resetPasskey(id: string) {
-		setError(null);
-		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}/reset-passkey`, {
-			method: "POST",
-		});
-		setBusyId(null);
-		setArmed(null);
-		if (!res.ok) {
-			setError("Could not reset the passkey.");
-			return;
-		}
-		await reload(query, scope);
-		router.refresh();
-	}
+	const resetTwoFactor = (id: string) =>
+		guarded(
+			`${id}/reset-2fa`,
+			"POST",
+			() => "Could not reset two-step sign-in.",
+		);
 
-	async function removePassword(id: string) {
-		setError(null);
-		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}/remove-password`, {
-			method: "POST",
-		});
-		setBusyId(null);
-		setArmed(null);
-		if (!res.ok) {
-			setError(
-				res.status === 409
-					? "This account has no other way to sign in. Link Google first."
-					: "Could not remove the password.",
-			);
-			return;
-		}
-		await reload(query, scope);
-		router.refresh();
-	}
+	const resetPasskey = (id: string) =>
+		guarded(
+			`${id}/reset-passkey`,
+			"POST",
+			() => "Could not reset the passkey.",
+		);
 
-	async function deleteUser(id: string) {
-		setError(null);
-		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" });
-		setBusyId(null);
-		setArmed(null);
-		if (!res.ok) {
-			const reason = (await res.json().catch(() => null))?.error;
-			setError(
-				reason === "has_orders"
-					? "This account has orders, so it can't be deleted. Suspend it instead."
-					: reason === "not_yourself"
-						? "You can't delete yourself."
-						: "Could not delete that account.",
-			);
-			return;
-		}
-		await reload(query, scope);
-		router.refresh();
-	}
+	const removePassword = (id: string) =>
+		guarded(`${id}/remove-password`, "POST", (reason) =>
+			reason === "no_other_sign_in"
+				? "This account has no other way to sign in. Link Google first."
+				: "Could not remove the password.",
+		);
+
+	const deleteUser = (id: string) =>
+		guarded(id, "DELETE", (reason) =>
+			reason === "has_orders"
+				? "This account has orders, so it can't be deleted. Suspend it instead."
+				: reason === "not_yourself"
+					? "You can't delete yourself."
+					: "Could not delete that account.",
+		);
 
 	// `staff=0` on the GET route means "no role filter", not "customers
 	// only" — there is no server-side customer-only param. So the
@@ -229,6 +207,7 @@ export function UsersTable({
 
 	return (
 		<div className="flex flex-col gap-3">
+			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex flex-wrap gap-2">
 					{(["staff", "customers"] as const).map((s) => (
@@ -386,40 +365,58 @@ export function UsersTable({
 								</span>
 								<div className="flex w-[172px] flex-col items-end gap-1">
 									{user.twoFactorEnabled && (
-										<ArmedButton
-											action="reset"
-											id={user.id}
-											armed={armed}
-											setArmed={setArmed}
+										<button
+											type="button"
 											disabled={busyId === user.id}
-											label="Reset 2FA"
-											confirmLabel="Confirm reset"
-											onConfirm={() => resetTwoFactor(user.id)}
-										/>
+											onClick={() =>
+												setConfirming({
+													title: `Reset two-step sign-in for ${user.name}?`,
+													body: "They are signed out everywhere and set up a new authenticator at next sign-in. Do this only when you are sure who asked.",
+													confirmLabel: "Reset 2FA",
+													stepUp: true,
+													run: () => resetTwoFactor(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Reset 2FA
+										</button>
 									)}
-									{user.role === "CUSTOMER" && user.passkeyCount > 0 && (
-										<ArmedButton
-											action="passkey"
-											id={user.id}
-											armed={armed}
-											setArmed={setArmed}
+									{user.passkeyCount > 0 && (
+										<button
+											type="button"
 											disabled={busyId === user.id}
-											label="Reset passkey"
-											confirmLabel="Confirm reset"
-											onConfirm={() => resetPasskey(user.id)}
-										/>
+											onClick={() =>
+												setConfirming({
+													title: `Reset the passkey for ${user.name}?`,
+													body: "Every passkey on this account is removed and it is signed out everywhere. Whoever signs in next can set up a new one, so confirm who is asking first.",
+													confirmLabel: "Reset passkey",
+													stepUp: true,
+													run: () => resetPasskey(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Reset passkey
+										</button>
 									)}
 									{user.role !== "CUSTOMER" && user.hasPassword && (
-										<ArmedButton
-											action="remove-password"
-											id={user.id}
-											armed={armed}
-											setArmed={setArmed}
+										<button
+											type="button"
 											disabled={busyId === user.id}
-											label="Remove password"
-											confirmLabel="Confirm remove"
-											onConfirm={() => removePassword(user.id)}
-										/>
+											onClick={() =>
+												setConfirming({
+													title: `Remove the password for ${user.name}?`,
+													body: "The account becomes Google-only. A password cannot be set again from here.",
+													confirmLabel: "Remove password",
+													stepUp: true,
+													run: () => removePassword(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Remove password
+										</button>
 									)}
 									{user.role !== "CUSTOMER" && (
 										<button
@@ -440,16 +437,23 @@ export function UsersTable({
 										</button>
 									)}
 									{!isSelf && (
-										<ArmedButton
-											action="delete"
-											id={user.id}
-											armed={armed}
-											setArmed={setArmed}
+										<button
+											type="button"
 											disabled={busyId === user.id}
-											label="Delete"
-											confirmLabel="Confirm delete"
-											onConfirm={() => deleteUser(user.id)}
-										/>
+											onClick={() =>
+												setConfirming({
+													title: `Delete ${user.name}?`,
+													body: "The account, its sign-ins and its second factor are removed for good. Suspend instead if they might come back.",
+													confirmLabel: "Delete account",
+													danger: true,
+													stepUp: true,
+													run: () => deleteUser(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Delete
+										</button>
 									)}
 								</div>
 							</li>
@@ -468,38 +472,5 @@ export function UsersTable({
 				</div>
 			</div>
 		</div>
-	);
-}
-
-function ArmedButton({
-	action,
-	id,
-	armed,
-	setArmed,
-	disabled,
-	label,
-	confirmLabel,
-	onConfirm,
-}: {
-	action: string;
-	id: string;
-	armed: string | null;
-	setArmed: (key: string | null) => void;
-	disabled: boolean;
-	label: string;
-	confirmLabel: string;
-	onConfirm: () => void;
-}) {
-	const key = `${action}:${id}`;
-	return (
-		<button
-			type="button"
-			disabled={disabled}
-			onClick={() => (armed === key ? onConfirm() : setArmed(key))}
-			onBlur={() => setArmed(null)}
-			className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
-		>
-			{armed === key ? confirmLabel : label}
-		</button>
 	);
 }

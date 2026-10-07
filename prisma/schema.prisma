@@ -328,13 +328,13 @@ model Delivery {
 /// whether it has been paid. Deliveries are created from a paid order, with
 /// their item rows pre-filled from `design` — see `lib/orders`.
 model Order {
-  id                 String      @id @default(cuid())
+  id                 String           @id @default(cuid())
   /// Printed as `IC-YYYYMMDD-NNN` (`lib/orders/ref.ts`) and said on the phone.
-  number             Int         @unique @default(autoincrement())
+  number             Int              @unique @default(autoincrement())
   /// The key to the customer's confirmation page, never `number` — same
   /// reasoning as `Delivery.publicToken`.
-  publicToken        String      @unique @default(cuid(2))
-  status             OrderStatus @default(AWAITING_PAYMENT)
+  publicToken        String           @unique @default(cuid(2))
+  status             OrderStatus      @default(AWAITING_PAYMENT)
   customerName       String
   /// E.164, via `lib/logistics/phone.ts`.
   customerPhone      String
@@ -354,7 +354,7 @@ model Order {
   deliveryRm         Float
   totalRm            Float
   /// `manual` — bank transfer, marked paid by an admin — until a gateway exists.
-  paymentProvider    String      @default("manual")
+  paymentProvider    String           @default("manual")
   paymentRef         String?
   paidAt             DateTime?
   /// Ticked by the customer at checkout. No opt-in, no WhatsApp message.
@@ -381,10 +381,10 @@ model Order {
   refundedAt         DateTime?
   refundedByName     String?
   refundRef          String?
-  createdAt          DateTime    @default(now())
-  updatedAt          DateTime    @updatedAt
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
-  deliveries Delivery[]
+  deliveries    Delivery[]
   notifications Notification[]
 
   /// The account that placed it — the only customer who may see it
@@ -458,19 +458,19 @@ model CarrierToken {
 /// offboarding switch, because a departed employee's name must stay readable on
 /// the orders they marked paid.
 model User {
-  id                 String    @id
+  id                 String      @id
   name               String
   email              String
-  emailVerified      Boolean   @default(false)
+  emailVerified      Boolean     @default(false)
   image              String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-  role               Role      @default(CUSTOMER)
-  disabled           Boolean   @default(false)
-  mustChangePassword Boolean   @default(false)
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  role               Role        @default(CUSTOMER)
+  disabled           Boolean     @default(false)
+  mustChangePassword Boolean     @default(false)
   invitedById        String?
   lastLoginAt        DateTime?
-  twoFactorEnabled   Boolean?  @default(false)
+  twoFactorEnabled   Boolean?    @default(false)
   twoFactors         TwoFactor[]
   passkeys           Passkey[]
   sessions           Session[]
@@ -484,17 +484,20 @@ model User {
 }
 
 model Session {
-  id        String   @id
-  expiresAt DateTime
-  token     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
+  id                String    @id
+  expiresAt         DateTime
+  token             String
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  ipAddress         String?
+  userAgent         String?
   /// Set only by a passkey ceremony on this session — see `lib/auth/passkeyHooks.ts`.
-  passkeyVerified Boolean? @default(false)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passkeyVerified   Boolean?  @default(false)
+  /// When a passkey authentication minted this session. Null on a session
+  /// verified by enrolment only — see `lib/auth/stepUp.ts`.
+  passkeyVerifiedAt DateTime?
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([token])
   @@index([userId])
@@ -566,8 +569,8 @@ model Passkey {
   createdAt    DateTime?
   aaguid       String?
 
-  @@index([userId])
   @@unique([credentialID])
+  @@index([userId])
   @@map("passkey")
 }
 

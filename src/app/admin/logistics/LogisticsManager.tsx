@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { chipClass, fieldClass } from "@/components/admin/styles";
 import { LABEL } from "@/lib/logistics/carriers";
 import { pinState } from "@/lib/logistics/coords";
@@ -105,22 +106,23 @@ export function LogisticsManager({
 		await load();
 	}
 
-	async function remove(row: DeliveryRow) {
-		if (!confirm(`Delete delivery ${row.number} for ${row.customerName}?`))
-			return;
+	const [confirming, setConfirming] = useState<Confirm | null>(null);
+
+	async function remove(row: DeliveryRow): Promise<string | null> {
 		const res = await fetch(`/api/admin/deliveries/${row.id}`, {
 			method: "DELETE",
 		});
 		if (!res.ok) {
 			const body = await res.json().catch(() => null);
-			setError(messageFor(body?.error, "Could not delete this delivery"));
-			return;
+			return messageFor(body?.error, "Could not delete this delivery");
 		}
 		await load();
+		return null;
 	}
 
 	return (
 		<div className="flex flex-col gap-6">
+			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
 			{error && (
 				<p className="rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700">
 					{error}
@@ -255,7 +257,15 @@ export function LogisticsManager({
 								<button
 									type="button"
 									className="text-[12px] text-neutral-400 underline"
-									onClick={() => remove(row)}
+									onClick={() =>
+										setConfirming({
+											title: `Delete delivery ${row.number}?`,
+											body: `The delivery for ${row.customerName} is removed for good.`,
+											confirmLabel: "Delete delivery",
+											danger: true,
+											run: () => remove(row),
+										})
+									}
 								>
 									Delete
 								</button>

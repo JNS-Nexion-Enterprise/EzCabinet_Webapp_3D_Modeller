@@ -28,4 +28,5 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		console.info("Password removed", { actor: actor.id, target: target.id });
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
 );

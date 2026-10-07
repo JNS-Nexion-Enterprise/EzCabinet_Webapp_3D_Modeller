@@ -60,6 +60,7 @@ function makeAuth() {
 		session: {
 			additionalFields: {
 				passkeyVerified: { type: "boolean", input: false, defaultValue: false },
+				passkeyVerifiedAt: { type: "date", input: false, required: false },
 			},
 		},
 		hooks: {
@@ -203,7 +204,13 @@ describe("verifiedIfPasskeySession", () => {
 				{ userId: "u1" },
 				{ path: "/passkey/verify-authentication" },
 			),
-		).toEqual({ data: { userId: "u1", passkeyVerified: true } });
+		).toEqual({
+			data: {
+				userId: "u1",
+				passkeyVerified: true,
+				passkeyVerifiedAt: expect.any(Date),
+			},
+		});
 	});
 
 	it("leaves any other session alone", async () => {

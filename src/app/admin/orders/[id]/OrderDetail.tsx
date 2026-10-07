@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { fetchGuarded, PASSKEY_FAILED } from "@/components/admin/stepUp";
 import { fieldClass } from "@/components/admin/styles";
 import { Spinner } from "@/components/Spinner";
 import type {
@@ -84,6 +86,22 @@ const KIND_LABEL: Record<NotificationKind, string> = {
 	DELIVERY_FAILED: "Delivery failed",
 };
 
+/** What a route's refusal means to the person pressing the button. */
+const ACTION_ERROR: Record<string, string> = {
+	not_next_stage:
+		"Someone else moved this order on. Reload to see where it is.",
+	changed: "Someone else moved this order on. Reload to see where it is.",
+	not_awaiting_payment:
+		"This order is no longer awaiting payment. Reload to see where it is.",
+	already_cancelled: "This order is already cancelled. Reload to see it.",
+	in_production:
+		"Production has started, so this order can no longer be cancelled.",
+	has_delivery: "Cancel this order's delivery first.",
+	reason_required: "Give a reason for cancelling a paid order.",
+	not_refundable:
+		"This order is no longer waiting on a refund. Reload to see where it is.",
+};
+
 const MESSAGE_STATUS: Record<NotificationStatus, string> = {
 	PENDING: "Queued",
 	SENT: "Sent",
@@ -103,27 +121,26 @@ export function OrderDetail({ order }: { order: OrderView }) {
 	const [refundRef, setRefundRef] = useState("");
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [confirming, setConfirming] = useState<Confirm | null>(null);
+	const [cancelling, setCancelling] = useState(false);
 
-	async function act(kind: "paid" | "cancel") {
-		if (kind === "cancel" && !confirm(`Cancel order ${order.ref}?`)) return;
-		setBusy(kind);
-		setError(null);
-		const res = await fetch(`/api/admin/orders/${order.id}/${kind}`, {
+	/** A step-up guarded action; the dialog shows whatever this returns. */
+	async function guarded(
+		action: "paid" | "cancel" | "refunded",
+		body: unknown,
+	): Promise<string | null> {
+		const res = await fetchGuarded(`/api/admin/orders/${order.id}/${action}`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ paymentRef: paymentRef.trim() || null }),
+			body: JSON.stringify(body),
 		});
-		setBusy(null);
+		if (!res) return PASSKEY_FAILED;
 		if (!res.ok) {
-			const body = await res.json().catch(() => null);
-			setError(
-				body?.error === "not_awaiting_payment"
-					? "This order is no longer awaiting payment. Reload to see where it is."
-					: "Could not update this order.",
-			);
-			return;
+			const payload = await res.json().catch(() => null);
+			return ACTION_ERROR[payload?.error] ?? "Could not update this order.";
 		}
 		router.refresh();
+		return null;
 	}
 
 	async function post(url: string, body: unknown, key: string) {
@@ -137,17 +154,7 @@ export function OrderDetail({ order }: { order: OrderView }) {
 		setBusy(null);
 		if (!res.ok) {
 			const payload = await res.json().catch(() => null);
-			setError(
-				payload?.error === "not_next_stage" || payload?.error === "changed"
-					? "Someone else moved this order on. Reload to see where it is."
-					: payload?.error === "in_production"
-						? "Production has started, so this order can no longer be cancelled."
-						: payload?.error === "has_delivery"
-							? "Cancel this order's delivery first."
-							: payload?.error === "reason_required"
-								? "Give a reason for cancelling a paid order."
-								: "Could not update this order.",
-			);
+			setError(ACTION_ERROR[payload?.error] ?? "Could not update this order.");
 			return;
 		}
 		router.refresh();
@@ -170,6 +177,40 @@ export function OrderDetail({ order }: { order: OrderView }) {
 
 	return (
 		<main className="mx-auto flex w-full max-w-[1080px] flex-col gap-[18px] px-7 pt-7 pb-16">
+			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
+			<ConfirmDialog
+				// Built on each render, not stored: `run` must read the reason as
+				// typed after the dialog opened.
+				confirm={
+					cancelling
+						? {
+								title: `Cancel order ${order.ref}?`,
+								body: paid
+									? `${rm(order.totalRm)} will be owed back to ${order.customerName}. The order cannot be reopened; the customer would have to order again.`
+									: `${order.customerName}'s order for ${rm(order.totalRm)} will be cancelled. It cannot be reopened; the customer would have to order again.`,
+								confirmLabel: "Cancel order",
+								danger: true,
+								stepUp: true,
+								run: () =>
+									guarded("cancel", { reason: cancelReason.trim() || null }),
+							}
+						: null
+				}
+				onClose={() => setCancelling(false)}
+				blocked={paid && cancelReason.trim() === ""}
+			>
+				{paid && (
+					<label className="flex flex-col gap-1 text-[12px] text-neutral-500">
+						Reason for cancelling (kept on the order)
+						<input
+							className={fieldClass(false, FOCUS)}
+							maxLength={300}
+							value={cancelReason}
+							onChange={(e) => setCancelReason(e.target.value)}
+						/>
+					</label>
+				)}
+			</ConfirmDialog>
 			{error && (
 				<p
 					role="alert"
@@ -266,18 +307,27 @@ export function OrderDetail({ order }: { order: OrderView }) {
 										type="button"
 										className={PRIMARY}
 										disabled={busy !== null}
-										onClick={() => act("paid")}
+										onClick={() =>
+											setConfirming({
+												title: `Mark ${order.ref} as paid?`,
+												body: `Only once ${rm(order.totalRm)} shows in the account. The customer is told their payment arrived, and this cannot be undone here.`,
+												confirmLabel: "Mark paid",
+												stepUp: true,
+												run: () =>
+													guarded("paid", {
+														paymentRef: paymentRef.trim() || null,
+													}),
+											})
+										}
 									>
-										{busy === "paid" && <Spinner />}
-										{busy === "paid" ? "Marking paid…" : "Mark paid"}
+										Mark paid
 									</button>
 									<button
 										type="button"
 										className={CHIP}
 										disabled={busy !== null}
-										onClick={() => act("cancel")}
+										onClick={() => setCancelling(true)}
 									>
-										{busy === "cancel" && <Spinner />}
 										Cancel order
 									</button>
 								</div>
@@ -292,37 +342,14 @@ export function OrderDetail({ order }: { order: OrderView }) {
 							</p>
 						)}
 						{canCancelPaid && (
-							<div className="flex flex-col gap-2 border-neutral-200 border-t pt-3">
-								<label className="flex max-w-[360px] flex-col gap-1 text-[12px] text-neutral-500">
-									Reason for cancelling
-									<input
-										className={fieldClass(false, FOCUS)}
-										maxLength={300}
-										value={cancelReason}
-										onChange={(e) => setCancelReason(e.target.value)}
-									/>
-								</label>
-								<button
-									type="button"
-									className={`${CHIP} self-start`}
-									disabled={busy !== null || cancelReason.trim() === ""}
-									onClick={() => {
-										if (
-											confirm(
-												`Cancel paid order ${order.ref}? ${rm(order.totalRm)} will be owed back to the customer.`,
-											)
-										)
-											post(
-												`/api/admin/orders/${order.id}/cancel`,
-												{ reason: cancelReason.trim() },
-												"cancel",
-											);
-									}}
-								>
-									{busy === "cancel" && <Spinner />}
-									Cancel order and refund
-								</button>
-							</div>
+							<button
+								type="button"
+								className={`${CHIP} self-start`}
+								disabled={busy !== null}
+								onClick={() => setCancelling(true)}
+							>
+								Cancel order and refund
+							</button>
 						)}
 						{order.status === "CANCELLED" && (
 							<p className="text-[13px] text-neutral-500">
@@ -359,14 +386,18 @@ export function OrderDetail({ order }: { order: OrderView }) {
 									className={PRIMARY}
 									disabled={busy !== null}
 									onClick={() =>
-										post(
-											`/api/admin/orders/${order.id}/refunded`,
-											{ refundRef: refundRef.trim() || null },
-											"refunded",
-										)
+										setConfirming({
+											title: `Mark ${order.ref} as refunded?`,
+											body: `Only once ${rm(order.totalRm)} has gone back to ${order.customerName}. This is the record that it did, and it cannot be undone here.`,
+											confirmLabel: "Mark refunded",
+											stepUp: true,
+											run: () =>
+												guarded("refunded", {
+													refundRef: refundRef.trim() || null,
+												}),
+										})
 									}
 								>
-									{busy === "refunded" && <Spinner />}
 									Mark refunded
 								</button>
 							</div>

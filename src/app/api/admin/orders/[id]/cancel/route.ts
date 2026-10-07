@@ -16,6 +16,8 @@ const bodySchema = z.object({
  *
  * Cancelling a paid order moves no money. It leaves the order owed a refund,
  * which staff pay back by hand and then record with `/refunded`.
+ *
+ * Step-up: irreversible, so the admin confirms with their passkey.
  */
 export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 	"orders:markPaid",
@@ -45,4 +47,5 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			},
 		);
 	},
+	{ stepUp: true },
 );

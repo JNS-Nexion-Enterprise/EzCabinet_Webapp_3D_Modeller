@@ -49,4 +49,5 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			? NextResponse.json({ error: "not_awaiting_payment" }, { status: 409 })
 			: NextResponse.json({ error: "not_found" }, { status: 404 });
 	},
+	{ stepUp: true },
 );

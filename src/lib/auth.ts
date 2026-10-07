@@ -141,6 +141,7 @@ export const auth = betterAuth({
 		// Set only by the hooks below, never by a request body.
 		additionalFields: {
 			passkeyVerified: { type: "boolean", input: false, defaultValue: false },
+			passkeyVerifiedAt: { type: "date", input: false, required: false },
 		},
 	},
 	hooks: {

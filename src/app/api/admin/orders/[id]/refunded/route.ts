@@ -13,6 +13,9 @@ const bodySchema = z.object({
 /**
  * Record that a cancelled, paid order's money has gone back. The refund
  * itself happens outside the app; this is only the record of it.
+ *
+ * Step-up: it closes a debt to the customer, so the admin confirms with
+ * their passkey.
  */
 export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 	"orders:markPaid",
@@ -32,4 +35,5 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		console.info("Order refund recorded", { order: id, actor: user.id });
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
 );
