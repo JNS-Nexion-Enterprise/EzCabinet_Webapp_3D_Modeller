@@ -320,14 +320,6 @@ export default async function Home({
 								</div>
 							</div>
 						</details>
-						<Link
-							href="/admin/login"
-							target="_blank"
-							className="hidden border-l py-2.5 pl-4 text-[12px] text-neutral-400 transition-colors hover:text-neutral-600 sm:block"
-							style={{ borderColor: RULE }}
-						>
-							{t.landing.nav.admin}
-						</Link>
 					</div>
 				</div>
 			</header>
@@ -720,12 +712,6 @@ export default async function Home({
 								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
 							>
 								{t.landing.footer.refunds}
-							</Link>
-							<Link
-								href="/admin/login"
-								className="text-[13px] text-neutral-500 transition-colors hover:text-neutral-300"
-							>
-								{t.landing.footer.adminSignIn}
 							</Link>
 						</div>
 					</div>

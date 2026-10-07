@@ -27,7 +27,6 @@ export const zh: Dictionary = {
 			tutorials: "教学视频",
 			menu: "菜单",
 			startPlanning: "开始设计",
-			admin: "管理员",
 		},
 		hero: {
 			eyebrow: "免费试用 · 无需注册",
@@ -104,7 +103,6 @@ export const zh: Dictionary = {
 			privacy: "隐私声明",
 			terms: "销售条款",
 			refunds: "退款政策",
-			adminSignIn: "管理员登录",
 			copyright: "© 2026 {brand}。版权所有。",
 		},
 	},
@@ -115,7 +113,6 @@ export const zh: Dictionary = {
 			quote: "报价",
 		},
 		breadcrumbAriaLabel: "面包屑导航",
-		admin: "管理员",
 		changeRoom: "更换房间",
 		diyTutorials: "DIY 教学视频",
 		clear: "清除",

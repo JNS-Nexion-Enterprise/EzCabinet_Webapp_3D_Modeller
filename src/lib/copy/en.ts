@@ -31,7 +31,6 @@ export const en = {
 			tutorials: "Tutorials",
 			menu: "Menu",
 			startPlanning: "Start planning",
-			admin: "Admin",
 		},
 		hero: {
 			eyebrow: "Free to try · no account needed",
@@ -111,7 +110,6 @@ export const en = {
 			privacy: "Privacy",
 			terms: "Terms of sale",
 			refunds: "Refund policy",
-			adminSignIn: "Admin sign in",
 			copyright: "© 2026 {brand}. All rights reserved.",
 		},
 	},
@@ -122,7 +120,6 @@ export const en = {
 			quote: "Quote",
 		},
 		breadcrumbAriaLabel: "Breadcrumb",
-		admin: "Admin",
 		changeRoom: "Change room",
 		diyTutorials: "DIY tutorials",
 		clear: "Clear",

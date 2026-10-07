@@ -19,7 +19,7 @@ import type { RoomLayout } from "@/lib/planner/room";
 import { clearDraft } from "@/lib/plannerDraft";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
-import { AdminLink, PlannerHeader } from "./PlannerHeader";
+import { PlannerHeader } from "./PlannerHeader";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
 import { type StripePayApi, StripePayment } from "./StripePayment";
 
@@ -388,7 +388,6 @@ export function QuoteScreen({
 					</svg>
 					{t.quote.backToEditing}
 				</button>
-				<AdminLink />
 			</PlannerHeader>
 
 			<div className="flex min-h-0 flex-1 justify-center overflow-y-auto px-4 pt-10 pb-14 sm:px-7">

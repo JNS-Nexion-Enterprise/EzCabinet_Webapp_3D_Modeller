@@ -26,7 +26,6 @@ export const ms: Dictionary = {
 			tutorials: "Tutorial",
 			menu: "Menu",
 			startPlanning: "Mula reka bentuk",
-			admin: "Pentadbir",
 		},
 		hero: {
 			eyebrow: "Percuma untuk cuba · tiada akaun diperlukan",
@@ -108,7 +107,6 @@ export const ms: Dictionary = {
 			privacy: "Privasi",
 			terms: "Terma jualan",
 			refunds: "Polisi bayaran balik",
-			adminSignIn: "Log masuk admin",
 			copyright: "© 2026 {brand}. Hak cipta terpelihara.",
 		},
 	},
@@ -119,7 +117,6 @@ export const ms: Dictionary = {
 			quote: "Sebut harga",
 		},
 		breadcrumbAriaLabel: "Navigasi remah roti",
-		admin: "Pentadbir",
 		changeRoom: "Tukar bilik",
 		diyTutorials: "Tutorial DIY",
 		clear: "Kosongkan",

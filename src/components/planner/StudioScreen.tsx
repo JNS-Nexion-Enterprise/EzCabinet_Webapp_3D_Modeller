@@ -49,7 +49,7 @@ import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
 import { peekDesignMesh } from "./DesignedCabinet";
 import { DimensionField } from "./DimensionField";
-import { AdminLink, PlannerHeader } from "./PlannerHeader";
+import { PlannerHeader } from "./PlannerHeader";
 import type { PlannerView } from "./PlannerScene";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
 import { SignInNudge } from "./SignInNudge";
@@ -826,7 +826,6 @@ export function StudioScreen({
 					</svg>
 					{t.planner.diyTutorials}
 				</Link>
-				<AdminLink />
 			</PlannerHeader>
 
 			<div className="flex min-h-0 flex-1 flex-col lg:flex-row">
