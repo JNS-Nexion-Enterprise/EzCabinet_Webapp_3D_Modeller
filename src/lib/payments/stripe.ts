@@ -5,6 +5,7 @@ import {
 	type PaymentEvent,
 	type PaymentGateway,
 	PaymentInProgress,
+	RefundRefused,
 	toSen,
 } from "./types";
 
@@ -104,12 +105,63 @@ export function stripeGateway(): PaymentGateway | null {
 			} catch {
 				throw new BadSignature("stripe signature");
 			}
+			if (
+				event.type === "refund.created" ||
+				event.type === "refund.updated" ||
+				event.type === "refund.failed"
+			) {
+				// Stripe does not deliver events in order, so the event's snapshot
+				// may be older than one already handled: a stale `succeeded`
+				// arriving after `failed` must not record a refund. The event
+				// only says which refund to look at; its state is read now.
+				return refundEventOf(
+					await stripe.refunds.retrieve(event.data.object.id),
+				);
+			}
 			return eventOf(event);
+		},
+
+		async refund(order) {
+			let refund: Stripe.Refund;
+			try {
+				// No amount: whatever of the payment is left. The metadata is how
+				// `refund.*` events find their order — a Refund does not inherit
+				// the intent's.
+				refund = await stripe.refunds.create(
+					{
+						payment_intent: order.paymentRef,
+						reason: "requested_by_customer",
+						metadata: { orderId: order.id, orderRef: order.ref },
+					},
+					{ idempotencyKey: order.idempotencyKey },
+				);
+			} catch (error) {
+				// These three are Stripe answering 400/402/404: it read the
+				// request and sent nothing. Everything else propagates as
+				// "unknown" — a connection error, a 5xx, a 429, or the 409 for a
+				// key still in use by the first request.
+				if (
+					error instanceof Stripe.errors.StripeInvalidRequestError ||
+					error instanceof Stripe.errors.StripeCardError ||
+					error instanceof Stripe.errors.StripeIdempotencyError
+				) {
+					throw new RefundRefused(error.message);
+				}
+				throw error;
+			}
+			if (refund.status === "failed" || refund.status === "canceled") {
+				throw new RefundRefused(
+					`Stripe refund ${refund.status}: ${refund.failure_reason ?? "no reason given"}`,
+				);
+			}
+			return { ref: refund.id, settled: refund.status === "succeeded" };
 		},
 	};
 }
 
-const OUTCOMES: Partial<Record<Stripe.Event.Type, PaymentEvent["outcome"]>> = {
+const OUTCOMES: Partial<
+	Record<Stripe.Event.Type, "paid" | "pending" | "failed">
+> = {
 	"payment_intent.succeeded": "paid",
 	"payment_intent.processing": "pending",
 	"payment_intent.payment_failed": "failed",
@@ -128,5 +180,28 @@ function eventOf(event: Stripe.Event): PaymentEvent | null {
 		amountSen: outcome === "paid" ? intent.amount_received : intent.amount,
 		currency: intent.currency,
 		ref: intent.id,
+	};
+}
+
+/** A refund still on its way (`pending`, `requires_action`) needs no action yet. */
+function refundEventOf(refund: Stripe.Refund): PaymentEvent | null {
+	const outcome =
+		refund.status === "succeeded"
+			? "refunded"
+			: refund.status === "failed" || refund.status === "canceled"
+				? "refund_failed"
+				: null;
+	const paymentRef =
+		typeof refund.payment_intent === "string"
+			? refund.payment_intent
+			: refund.payment_intent?.id;
+	if (!outcome || !paymentRef) return null;
+	return {
+		outcome,
+		orderId: refund.metadata?.orderId ?? null,
+		paymentRef,
+		amountSen: refund.amount,
+		currency: refund.currency,
+		ref: refund.id,
 	};
 }

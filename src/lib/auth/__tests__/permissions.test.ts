@@ -24,11 +24,18 @@ describe("can", () => {
 		}
 	});
 
-	it("gives ADMIN everything except users:manage", () => {
-		expect(can("ADMIN", "users:manage")).toBe(false);
+	it("is the only role that refunds an order", () => {
+		for (const role of ROLES) {
+			expect(can(role, "orders:refund")).toBe(role === "SUPERADMIN");
+		}
+	});
+
+	it("gives ADMIN everything except managing users and refunding", () => {
+		const superadminOnly = ["users:manage", "orders:refund"];
 		for (const permission of ROLE_PERMISSIONS.SUPERADMIN) {
-			if (permission === "users:manage") continue;
-			expect(can("ADMIN", permission)).toBe(true);
+			expect(can("ADMIN", permission)).toBe(
+				!superadminOnly.includes(permission),
+			);
 		}
 	});
 

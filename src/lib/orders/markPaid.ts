@@ -14,7 +14,8 @@ import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 export async function markOrderPaid(
 	id: string,
 	data: {
-		paymentRef: string | null;
+		/** Left out, the order keeps the reference its gateway payment has. */
+		paymentRef?: string | null;
 		paidByUserId?: string | null;
 		/** Kept beside the id so the order still says who, once that account is deleted. */
 		paidByName?: string | null;

@@ -381,6 +381,12 @@ model Order {
   refundedAt         DateTime?
   refundedByName     String?
   refundRef          String?
+  /// A gateway refund (`lib/orders/refund.ts`). `refundRequestedAt` marks one
+  /// attempt and is part of its idempotency key; while it is in flight
+  /// `refundRef` holds the gateway's refund id with `refundedAt` still null.
+  /// `refundError` is why the last attempt did not go through.
+  refundRequestedAt  DateTime?
+  refundError        String?
   createdAt          DateTime         @default(now())
   updatedAt          DateTime         @updatedAt
 
@@ -593,6 +599,7 @@ enum NotificationKind {
   PICKED_UP
   DELIVERED
   DELIVERY_FAILED
+  ORDER_REFUNDED
 }
 
 /// `FAILED` is terminal until an admin presses Resend.

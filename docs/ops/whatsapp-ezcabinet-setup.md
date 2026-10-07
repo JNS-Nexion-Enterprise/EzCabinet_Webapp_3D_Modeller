@@ -95,7 +95,7 @@ small, but it is not zero and it is EzCabinet's account that pays it.
 ## 5. Template approval
 
 Every message the app sends first must be a template Meta has approved. There
-are 7, each needed in **English, Simplified Chinese and Bahasa Melayu** — 21
+are 8, each needed in **English, Simplified Chinese and Bahasa Melayu** — 24
 submissions. Submit them in **WhatsApp Manager → Message templates**, category
 **Utility**.
 
@@ -115,6 +115,7 @@ fixed at submission and the app appends the private link token.
 | `delivery_picked_up` | Track delivery | `https://<domain>/track/{{1}}` |
 | `delivery_delivered` | View delivery | `https://<domain>/track/{{1}}` |
 | `delivery_failed` | View delivery | `https://<domain>/track/{{1}}` |
+| `order_refunded` | View order | `https://<domain>/order/{{1}}` |
 
 **`order_placed`**
 > Hi {{1}}, thank you for your order with EzCabinet. Your order number is
@@ -141,6 +142,10 @@ fixed at submission and the app appends the private link token.
 **`delivery_failed`**
 > We couldn't complete the delivery of order {{1}}. Our team will contact you
 > to arrange a new time.
+
+**`order_refunded`**
+> Your order {{1}} has been cancelled and RM {{2}} has been refunded to you.
+> It can take a few working days to show in your account.
 
 Tips that get templates approved first time:
 

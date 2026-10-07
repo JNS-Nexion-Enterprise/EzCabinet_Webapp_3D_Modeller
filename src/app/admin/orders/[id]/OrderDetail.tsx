@@ -14,6 +14,7 @@ import type {
 } from "@/generated/prisma/enums";
 import { en } from "@/lib/copy/en";
 import type { DeliveryStatusName } from "@/lib/logistics/types";
+import type { RefundState } from "@/lib/orders/refund";
 import { nextStage } from "@/lib/orders/stage";
 import type { SummaryLine } from "@/lib/orders/summary";
 import { shortTime } from "../../logistics/time";
@@ -52,6 +53,12 @@ export type OrderView = {
 	refundedAt: string | null;
 	refundedByName: string | null;
 	refundRef: string | null;
+	refundRequestedAt: string | null;
+	refundError: string | null;
+	/** `refundState` (`lib/orders/refund.ts`), derived on the server. */
+	refundState: RefundState;
+	/** The unanswered gateway refund is old enough to repeat. */
+	canAskAgain: boolean;
 	deliveries: { id: string; number: number; status: DeliveryStatusName }[];
 	productionStage: ProductionStage | null;
 	whatsappOptIn: boolean;
@@ -84,6 +91,7 @@ const KIND_LABEL: Record<NotificationKind, string> = {
 	PICKED_UP: "Picked up",
 	DELIVERED: "Delivered",
 	DELIVERY_FAILED: "Delivery failed",
+	ORDER_REFUNDED: "Order refunded",
 };
 
 /** What a route's refusal means to the person pressing the button. */
@@ -100,6 +108,14 @@ const ACTION_ERROR: Record<string, string> = {
 	reason_required: "Give a reason for cancelling a paid order.",
 	not_refundable:
 		"This order is no longer waiting on a refund. Reload to see where it is.",
+	manual_order:
+		"This order was paid by bank transfer. Send the money back, then mark it refunded.",
+	not_configured:
+		"This order's payment gateway is not connected, so it cannot be refunded from here.",
+	gateway_refused:
+		"The payment gateway refused the refund. Nothing was sent; the reason is on the order.",
+	not_acknowledged:
+		"The payment gateway did not answer, so the refund may or may not have gone through. Ask again in a few minutes: it repeats the same request and cannot refund twice.",
 };
 
 const MESSAGE_STATUS: Record<NotificationStatus, string> = {
@@ -114,7 +130,14 @@ const MESSAGE_STATUS: Record<NotificationStatus, string> = {
  * One order: what was bought, who for, and its admin moves — mark it paid,
  * advance production, create its delivery.
  */
-export function OrderDetail({ order }: { order: OrderView }) {
+export function OrderDetail({
+	order,
+	canRefund,
+}: {
+	order: OrderView;
+	/** `orders:refund` — a superadmin. The route checks it again. */
+	canRefund: boolean;
+}) {
 	const router = useRouter();
 	const [paymentRef, setPaymentRef] = useState("");
 	const [cancelReason, setCancelReason] = useState("");
@@ -126,7 +149,7 @@ export function OrderDetail({ order }: { order: OrderView }) {
 
 	/** A step-up guarded action; the dialog shows whatever this returns. */
 	async function guarded(
-		action: "paid" | "cancel" | "refunded",
+		action: "paid" | "cancel" | "refunded" | "refund",
 		body: unknown,
 	): Promise<string | null> {
 		const res = await fetchGuarded(`/api/admin/orders/${order.id}/${action}`, {
@@ -135,12 +158,12 @@ export function OrderDetail({ order }: { order: OrderView }) {
 			body: JSON.stringify(body),
 		});
 		if (!res) return PASSKEY_FAILED;
-		if (!res.ok) {
-			const payload = await res.json().catch(() => null);
-			return ACTION_ERROR[payload?.error] ?? "Could not update this order.";
-		}
+		// Even a refusal can have moved the order: a refused refund leaves its
+		// reason on it.
 		router.refresh();
-		return null;
+		if (res.ok) return null;
+		const payload = await res.json().catch(() => null);
+		return ACTION_ERROR[payload?.error] ?? "Could not update this order.";
 	}
 
 	async function post(url: string, body: unknown, key: string) {
@@ -170,10 +193,26 @@ export function OrderDetail({ order }: { order: OrderView }) {
 	// Mirrors `cancelBlock` (`lib/orders/cancel.ts`); the server decides.
 	const canCancelPaid =
 		paid && order.productionStage === null && !hasLiveDelivery;
+	const refund = order.refundState;
 	const refundDue =
-		order.status === "CANCELLED" &&
-		order.paidAt !== null &&
-		order.refundedAt === null;
+		refund === "due" || refund === "unacknowledged" || refund === "pending";
+	const provider = order.paymentProvider;
+	const throughGateway = refund === "due" && provider !== "manual" && canRefund;
+	const askAgain = refund === "unacknowledged" && canRefund;
+	/** The request is the same either way; only the wording differs. */
+	const confirmRefund = (again: boolean) =>
+		setConfirming({
+			title: again
+				? `Ask ${provider} again?`
+				: `Refund ${rm(order.totalRm)} through ${provider}?`,
+			body: again
+				? "The first request was never acknowledged. Asking again cannot refund twice: it repeats the same request."
+				: `${rm(order.totalRm)} goes back to ${order.customerName}, to the method they paid with. This cannot be undone.`,
+			confirmLabel: again ? "Ask again" : `Refund ${rm(order.totalRm)}`,
+			danger: true,
+			stepUp: true,
+			run: () => guarded("refund", undefined),
+		});
 
 	return (
 		<main className="mx-auto flex w-full max-w-[1080px] flex-col gap-[18px] px-7 pt-7 pb-16">
@@ -361,45 +400,108 @@ export function OrderDetail({ order }: { order: OrderView }) {
 								{order.cancelReason ? ` · ${order.cancelReason}` : ""}
 							</p>
 						)}
+						{order.refundError && (
+							<p
+								role="alert"
+								className="rounded-[10px] bg-[#fbf1ee] px-3 py-2.5 text-[#7a2c1c] text-[13px]"
+							>
+								Last refund attempt: {order.refundError}
+							</p>
+						)}
 						{refundDue && (
 							<div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3">
 								<p className="font-semibold text-[13px] text-amber-900">
 									Refund due: {rm(order.totalRm)}
 								</p>
-								<p className="text-[12px] text-amber-900">
-									Paid by {order.paymentProvider}
-									{order.paymentRef ? ` (${order.paymentRef})` : ""}. This app
-									does not send money: refund it by bank transfer or in the
-									gateway's dashboard, then record it here.
-								</p>
-								<label className="flex max-w-[260px] flex-col gap-1 text-[12px] text-amber-900">
-									Refund reference (optional)
-									<input
-										className={fieldClass(false, FOCUS)}
-										maxLength={120}
-										value={refundRef}
-										onChange={(e) => setRefundRef(e.target.value)}
-									/>
-								</label>
-								<button
-									type="button"
-									className={PRIMARY}
-									disabled={busy !== null}
-									onClick={() =>
-										setConfirming({
-											title: `Mark ${order.ref} as refunded?`,
-											body: `Only once ${rm(order.totalRm)} has gone back to ${order.customerName}. This is the record that it did, and it cannot be undone here.`,
-											confirmLabel: "Mark refunded",
-											stepUp: true,
-											run: () =>
-												guarded("refunded", {
-													refundRef: refundRef.trim() || null,
-												}),
-										})
-									}
-								>
-									Mark refunded
-								</button>
+								{refund === "due" && (
+									<p className="text-[12px] text-amber-900">
+										Paid by {provider}
+										{order.paymentRef ? ` (${order.paymentRef})` : ""}.{" "}
+										{throughGateway
+											? `Send it back through ${provider}, or refund it by hand and record it here.`
+											: provider === "manual"
+												? "Refund it by bank transfer, then record it here."
+												: `A superadmin can send it back through ${provider}. Otherwise refund it by bank transfer or in the gateway's dashboard, then record it here.`}
+									</p>
+								)}
+								{refund === "unacknowledged" && (
+									<p className="text-[12px] text-amber-900">
+										{provider} has not acknowledged the refund requested
+										{order.refundRequestedAt
+											? ` ${shortTime(order.refundRequestedAt)}`
+											: ""}
+										{order.refundedByName ? ` by ${order.refundedByName}` : ""}.
+										It may or may not have gone through: check the gateway's
+										dashboard before refunding by hand.
+										{askAgain && !order.canAskAgain
+											? " You can ask again two minutes after the request; reload this page then."
+											: ""}
+									</p>
+								)}
+								{refund === "pending" && (
+									<p className="text-[12px] text-amber-900">
+										Waiting for {provider} to confirm ({order.refundRef}). FPX
+										refunds take a few working days; this marks itself refunded.
+									</p>
+								)}
+								{throughGateway && (
+									<button
+										type="button"
+										className={PRIMARY}
+										disabled={busy !== null}
+										onClick={() => confirmRefund(false)}
+									>
+										Refund {rm(order.totalRm)} through {provider}
+									</button>
+								)}
+								{askAgain && order.canAskAgain && (
+									<button
+										type="button"
+										className={PRIMARY}
+										disabled={busy !== null}
+										onClick={() => confirmRefund(true)}
+									>
+										Ask again
+									</button>
+								)}
+								{/* The manual way out. Not while the gateway is processing a
+								    refund: that one records itself. */}
+								{refund !== "pending" && (
+									<>
+										<label className="flex max-w-[260px] flex-col gap-1 text-[12px] text-amber-900">
+											Refund reference (optional)
+											<input
+												className={fieldClass(false, FOCUS)}
+												maxLength={120}
+												value={refundRef}
+												onChange={(e) => setRefundRef(e.target.value)}
+											/>
+										</label>
+										<button
+											type="button"
+											className={
+												throughGateway || askAgain
+													? `${CHIP} self-start`
+													: PRIMARY
+											}
+											disabled={busy !== null}
+											onClick={() =>
+												setConfirming({
+													title: `Mark ${order.ref} as refunded?`,
+													body: `Only once ${rm(order.totalRm)} has gone back to ${order.customerName} outside this app. The customer is told it was refunded, and this cannot be undone here.`,
+													confirmLabel: "Mark refunded",
+													stepUp: true,
+													run: () =>
+														guarded("refunded", {
+															refundRef: refundRef.trim() || null,
+														}),
+												})
+											}
+										>
+											Mark refunded
+										</button>
+									</>
+								)}
 							</div>
 						)}
 						{order.refundedAt && (

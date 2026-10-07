@@ -45,17 +45,40 @@ export type PaymentStart = { ref: string } & (
 
 /** A verified notification, normalised. */
 export type PaymentEvent = {
-	orderId: string;
-	outcome: "paid" | "failed" | "pending";
 	/** In sen. Compared against the stored order total before anything is written. */
 	amountSen: number;
 	/** ISO 4217, lower case. */
 	currency: string;
-	/** The gateway's own id for the payment, stored as `Order.paymentRef`. */
-	ref: string;
-};
+} & (
+	| {
+			outcome: "paid" | "failed" | "pending";
+			orderId: string;
+			/** The gateway's own id for the payment, stored as `Order.paymentRef`. */
+			ref: string;
+	  }
+	| {
+			outcome: "refunded" | "refund_failed";
+			/**
+			 * Null on a refund issued in the gateway's own dashboard, which
+			 * carries none of our metadata; the order is then found by
+			 * `paymentRef`.
+			 */
+			orderId: string | null;
+			/** The payment being refunded — `Order.paymentRef`. */
+			paymentRef: string;
+			/** The gateway's own id for the refund, stored as `Order.refundRef`. */
+			ref: string;
+	  }
+);
 
 export class BadSignature extends Error {}
+
+/**
+ * The gateway said no to a refund, and said so: nothing was sent back. Any
+ * other error out of `refund` is ambiguous — a timeout or a 5xx may be a
+ * refund that went through — and must never be read as this.
+ */
+export class RefundRefused extends Error {}
 
 /** The order already has a payment the gateway is settling; starting another could charge twice. */
 export class PaymentInProgress extends Error {}
@@ -80,6 +103,20 @@ export type PaymentGateway = {
 	verify(rawBody: string, headers: Headers): Promise<PaymentEvent | null>;
 	/** The body the gateway expects back, when it wants more than a 200. */
 	ack?(): Response;
+	/**
+	 * Send the whole payment back. Absent on a gateway that cannot. Throws
+	 * `RefundRefused` when the gateway definitely refused; anything else
+	 * thrown means the outcome is unknown. `settled` false means the money is
+	 * on its way and `verify` will report the outcome later — FPX refunds
+	 * take days.
+	 */
+	refund?(order: {
+		id: string;
+		ref: string;
+		paymentRef: string;
+		/** The same key on a repeat of the same attempt, so it cannot refund twice. */
+		idempotencyKey: string;
+	}): Promise<{ ref: string; settled: boolean }>;
 };
 
 /** Ringgit to sen — gateways charge in the currency's smallest unit. */

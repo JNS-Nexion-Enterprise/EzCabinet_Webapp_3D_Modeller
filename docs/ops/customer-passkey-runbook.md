@@ -47,3 +47,20 @@ Reset straight away. Then follow the ring-back steps above before the customer s
 - [ ] Sales staff know what the screen looks like.
 - [ ] Everyone knows what to expect on launch day. Every existing customer is asked to set up a passkey at their next order page. A customer whose Google sign-in is more than a day old is sent through Google once more first.
 - [ ] Section J of `docs/ops/staff-2fa-test-checklist.md` has been run on a Vercel preview. The checkout step cannot be tried on a local production build, because the bot check only runs on Vercel.
+
+## Staff passkeys
+
+Staff sign in with a password and code, or Google, as before. A passkey is
+what confirms an action that moves money or access: cancel order, mark paid,
+refund through the gateway, mark refunded, delete user, reset passkey, reset
+2FA, remove password.
+The prompt appears when no passkey was used in the last five minutes.
+
+- Set one up under **Security** in the admin header, on each device you work
+  from. The first one needs a sign-in from the last day.
+- Lost the device: a superadmin presses **Reset passkey** on your row in
+  People. You are signed out and set up a new one.
+- The only superadmin lost theirs: `pnpm auth:reset-passkey <email>`, run by
+  someone with database credentials.
+- Before resetting a colleague's passkey, confirm it is them asking, by voice
+  or in person. Whoever signs in to that account next can enrol their own.

@@ -102,36 +102,53 @@ export const POST = withAuth("logistics:book", async (request) => {
 		pickup: [pickup.lat, pickup.lng],
 	});
 
-	const delivery = await prisma.delivery.create({
-		data: {
-			...rest,
-			items,
-			siteLat: site.lat,
-			siteLng: site.lng,
-			siteGeocodedFor: site.geocodedFor,
-			sitePostcode: site.postcode,
-			siteCity: site.city,
-			siteState: site.state,
-			pickupLat: pickup.lat,
-			pickupLng: pickup.lng,
-			pickupGeocodedFor: pickup.geocodedFor,
-			pickupPostcode: pickup.postcode,
-			pickupCity: pickup.city,
-			pickupState: pickup.state,
-			scheduledAt: scheduledAt === null ? null : new Date(scheduledAt),
-			// Derived on write so the carrier payload builders and the list can
-			// read them without recomputing, and so a later change to the maths
-			// is visible as a migration rather than a silently different quote.
-			totalVolumeM3: totalVolumeM3(items),
-			totalWeightKg: totalWeightKg(items),
-			events: {
-				create: {
-					source: "ADMIN",
-					message: `Delivery created — ${suggestVehicle(items).label}`,
+	// The order was paid when this request arrived, but geocoding is a network
+	// call and a cancel can land during it. The conditional write re-checks and
+	// holds the order's row until the delivery is in, so a cancel that has
+	// already committed leaves no delivery behind.
+	const orderId = rest.orderId;
+	const delivery = await prisma.$transaction(async (tx) => {
+		if (orderId !== null) {
+			const { count } = await tx.order.updateMany({
+				where: { id: orderId, status: "PAID" },
+				data: { updatedAt: new Date() },
+			});
+			if (count !== 1) return null;
+		}
+		return tx.delivery.create({
+			data: {
+				...rest,
+				items,
+				siteLat: site.lat,
+				siteLng: site.lng,
+				siteGeocodedFor: site.geocodedFor,
+				sitePostcode: site.postcode,
+				siteCity: site.city,
+				siteState: site.state,
+				pickupLat: pickup.lat,
+				pickupLng: pickup.lng,
+				pickupGeocodedFor: pickup.geocodedFor,
+				pickupPostcode: pickup.postcode,
+				pickupCity: pickup.city,
+				pickupState: pickup.state,
+				scheduledAt: scheduledAt === null ? null : new Date(scheduledAt),
+				// Derived on write so the carrier payload builders and the list can
+				// read them without recomputing, and so a later change to the maths
+				// is visible as a migration rather than a silently different quote.
+				totalVolumeM3: totalVolumeM3(items),
+				totalWeightKg: totalWeightKg(items),
+				events: {
+					create: {
+						source: "ADMIN",
+						message: `Delivery created — ${suggestVehicle(items).label}`,
+					},
 				},
 			},
-		},
+		});
 	});
+	if (!delivery) {
+		return NextResponse.json({ error: "order_not_paid" }, { status: 409 });
+	}
 
 	return NextResponse.json({ delivery }, { status: 201 });
 });

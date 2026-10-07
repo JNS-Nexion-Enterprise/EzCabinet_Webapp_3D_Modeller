@@ -2,8 +2,25 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const findUnique = vi.hoisted(() => vi.fn());
 const updateMany = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/catalogue/db", () => ({
-	prisma: { order: { findUnique, updateMany } },
+const findUniqueOrThrow = vi.hoisted(() => vi.fn());
+const enqueue = vi.hoisted(() => vi.fn());
+const flushSoon = vi.hoisted(() => vi.fn());
+const draftFor = vi.hoisted(() => vi.fn());
+/** What `markRefunded`'s transaction writes through. */
+const tx = vi.hoisted(() => ({ order: {} as Record<string, unknown> }));
+vi.mock("@/lib/catalogue/db", () => {
+	tx.order = { updateMany, findUniqueOrThrow };
+	return {
+		prisma: {
+			order: { findUnique, updateMany },
+			$transaction: (run: (client: typeof tx) => unknown) => run(tx),
+		},
+	};
+});
+vi.mock("@/lib/whatsapp/outbox", () => ({ enqueue, flushSoon }));
+vi.mock("@/lib/whatsapp/templates", () => ({
+	draftFor,
+	NOTIFY_ORDER_SELECT: {},
 }));
 
 const { cancelBlock, cancelOrder, markRefunded } = await import(
@@ -103,10 +120,38 @@ describe("cancelOrder", () => {
 });
 
 describe("markRefunded", () => {
-	it("marks only a cancelled, paid, not-yet-refunded order", async () => {
-		updateMany.mockReset();
+	const order = { id: "o1", publicToken: "tok" };
+	beforeEach(() => {
+		vi.clearAllMocks();
 		updateMany.mockResolvedValue({ count: 1 });
-		expect(await markRefunded("o1", { byName: "Mei", ref: "TT-1" })).toBe(true);
+		findUniqueOrThrow.mockResolvedValue(order);
+		draftFor.mockReturnValue({ dedupeKey: "order:o1:refunded" });
+		enqueue.mockResolvedValue(["n1"]);
+	});
+
+	it("marks only a cancelled, paid, not-yet-refunded order", async () => {
+		expect(
+			await markRefunded("o1", { byName: "Mei", ref: "TT-1", byHand: true }),
+		).toBe(true);
+		const { where, data } = updateMany.mock.calls[0][0];
+		// By hand: never over a gateway refund that is still in flight.
+		expect(where).toEqual({
+			id: "o1",
+			status: "CANCELLED",
+			paidAt: { not: null },
+			refundedAt: null,
+			refundRef: null,
+		});
+		expect(data).toEqual({
+			refundedAt: expect.any(Date),
+			refundedByName: "Mei",
+			refundRef: "TT-1",
+			refundError: null,
+		});
+	});
+
+	it("records the gateway's refund over its own in-flight id, keeping who asked", async () => {
+		expect(await markRefunded("o1", { ref: "re_1" })).toBe(true);
 		const { where, data } = updateMany.mock.calls[0][0];
 		expect(where).toEqual({
 			id: "o1",
@@ -114,12 +159,27 @@ describe("markRefunded", () => {
 			paidAt: { not: null },
 			refundedAt: null,
 		});
-		expect(data).toMatchObject({ refundedByName: "Mei", refundRef: "TT-1" });
-		expect(data.refundedAt).toBeInstanceOf(Date);
+		expect(data).toEqual({
+			refundedAt: expect.any(Date),
+			refundRef: "re_1",
+			refundError: null,
+		});
 	});
 
-	it("is false when nothing matched", async () => {
+	it("queues the customer's message exactly once, in the same transaction", async () => {
+		await markRefunded("o1", { ref: "re_1" });
+		expect(draftFor).toHaveBeenCalledWith({ kind: "ORDER_REFUNDED", order });
+		expect(enqueue).toHaveBeenCalledTimes(1);
+		expect(enqueue).toHaveBeenCalledWith(tx, [
+			{ dedupeKey: "order:o1:refunded" },
+		]);
+		expect(flushSoon).toHaveBeenCalledWith(["n1"]);
+	});
+
+	it("is a no-op when already refunded: false, and nothing queued", async () => {
 		updateMany.mockResolvedValue({ count: 0 });
-		expect(await markRefunded("o1", { byName: null, ref: null })).toBe(false);
+		expect(await markRefunded("o1", { ref: "re_1" })).toBe(false);
+		expect(enqueue).not.toHaveBeenCalled();
+		expect(flushSoon).not.toHaveBeenCalled();
 	});
 });

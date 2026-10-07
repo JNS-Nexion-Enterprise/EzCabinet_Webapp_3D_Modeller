@@ -14,8 +14,9 @@ const bodySchema = z.object({
  * Cancel an order: a junk checkout nobody paid for, or a paid one before
  * production starts — the refund policy's boundary (`lib/orders/cancel.ts`).
  *
- * Cancelling a paid order moves no money. It leaves the order owed a refund,
- * which staff pay back by hand and then record with `/refunded`.
+ * Cancelling a paid order moves no money. It leaves the order owed a refund:
+ * sent back through the gateway with `/refund`, or paid back by hand and
+ * recorded with `/refunded`.
  *
  * Step-up: irreversible, so the admin confirms with their passkey.
  */

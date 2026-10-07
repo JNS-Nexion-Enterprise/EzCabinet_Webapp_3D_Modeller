@@ -92,6 +92,7 @@ describe("every admin surface is gated", () => {
 			["orders/[id]/cancel/route.ts", "POST"],
 			["orders/[id]/paid/route.ts", "POST"],
 			["orders/[id]/refunded/route.ts", "POST"],
+			["orders/[id]/refund/route.ts", "POST"],
 			["users/[id]/route.ts", "DELETE"],
 			["users/[id]/reset-passkey/route.ts", "POST"],
 			["users/[id]/reset-2fa/route.ts", "POST"],
@@ -103,7 +104,7 @@ describe("every admin surface is gated", () => {
 			if (from < 0) return true;
 			const next = source.indexOf("export const ", from + 1);
 			const body = source.slice(from, next < 0 ? undefined : next);
-			return !/\{ stepUp: true \},\n\);\s*$/.test(body.trimEnd() + "\n");
+			return !/\{ stepUp: true \},\n\);$/.test(body.trimEnd());
 		});
 		expect(missing).toEqual([]);
 	});
