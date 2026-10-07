@@ -35,6 +35,7 @@ export function InviteStaff() {
 	const [error, setError] = useState<string | null>(null);
 	const [result, setResult] = useState<{
 		promoted: boolean;
+		emailed: boolean;
 		password: string;
 	} | null>(null);
 	const [submitting, setSubmitting] = useState(false);
@@ -68,7 +69,11 @@ export function InviteStaff() {
 			return;
 		}
 		const data = await res.json();
-		setResult({ promoted: Boolean(data.promoted), password });
+		setResult({
+			promoted: Boolean(data.promoted),
+			emailed: Boolean(data.emailed),
+			password,
+		});
 		router.refresh();
 	}
 
@@ -85,7 +90,10 @@ export function InviteStaff() {
 							className="rounded-lg border border-[#c8d8ce] bg-[#f2f7f4] px-3 py-[9px] text-[#1f5138] text-[12px]"
 						>
 							Role granted. Existing account given the {ROLE_LABELS[role]} role.
-							They keep signing in the way they already do.
+							They keep signing in the way they already do.{" "}
+							{result.emailed
+								? "They have been emailed the sign-in link."
+								: "No email was sent, so let them know."}
 						</p>
 					) : (
 						<div className="flex flex-col gap-2">
@@ -93,8 +101,11 @@ export function InviteStaff() {
 								role="status"
 								className="rounded-lg border border-[#c8d8ce] bg-[#f2f7f4] px-3 py-[9px] text-[#1f5138] text-[12px]"
 							>
-								Staff account created. Give this password to them in person — it
-								is not shown again.
+								Staff account created.{" "}
+								{result.emailed
+									? "They have been emailed the sign-in link, without the password."
+									: "No email was sent, so send them the sign-in link yourself."}{" "}
+								Give this password to them in person — it is not shown again.
 							</p>
 							<code className="block w-fit rounded-lg bg-neutral-100 px-3 py-2 text-[13px]">
 								{result.password}

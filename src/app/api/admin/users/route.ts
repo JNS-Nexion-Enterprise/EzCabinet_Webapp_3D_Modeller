@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { inviteSchema } from "@/lib/auth/invite";
+import { sendStaffInvite } from "@/lib/auth/inviteMail";
 import { BYPASS_USER } from "@/lib/auth/requireAuth";
 import { withAuth } from "@/lib/auth/route";
 import { toUserRow, USER_ROW_SELECT } from "@/lib/auth/userRow";
@@ -34,8 +35,8 @@ export const GET = withAuth("users:manage", async (request) => {
 
 /**
  * Invite: the superadmin creates the account and sets its first password,
- * handed over in person. No email is sent, because sending one means running
- * an email vendor for three internal users.
+ * handed over in person. The invitee is mailed the sign-in link, never the
+ * password; `emailed` tells the form whether that mail went out.
  */
 export const POST = withAuth("users:manage", async (request, _ctx, actor) => {
 	const parsed = inviteSchema.safeParse(await request.json().catch(() => null));
@@ -47,6 +48,12 @@ export const POST = withAuth("users:manage", async (request, _ctx, actor) => {
 	}
 	const { email, name, role, password } = parsed.data;
 	const invitedById = actor.id === BYPASS_USER.id ? null : actor.id;
+	const mail = {
+		to: email,
+		inviterName: actor.name,
+		role,
+		base: process.env.BETTER_AUTH_URL ?? new URL(request.url).origin,
+	};
 
 	const existing = await prisma.user.findUnique({ where: { email } });
 	if (existing) {
@@ -75,7 +82,17 @@ export const POST = withAuth("users:manage", async (request, _ctx, actor) => {
 				data: { role, invitedById, emailVerified: true },
 			}),
 		]);
-		return NextResponse.json({ ok: true, id: existing.id, promoted: true });
+		const emailed = await sendStaffInvite({
+			...mail,
+			name: existing.name,
+			hasPassword: false,
+		});
+		return NextResponse.json({
+			ok: true,
+			id: existing.id,
+			promoted: true,
+			emailed,
+		});
 	}
 
 	// Better Auth owns password hashing and the credential Account row, so the
@@ -122,5 +139,9 @@ export const POST = withAuth("users:manage", async (request, _ctx, actor) => {
 		},
 	});
 
-	return NextResponse.json({ ok: true, id: created.id }, { status: 201 });
+	const emailed = await sendStaffInvite({ ...mail, name, hasPassword: true });
+	return NextResponse.json(
+		{ ok: true, id: created.id, emailed },
+		{ status: 201 },
+	);
 });

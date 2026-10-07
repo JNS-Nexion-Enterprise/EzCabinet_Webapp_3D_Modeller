@@ -14,6 +14,7 @@ export async function sendEmail(message: {
 	to: string;
 	subject: string;
 	text: string;
+	html?: string;
 }): Promise<boolean> {
 	const key = process.env.RESEND_API_KEY;
 	const from = process.env.EMAIL_FROM;
