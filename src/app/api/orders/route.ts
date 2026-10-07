@@ -8,6 +8,7 @@ import { prisma } from "@/lib/catalogue/db";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
 import { LOCALES } from "@/lib/copy/locales";
 import { toE164 } from "@/lib/logistics/phone";
+import { customerSchema } from "@/lib/orders/customerSchema";
 import {
 	ORDER_DESIGN_VERSION,
 	roomLayoutSchema,
@@ -36,13 +37,7 @@ const orderInputSchema = z.object({
 	roomId: z.string().min(1).max(40),
 	finishId: z.string().min(1).max(128),
 	layout: roomLayoutSchema,
-	customer: z.object({
-		name: z.string().trim().min(1).max(200),
-		phone: z.string().trim().min(1).max(40),
-		email: z.email().max(200).nullable().default(null),
-		siteAddress: z.string().trim().min(5).max(500),
-		addressNotes: z.string().trim().max(500).nullable().default(null),
-	}),
+	customer: customerSchema,
 	/** The re-measure notice is a condition of the order, not a preference. */
 	remeasureAccepted: z.literal(true),
 	/** The terms of sale and refund policy, linked beside the box. Required the same way. */

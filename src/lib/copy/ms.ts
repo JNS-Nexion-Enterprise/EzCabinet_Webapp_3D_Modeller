@@ -466,6 +466,13 @@ export const ms: Dictionary = {
 		},
 	},
 	order: {
+		editDetails: "Ubah butiran",
+		saveDetails: "Simpan perubahan",
+		savingDetails: "Menyimpan…",
+		cancelEdit: "Batal",
+		detailsLocked:
+			"Butiran ini tidak lagi boleh diubah di sini. Hubungi kami dan kami akan bantu.",
+		detailsError: "Perubahan anda tidak dapat disimpan. Sila cuba lagi.",
 		headingConfirming: "Mengesahkan pembayaran anda",
 		bodyConfirming:
 			"Terima kasih — kami sedang menunggu pengesahan daripada penyedia pembayaran. Biasanya ini mengambil beberapa saat, dan halaman ini akan dikemas kini sendiri. Anda tidak perlu membayar lagi.",
@@ -686,6 +693,7 @@ export const ms: Dictionary = {
 	account: {
 		navHeading: "Akaun anda",
 		myOrders: "Pesanan saya",
+		admin: "Portal admin",
 		passkeys: "Kunci laluan",
 		signIn: "Log masuk",
 		signOut: "Log keluar",
@@ -693,7 +701,6 @@ export const ms: Dictionary = {
 	},
 	orders: {
 		heading: "Pesanan saya",
-		admin: "Portal admin",
 		empty: "Belum ada pesanan",
 		emptyBody:
 			"Apabila anda memesan reka bentuk, ia dipaparkan di sini bersama status bayaran, pengeluaran dan penghantarannya.",

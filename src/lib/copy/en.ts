@@ -462,6 +462,13 @@ export const en = {
 	},
 	/** The page a customer lands on after checkout, reached by its public token. */
 	order: {
+		editDetails: "Edit details",
+		saveDetails: "Save changes",
+		savingDetails: "Saving…",
+		cancelEdit: "Cancel",
+		detailsLocked:
+			"These details can no longer be changed here. Message us and we'll help.",
+		detailsError: "We couldn't save your changes. Please try again.",
 		headingConfirming: "Confirming your payment",
 		bodyConfirming:
 			"Thanks — we're waiting for the payment provider to confirm. This usually takes a few seconds, and this page updates by itself. You don't need to pay again.",
@@ -698,6 +705,7 @@ export const en = {
 	account: {
 		navHeading: "Your account",
 		myOrders: "My orders",
+		admin: "Admin portal",
 		passkeys: "Passkeys",
 		signIn: "Sign in",
 		signOut: "Sign out",
@@ -705,7 +713,6 @@ export const en = {
 	},
 	orders: {
 		heading: "My orders",
-		admin: "Admin portal",
 		empty: "No orders yet",
 		emptyBody:
 			"When you order a design, it shows up here with its payment, production and delivery status.",

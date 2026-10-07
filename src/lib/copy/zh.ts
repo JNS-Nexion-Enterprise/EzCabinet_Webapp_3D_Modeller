@@ -440,6 +440,12 @@ export const zh: Dictionary = {
 		},
 	},
 	order: {
+		editDetails: "修改资料",
+		saveDetails: "保存更改",
+		savingDetails: "正在保存…",
+		cancelEdit: "取消",
+		detailsLocked: "这些资料已无法在此修改。请联系我们,我们会协助您。",
+		detailsError: "无法保存您的更改,请重试。",
 		headingConfirming: "正在确认您的付款",
 		bodyConfirming:
 			"谢谢——我们正在等待支付服务商确认，通常只需几秒钟，此页面会自动更新。您无需再次付款。",
@@ -645,13 +651,13 @@ export const zh: Dictionary = {
 	account: {
 		navHeading: "您的账户",
 		myOrders: "我的订单",
+		admin: "管理后台",
 		passkeys: "通行密钥",
 		signIn: "登录",
 		signOut: "退出登录",
 		menuLabel: "账户菜单",
 	},
 	orders: {
-		admin: "管理后台",
 		heading: "我的订单",
 		empty: "暂无订单",
 		emptyBody: "订购设计后，订单会显示在这里，并附上付款、生产和配送状态。",

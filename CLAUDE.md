@@ -486,6 +486,15 @@ not a key: signed out, it bounces through Google sign-in and back; signed in
 as anyone else, it is the same 404 as a made-up token. A standalone
 admin-booked delivery keeps link access — its recipient has no account.
 
+**A customer corrects their own order details until production starts.**
+`PATCH /api/orders/[token]` (owner only, never staff) rewrites name, phone,
+email, address, access notes and the WhatsApp opt-in — never the design or
+the price. `canEditDetails` (`lib/orders/editDetails.ts`) locks it once
+`productionStage` is set, the order is cancelled, or a delivery exists; the
+same rule rides in the write's `where`. A phone change re-points that
+order's `PENDING` notifications, since `Notification.to` is a snapshot.
+Unticking the opt-in is how a customer stops WhatsApp updates.
+
 **The account area** is the route group `app/[lang]/(account)/` — My orders
 and each order page inside one layout (`SiteHeader` + "Your account" side
 nav); route groups leave URLs unchanged. The layout only reads who is signed
