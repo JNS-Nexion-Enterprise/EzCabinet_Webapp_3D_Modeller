@@ -37,111 +37,120 @@ export const GET = withAuth("users:manage", async (request) => {
  * Invite: the superadmin creates the account and sets its first password,
  * handed over in person. The invitee is mailed the sign-in link, never the
  * password; `emailed` tells the form whether that mail went out.
+ *
+ * Step-up: it grants a role. Without it a held superadmin session could
+ * promote an account it controls and pass every other guard as that account.
  */
-export const POST = withAuth("users:manage", async (request, _ctx, actor) => {
-	const parsed = inviteSchema.safeParse(await request.json().catch(() => null));
-	if (!parsed.success) {
-		return NextResponse.json(
-			{ error: "invalid_body", issues: parsed.error.issues },
-			{ status: 400 },
+export const POST = withAuth(
+	"users:manage",
+	async (request, _ctx, actor) => {
+		const parsed = inviteSchema.safeParse(
+			await request.json().catch(() => null),
 		);
-	}
-	const { email, name, role, password } = parsed.data;
-	const invitedById = actor.id === BYPASS_USER.id ? null : actor.id;
-	const mail = {
-		to: email,
-		inviterName: actor.name,
-		role,
-		base: process.env.BETTER_AUTH_URL ?? new URL(request.url).origin,
-	};
+		if (!parsed.success) {
+			return NextResponse.json(
+				{ error: "invalid_body", issues: parsed.error.issues },
+				{ status: 400 },
+			);
+		}
+		const { email, name, role, password } = parsed.data;
+		const invitedById = actor.id === BYPASS_USER.id ? null : actor.id;
+		const mail = {
+			to: email,
+			inviterName: actor.name,
+			role,
+			base: process.env.BETTER_AUTH_URL ?? new URL(request.url).origin,
+		};
 
-	const existing = await prisma.user.findUnique({ where: { email } });
-	if (existing) {
-		// Not self-service escalation: this is a superadmin deliberately
-		// granting a role on /admin/users, gated by users:manage. The account
-		// keeps whatever sign-in it already has — if they arrived through
-		// Google there is no password to set, and the `password` field of this
-		// form is ignored.
-		if (existing.role !== "CUSTOMER") {
+		const existing = await prisma.user.findUnique({ where: { email } });
+		if (existing) {
+			// Not self-service escalation: this is a superadmin deliberately
+			// granting a role on /admin/users, gated by users:manage. The account
+			// keeps whatever sign-in it already has — if they arrived through
+			// Google there is no password to set, and the `password` field of this
+			// form is ignored.
+			if (existing.role !== "CUSTOMER") {
+				return NextResponse.json({ error: "already_staff" }, { status: 409 });
+			}
+			// A customer row should carry no password — customers sign in with
+			// Google. One that does was made by someone other than the address's
+			// owner (public password sign-up was open until it was closed), so the
+			// password and any session it opened go before the row gains a role.
+			// `emailVerified` then follows the invite's own reasoning below: the
+			// superadmin typing the address is the assertion that it is theirs, and
+			// Better Auth will not link Google to an unverified row.
+			await prisma.$transaction([
+				prisma.account.deleteMany({
+					where: { userId: existing.id, providerId: "credential" },
+				}),
+				prisma.session.deleteMany({ where: { userId: existing.id } }),
+				prisma.user.update({
+					where: { id: existing.id },
+					data: { role, invitedById, emailVerified: true },
+				}),
+			]);
+			const emailed = await sendStaffInvite({
+				...mail,
+				name: existing.name,
+				hasPassword: false,
+			});
+			return NextResponse.json({
+				ok: true,
+				id: existing.id,
+				promoted: true,
+				emailed,
+			});
+		}
+
+		// Better Auth owns password hashing and the credential Account row, so the
+		// invite goes through its own sign-up rather than writing a hash by hand.
+		// `asResponse: true` keeps the caller from reading a session out of the
+		// return value; `autoSignIn: false` on `auth` (src/lib/auth.ts) is what
+		// actually stops the superadmin pressing "Invite" from being signed in as
+		// the person they just invited — see that file's comment for why
+		// `asResponse` alone does not.
+		await auth.api.signUpEmail({
+			body: { email, name, password },
+			asResponse: true,
+		});
+
+		const created = await prisma.user.findUnique({ where: { email } });
+		if (!created) {
+			return NextResponse.json({ error: "create_failed" }, { status: 500 });
+		}
+
+		// Two superadmins inviting the same address at once both pass the
+		// `existing` check above. The loser's sign-up is swallowed as a generic
+		// duplicate response (Better Auth's `shouldReturnGenericDuplicateResponse`,
+		// which `autoSignIn: false` also enables), and this read then finds the
+		// winner's row — which must not be re-roled as if we had created it. A
+		// row we just created sits at the CUSTOMER database default, so the
+		// legitimate path is unaffected.
+		if (created.role !== "CUSTOMER") {
 			return NextResponse.json({ error: "already_staff" }, { status: 409 });
 		}
-		// A customer row should carry no password — customers sign in with
-		// Google. One that does was made by someone other than the address's
-		// owner (public password sign-up was open until it was closed), so the
-		// password and any session it opened go before the row gains a role.
-		// `emailVerified` then follows the invite's own reasoning below: the
-		// superadmin typing the address is the assertion that it is theirs, and
-		// Better Auth will not link Google to an unverified row.
-		await prisma.$transaction([
-			prisma.account.deleteMany({
-				where: { userId: existing.id, providerId: "credential" },
-			}),
-			prisma.session.deleteMany({ where: { userId: existing.id } }),
-			prisma.user.update({
-				where: { id: existing.id },
-				data: { role, invitedById, emailVerified: true },
-			}),
-		]);
-		const emailed = await sendStaffInvite({
-			...mail,
-			name: existing.name,
-			hasPassword: false,
+
+		// The role is set here, never by the sign-up body — `input: false` in the
+		// auth config is what makes that the only possible path. `emailVerified`
+		// is set true because staff sign in with Google, and Better Auth refuses
+		// to link a Google account to an unverified row; we send no verification
+		// mail, so this is the only way it is ever true. Typing a colleague's work
+		// email here is the assertion that the address is theirs.
+		await prisma.user.update({
+			where: { id: created.id },
+			data: {
+				role,
+				emailVerified: true,
+				mustChangePassword: true,
+				invitedById,
+			},
 		});
-		return NextResponse.json({
-			ok: true,
-			id: existing.id,
-			promoted: true,
-			emailed,
-		});
-	}
 
-	// Better Auth owns password hashing and the credential Account row, so the
-	// invite goes through its own sign-up rather than writing a hash by hand.
-	// `asResponse: true` keeps the caller from reading a session out of the
-	// return value; `autoSignIn: false` on `auth` (src/lib/auth.ts) is what
-	// actually stops the superadmin pressing "Invite" from being signed in as
-	// the person they just invited — see that file's comment for why
-	// `asResponse` alone does not.
-	await auth.api.signUpEmail({
-		body: { email, name, password },
-		asResponse: true,
-	});
-
-	const created = await prisma.user.findUnique({ where: { email } });
-	if (!created) {
-		return NextResponse.json({ error: "create_failed" }, { status: 500 });
-	}
-
-	// Two superadmins inviting the same address at once both pass the
-	// `existing` check above. The loser's sign-up is swallowed as a generic
-	// duplicate response (Better Auth's `shouldReturnGenericDuplicateResponse`,
-	// which `autoSignIn: false` also enables), and this read then finds the
-	// winner's row — which must not be re-roled as if we had created it. A
-	// row we just created sits at the CUSTOMER database default, so the
-	// legitimate path is unaffected.
-	if (created.role !== "CUSTOMER") {
-		return NextResponse.json({ error: "already_staff" }, { status: 409 });
-	}
-
-	// The role is set here, never by the sign-up body — `input: false` in the
-	// auth config is what makes that the only possible path. `emailVerified`
-	// is set true because staff sign in with Google, and Better Auth refuses
-	// to link a Google account to an unverified row; we send no verification
-	// mail, so this is the only way it is ever true. Typing a colleague's work
-	// email here is the assertion that the address is theirs.
-	await prisma.user.update({
-		where: { id: created.id },
-		data: {
-			role,
-			emailVerified: true,
-			mustChangePassword: true,
-			invitedById,
-		},
-	});
-
-	const emailed = await sendStaffInvite({ ...mail, name, hasPassword: true });
-	return NextResponse.json(
-		{ ok: true, id: created.id, emailed },
-		{ status: 201 },
-	);
-});
+		const emailed = await sendStaffInvite({ ...mail, name, hasPassword: true });
+		return NextResponse.json(
+			{ ok: true, id: created.id, emailed },
+			{ status: 201 },
+		);
+	},
+	{ stepUp: true },
+);

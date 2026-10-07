@@ -20,6 +20,11 @@ const bodySchema = z.object({
  * `BYPASS_USER.id` is not a real row, so it must not go into a foreign key —
  * a bypass admin marking an order paid still leaves `paidByUserId` null,
  * and `paidByName` with it.
+ *
+ * A typed bank reference makes the order a manual one, whatever gateway the
+ * customer started on: the money came by transfer, so a later refund must
+ * not ask that gateway for it. No reference typed leaves the gateway's own
+ * payment id in place — the admin confirmed a payment the webhook missed.
  */
 export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 	"orders:markPaid",
@@ -37,7 +42,9 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		const marked = await markOrderPaid(id, {
 			paidByUserId: bypass ? null : user.id,
 			paidByName: bypass ? null : user.name,
-			paymentRef: parsed.data.paymentRef,
+			...(parsed.data.paymentRef
+				? { paymentProvider: "manual", paymentRef: parsed.data.paymentRef }
+				: {}),
 		});
 		if (marked) return NextResponse.json({ ok: true });
 
@@ -49,4 +56,5 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			? NextResponse.json({ error: "not_awaiting_payment" }, { status: 409 })
 			: NextResponse.json({ error: "not_found" }, { status: 404 });
 	},
+	{ stepUp: true },
 );

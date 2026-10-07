@@ -97,6 +97,12 @@ export function AdminHeader({
 						</svg>
 						View as customer
 					</Link>
+					<Link
+						href="/admin/security"
+						className="px-1 py-1.5 text-neutral-500 text-xs hover:text-neutral-900"
+					>
+						Security
+					</Link>
 					<AdminSignOut name={name ?? "Admin"} />
 				</div>
 			</div>

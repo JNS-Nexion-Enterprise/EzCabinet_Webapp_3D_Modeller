@@ -53,8 +53,13 @@ describe("actionFor", () => {
 
 describe("checkPasskeyRequest", () => {
 	beforeEach(() => vi.clearAllMocks());
-	const unverified = { userId: "u1", verified: false };
-	const verified = { userId: "u1", verified: true };
+	const unverified = { userId: "u1", verifiedAt: null };
+	const verified = { userId: "u1", verifiedAt: new Date() };
+	// Verified all week, but the passkey ceremony was an hour ago.
+	const stale = {
+		userId: "u1",
+		verifiedAt: new Date(Date.now() - 60 * 60_000),
+	};
 
 	it("ignores paths that are not passkey writes, without a query", async () => {
 		expect(await code(() => checkPasskeyRequest("/sign-in/social", null))).toBe(
@@ -124,6 +129,26 @@ describe("checkPasskeyRequest", () => {
 				checkPasskeyRequest("/passkey/update-passkey", unverified),
 			),
 		).toBe("PASSKEY_VERIFICATION_REQUIRED");
+	});
+
+	it("refuses a verified session whose passkey ceremony is no longer recent", async () => {
+		count.mockResolvedValue(2);
+		for (const path of [
+			"/passkey/generate-register-options",
+			"/passkey/verify-registration",
+			"/passkey/update-passkey",
+			"/passkey/delete-passkey",
+		]) {
+			expect(await code(() => checkPasskeyRequest(path, stale))).toBe(
+				"PASSKEY_VERIFICATION_REQUIRED",
+			);
+		}
+		// It can still answer a prompt: that is how it becomes recent again.
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/verify-authentication", stale),
+			),
+		).toBe("allowed");
 	});
 
 	it("refuses deleting the last passkey", async () => {
@@ -220,6 +245,79 @@ describe("passkeyAfterHook, any successful registration", () => {
 		});
 		expect(info).toHaveBeenCalledWith("Passkey enrolled", { user: "u1" });
 		info.mockRestore();
+	});
+});
+
+describe("passkeyBeforeHook", () => {
+	beforeEach(() => vi.clearAllMocks());
+	const session = (passkeyVerifiedAt: unknown) => ({
+		user: { id: "u1" },
+		session: { token: "tok", passkeyVerified: true, passkeyVerifiedAt },
+	});
+
+	it("reads how recent the ceremony was off the session, not the week-long flag", async () => {
+		count.mockResolvedValue(1);
+		getSessionFromCtx.mockResolvedValue(session(null));
+		expect(
+			await code(() =>
+				passkeyBeforeHook(hookCtx("/passkey/generate-register-options")),
+			),
+		).toBe("PASSKEY_VERIFICATION_REQUIRED");
+
+		// A cookie-cached session carries the date as a string.
+		getSessionFromCtx.mockResolvedValue(session(new Date().toISOString()));
+		expect(
+			await code(() =>
+				passkeyBeforeHook(hookCtx("/passkey/generate-register-options")),
+			),
+		).toBe("allowed");
+	});
+});
+
+describe("passkeyAfterHook, a successful passkey authentication", () => {
+	const deleteSession = vi.fn();
+	const ctx = (returned: unknown, newToken: string | null) =>
+		({
+			path: "/passkey/verify-authentication",
+			context: {
+				returned,
+				newSession: newToken
+					? { session: { token: newToken }, user: { id: "u1" } }
+					: null,
+				internalAdapter: { deleteSession },
+			},
+		}) as never;
+	beforeEach(() => {
+		vi.clearAllMocks();
+		getSessionFromCtx.mockResolvedValue({
+			user: { id: "u1" },
+			session: { token: "old" },
+		});
+	});
+
+	it("ends the session the request came in with, never the new one", async () => {
+		await passkeyAfterHook(ctx({}, "new"));
+		expect(deleteSession).toHaveBeenCalledTimes(1);
+		expect(deleteSession).toHaveBeenCalledWith("old");
+	});
+
+	it("keeps the old session when the ceremony failed", async () => {
+		const { APIError } = await import("better-auth/api");
+		await passkeyAfterHook(ctx(new APIError("BAD_REQUEST"), "new"));
+		await passkeyAfterHook(ctx({}, null));
+		expect(deleteSession).not.toHaveBeenCalled();
+	});
+
+	it("deletes nothing when no new session replaced the old one", async () => {
+		await passkeyAfterHook(ctx({}, "old"));
+		getSessionFromCtx.mockResolvedValue(null);
+		await passkeyAfterHook(ctx({}, "new"));
+		getSessionFromCtx.mockResolvedValue({
+			user: { id: "someone-else" },
+			session: { token: "old" },
+		});
+		await passkeyAfterHook(ctx({}, "new"));
+		expect(deleteSession).not.toHaveBeenCalled();
 	});
 });
 

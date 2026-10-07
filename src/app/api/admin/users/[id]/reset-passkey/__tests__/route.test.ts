@@ -25,6 +25,8 @@ const superadmin = {
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	// The route is step-up guarded: a passkey ceremony moments ago.
+	passkeyVerifiedAt: new Date(),
 	mustVerifyPasskey: false,
 };
 const call = (id: string) =>
@@ -58,10 +60,21 @@ describe("POST /api/admin/users/[id]/reset-passkey", () => {
 		expect(resetPasskeys).not.toHaveBeenCalled();
 	});
 
-	it("404s for staff: they have no passkey step, a reset would only sign them out", async () => {
+	it("resets a staff member's too: they confirm guarded actions with one", async () => {
 		requireAuth.mockResolvedValue(superadmin);
-		findUnique.mockResolvedValue({ id: "s1", role: "ADMIN" });
-		expect((await call("s1")).status).toBe(404);
+		findUnique.mockResolvedValue({ id: "s1" });
+		expect((await call("s1")).status).toBe(200);
+		expect(resetPasskeys).toHaveBeenCalledWith("s1");
+	});
+
+	it("403s without a recent passkey ceremony and resets nothing", async () => {
+		requireAuth.mockResolvedValue({ ...superadmin, passkeyVerifiedAt: null });
+		findUnique.mockResolvedValue({ id: "c1" });
+		const response = await call("c1");
+		expect(response.status).toBe(403);
+		await expect(response.json()).resolves.toEqual({
+			error: "step_up_required",
+		});
 		expect(resetPasskeys).not.toHaveBeenCalled();
 	});
 

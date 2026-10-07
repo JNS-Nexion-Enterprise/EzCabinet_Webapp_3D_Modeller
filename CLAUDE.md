@@ -474,11 +474,47 @@ meaning. Both pages and the privacy notice are **drafts**, rendered by
 `components/LegalPage.tsx` from `lib/copy`; the refund policy's boundary is
 `Order.productionStage` being set. Staff cancel an order from
 `/admin/orders/[id]` (`lib/orders/cancel.ts`) on that boundary: unpaid any
-time, paid only before production starts and with a reason. The app moves no
-money — a cancelled order that still has a `paidAt` shows **Refund due**
-until staff pay it back by hand and press **Mark refunded**. A customer
-cannot cancel from their own page, and cancelling does not void an open
-gateway payment or send a WhatsApp message.
+time, paid only before production starts and with a reason. Cancelling moves
+no money — a cancelled order that still has a `paidAt` shows **Refund due**
+until the money goes back: through the gateway (below), or by hand, after
+which staff press **Mark refunded**. A customer cannot cancel from their own
+page, and cancelling does not void an open gateway payment or send a WhatsApp
+message; the refund being recorded does send one (`ORDER_REFUNDED`).
+
+**A superadmin can send a refund back through the gateway, and the gateway's
+webhook records it.** On a Refund-due order paid online, **Refund RM x
+through <provider>** (`POST /api/admin/orders/[id]/refund`, `orders:refund`,
+passkey step-up; `lib/orders/refund.ts`) asks the gateway for the whole
+payment back (`PaymentGateway.refund`). The order's `status` stays
+`CANCELLED`; where the refund is comes from `refundState`, never a stored
+status: `refundRequestedAt` alone is an attempt the gateway has not answered,
+`refundRef` without `refundedAt` is one it is processing, and only the signed
+webhook (or a refund that settled at once) sets `refundedAt`, through
+`markRefunded` — the one write path, shared with **Mark refunded**. The claim
+is a conditional write before the gateway call and the idempotency key
+carries `refundRequestedAt`, so two presses cannot refund twice. **An
+ambiguous error is never a refusal:** only `RefundRefused` (the gateway read
+the request and said no) clears the attempt; a timeout, a 5xx or a
+connection error keeps it, and **Ask again** repeats the same key. Stripe
+does not order its events, so the adapter re-reads the refund on every
+`refund.*` event rather than trusting the snapshot. A full refund issued in
+the gateway's dashboard on a cancelled order is recorded the same way; a
+partial one, or one on an order that is not cancelled, is logged and never
+applied. FPX refunds settle in days and can fail, even after succeeding: the
+order is then Refund due again with `refundError` shown. If the webhook never
+arrives, **Check with <provider>** on a pending refund calls the same route,
+which asks the gateway (`PaymentGateway.refundStatus`) and writes exactly
+what the webhook would have; it never starts a second refund. Accepted
+limits: **Mark refunded** stays available while a refund is unacknowledged
+(the panel says to check the dashboard first), and is refused while one is
+pending; Stripe replays a stored 5xx for a reused key, so if **Ask again**
+keeps failing the way out is the dashboard and **Mark refunded**; and
+**Mark refunded** sends the customer the same `ORDER_REFUNDED` message, on
+purpose. Delivery creation re-checks the order is still paid as it inserts;
+a cancel whose write starts inside that few-millisecond transaction can
+still get through, also accepted. The gateway's
+webhook endpoint must be subscribed to `refund.created`, `refund.updated` and
+`refund.failed` as well as the three `payment_intent.*` events.
 
 **No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A customer whose session has not passed a passkey then meets one more step, `/[lang]/verify`, before the order is placed — a first-time customer sets one up, a returning one uses theirs. A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
 
@@ -551,7 +587,7 @@ exists for a row the superadmin created directly. Public sign-up can only ever
 produce a `CUSTOMER`; a role is granted only by a superadmin acting on
 `/admin/users`.
 
-`lib/auth/permissions.ts` is the whole access model: nine permissions and a
+`lib/auth/permissions.ts` is the whole access model: ten permissions and a
 `Role → Permission[]` constant, with a table-driven test that is its
 specification. The permission names outlive the roles that motivated them —
 `SALES` and `CATALOGUE` were specified and dropped, and reinstating either is
@@ -600,6 +636,39 @@ Google-only (refused when it has no other sign-in), which the 2FA rule exempts
 — the way out for staff who only use Google and never learned the invite
 password. Both Reset 2FA and Remove password log the actor's and target's ids.
 
+**Actions that move money or access ask twice, and ask for a passkey.**
+Cancel order, mark paid, refund through the gateway, mark refunded, invite or
+promote a staff member, change a role, delete user, reset passkey, reset 2FA
+and remove password open a confirmation dialog
+(`components/admin/ConfirmDialog.tsx`); suspend and restore are one click
+with no dialog. All of their routes pass
+`{ stepUp: true }` to `withAuth`: the session must have passed a passkey
+authentication in the last five minutes (`lib/auth/stepUp.ts`), or the route
+answers 403 `step_up_required` and the browser prompts and repeats the call
+once (`components/admin/stepUp.ts`). `Session.passkeyVerifiedAt` records
+when; `passkeyVerified` cannot, since it lasts the session's week and an
+enrolment sets it with no authentication at all. A coverage test lists the
+guarded routes by path — the order routes `cancel`, `paid`, `refunded` and
+`refund`, and `POST /api/admin/users` and `PATCH /api/admin/users/[id]`
+among them. The two user routes matter most: unguarded, a held superadmin
+session could promote an account it controls and pass every other guard as
+that account. Staff enrol at `/admin/security`; this is separate
+from sign-in, where staff still use a password and code, or Google. A
+superadmin's **Reset passkey** works on staff rows too, and
+`pnpm auth:reset-passkey <email>` covers a sole superadmin who lost their
+device. A passkey authentication replaces the session: `passkeyAfterHook`
+deletes the one the request came in with, so signing out afterwards leaves
+no older password or Google session behind. Five limits: **until a staff
+member has enrolled a passkey, the step-up adds nothing for their account**,
+because a first enrolment is free — whoever holds their session can enrol
+one and pass every guard, so every staff member enrols on the day this
+ships; a staff member's first passkey is enrolled by whoever holds their
+session (logged, as with customers); the window covers any guarded action in those five minutes, not
+one named action; the step-up is skipped with `AUTH_ENABLED=false`, where no
+session exists to pass one; and user verification (biometric or PIN) is
+required at enrolment (`authenticatorSelection`) but the plugin at 1.7.5
+cannot enforce it at authentication.
+
 **Suspend is reversible; Delete is not.** A superadmin's **Delete** on
 `/admin/users` (`lib/auth/deleteUser.ts`) removes the row with its sessions,
 sign-ins and second factor. It is refused on your own row and on any account
@@ -646,9 +715,14 @@ otherwise list the owner's sessions or sign the owner out everywhere.
 
 The plugin's defaults would undo this, so `hooks.before` in `lib/auth.ts`
 runs `passkeyBeforeHook` (`lib/auth/passkeyHooks.ts`), which calls
-`checkPasskeyRequest` on every `/passkey/*` write: an unverified session may
-register only the account's first passkey, never delete or rename one, and
-the last passkey is never deleted. `assertPasskeyOwner` (wired as the
+`checkPasskeyRequest` on every `/passkey/*` write: a session may register
+the account's first passkey freely, but adding another, renaming or deleting
+one needs a passkey authentication in the last five minutes
+(`recentStepUp` on `Session.passkeyVerifiedAt`) — for every role, and not the
+week-long `passkeyVerified` flag, on which anyone at an unlocked laptop could
+enrol their own authenticator hours later and pass every step-up with it.
+The last passkey is never deleted. `PasskeyList` prompts and repeats the
+action once when the server answers `PASSKEY_VERIFICATION_REQUIRED`. `assertPasskeyOwner` (wired as the
 plugin's `authentication.afterVerification`) refuses a passkey that belongs
 to a different account than the Google session. Do not remove either to make
 a flow easier. The hook bodies are exported functions (`passkeyBeforeHook`,
@@ -747,10 +821,12 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 16. **A verified customer session is long-lived and only staff can end it.** A
     verified session slides for seven days, the customer cannot sign other
     devices out (the session routes are disabled), and the only way to end a
-    stolen verified session is a staff reset. Within a day of its creation
-    such a session could also add its own passkey and remove the owner's.
-    That is outside this feature's threat (someone holding only the Google
-    account), recorded so it is not mistaken for covered.
+    stolen verified session is a staff reset. Narrowed since: such a session
+    can no longer add its own passkey or remove the owner's without a fresh
+    passkey ceremony (five minutes), so it cannot make itself permanent. It
+    can still act as the customer for its seven days. That is outside this
+    feature's threat (someone holding only the Google account), recorded so
+    it is not mistaken for covered.
 
 ## Open questions — resolve before trusting pricing.ts
 
@@ -798,10 +874,10 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 - Does Prisma Postgres offer an ap-southeast region? If not, quote submission eats a transpacific round trip.
 - Does EzCabinet have an EasyParcel account, and who tops up the wallet? `submit_orders` deducts at booking time and a shipment cannot be booked against an empty wallet.
 - **City-Link: a live host, credentials, and whether a rate API exists.** The guide we hold documents only the test server (`devsvr2019a.citylinkexpress.com:21145`) and its credentials page is blank — ask for the company code, account number and meter number, the live URL, and whether anything prices a shipment. Without a rate call an admin compares City-Link blind on price.
-- **WhatsApp go-live is waiting on EzCabinet.** Meta Business verification, a dedicated number, a system-user token, a payment method, 21 template approvals, the factory's real stage names, the sales number and counsel's privacy sign-off. Checklist and template copy: `docs/ops/whatsapp-ezcabinet-setup.md`.
+- **WhatsApp go-live is waiting on EzCabinet.** Meta Business verification, a dedicated number, a system-user token, a payment method, 24 template approvals, the factory's real stage names, the sales number and counsel's privacy sign-off. Checklist and template copy: `docs/ops/whatsapp-ezcabinet-setup.md`.
 - **Which Malaysian payment gateway?** Stripe is wired as the sandbox-test gateway, chosen by the `payment-gateway` Vercel flag (`src/flags.ts`: Stripe on development and preview, manual on production); Fiuu is the likely production one, account in progress. Both are adapters behind `lib/payments` — swap plan in `STRIPE_INTEGRATION_TODO.md`. Only the verified webhook marks an order paid, never the customer's return. With no gateway set, orders fall back to manual bank transfer, and `BANK_TRANSFER` in `lib/orders/payment.ts` is still a placeholder account the confirmation page shows customers.
 - **The delivery fee.** `RATES.deliveryFlatRm` is `85`, the figure from the client's Order Confirmation design; set the real one in the catalogue settings. It is flat — one fee whatever the load or the distance.
-- **What happens when a paid design changes at re-measure?** The customer pays full price up front; there is no refund or top-up flow, so a re-measure that changes the cabinets is handled outside the app today.
+- **What happens when a paid design changes at re-measure?** The customer pays full price up front; the app refunds a whole cancelled order and nothing else, so there is no partial refund or top-up flow, and a re-measure that changes the cabinets is handled outside the app today.
 - **Weights.** Parcel partners price by the kilogram. A design row's optional weight pre-fills its delivery rows; every design without one leaves the admin typing it per delivery.
 - **The privacy notice, terms of sale and refund policy are drafts**
   (`/[lang]/privacy`, `/terms`, `/refunds`). EzCabinet is the seller and the

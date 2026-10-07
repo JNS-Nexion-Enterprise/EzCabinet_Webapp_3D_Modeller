@@ -6,7 +6,7 @@
  * gate a cheap array lookup and this file's test the specification.
  *
  * Three roles: SUPERADMIN, ADMIN, CUSTOMER. All staff do all operations,
- * so the nine permission names are kept as route annotations in Phase 6,
+ * so the ten permission names are kept as route annotations in Phase 6,
  * not as a UI role picker. Reinstating a divided labour is one row, not
  * an audit of every route handler.
  *
@@ -21,6 +21,7 @@ export const PERMISSIONS = [
 	"catalogue:publish",
 	"orders:read",
 	"orders:markPaid",
+	"orders:refund",
 	"logistics:read",
 	"logistics:book",
 	"content:write",
@@ -33,8 +34,14 @@ export const ROLES = ["SUPERADMIN", "ADMIN", "CUSTOMER"] as const;
 
 export type Role = (typeof ROLES)[number];
 
+/** Managing people, and sending money back out, stay with a superadmin. */
+const SUPERADMIN_ONLY: readonly Permission[] = [
+	"users:manage",
+	"orders:refund",
+];
+
 const ADMIN_PERMISSIONS = PERMISSIONS.filter(
-	(permission) => permission !== "users:manage",
+	(permission) => !SUPERADMIN_ONLY.includes(permission),
 );
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {

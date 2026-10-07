@@ -58,7 +58,9 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			if (refusal) return { error: refusal };
 
 			const { count } = await tx.order.updateMany({
-				where: { id, productionStage: order.productionStage },
+				// `status` too: a cancel lands with the same kind of conditional
+				// write, and production must not start on a cancelled order.
+				where: { id, status: "PAID", productionStage: order.productionStage },
 				data: { productionStage: stage },
 			});
 			if (count !== 1) return { error: "not_next_stage" as const };

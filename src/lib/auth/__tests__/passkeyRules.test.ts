@@ -19,7 +19,8 @@ describe("needsPasskeyCheck", () => {
 });
 
 describe("passkeyDecision", () => {
-	const base = { signedIn: true, sessionVerified: false, passkeyCount: 0 };
+	const base = { signedIn: true, recentPasskey: false, passkeyCount: 0 };
+	const recent = { ...base, recentPasskey: true };
 
 	it("refuses every action when nobody is signed in", () => {
 		for (const action of [
@@ -28,7 +29,7 @@ describe("passkeyDecision", () => {
 			"delete",
 			"authenticate",
 		] as const) {
-			expect(passkeyDecision({ ...base, action, signedIn: false })).toBe(
+			expect(passkeyDecision({ ...recent, action, signedIn: false })).toBe(
 				"sign_in_required",
 			);
 		}
@@ -38,25 +39,21 @@ describe("passkeyDecision", () => {
 		expect(passkeyDecision({ ...base, action: "register" })).toBe("allow");
 	});
 
-	it("refuses a second passkey from a session that has not passed the first", () => {
-		// The attack: whoever holds the Google account adds their own passkey.
+	it("refuses a second passkey from a session with no recent passkey ceremony", () => {
+		// The attack: whoever holds the Google account, or finds a verified
+		// session's laptop unlocked hours later, adds their own passkey.
 		expect(
 			passkeyDecision({ ...base, action: "register", passkeyCount: 1 }),
 		).toBe("verification_required");
 	});
 
-	it("lets a verified session add another device", () => {
+	it("lets a session that just used a passkey add another device", () => {
 		expect(
-			passkeyDecision({
-				...base,
-				action: "register",
-				passkeyCount: 1,
-				sessionVerified: true,
-			}),
+			passkeyDecision({ ...recent, action: "register", passkeyCount: 1 }),
 		).toBe("allow");
 	});
 
-	it("refuses rename and delete from an unverified session", () => {
+	it("refuses rename and delete without a recent passkey ceremony", () => {
 		expect(
 			passkeyDecision({ ...base, action: "manage", passkeyCount: 2 }),
 		).toBe("verification_required");
@@ -65,33 +62,18 @@ describe("passkeyDecision", () => {
 		).toBe("verification_required");
 	});
 
-	it("refuses to delete the last passkey even when verified", () => {
+	it("refuses to delete the last passkey even just after a ceremony", () => {
 		expect(
-			passkeyDecision({
-				...base,
-				action: "delete",
-				passkeyCount: 1,
-				sessionVerified: true,
-			}),
+			passkeyDecision({ ...recent, action: "delete", passkeyCount: 1 }),
 		).toBe("last_passkey");
 	});
 
-	it("lets a verified session delete one of several, and rename", () => {
+	it("lets a session that just used a passkey delete one of several, and rename", () => {
 		expect(
-			passkeyDecision({
-				...base,
-				action: "delete",
-				passkeyCount: 2,
-				sessionVerified: true,
-			}),
+			passkeyDecision({ ...recent, action: "delete", passkeyCount: 2 }),
 		).toBe("allow");
 		expect(
-			passkeyDecision({
-				...base,
-				action: "manage",
-				passkeyCount: 1,
-				sessionVerified: true,
-			}),
+			passkeyDecision({ ...recent, action: "manage", passkeyCount: 1 }),
 		).toBe("allow");
 	});
 

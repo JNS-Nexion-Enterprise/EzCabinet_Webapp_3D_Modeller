@@ -58,6 +58,16 @@ describe("draftFor", () => {
 		});
 	});
 
+	it("order refunded: the amount that went back", () => {
+		const draft = draftFor({ kind: "ORDER_REFUNDED", order });
+		expect(draft?.dedupeKey).toBe("order:ord1:refunded");
+		expect(draft?.template).toBe("order_refunded");
+		expect(draft?.deliveryId).toBeNull();
+		expect(draft?.vars.button).toBe("tok_order");
+		expect(draft?.vars.body[0]).toBe("IC-20260826-014");
+		expect(draft?.vars.body).toHaveLength(2);
+	});
+
 	it("stage: one key per stage, label as given", () => {
 		const draft = draftFor({
 			kind: "STAGE",

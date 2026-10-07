@@ -48,7 +48,10 @@ export type NotifyOrder = {
 type DeliveryRef = { id: string; publicToken: string };
 
 export type NotifyEvent =
-	| { kind: "ORDER_PLACED" | "PAYMENT_CONFIRMED"; order: NotifyOrder }
+	| {
+			kind: "ORDER_PLACED" | "PAYMENT_CONFIRMED" | "ORDER_REFUNDED";
+			order: NotifyOrder;
+	  }
 	| {
 			kind: "STAGE";
 			order: NotifyOrder;
@@ -90,6 +93,7 @@ const TEMPLATE: Record<NotificationKind, string> = {
 	PICKED_UP: "delivery_picked_up",
 	DELIVERED: "delivery_delivered",
 	DELIVERY_FAILED: "delivery_failed",
+	ORDER_REFUNDED: "order_refunded",
 };
 
 /** Meta's language codes for the locales we serve. */
@@ -160,6 +164,12 @@ export function draftFor(event: NotifyEvent): NotificationDraft | null {
 				...base,
 				dedupeKey: `order:${order.id}:paid`,
 				vars: { body: [ref], button: order.publicToken },
+			};
+		case "ORDER_REFUNDED":
+			return {
+				...base,
+				dedupeKey: `order:${order.id}:refunded`,
+				vars: { body: [ref, money(order.totalRm)], button: order.publicToken },
 			};
 		case "STAGE":
 			return {

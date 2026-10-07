@@ -33,6 +33,7 @@ const user = {
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
 	mustVerifyPasskey: false,
+	passkeyVerifiedAt: null,
 };
 
 beforeEach(() => {
@@ -48,6 +49,18 @@ describe("currentUser", () => {
 		});
 		findUnique.mockResolvedValue(row);
 		await expect(currentUser()).resolves.toEqual(user);
+	});
+
+	it("carries when the session passed a passkey authentication", async () => {
+		const at = new Date("2026-10-07T12:00:00Z");
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: true, passkeyVerifiedAt: at.toISOString() },
+		});
+		findUnique.mockResolvedValue(row);
+		await expect(currentUser()).resolves.toMatchObject({
+			passkeyVerifiedAt: at,
+		});
 	});
 
 	it("asks staff with a password and no second factor to set one up", async () => {

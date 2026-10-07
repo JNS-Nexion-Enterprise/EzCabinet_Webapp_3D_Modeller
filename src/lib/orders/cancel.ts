@@ -1,5 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/catalogue/db";
+import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
+import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 
 export type CancelBlock =
 	| "already_cancelled"
@@ -38,8 +40,8 @@ export function cancelBlock(
  * Cancel an order, paid or not. `paidAt` is left alone: cancelled with a
  * `paidAt` is what "a refund is owed" means, until `markRefunded`.
  *
- * The app moves no money — the refund is a bank transfer or a press in the
- * gateway's dashboard, recorded here afterwards.
+ * Cancelling moves no money. The refund is a separate step: through the
+ * gateway (`lib/orders/refund.ts`), or by hand and recorded afterwards.
  *
  * The rule rides in the `where` as well, so an order paid or put into
  * production between the read and the write answers `changed`.
@@ -80,23 +82,56 @@ export async function cancelOrder(
 	return count === 1 ? "ok" : "changed";
 }
 
-/** Record that a cancelled, paid order's money went back. False when nothing changed. */
+/**
+ * Record that a cancelled, paid order's money went back, with its WhatsApp
+ * message queued in the same transaction. The one write path to `refundedAt`:
+ * an admin's Mark refunded, a gateway refund that settled at once, and the
+ * gateway's webhook (`lib/orders/refund.ts`).
+ *
+ * Conditional, so a retried webhook is a no-op. False when nothing changed.
+ *
+ * The message goes out for a refund made by hand as well, on purpose: the
+ * customer should hear their refund was sent, however it was sent.
+ */
 export async function markRefunded(
 	id: string,
-	by: { byName: string | null; ref: string | null },
+	by: {
+		ref: string | null;
+		/** Left out, the order keeps whoever asked the gateway for the refund. */
+		byName?: string | null;
+		/**
+		 * An admin recording a refund made outside the app. Refused while a
+		 * gateway refund is in flight: that one records itself, and money sent
+		 * by hand on top of it would be paid back twice.
+		 */
+		byHand?: boolean;
+	},
 ): Promise<boolean> {
-	const { count } = await prisma.order.updateMany({
-		where: {
-			id,
-			status: "CANCELLED",
-			paidAt: { not: null },
-			refundedAt: null,
-		},
-		data: {
-			refundedAt: new Date(),
-			refundedByName: by.byName,
-			refundRef: by.ref,
-		},
+	const { ref, byName, byHand } = by;
+	const notificationIds = await prisma.$transaction(async (tx) => {
+		const { count } = await tx.order.updateMany({
+			where: {
+				id,
+				status: "CANCELLED",
+				paidAt: { not: null },
+				refundedAt: null,
+				...(byHand ? { refundRef: null } : {}),
+			},
+			data: {
+				refundedAt: new Date(),
+				refundRef: ref,
+				refundError: null,
+				...(byName === undefined ? {} : { refundedByName: byName }),
+			},
+		});
+		if (count !== 1) return null;
+		const order = await tx.order.findUniqueOrThrow({
+			where: { id },
+			select: NOTIFY_ORDER_SELECT,
+		});
+		return enqueue(tx, [draftFor({ kind: "ORDER_REFUNDED", order })]);
 	});
-	return count === 1;
+	if (!notificationIds) return false;
+	flushSoon(notificationIds);
+	return true;
 }

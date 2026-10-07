@@ -11,8 +11,13 @@ const bodySchema = z.object({
 });
 
 /**
- * Record that a cancelled, paid order's money has gone back. The refund
- * itself happens outside the app; this is only the record of it.
+ * Record that a cancelled, paid order's money has gone back by hand — a bank
+ * transfer, or a press in the gateway's dashboard. This is only the record of
+ * it; `/refund` is the one that sends money. Refused while a gateway refund
+ * is in flight, which records itself.
+ *
+ * Step-up: it closes a debt to the customer, so the admin confirms with
+ * their passkey.
  */
 export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 	"orders:markPaid",
@@ -25,6 +30,7 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		const marked = await markRefunded(id, {
 			byName: user.id === BYPASS_USER.id ? null : user.name,
 			ref: parsed.data.refundRef || null,
+			byHand: true,
 		});
 		if (!marked) {
 			return NextResponse.json({ error: "not_refundable" }, { status: 409 });
@@ -32,4 +38,5 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		console.info("Order refund recorded", { order: id, actor: user.id });
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
 );

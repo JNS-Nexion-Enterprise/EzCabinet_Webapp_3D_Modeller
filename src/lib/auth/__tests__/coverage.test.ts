@@ -85,6 +85,33 @@ describe("every admin surface is gated", () => {
 		expect(ungated).toEqual([]);
 	});
 
+	it("asks for a passkey step-up on every action that moves money or access", () => {
+		// Named by path: a new guarded action is added here on purpose, and a
+		// route that quietly drops its `stepUp` fails the build.
+		const guarded: [string, string][] = [
+			["orders/[id]/cancel/route.ts", "POST"],
+			["orders/[id]/paid/route.ts", "POST"],
+			["orders/[id]/refunded/route.ts", "POST"],
+			["orders/[id]/refund/route.ts", "POST"],
+			["users/route.ts", "POST"],
+			["users/[id]/route.ts", "PATCH"],
+			["users/[id]/route.ts", "DELETE"],
+			["users/[id]/reset-passkey/route.ts", "POST"],
+			["users/[id]/reset-2fa/route.ts", "POST"],
+			["users/[id]/remove-password/route.ts", "POST"],
+		];
+		const missing = guarded.filter(([file, method]) => {
+			const source = readFileSync(`src/app/api/admin/${file}`, "utf8");
+			const from = source.indexOf(`export const ${method} = withAuth`);
+			if (from < 0) return true;
+			// The `withAuth(` call ends at the first `);` in column 0, and its
+			// last argument must be the options.
+			const end = source.indexOf("\n);", from);
+			return !source.slice(from, end).endsWith("{ stepUp: true },");
+		});
+		expect(missing).toEqual([]);
+	});
+
 	it("never gates a handler through a re-export", async () => {
 		// This test only understands `export const METHOD = withAuth(...)`.
 		// `const GET = withAuth(...); export { GET };` would gate the handler

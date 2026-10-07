@@ -5,19 +5,24 @@ import {
 	priceLineLabel,
 } from "@/components/planner/priceLineCopy";
 import { requirePage } from "@/lib/auth/page";
+import { can } from "@/lib/auth/permissions";
 import { prisma } from "@/lib/catalogue/db";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
 import { en } from "@/lib/copy/en";
 import { orderRef } from "@/lib/orders/ref";
+import { refundState } from "@/lib/orders/refund";
 import { summaryExtras, summaryLines } from "@/lib/orders/summary";
 import { OrderDetail } from "./OrderDetail";
+
+/** How long an unanswered gateway refund is left alone before it may be repeated. */
+const ASK_AGAIN_MS = 2 * 60 * 1000;
 
 export default async function OrderAdminPage({
 	params,
 }: {
 	params: Promise<{ id: string }>;
 }) {
-	await requirePage("orders:read");
+	const user = await requirePage("orders:read");
 	const { id } = await params;
 	const [order, published] = await Promise.all([
 		prisma.order.findUnique({
@@ -60,6 +65,7 @@ export default async function OrderAdminPage({
 				trail={[{ label: "Orders", href: "/admin/orders" }, { label: ref }]}
 			/>
 			<OrderDetail
+				canRefund={can(user.role, "orders:refund")}
 				order={{
 					id: order.id,
 					ref,
@@ -95,6 +101,14 @@ export default async function OrderAdminPage({
 					refundedAt: order.refundedAt?.toISOString() ?? null,
 					refundedByName: order.refundedByName,
 					refundRef: order.refundRef,
+					refundRequestedAt: order.refundRequestedAt?.toISOString() ?? null,
+					refundError: order.refundError,
+					refundState: refundState(order),
+					// Not before the first request has had time to answer, so a
+					// repeat cannot race it.
+					canAskAgain:
+						order.refundRequestedAt !== null &&
+						Date.now() - order.refundRequestedAt.getTime() > ASK_AGAIN_MS,
 					deliveries: order.deliveries,
 					productionStage: order.productionStage,
 					whatsappOptIn: order.whatsappOptIn,

@@ -2,6 +2,7 @@
 
 import * as UpChunk from "@mux/upchunk";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { Spinner } from "@/components/Spinner";
 import {
 	CATEGORIES,
@@ -238,19 +239,18 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 		return () => clearInterval(timer);
 	}, [processingIds]);
 
-	async function remove(id: string) {
-		setBusy(true);
-		try {
-			const response = await fetch(`/api/admin/tutorials/${id}`, {
-				method: "DELETE",
-			});
-			if (!response.ok) throw new Error((await response.json()).error);
-			setRows((prev) => prev.filter((r) => r.id !== id));
-		} catch (e) {
-			setError((e as Error).message);
-		} finally {
-			setBusy(false);
+	const [confirming, setConfirming] = useState<Confirm | null>(null);
+
+	async function remove(id: string): Promise<string | null> {
+		const response = await fetch(`/api/admin/tutorials/${id}`, {
+			method: "DELETE",
+		});
+		if (!response.ok) {
+			const body = await response.json().catch(() => null);
+			return body?.error ?? "Could not remove this tutorial.";
 		}
+		setRows((prev) => prev.filter((r) => r.id !== id));
+		return null;
 	}
 
 	const pill = (active: boolean) =>
@@ -262,6 +262,7 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 
 	return (
 		<div className="flex flex-col gap-8">
+			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
 			<section className="rounded-[14px] border border-neutral-200 bg-white px-6 pt-[22px] pb-6">
 				<p className="mb-4 font-semibold text-[12px] text-neutral-600 uppercase tracking-[0.06em]">
 					Add a tutorial
@@ -555,7 +556,15 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 									</span>
 									<button
 										type="button"
-										onClick={() => remove(row.id)}
+										onClick={() =>
+											setConfirming({
+												title: "Remove this tutorial?",
+												body: "The video is deleted and disappears from the public tutorials page.",
+												confirmLabel: "Remove tutorial",
+												danger: true,
+												run: () => remove(row.id),
+											})
+										}
 										disabled={busy}
 										className="min-h-9 shrink-0 rounded-lg border border-neutral-300 bg-white px-3 py-2 text-[12px] text-neutral-700 transition hover:border-neutral-400 hover:bg-[#f4f3f1] disabled:opacity-40"
 									>

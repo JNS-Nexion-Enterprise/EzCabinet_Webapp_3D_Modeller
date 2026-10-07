@@ -12,6 +12,10 @@ const patchSchema = z.union([
 	z.object({ disabled: z.boolean() }),
 ]);
 
+/**
+ * Change a role, or suspend and restore. Step-up: each changes who can get
+ * in, and a role change can make a superadmin.
+ */
 export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 	"users:manage",
 	async (request, { params }, actor) => {
@@ -71,6 +75,7 @@ export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 		});
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
 );
 
 /**
@@ -97,4 +102,5 @@ export const DELETE = withAuth<{ params: Promise<{ id: string }> }>(
 		console.info("User deleted", { actor: actor.id, target: target.id });
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
 );

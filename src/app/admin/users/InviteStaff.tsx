@@ -2,7 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Spinner } from "@/components/Spinner";
+import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { fetchGuarded } from "@/components/admin/stepUp";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
 
 function generatePassword(): string {
@@ -32,53 +33,60 @@ export function InviteStaff() {
 	const [name, setName] = useState("");
 	const [role, setRole] = useState<Role>(STAFF_ROLES[STAFF_ROLES.length - 1]);
 	const [password, setPassword] = useState(generatePassword());
-	const [error, setError] = useState<string | null>(null);
+	const [confirming, setConfirming] = useState<Confirm | null>(null);
 	const [result, setResult] = useState<{
 		promoted: boolean;
 		emailed: boolean;
 		password: string;
 	} | null>(null);
-	const [submitting, setSubmitting] = useState(false);
 
 	function reset() {
 		setEmail("");
 		setName("");
 		setRole(STAFF_ROLES[STAFF_ROLES.length - 1]);
 		setPassword(generatePassword());
-		setError(null);
 		setResult(null);
 	}
 
-	async function submit(e: React.FormEvent) {
-		e.preventDefault();
-		setSubmitting(true);
-		setError(null);
-		const res = await fetch("/api/admin/users", {
+	/** Step-up guarded: the dialog shows whatever message this returns. */
+	async function invite(): Promise<string | null> {
+		const res = await fetchGuarded("/api/admin/users", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ email, name, role, password }),
 		});
-		setSubmitting(false);
+		if (typeof res === "string") return res;
+		const data = await res.json().catch(() => null);
 		if (!res.ok) {
-			const data = await res.json().catch(() => null);
-			setError(
-				data?.error === "already_staff"
-					? "That email already has a staff account."
-					: "Could not create that account.",
-			);
-			return;
+			return data?.error === "already_staff"
+				? "That email already has a staff account."
+				: "Could not create that account.";
 		}
-		const data = await res.json();
 		setResult({
-			promoted: Boolean(data.promoted),
-			emailed: Boolean(data.emailed),
+			promoted: Boolean(data?.promoted),
+			emailed: Boolean(data?.emailed),
 			password,
 		});
 		router.refresh();
+		return null;
+	}
+
+	// An invite grants access, so it asks first. The form is inert behind the
+	// modal, so what `invite` sends is what the dialog named.
+	function submit(e: React.FormEvent) {
+		e.preventDefault();
+		setConfirming({
+			title: `Invite ${name} as ${ROLE_LABELS[role]}?`,
+			body: `${email} gets the ${ROLE_LABELS[role]} role. If that address already has a customer account, that account is given the role instead.`,
+			confirmLabel: "Invite",
+			stepUp: true,
+			run: invite,
+		});
 	}
 
 	return (
 		<div className="rounded-[14px] border border-[#e5e5e5] bg-white p-5">
+			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
 			<p className="mb-3 font-semibold text-[#525252] text-[12px] uppercase tracking-[.06em]">
 				Invite a member
 			</p>
@@ -179,22 +187,12 @@ export function InviteStaff() {
 						</label>
 						<button
 							type="submit"
-							disabled={submitting}
-							className="min-h-10 flex-none rounded-full bg-[#1f5138] px-5 py-[11px] font-semibold text-[13px] text-white hover:bg-[#193f2c] disabled:cursor-not-allowed disabled:opacity-50"
+							className="min-h-10 flex-none rounded-full bg-[#1f5138] px-5 py-[11px] font-semibold text-[13px] text-white hover:bg-[#193f2c]"
 						>
-							{submitting && <Spinner />}
-							{submitting ? "Inviting…" : "Invite"}
+							Invite
 						</button>
 					</div>
 					<p className="text-[#5c574e] text-[12px]">{ROLE_HINTS[role]}</p>
-					{error && (
-						<p
-							role="alert"
-							className="rounded-lg border border-[#fca5a5] bg-[#fef2f2] px-3 py-[9px] text-[#7f1d1d] text-[12px]"
-						>
-							{error}
-						</p>
-					)}
 				</form>
 			)}
 		</div>

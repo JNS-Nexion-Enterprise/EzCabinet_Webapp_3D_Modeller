@@ -22,6 +22,7 @@
 		"db:seed": "tsx --env-file-if-exists=.env.local prisma/seed.ts",
 		"seed:superadmin": "tsx --conditions=react-server --env-file-if-exists=.env.local prisma/seedSuperadmin.ts",
 		"auth:reset-2fa": "tsx --conditions=react-server --env-file-if-exists=.env.local prisma/resetTwoFactor.ts",
+		"auth:reset-passkey": "tsx --conditions=react-server --env-file-if-exists=.env.local prisma/resetPasskey.ts",
 		"db:studio": "prisma studio"
 	},
 	"dependencies": {

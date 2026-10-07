@@ -1,8 +1,10 @@
 import "server-only";
 import { NextResponse } from "next/server";
+import { authEnabled } from "@/lib/auth/enabled";
 import type { Permission } from "@/lib/auth/permissions";
 import { AuthError, requireAuth } from "@/lib/auth/requireAuth";
 import type { AuthUser } from "@/lib/auth/session";
+import { recentStepUp } from "@/lib/auth/stepUp";
 
 /**
  * Wraps a route handler in its permission check, so the check cannot be
@@ -10,6 +12,11 @@ import type { AuthUser } from "@/lib/auth/session";
  *
  * The second argument is whatever Next passes through — `{ params }` on a
  * dynamic route, nothing on a static one — and is handed on untouched.
+ *
+ * `stepUp` is for actions that move money or change who can get in: the
+ * session must have passed a passkey ceremony in the last few minutes
+ * (`lib/auth/stepUp.ts`). Skipped with auth off, where there is no session
+ * to have passed one.
  */
 export function withAuth<Ctx>(
 	permission: Permission,
@@ -18,6 +25,7 @@ export function withAuth<Ctx>(
 		context: Ctx,
 		user: AuthUser,
 	) => Promise<Response> | Response,
+	options?: { stepUp?: boolean },
 ) {
 	return async (request: Request, context: Ctx): Promise<Response> => {
 		let user: AuthUser;
@@ -48,6 +56,13 @@ export function withAuth<Ctx>(
 				{ error: "two_factor_setup_required" },
 				{ status: 403 },
 			);
+		}
+		if (
+			options?.stepUp &&
+			authEnabled() &&
+			!recentStepUp(user.passkeyVerifiedAt, new Date())
+		) {
+			return NextResponse.json({ error: "step_up_required" }, { status: 403 });
 		}
 		return handler(request, context, user);
 	};
