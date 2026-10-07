@@ -192,6 +192,11 @@ export const auth = betterAuth({
 		twoFactor({ issuer: "EzCabinet Admin" }),
 		passkey({
 			rpName: "EzCabinet",
+			// A passkey here is proof the owner is present, so the device must
+			// check them (biometric or PIN), not just that it is plugged in. This
+			// asks for it at enrolment; the plugin (1.7.5) cannot enforce it at
+			// authentication.
+			authenticatorSelection: { userVerification: "required" },
 			authentication: {
 				afterVerification: async ({ ctx, clientData }) => {
 					const current = await getSessionFromCtx(ctx);

@@ -35,7 +35,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	vi.spyOn(console, "info").mockImplementation(() => {});
 	requireAuth.mockResolvedValue(superadmin);
-	requestGatewayRefund.mockResolvedValue({ ok: true, settled: false });
+	requestGatewayRefund.mockResolvedValue({ ok: true, state: "pending" });
 });
 
 describe("POST /api/admin/orders/[id]/refund", () => {
@@ -59,7 +59,7 @@ describe("POST /api/admin/orders/[id]/refund", () => {
 		expect(response.status).toBe(200);
 		await expect(response.json()).resolves.toEqual({
 			ok: true,
-			settled: false,
+			state: "pending",
 		});
 		expect(requestGatewayRefund).toHaveBeenCalledWith("ord1", {
 			actorName: "Boss",
@@ -70,6 +70,16 @@ describe("POST /api/admin/orders/[id]/refund", () => {
 		});
 	});
 
+	it.each(["refunded", "due", "pending"])(
+		"answers a check that found the refund %s with that state",
+		async (state) => {
+			requestGatewayRefund.mockResolvedValue({ ok: true, state });
+			const response = await call();
+			expect(response.status).toBe(200);
+			await expect(response.json()).resolves.toEqual({ ok: true, state });
+		},
+	);
+
 	it.each([
 		["not_found", 404],
 		["not_refundable", 409],
@@ -77,6 +87,7 @@ describe("POST /api/admin/orders/[id]/refund", () => {
 		["not_configured", 409],
 		["changed", 409],
 		["gateway_refused", 502],
+		["gateway_unreachable", 502],
 		["not_acknowledged", 502],
 	])("answers %s with %i and logs nothing", async (error, status) => {
 		requestGatewayRefund.mockResolvedValue({ ok: false, error });

@@ -1,8 +1,23 @@
+import { failureReason } from "@/app/[lang]/verify/failureReason";
 import { authClient } from "@/lib/auth/client";
 
-/** Shown when the passkey prompt was dismissed, failed, or there is no passkey. */
+/** The passkey step failed for a reason other than the prompt being dismissed. */
 export const PASSKEY_FAILED =
 	"Not confirmed with your passkey. If you have none on this device, set one up under Security first.";
+/** The browser's prompt was closed or timed out. */
+export const PASSKEY_DISMISSED =
+	"The passkey prompt was dismissed, so nothing was changed. Try again when you are ready.";
+/** The passkey step passed, yet the server still wants one. */
+export const PASSKEY_AGAIN = "Confirm with your passkey again.";
+
+const owesStepUp = async (response: Response): Promise<boolean> =>
+	response.status === 403 &&
+	(
+		await response
+			.clone()
+			.json()
+			.catch(() => null)
+	)?.error === "step_up_required";
 
 /**
  * `fetch` for a step-up guarded admin route (`withAuth`'s `stepUp`).
@@ -12,25 +27,33 @@ export const PASSKEY_FAILED =
  * request once. Asking the server first means no prompt inside the window,
  * and none at all with auth off, where the server skips the check.
  *
- * Null when the passkey step did not succeed; the request was not repeated.
+ * A string is the message to show when the passkey step did not get the
+ * request through; the action did not run.
  */
 export async function fetchGuarded(
 	input: string,
 	init?: RequestInit,
-): Promise<Response | null> {
+): Promise<Response | string> {
 	const response = await fetch(input, init);
-	if (response.status !== 403) return response;
-	const body = await response
-		.clone()
-		.json()
-		.catch(() => null);
-	if (body?.error !== "step_up_required") return response;
+	if (!(await owesStepUp(response))) return response;
 
-	let failed = true;
+	let code: string | undefined;
 	try {
-		failed = Boolean((await authClient.signIn.passkey())?.error);
+		const outcome = await authClient.signIn.passkey();
+		if (outcome?.error) {
+			// `code` is on the runtime error but missing from the inferred type.
+			code = (outcome.error as { code?: string }).code ?? "unknown";
+		}
 	} catch {
-		// A dismissed browser prompt rejects rather than resolving an error.
+		// A dismissed browser prompt can reject rather than resolve an error.
+		code = "AUTH_CANCELLED";
 	}
-	return failed ? null : fetch(input, init);
+	if (code !== undefined) {
+		return failureReason(code) === "cancelled"
+			? PASSKEY_DISMISSED
+			: PASSKEY_FAILED;
+	}
+
+	const repeated = await fetch(input, init);
+	return (await owesStepUp(repeated)) ? PASSKEY_AGAIN : repeated;
 }

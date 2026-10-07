@@ -4,6 +4,7 @@ const findUnique = vi.hoisted(() => vi.fn());
 const updateMany = vi.hoisted(() => vi.fn());
 const markRefunded = vi.hoisted(() => vi.fn());
 const gatewayRefund = vi.hoisted(() => vi.fn());
+const refundStatus = vi.hoisted(() => vi.fn());
 const gatewayById = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/catalogue/db", () => ({
 	prisma: { order: { findUnique, updateMany } },
@@ -96,7 +97,7 @@ describe("requestGatewayRefund", () => {
 
 	it("claims with every eligibility condition, then asks the gateway", async () => {
 		vi.useFakeTimers({ now: ASKED_AT });
-		expect(await ask()).toEqual({ ok: true, settled: false });
+		expect(await ask()).toEqual({ ok: true, state: "pending" });
 		vi.useRealTimers();
 
 		const claim = updateMany.mock.calls[0][0];
@@ -141,7 +142,7 @@ describe("requestGatewayRefund", () => {
 
 	it("records a refund the gateway settled at once", async () => {
 		gatewayRefund.mockResolvedValue({ ref: "re_1", settled: true });
-		expect(await ask()).toEqual({ ok: true, settled: true });
+		expect(await ask()).toEqual({ ok: true, state: "refunded" });
 		expect(markRefunded).toHaveBeenCalledWith("ord1", { ref: "re_1" });
 	});
 
@@ -176,7 +177,7 @@ describe("requestGatewayRefund", () => {
 		vi.setSystemTime(new Date(ASKED_AT.getTime() + 10 * 60_000));
 		findUnique.mockResolvedValue(row({ refundRequestedAt: ASKED_AT }));
 		gatewayRefund.mockResolvedValue({ ref: "re_1", settled: false });
-		expect(await ask()).toEqual({ ok: true, settled: false });
+		expect(await ask()).toEqual({ ok: true, state: "pending" });
 		vi.useRealTimers();
 
 		const retry = updateMany.mock.calls[2][0];
@@ -205,7 +206,6 @@ describe("requestGatewayRefund", () => {
 	it.each([
 		["an unknown order", null, "not_found"],
 		["an order still paid", row({ status: "PAID" }), "not_refundable"],
-		["a refund in flight", row({ refundRef: "re_1" }), "not_refundable"],
 		[
 			"an order already refunded",
 			row({ refundedAt: ASKED_AT }),
@@ -230,6 +230,71 @@ describe("requestGatewayRefund", () => {
 		gatewayById.mockReturnValue(gateway);
 		expect(await ask()).toEqual({ ok: false, error: "not_configured" });
 		expect(updateMany).not.toHaveBeenCalled();
+	});
+});
+
+describe("requestGatewayRefund, a refund already in flight", () => {
+	// The way out when the gateway's webhook never arrived: ask it directly,
+	// and write exactly what the webhook would have.
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.spyOn(console, "error").mockImplementation(() => {});
+		findUnique.mockResolvedValue(
+			row({ refundRequestedAt: ASKED_AT, refundRef: "re_1" }),
+		);
+		updateMany.mockResolvedValue({ count: 1 });
+		gatewayById.mockReturnValue({ refund: gatewayRefund, refundStatus });
+		markRefunded.mockResolvedValue(true);
+	});
+
+	it("records it when the gateway says it was refunded", async () => {
+		refundStatus.mockResolvedValue("refunded");
+		expect(await ask()).toEqual({ ok: true, state: "refunded" });
+		expect(refundStatus).toHaveBeenCalledWith("re_1");
+		expect(markRefunded).toHaveBeenCalledWith("ord1", { ref: "re_1" });
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it("makes it due again when the gateway says it failed", async () => {
+		refundStatus.mockResolvedValue("failed");
+		expect(await ask()).toEqual({ ok: true, state: "due" });
+		expect(markRefunded).not.toHaveBeenCalled();
+		expect(updateMany).toHaveBeenCalledTimes(1);
+		expect(updateMany.mock.calls[0][0]).toEqual({
+			where: { id: "ord1", refundRef: "re_1", refundedAt: null },
+			data: {
+				refundRef: null,
+				refundRequestedAt: null,
+				refundError: expect.any(String),
+			},
+		});
+	});
+
+	it("changes nothing while the gateway is still processing it", async () => {
+		refundStatus.mockResolvedValue("pending");
+		expect(await ask()).toEqual({ ok: true, state: "pending" });
+		expect(markRefunded).not.toHaveBeenCalled();
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it("never asks for a second refund", async () => {
+		for (const status of ["refunded", "failed", "pending"]) {
+			refundStatus.mockResolvedValue(status);
+			await ask();
+		}
+		expect(gatewayRefund).not.toHaveBeenCalled();
+	});
+
+	it("changes nothing when the gateway cannot be reached", async () => {
+		refundStatus.mockRejectedValue(new Error("socket hang up"));
+		expect(await ask()).toEqual({ ok: false, error: "gateway_unreachable" });
+		expect(markRefunded).not.toHaveBeenCalled();
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it("refuses when the gateway cannot report on a refund", async () => {
+		gatewayById.mockReturnValue({ refund: gatewayRefund });
+		expect(await ask()).toEqual({ ok: false, error: "not_configured" });
 	});
 });
 

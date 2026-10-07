@@ -117,6 +117,11 @@ export type PaymentGateway = {
 		/** The same key on a repeat of the same attempt, so it cannot refund twice. */
 		idempotencyKey: string;
 	}): Promise<{ ref: string; settled: boolean }>;
+	/**
+	 * Where a refund `refund` started has got to, asked directly. The way out
+	 * when the notification `verify` would have read never arrived.
+	 */
+	refundStatus?(ref: string): Promise<"refunded" | "failed" | "pending">;
 };
 
 /** Ringgit to sen — gateways charge in the currency's smallest unit. */

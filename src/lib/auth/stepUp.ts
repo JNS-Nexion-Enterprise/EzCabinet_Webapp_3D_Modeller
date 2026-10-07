@@ -19,6 +19,7 @@ export function recentStepUp(
 ): boolean {
 	if (!verifiedAt) return false;
 	const age = now.getTime() - verifiedAt.getTime();
-	// NaN (an unparseable date) fails both comparisons' intent: refuse it.
-	return Number.isFinite(age) && age <= STEP_UP_WINDOW_MS;
+	// A stamp from the future is not a recent ceremony; a minute covers clock
+	// skew between instances. NaN (an unparseable date) fails both comparisons.
+	return age >= -60_000 && age <= STEP_UP_WINDOW_MS;
 }

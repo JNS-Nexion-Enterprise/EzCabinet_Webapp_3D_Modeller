@@ -501,7 +501,18 @@ does not order its events, so the adapter re-reads the refund on every
 the gateway's dashboard on a cancelled order is recorded the same way; a
 partial one, or one on an order that is not cancelled, is logged and never
 applied. FPX refunds settle in days and can fail, even after succeeding: the
-order is then Refund due again with `refundError` shown. The gateway's
+order is then Refund due again with `refundError` shown. If the webhook never
+arrives, **Check with <provider>** on a pending refund calls the same route,
+which asks the gateway (`PaymentGateway.refundStatus`) and writes exactly
+what the webhook would have; it never starts a second refund. Accepted
+limits: **Mark refunded** stays available while a refund is unacknowledged
+(the panel says to check the dashboard first), and is refused while one is
+pending; Stripe replays a stored 5xx for a reused key, so if **Ask again**
+keeps failing the way out is the dashboard and **Mark refunded**; and
+**Mark refunded** sends the customer the same `ORDER_REFUNDED` message, on
+purpose. Delivery creation re-checks the order is still paid as it inserts;
+a cancel whose write starts inside that few-millisecond transaction can
+still get through, also accepted. The gateway's
 webhook endpoint must be subscribed to `refund.created`, `refund.updated` and
 `refund.failed` as well as the three `payment_intent.*` events.
 
@@ -640,10 +651,15 @@ guarded routes by path — the order routes `cancel`, `paid`, `refunded` and
 from sign-in, where staff still use a password and code, or Google. A
 superadmin's **Reset passkey** works on staff rows too, and
 `pnpm auth:reset-passkey <email>` covers a sole superadmin who lost their
-device. Three limits: a staff member's first passkey is enrolled by whoever
-holds their session (logged, as with customers); the window covers any
-guarded action in those five minutes, not one named action; and the step-up
-is skipped with `AUTH_ENABLED=false`, where no session exists to pass one.
+device. A passkey authentication replaces the session: `passkeyAfterHook`
+deletes the one the request came in with, so signing out afterwards leaves
+no older password or Google session behind. Four limits: a staff member's
+first passkey is enrolled by whoever holds their session (logged, as with
+customers); the window covers any guarded action in those five minutes, not
+one named action; the step-up is skipped with `AUTH_ENABLED=false`, where no
+session exists to pass one; and user verification (biometric or PIN) is
+required at enrolment (`authenticatorSelection`) but the plugin at 1.7.5
+cannot enforce it at authentication.
 
 **Suspend is reversible; Delete is not.** A superadmin's **Delete** on
 `/admin/users` (`lib/auth/deleteUser.ts`) removes the row with its sessions,
@@ -691,9 +707,14 @@ otherwise list the owner's sessions or sign the owner out everywhere.
 
 The plugin's defaults would undo this, so `hooks.before` in `lib/auth.ts`
 runs `passkeyBeforeHook` (`lib/auth/passkeyHooks.ts`), which calls
-`checkPasskeyRequest` on every `/passkey/*` write: an unverified session may
-register only the account's first passkey, never delete or rename one, and
-the last passkey is never deleted. `assertPasskeyOwner` (wired as the
+`checkPasskeyRequest` on every `/passkey/*` write: a session may register
+the account's first passkey freely, but adding another, renaming or deleting
+one needs a passkey authentication in the last five minutes
+(`recentStepUp` on `Session.passkeyVerifiedAt`) — for every role, and not the
+week-long `passkeyVerified` flag, on which anyone at an unlocked laptop could
+enrol their own authenticator hours later and pass every step-up with it.
+The last passkey is never deleted. `PasskeyList` prompts and repeats the
+action once when the server answers `PASSKEY_VERIFICATION_REQUIRED`. `assertPasskeyOwner` (wired as the
 plugin's `authentication.afterVerification`) refuses a passkey that belongs
 to a different account than the Google session. Do not remove either to make
 a flow easier. The hook bodies are exported functions (`passkeyBeforeHook`,
@@ -792,10 +813,12 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 16. **A verified customer session is long-lived and only staff can end it.** A
     verified session slides for seven days, the customer cannot sign other
     devices out (the session routes are disabled), and the only way to end a
-    stolen verified session is a staff reset. Within a day of its creation
-    such a session could also add its own passkey and remove the owner's.
-    That is outside this feature's threat (someone holding only the Google
-    account), recorded so it is not mistaken for covered.
+    stolen verified session is a staff reset. Narrowed since: such a session
+    can no longer add its own passkey or remove the owner's without a fresh
+    passkey ceremony (five minutes), so it cannot make itself permanent. It
+    can still act as the customer for its seven days. That is outside this
+    feature's threat (someone holding only the Google account), recorded so
+    it is not mistaken for covered.
 
 ## Open questions — resolve before trusting pricing.ts
 

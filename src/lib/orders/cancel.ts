@@ -89,6 +89,9 @@ export async function cancelOrder(
  * gateway's webhook (`lib/orders/refund.ts`).
  *
  * Conditional, so a retried webhook is a no-op. False when nothing changed.
+ *
+ * The message goes out for a refund made by hand as well, on purpose: the
+ * customer should hear their refund was sent, however it was sent.
  */
 export async function markRefunded(
 	id: string,

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { Spinner } from "@/components/Spinner";
 
 export type Confirm = {
@@ -20,7 +20,9 @@ export type Confirm = {
  * The admin's one "are you sure". A native `<dialog>`: the browser supplies
  * the focus trap, Escape and the inert page behind it.
  *
- * Cancel takes focus, so a stray Enter backs out rather than confirming.
+ * Back takes focus, so a stray Enter backs out rather than confirming. It is
+ * focused by hand: `showModal()` picks the first focusable element, which in
+ * a step-up dialog is the "Set one up" link, and React emits no `autofocus`.
  */
 export function ConfirmDialog({
 	confirm,
@@ -36,6 +38,8 @@ export function ConfirmDialog({
 	blocked?: boolean;
 }) {
 	const ref = useRef<HTMLDialogElement>(null);
+	const back = useRef<HTMLButtonElement>(null);
+	const titleId = useId();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
@@ -47,6 +51,7 @@ export function ConfirmDialog({
 		if (open && !dialog.open) {
 			setError(null);
 			dialog.showModal();
+			back.current?.focus();
 		}
 		if (!open && dialog.open) dialog.close();
 	}, [open]);
@@ -69,16 +74,26 @@ export function ConfirmDialog({
 	return (
 		<dialog
 			ref={ref}
-			// Escape and the backdrop both end here; never mid-request.
+			aria-labelledby={titleId}
+			// Escape ends here; never mid-request. (A click on the backdrop does
+			// not close a native modal dialog.)
 			onCancel={(e) => {
 				e.preventDefault();
 				if (!busy) onClose();
+			}}
+			// A browser may close the dialog on a second Escape whatever
+			// `onCancel` said. Mid-request it comes straight back, so the
+			// outcome of `run` is still shown.
+			onClose={() => {
+				if (busy) ref.current?.showModal();
 			}}
 			className="m-auto w-[min(440px,calc(100vw-32px))] rounded-[14px] border border-neutral-200 bg-white p-6 text-neutral-900 backdrop:bg-neutral-900/40"
 		>
 			{confirm && (
 				<div className="flex flex-col gap-3">
-					<h2 className="font-semibold text-[16px]">{confirm.title}</h2>
+					<h2 id={titleId} className="font-semibold text-[16px]">
+						{confirm.title}
+					</h2>
 					<div className="text-[13px] text-neutral-600 leading-5">
 						{confirm.body}
 					</div>
@@ -102,9 +117,8 @@ export function ConfirmDialog({
 					)}
 					<div className="mt-1 flex justify-end gap-2">
 						<button
+							ref={back}
 							type="button"
-							// biome-ignore lint/a11y/noAutofocus: the safe choice takes focus in a destructive confirm
-							autoFocus
 							disabled={busy}
 							onClick={onClose}
 							className="min-h-10 rounded-lg border border-neutral-300 px-4 text-[13px] text-neutral-700 hover:bg-[#f4f3f1] disabled:opacity-50"

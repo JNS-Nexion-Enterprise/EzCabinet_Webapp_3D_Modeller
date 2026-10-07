@@ -16,7 +16,9 @@ import { RefundRefused } from "@/lib/payments/types";
  *    └─────────────────┴─────────────────────────────────┘
  *
  * Only the gateway's word records the refund, as only its word marks an
- * order paid. Full refunds only.
+ * order paid. Full refunds only. If the webhook never arrives, asking again
+ * on a pending refund reads the gateway's answer directly and writes what
+ * the webhook would have.
  */
 
 export type RefundState =
@@ -46,7 +48,8 @@ export function refundState(order: {
 }
 
 export type GatewayRefundResult =
-	| { ok: true; settled: boolean }
+	/** Where the refund is now: `refunded`, `pending`, or `due` after a failure. */
+	| { ok: true; state: RefundState }
 	| {
 			ok: false;
 			error:
@@ -60,12 +63,21 @@ export type GatewayRefundResult =
 				/** Somebody else's press, or the webhook, got there first. */
 				| "changed"
 				| "gateway_refused"
-				| "not_acknowledged";
+				| "not_acknowledged"
+				/** Checking a pending refund: the gateway did not answer. Nothing changed. */
+				| "gateway_unreachable";
 	  };
 
 const NOT_ACKNOWLEDGED =
 	"The payment gateway did not acknowledge the refund. Ask again: it repeats the same request, so it cannot refund twice.";
 
+const FAILED = "The payment gateway could not complete the refund.";
+
+/**
+ * Ask the gateway for a cancelled order's money back — or, when a refund is
+ * already in flight, ask it where that refund has got to. One entry point
+ * because it is one button's worth of intent: "get this refund finished".
+ */
 export async function requestGatewayRefund(
 	id: string,
 	by: { actorName: string | null },
@@ -86,13 +98,34 @@ export async function requestGatewayRefund(
 	});
 	if (!order) return { ok: false, error: "not_found" };
 	const state = refundState(order);
-	if (state !== "due" && state !== "unacknowledged") {
+	if (state === "none" || state === "refunded") {
 		return { ok: false, error: "not_refundable" };
 	}
 	if (order.paymentProvider === "manual") {
 		return { ok: false, error: "manual_order" };
 	}
 	const gateway = gatewayById(order.paymentProvider);
+	if (state === "pending") {
+		// Never a second refund: this only reads the one in flight, and writes
+		// exactly what its webhook would have.
+		const inFlight = order.refundRef;
+		if (!gateway?.refundStatus || !inFlight) {
+			return { ok: false, error: "not_configured" };
+		}
+		let status: "refunded" | "failed" | "pending";
+		try {
+			status = await gateway.refundStatus(inFlight);
+		} catch (error) {
+			console.error("refund: status check failed", { order: id, error });
+			return { ok: false, error: "gateway_unreachable" };
+		}
+		if (status === "refunded") await markRefunded(id, { ref: inFlight });
+		if (status === "failed") await refundFailed(id, inFlight);
+		return {
+			ok: true,
+			state: status === "failed" ? "due" : status,
+		};
+	}
 	const paymentRef = order.paymentRef;
 	if (!gateway?.refund || !paymentRef) {
 		return { ok: false, error: "not_configured" };
@@ -158,7 +191,7 @@ export async function requestGatewayRefund(
 		data: { refundRef: refund.ref },
 	});
 	if (refund.settled) await markRefunded(id, { ref: refund.ref });
-	return { ok: true, settled: refund.settled };
+	return { ok: true, state: refund.settled ? "refunded" : "pending" };
 }
 
 /**
@@ -173,7 +206,7 @@ export async function requestGatewayRefund(
 export async function refundFailed(
 	id: string,
 	refundRef: string,
-	error: string,
+	error = FAILED,
 ): Promise<void> {
 	const data = { refundRef: null, refundRequestedAt: null, refundError: error };
 	const { count } = await prisma.order.updateMany({

@@ -192,6 +192,30 @@ describe("passkey hooks, through the real plugin", () => {
 			"PASSKEY_VERIFICATION_REQUIRED",
 		);
 	});
+
+	it("refuses a verified but stale session adding a second passkey", async () => {
+		const cookie = await signedIn();
+		store.db.passkey.push({
+			id: "p1",
+			userId: store.db.user[0].id,
+			credentialID: "cred-1",
+		});
+		// Verified for the session's whole week; the ceremony was an hour ago.
+		Object.assign(sessionRow(), {
+			passkeyVerified: true,
+			passkeyVerifiedAt: new Date(Date.now() - 60 * 60_000),
+		});
+		const stale = await get("/passkey/generate-register-options", cookie);
+		expect(stale.status).toBe(403);
+		expect(((await stale.json()) as { code: string }).code).toBe(
+			"PASSKEY_VERIFICATION_REQUIRED",
+		);
+
+		// The same session moments after a ceremony gets past the guard.
+		sessionRow().passkeyVerifiedAt = new Date();
+		const recent = await get("/passkey/generate-register-options", cookie);
+		expect(recent.status).toBe(200);
+	});
 });
 
 // A real WebAuthn assertion cannot be driven from a unit test, so the hook

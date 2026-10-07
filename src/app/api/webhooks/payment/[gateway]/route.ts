@@ -86,11 +86,7 @@ export async function POST(
 		if (event.outcome === "refund_failed") {
 			// A failure for any other refund id says nothing about ours.
 			if (ours) {
-				await refundFailed(
-					order.id,
-					event.ref,
-					"The payment gateway could not complete the refund.",
-				);
+				await refundFailed(order.id, event.ref);
 			}
 			return ack();
 		}

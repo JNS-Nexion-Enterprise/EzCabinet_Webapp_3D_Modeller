@@ -226,11 +226,7 @@ describe("payment webhook", () => {
 	it("makes the refund due again when the gateway says ours failed", async () => {
 		const res = await deliver("refund.failed", { status: "failed" });
 		expect(res.status).toBe(200);
-		expect(refundFailed).toHaveBeenCalledWith(
-			"ord1",
-			"re_1",
-			expect.any(String),
-		);
+		expect(refundFailed).toHaveBeenCalledWith("ord1", "re_1");
 		expect(markRefunded).not.toHaveBeenCalled();
 	});
 
@@ -246,11 +242,7 @@ describe("payment webhook", () => {
 		const res = await post(body, sign(body));
 		expect(res.status).toBe(200);
 		expect(markRefunded).not.toHaveBeenCalled();
-		expect(refundFailed).toHaveBeenCalledWith(
-			"ord1",
-			"re_1",
-			expect.any(String),
-		);
+		expect(refundFailed).toHaveBeenCalledWith("ord1", "re_1");
 	});
 
 	it("waits while a refund is still on its way", async () => {

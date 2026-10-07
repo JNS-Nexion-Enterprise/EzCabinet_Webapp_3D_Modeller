@@ -156,6 +156,10 @@ export function stripeGateway(): PaymentGateway | null {
 			}
 			return { ref: refund.id, settled: refund.status === "succeeded" };
 		},
+
+		async refundStatus(ref) {
+			return refundOutcome((await stripe.refunds.retrieve(ref)).status);
+		},
 	};
 }
 
@@ -183,12 +187,23 @@ function eventOf(event: Stripe.Event): PaymentEvent | null {
 	};
 }
 
+/** One reading of a refund's status, for the webhook and a direct check alike. */
+const refundOutcome = (
+	status: string | null,
+): "refunded" | "failed" | "pending" =>
+	status === "succeeded"
+		? "refunded"
+		: status === "failed" || status === "canceled"
+			? "failed"
+			: "pending";
+
 /** A refund still on its way (`pending`, `requires_action`) needs no action yet. */
 function refundEventOf(refund: Stripe.Refund): PaymentEvent | null {
+	const status = refundOutcome(refund.status);
 	const outcome =
-		refund.status === "succeeded"
+		status === "refunded"
 			? "refunded"
-			: refund.status === "failed" || refund.status === "canceled"
+			: status === "failed"
 				? "refund_failed"
 				: null;
 	const paymentRef =

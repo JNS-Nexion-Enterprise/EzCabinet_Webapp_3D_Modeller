@@ -19,6 +19,12 @@ describe("recentStepUp", () => {
 		expect(recentStepUp(ago(STEP_UP_WINDOW_MS + 1), now)).toBe(false);
 	});
 
+	it("refuses a stamp from the future, beyond a minute of clock skew", () => {
+		expect(recentStepUp(ago(-60_000), now)).toBe(true);
+		expect(recentStepUp(ago(-60_001), now)).toBe(false);
+		expect(recentStepUp(ago(-24 * 60 * 60_000), now)).toBe(false);
+	});
+
 	it("refuses an unparseable date", () => {
 		expect(recentStepUp(new Date("nope"), now)).toBe(false);
 	});

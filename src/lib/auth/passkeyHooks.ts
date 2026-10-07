@@ -6,6 +6,7 @@ import {
 	isAPIError,
 } from "better-auth/api";
 import { type PasskeyAction, passkeyDecision } from "@/lib/auth/passkeyRules";
+import { recentStepUp } from "@/lib/auth/stepUp";
 import { prisma } from "@/lib/catalogue/db";
 
 /** The plugin's write paths. Listing passkeys needs no rule beyond a session. */
@@ -36,10 +37,14 @@ const refuse = (
  * and throws unless `passkeyDecision` allows it. This is the load-bearing
  * guard of the whole feature: without it, whoever holds only the Google
  * account can register their own passkey or delete the real one.
+ *
+ * `verifiedAt` is when this session last authenticated with a passkey
+ * (`Session.passkeyVerifiedAt`), null if it never has. Every change after
+ * the first enrolment needs that to be recent.
  */
 export async function checkPasskeyRequest(
 	path: string,
-	session: { userId: string; verified: boolean } | null,
+	session: { userId: string; verifiedAt: Date | null } | null,
 ): Promise<void> {
 	const action = actionFor(path);
 	if (action === null) {
@@ -55,7 +60,7 @@ export async function checkPasskeyRequest(
 	const decision = passkeyDecision({
 		action,
 		signedIn: session !== null,
-		sessionVerified: session?.verified ?? false,
+		recentPasskey: recentStepUp(session?.verifiedAt, new Date()),
 		passkeyCount,
 	});
 	if (decision === "sign_in_required") {
@@ -129,19 +134,46 @@ export async function passkeyBeforeHook(ctx: HookContext): Promise<void> {
 		);
 	}
 	const current = await getSessionFromCtx(ctx);
+	// `additionalFields` types this on the built instance, not inside the
+	// config that defines it. A cookie-cached session carries it as a string;
+	// one that will not parse is refused by `recentStepUp`.
+	const verifiedAt = (
+		current?.session as { passkeyVerifiedAt?: Date | string | null } | undefined
+	)?.passkeyVerifiedAt;
 	await checkPasskeyRequest(
 		ctx.path,
 		current
 			? {
 					userId: current.user.id,
-					// `additionalFields` types this on the built instance, not
-					// inside the config that defines it.
-					verified:
-						(current.session as { passkeyVerified?: boolean | null })
-							.passkeyVerified === true,
+					verifiedAt: verifiedAt ? new Date(verifiedAt) : null,
 				}
 			: null,
 	);
+}
+
+/**
+ * A passkey authentication mints a new session and swaps the cookie to it,
+ * leaving the one the request came in with alive in the database. Signing
+ * out afterwards would then end only the new one, and the original password
+ * or Google session would outlive it. So the old one ends here.
+ *
+ * Only on positive evidence, like the registration branch: not an API error,
+ * and a new session for the same account that is not the old one.
+ */
+async function endReplacedSession(ctx: HookContext): Promise<void> {
+	if (isAPIError(ctx.context.returned)) return;
+	const fresh = ctx.context.newSession;
+	// The request's own cookie: `newSession` is where the new one lives.
+	const previous = await getSessionFromCtx(ctx);
+	if (
+		!fresh ||
+		!previous ||
+		previous.session.token === fresh.session.token ||
+		previous.user.id !== fresh.user.id
+	) {
+		return;
+	}
+	await ctx.context.internalAdapter.deleteSession(previous.session.token);
 }
 
 /**
@@ -150,6 +182,9 @@ export async function passkeyBeforeHook(ctx: HookContext): Promise<void> {
  * failed registration leaves an APIError in `returned`.
  */
 export async function passkeyAfterHook(ctx: HookContext): Promise<void> {
+	if (ctx.path === "/passkey/verify-authentication") {
+		return endReplacedSession(ctx);
+	}
 	if (ctx.path !== "/passkey/verify-registration") return;
 	// `instanceof APIError` is not enough: a body that fails validation makes
 	// better-call throw its base APIError, which is not an instance of Better

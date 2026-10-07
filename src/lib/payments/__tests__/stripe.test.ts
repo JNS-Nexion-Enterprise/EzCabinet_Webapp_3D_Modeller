@@ -89,3 +89,25 @@ describe("stripe refund", () => {
 		expect(outcome).not.toBeInstanceOf(RefundRefused);
 	});
 });
+
+describe("stripe refund status", () => {
+	const retrieve = vi.spyOn(
+		Object.getPrototypeOf(new Stripe("sk_test_x").refunds),
+		"retrieve",
+	);
+
+	// The same reading of a refund's status the webhook path uses.
+	it.each([
+		["succeeded", "refunded"],
+		["failed", "failed"],
+		["canceled", "failed"],
+		["pending", "pending"],
+		["requires_action", "pending"],
+	])("reads %s as %s", async (status, expected) => {
+		retrieve.mockResolvedValue({ id: "re_1", status });
+		await expect(stripeGateway()?.refundStatus?.("re_1")).resolves.toBe(
+			expected,
+		);
+		expect(retrieve).toHaveBeenLastCalledWith("re_1");
+	});
+});

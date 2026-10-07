@@ -105,7 +105,9 @@ export const POST = withAuth("logistics:book", async (request) => {
 	// The order was paid when this request arrived, but geocoding is a network
 	// call and a cancel can land during it. The conditional write re-checks and
 	// holds the order's row until the delivery is in, so a cancel that has
-	// already committed leaves no delivery behind.
+	// already committed leaves no delivery behind. A cancel whose own write
+	// starts inside this short transaction can still get through; that
+	// window is a few milliseconds and is accepted.
 	const orderId = rest.orderId;
 	const delivery = await prisma.$transaction(async (tx) => {
 		if (orderId !== null) {

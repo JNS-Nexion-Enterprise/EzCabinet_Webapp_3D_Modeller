@@ -26,9 +26,14 @@ export type PasskeyDecision =
  * The plugin's defaults let any fresh session register another passkey and
  * any session delete one — so whoever held only the Google account could add
  * their own and verify with it. Hence: the first passkey is free (there is
- * nothing to verify against yet), every later change needs a session that
- * has already passed one, and the last passkey is never deleted because the
- * account would fall back to "first passkey is free".
+ * nothing to verify against yet), every later change needs a passkey
+ * ceremony in the last few minutes, and the last passkey is never deleted
+ * because the account would fall back to "first passkey is free".
+ *
+ * Recent, not merely verified: `session.passkeyVerified` lasts the session's
+ * week, so on that flag alone anyone at an unlocked laptop hours later could
+ * enrol their own authenticator and pass every later check with it. The
+ * caller derives `recentPasskey` with `recentStepUp` (`stepUp.ts`).
  *
  * `authenticate` needs a signed-in account because the passkey is a second
  * step after Google, never a sign-in on its own.
@@ -36,17 +41,18 @@ export type PasskeyDecision =
 export function passkeyDecision(s: {
 	action: PasskeyAction;
 	signedIn: boolean;
-	sessionVerified: boolean;
+	/** This session authenticated with a passkey within the step-up window. */
+	recentPasskey: boolean;
 	passkeyCount: number;
 }): PasskeyDecision {
 	if (!s.signedIn) return "sign_in_required";
 	if (s.action === "authenticate") return "allow";
 	if (s.action === "register") {
-		return s.passkeyCount === 0 || s.sessionVerified
+		return s.passkeyCount === 0 || s.recentPasskey
 			? "allow"
 			: "verification_required";
 	}
-	if (!s.sessionVerified) return "verification_required";
+	if (!s.recentPasskey) return "verification_required";
 	if (s.action === "delete" && s.passkeyCount <= 1) return "last_passkey";
 	return "allow";
 }

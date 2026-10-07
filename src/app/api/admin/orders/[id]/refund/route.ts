@@ -20,11 +20,17 @@ const STATUS: Record<Failure, number> = {
 	gateway_refused: 502,
 	// The gateway said nothing we can rely on; asking again repeats the request.
 	not_acknowledged: 502,
+	// A check on a pending refund got no answer. Nothing was written.
+	gateway_unreachable: 502,
 };
 
 /**
  * Send a cancelled order's money back through its payment gateway —
  * `lib/orders/refund.ts`. No body: the reason was given when it was cancelled.
+ *
+ * Called for a refund already in flight, it asks the gateway where that
+ * refund has got to and records the answer as the webhook would have — the
+ * way out when the webhook never arrived. It never starts a second refund.
  *
  * Superadmin only (`orders:refund`) and step-up guarded: this is the one
  * admin action that moves money out.
@@ -44,7 +50,7 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		}
 		// Ids only, like every other guarded action.
 		console.info("Order refund requested", { actor: actor.id, target: id });
-		return NextResponse.json({ ok: true, settled: result.settled });
+		return NextResponse.json({ ok: true, state: result.state });
 	},
 	{ stepUp: true },
 );

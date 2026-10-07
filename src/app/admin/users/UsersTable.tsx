@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { fetchGuarded, PASSKEY_FAILED } from "@/components/admin/stepUp";
+import { fetchGuarded } from "@/components/admin/stepUp";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
 import { shortTime } from "../logistics/time";
 
@@ -135,7 +135,7 @@ export function UsersTable({
 		failure: (reason: string | undefined) => string,
 	): Promise<string | null> {
 		const res = await fetchGuarded(`/api/admin/users/${path}`, { method });
-		if (!res) return PASSKEY_FAILED;
+		if (typeof res === "string") return res;
 		if (!res.ok) {
 			return failure((await res.json().catch(() => null))?.error);
 		}

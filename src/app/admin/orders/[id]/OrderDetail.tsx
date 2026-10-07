@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
-import { fetchGuarded, PASSKEY_FAILED } from "@/components/admin/stepUp";
+import { fetchGuarded } from "@/components/admin/stepUp";
 import { fieldClass } from "@/components/admin/styles";
 import { Spinner } from "@/components/Spinner";
 import type {
@@ -112,6 +112,8 @@ const ACTION_ERROR: Record<string, string> = {
 		"This order was paid by bank transfer. Send the money back, then mark it refunded.",
 	not_configured:
 		"This order's payment gateway is not connected, so it cannot be refunded from here.",
+	gateway_unreachable:
+		"Could not reach the payment gateway, so nothing was changed. Try again in a few minutes.",
 	gateway_refused:
 		"The payment gateway refused the refund. Nothing was sent; the reason is on the order.",
 	not_acknowledged:
@@ -146,6 +148,7 @@ export function OrderDetail({
 	const [error, setError] = useState<string | null>(null);
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 	const [cancelling, setCancelling] = useState(false);
+	const [stillPending, setStillPending] = useState(false);
 
 	/** A step-up guarded action; the dialog shows whatever this returns. */
 	async function guarded(
@@ -157,13 +160,39 @@ export function OrderDetail({
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify(body),
 		});
-		if (!res) return PASSKEY_FAILED;
+		if (typeof res === "string") return res;
 		// Even a refusal can have moved the order: a refused refund leaves its
 		// reason on it.
 		router.refresh();
 		if (res.ok) return null;
 		const payload = await res.json().catch(() => null);
 		return ACTION_ERROR[payload?.error] ?? "Could not update this order.";
+	}
+
+	/**
+	 * Ask the gateway where a pending refund has got to. No dialog: by itself
+	 * it changes nothing, it only records what the gateway already did. The
+	 * route is step-up guarded all the same.
+	 */
+	async function checkRefund() {
+		setBusy("check");
+		setError(null);
+		setStillPending(false);
+		const res = await fetchGuarded(`/api/admin/orders/${order.id}/refund`, {
+			method: "POST",
+		});
+		setBusy(null);
+		if (typeof res === "string") return setError(res);
+		const payload = await res.json().catch(() => null);
+		if (!res.ok) {
+			return setError(
+				ACTION_ERROR[payload?.error] ?? "Could not check this refund.",
+			);
+		}
+		// Still pending is an answer, but the page looks the same as before
+		// the press, so it has to be said.
+		setStillPending(payload?.state === "pending");
+		router.refresh();
 	}
 
 	async function post(url: string, body: unknown, key: string) {
@@ -432,7 +461,9 @@ export function OrderDetail({
 											: ""}
 										{order.refundedByName ? ` by ${order.refundedByName}` : ""}.
 										It may or may not have gone through: check the gateway's
-										dashboard before refunding by hand.
+										dashboard before refunding by hand. If asking again keeps
+										failing, refund it in the gateway's dashboard and record it
+										with Mark refunded.
 										{askAgain && !order.canAskAgain
 											? " You can ask again two minutes after the request; reload this page then."
 											: ""}
@@ -442,7 +473,21 @@ export function OrderDetail({
 									<p className="text-[12px] text-amber-900">
 										Waiting for {provider} to confirm ({order.refundRef}). FPX
 										refunds take a few working days; this marks itself refunded.
+										{stillPending
+											? ` ${provider} says it is still processing.`
+											: ""}
 									</p>
+								)}
+								{refund === "pending" && canRefund && (
+									<button
+										type="button"
+										className={`${CHIP} self-start`}
+										disabled={busy !== null}
+										onClick={checkRefund}
+									>
+										{busy === "check" && <Spinner />}
+										Check with {provider}
+									</button>
 								)}
 								{throughGateway && (
 									<button
