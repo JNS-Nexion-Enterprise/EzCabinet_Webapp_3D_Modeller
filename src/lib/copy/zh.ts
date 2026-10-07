@@ -440,6 +440,8 @@ export const zh: Dictionary = {
 		},
 	},
 	order: {
+		bodyCancelledRefundDue: "此订单已取消。我们将按退款政策全额退还您的付款。",
+		bodyCancelledRefunded: "此订单已取消,您的付款已全额退还。",
 		editDetails: "修改资料",
 		saveDetails: "保存更改",
 		savingDetails: "正在保存…",

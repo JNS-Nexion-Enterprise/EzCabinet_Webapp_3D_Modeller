@@ -462,6 +462,10 @@ export const en = {
 	},
 	/** The page a customer lands on after checkout, reached by its public token. */
 	order: {
+		bodyCancelledRefundDue:
+			"This order was cancelled. Your payment will be refunded in full, as set out in our refund policy.",
+		bodyCancelledRefunded:
+			"This order was cancelled and your payment has been refunded in full.",
 		editDetails: "Edit details",
 		saveDetails: "Save changes",
 		savingDetails: "Saving…",

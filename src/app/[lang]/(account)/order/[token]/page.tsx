@@ -74,6 +74,8 @@ export default async function OrderPage({
 				customerEmail: true,
 				addressNotes: true,
 				whatsappOptIn: true,
+				paidAt: true,
+				refundedAt: true,
 				userId: true,
 				number: true,
 				createdAt: true,
@@ -125,7 +127,15 @@ export default async function OrderPage({
 		order.status === "PAID"
 			? [o.headingPaid, o.bodyPaid]
 			: order.status === "CANCELLED"
-				? [o.headingCancelled, o.bodyCancelled]
+				? [
+						o.headingCancelled,
+						// Cancelled after payment: say what happens to the money.
+						order.paidAt === null
+							? o.bodyCancelled
+							: order.refundedAt === null
+								? o.bodyCancelledRefundDue
+								: o.bodyCancelledRefunded,
+					]
 				: confirming
 					? [o.headingConfirming, o.bodyConfirming]
 					: processing
@@ -352,7 +362,10 @@ export default async function OrderPage({
 							<span className="tabular-nums">{rm(order.deliveryRm)}</span>
 						</div>
 						<div className="mt-1.5 flex justify-between border-[#ecebe7] border-t pt-2.5 font-semibold text-[14px]">
-							<span>{paid ? o.totalPaid : o.totalDue}</span>
+							{/* A cancelled order that was paid shows what was paid, not "due". */}
+							<span>
+								{paid || order.paidAt !== null ? o.totalPaid : o.totalDue}
+							</span>
 							<span className="tabular-nums">{rm(order.totalRm)}</span>
 						</div>
 					</section>

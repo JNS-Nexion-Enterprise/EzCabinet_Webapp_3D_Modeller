@@ -44,6 +44,12 @@ export type OrderView = {
 	paymentRef: string | null;
 	paidAt: string | null;
 	paidByName: string | null;
+	cancelledAt: string | null;
+	cancelledByName: string | null;
+	cancelReason: string | null;
+	refundedAt: string | null;
+	refundedByName: string | null;
+	refundRef: string | null;
 	deliveries: { id: string; number: number; status: DeliveryStatusName }[];
 	productionStage: ProductionStage | null;
 	whatsappOptIn: boolean;
@@ -93,6 +99,8 @@ const MESSAGE_STATUS: Record<NotificationStatus, string> = {
 export function OrderDetail({ order }: { order: OrderView }) {
 	const router = useRouter();
 	const [paymentRef, setPaymentRef] = useState("");
+	const [cancelReason, setCancelReason] = useState("");
+	const [refundRef, setRefundRef] = useState("");
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
 
@@ -130,9 +138,15 @@ export function OrderDetail({ order }: { order: OrderView }) {
 		if (!res.ok) {
 			const payload = await res.json().catch(() => null);
 			setError(
-				payload?.error === "not_next_stage"
+				payload?.error === "not_next_stage" || payload?.error === "changed"
 					? "Someone else moved this order on. Reload to see where it is."
-					: "Could not update this order.",
+					: payload?.error === "in_production"
+						? "Production has started, so this order can no longer be cancelled."
+						: payload?.error === "has_delivery"
+							? "Cancel this order's delivery first."
+							: payload?.error === "reason_required"
+								? "Give a reason for cancelling a paid order."
+								: "Could not update this order.",
 			);
 			return;
 		}
@@ -143,6 +157,16 @@ export function OrderDetail({ order }: { order: OrderView }) {
 
 	const awaiting = order.status === "AWAITING_PAYMENT";
 	const paid = order.status === "PAID";
+	const hasLiveDelivery = order.deliveries.some(
+		(d) => d.status !== "CANCELLED" && d.status !== "FAILED",
+	);
+	// Mirrors `cancelBlock` (`lib/orders/cancel.ts`); the server decides.
+	const canCancelPaid =
+		paid && order.productionStage === null && !hasLiveDelivery;
+	const refundDue =
+		order.status === "CANCELLED" &&
+		order.paidAt !== null &&
+		order.refundedAt === null;
 
 	return (
 		<main className="mx-auto flex w-full max-w-[1080px] flex-col gap-[18px] px-7 pt-7 pb-16">
@@ -267,9 +291,91 @@ export function OrderDetail({ order }: { order: OrderView }) {
 								{order.paymentProvider}
 							</p>
 						)}
+						{canCancelPaid && (
+							<div className="flex flex-col gap-2 border-neutral-200 border-t pt-3">
+								<label className="flex max-w-[360px] flex-col gap-1 text-[12px] text-neutral-500">
+									Reason for cancelling
+									<input
+										className={fieldClass(false, FOCUS)}
+										maxLength={300}
+										value={cancelReason}
+										onChange={(e) => setCancelReason(e.target.value)}
+									/>
+								</label>
+								<button
+									type="button"
+									className={`${CHIP} self-start`}
+									disabled={busy !== null || cancelReason.trim() === ""}
+									onClick={() => {
+										if (
+											confirm(
+												`Cancel paid order ${order.ref}? ${rm(order.totalRm)} will be owed back to the customer.`,
+											)
+										)
+											post(
+												`/api/admin/orders/${order.id}/cancel`,
+												{ reason: cancelReason.trim() },
+												"cancel",
+											);
+									}}
+								>
+									{busy === "cancel" && <Spinner />}
+									Cancel order and refund
+								</button>
+							</div>
+						)}
 						{order.status === "CANCELLED" && (
 							<p className="text-[13px] text-neutral-500">
-								Cancelled before payment.
+								{order.paidAt
+									? "Cancelled after payment"
+									: "Cancelled before payment"}
+								{order.cancelledAt ? ` · ${shortTime(order.cancelledAt)}` : ""}
+								{order.cancelledByName ? ` · by ${order.cancelledByName}` : ""}
+								{order.cancelReason ? ` · ${order.cancelReason}` : ""}
+							</p>
+						)}
+						{refundDue && (
+							<div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3">
+								<p className="font-semibold text-[13px] text-amber-900">
+									Refund due: {rm(order.totalRm)}
+								</p>
+								<p className="text-[12px] text-amber-900">
+									Paid by {order.paymentProvider}
+									{order.paymentRef ? ` (${order.paymentRef})` : ""}. This app
+									does not send money: refund it by bank transfer or in the
+									gateway's dashboard, then record it here.
+								</p>
+								<label className="flex max-w-[260px] flex-col gap-1 text-[12px] text-amber-900">
+									Refund reference (optional)
+									<input
+										className={fieldClass(false, FOCUS)}
+										maxLength={120}
+										value={refundRef}
+										onChange={(e) => setRefundRef(e.target.value)}
+									/>
+								</label>
+								<button
+									type="button"
+									className={PRIMARY}
+									disabled={busy !== null}
+									onClick={() =>
+										post(
+											`/api/admin/orders/${order.id}/refunded`,
+											{ refundRef: refundRef.trim() || null },
+											"refunded",
+										)
+									}
+								>
+									{busy === "refunded" && <Spinner />}
+									Mark refunded
+								</button>
+							</div>
+						)}
+						{order.refundedAt && (
+							<p className="text-[13px] text-neutral-600">
+								Refunded {shortTime(order.refundedAt)}
+								{order.refundedByName ? ` · by ${order.refundedByName}` : ""}
+								{order.refundRef ? ` · ref ${order.refundRef}` : ""}
 							</p>
 						)}
 					</section>

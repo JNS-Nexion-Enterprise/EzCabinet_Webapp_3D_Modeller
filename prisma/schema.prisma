@@ -371,6 +371,16 @@ model Order {
   locale             String           @default("en")
   /// Null until an admin starts production. Forward-only — `lib/orders/stage.ts`.
   productionStage    ProductionStage?
+  /// Set by `cancelOrder` (`lib/orders/cancel.ts`). A cancelled order that
+  /// still has a `paidAt` is owed a refund until `refundedAt` is set — the
+  /// money goes back outside the app, and this is the record that it did.
+  /// Names, not ids, for the reason `paidByName` exists.
+  cancelledAt        DateTime?
+  cancelledByName    String?
+  cancelReason       String?
+  refundedAt         DateTime?
+  refundedByName     String?
+  refundRef          String?
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 

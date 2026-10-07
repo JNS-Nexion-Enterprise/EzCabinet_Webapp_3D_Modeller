@@ -466,6 +466,10 @@ export const ms: Dictionary = {
 		},
 	},
 	order: {
+		bodyCancelledRefundDue:
+			"Pesanan ini telah dibatalkan. Bayaran anda akan dikembalikan sepenuhnya, seperti yang dinyatakan dalam dasar bayaran balik kami.",
+		bodyCancelledRefunded:
+			"Pesanan ini telah dibatalkan dan bayaran anda telah dikembalikan sepenuhnya.",
 		editDetails: "Ubah butiran",
 		saveDetails: "Simpan perubahan",
 		savingDetails: "Menyimpan…",

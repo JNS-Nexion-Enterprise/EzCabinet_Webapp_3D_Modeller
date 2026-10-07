@@ -472,8 +472,13 @@ ticked terms box; `POST /api/orders` refuses a body without
 whenever the wording of `/[lang]/terms` or `/[lang]/refunds` changes in
 meaning. Both pages and the privacy notice are **drafts**, rendered by
 `components/LegalPage.tsx` from `lib/copy`; the refund policy's boundary is
-`Order.productionStage` being set. There is no refund or cancel flow in the
-app.
+`Order.productionStage` being set. Staff cancel an order from
+`/admin/orders/[id]` (`lib/orders/cancel.ts`) on that boundary: unpaid any
+time, paid only before production starts and with a reason. The app moves no
+money — a cancelled order that still has a `paidAt` shows **Refund due**
+until staff pay it back by hand and press **Mark refunded**. A customer
+cannot cancel from their own page, and cancelling does not void an open
+gateway payment or send a WhatsApp message.
 
 **No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A customer whose session has not passed a passkey then meets one more step, `/[lang]/verify`, before the order is placed — a first-time customer sets one up, a returning one uses theirs. A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
 

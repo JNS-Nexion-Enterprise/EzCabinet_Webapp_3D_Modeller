@@ -1,31 +1,48 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { BYPASS_USER } from "@/lib/auth/requireAuth";
 import { withAuth } from "@/lib/auth/route";
-import { prisma } from "@/lib/catalogue/db";
+import { cancelOrder } from "@/lib/orders/cancel";
 
 export const runtime = "nodejs";
 
+const bodySchema = z.object({
+	reason: z.string().trim().max(300).nullable().default(null),
+});
+
 /**
- * Cancel an order nobody has paid for — a mistaken or junk checkout.
+ * Cancel an order: a junk checkout nobody paid for, or a paid one before
+ * production starts — the refund policy's boundary (`lib/orders/cancel.ts`).
  *
- * Paid orders are not cancelled here: that is a refund, which the manual
- * provider cannot perform and this app does not record.
+ * Cancelling a paid order moves no money. It leaves the order owed a refund,
+ * which staff pay back by hand and then record with `/refunded`.
  */
 export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 	"orders:markPaid",
-	async (_request, { params }) => {
+	async (request, { params }, user) => {
 		const { id } = await params;
-		const { count } = await prisma.order.updateMany({
-			where: { id, status: "AWAITING_PAYMENT" },
-			data: { status: "CANCELLED" },
+		const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
+		if (!parsed.success) {
+			return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+		}
+		const result = await cancelOrder(id, {
+			byName: user.id === BYPASS_USER.id ? null : user.name,
+			reason: parsed.data.reason || null,
 		});
-		if (count === 1) return NextResponse.json({ ok: true });
-
-		const exists = await prisma.order.findUnique({
-			where: { id },
-			select: { id: true },
-		});
-		return exists
-			? NextResponse.json({ error: "not_awaiting_payment" }, { status: 409 })
-			: NextResponse.json({ error: "not_found" }, { status: 404 });
+		if (result === "ok") {
+			console.info("Order cancelled", { order: id, actor: user.id });
+			return NextResponse.json({ ok: true });
+		}
+		return NextResponse.json(
+			{ error: result },
+			{
+				status:
+					result === "not_found"
+						? 404
+						: result === "reason_required"
+							? 400
+							: 409,
+			},
+		);
 	},
 );
