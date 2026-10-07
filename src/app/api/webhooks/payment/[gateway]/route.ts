@@ -64,11 +64,16 @@ export async function POST(
 				paymentProvider: true,
 				paymentRef: true,
 				refundRef: true,
+				refundRequestedAt: true,
 			},
 		});
 		// The refund we asked for, whatever its amount: it may be the remainder
-		// after a partial refund somebody made in the dashboard.
-		const ours = order?.refundRef === event.ref;
+		// after a partial refund somebody made in the dashboard. Known by its
+		// id, or — when this beats the write that stores the id — by naming
+		// our order while an attempt is in flight.
+		const ours =
+			order?.refundRef === event.ref ||
+			(order?.id === event.orderId && order.refundRequestedAt !== null);
 		if (
 			!order ||
 			order.paymentProvider !== gateway.id ||
@@ -84,8 +89,9 @@ export async function POST(
 			return ack();
 		}
 		if (event.outcome === "refund_failed") {
-			// A failure for any other refund id says nothing about ours.
-			if (ours) {
+			// A failure for any other refund id says nothing about ours. By id
+			// only: one that beat the stored id is found by asking again.
+			if (order.refundRef === event.ref) {
 				await refundFailed(order.id, event.ref);
 			}
 			return ack();
@@ -123,9 +129,32 @@ export async function POST(
 		return ack();
 	}
 
-	await markOrderPaid(event.orderId, {
+	const marked = await markOrderPaid(event.orderId, {
 		paymentProvider: gateway.id,
 		paymentRef: event.ref,
 	});
+	if (!marked) {
+		// A customer can finish paying after staff cancelled their unpaid
+		// order. The money is real, so it goes on the order: cancelled with a
+		// `paidAt` is "Refund due", and can be sent back through the gateway.
+		// No payment-confirmed message — the order is not going ahead.
+		// Anything else that was not marked (a retry for an order already
+		// paid) matches nothing here and stays a quiet no-op.
+		const { count } = await prisma.order.updateMany({
+			where: { id: event.orderId, status: "CANCELLED", paidAt: null },
+			data: {
+				paidAt: new Date(),
+				paymentProvider: gateway.id,
+				paymentRef: event.ref,
+			},
+		});
+		if (count === 1) {
+			console.error("payment webhook: payment arrived on a cancelled order", {
+				gateway: gateway.id,
+				orderId: event.orderId,
+				ref: event.ref,
+			});
+		}
+	}
 	return ack();
 }

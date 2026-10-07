@@ -65,8 +65,9 @@ export function UsersTable({
 	const [query, setQuery] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busyId, setBusyId] = useState<string | null>(null);
-	// The four actions that remove access are step-up guarded, so they ask
-	// in a dialog and may prompt for the admin's passkey.
+	// Every action here changes who can get in, so each is step-up guarded
+	// and may prompt for the admin's passkey. All but suspend and restore ask
+	// in a dialog first.
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 
 	const reload = useCallback(async (q: string, s: ScopeFilter) => {
@@ -82,36 +83,17 @@ export function UsersTable({
 		reload(query, scope);
 	}, [query, scope, reload]);
 
-	async function changeRole(id: string, role: Role) {
-		setError(null);
-		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ role }),
-		});
-		setBusyId(null);
-		if (!res.ok) {
-			setError(
-				res.status === 409
-					? "That change isn't allowed — you can't change your own role, and the last superadmin can't be demoted."
-					: "Could not change the role.",
-			);
-			return;
-		}
-		await reload(query, scope);
-		router.refresh();
-	}
-
+	/** Suspend and restore are one click, but the route still wants a passkey. */
 	async function toggleDisabled(id: string, disabled: boolean) {
 		setError(null);
 		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}`, {
+		const res = await fetchGuarded(`/api/admin/users/${id}`, {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ disabled }),
 		});
 		setBusyId(null);
+		if (typeof res === "string") return setError(res);
 		if (!res.ok) {
 			setError(
 				res.status === 409
@@ -131,10 +113,19 @@ export function UsersTable({
 	 */
 	async function guarded(
 		path: string,
-		method: "POST" | "DELETE",
+		method: "POST" | "DELETE" | "PATCH",
 		failure: (reason: string | undefined) => string,
+		body?: unknown,
 	): Promise<string | null> {
-		const res = await fetchGuarded(`/api/admin/users/${path}`, { method });
+		const res = await fetchGuarded(`/api/admin/users/${path}`, {
+			method,
+			...(body === undefined
+				? {}
+				: {
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify(body),
+					}),
+		});
 		if (typeof res === "string") return res;
 		if (!res.ok) {
 			return failure((await res.json().catch(() => null))?.error);
@@ -143,6 +134,17 @@ export function UsersTable({
 		router.refresh();
 		return null;
 	}
+
+	const changeRole = (id: string, role: Role) =>
+		guarded(
+			id,
+			"PATCH",
+			(reason) =>
+				reason === "not_allowed"
+					? "That change isn't allowed — you can't change your own role, and the last superadmin can't be demoted."
+					: "Could not change the role.",
+			{ role },
+		);
 
 	const resetTwoFactor = (id: string) =>
 		guarded(
@@ -345,9 +347,18 @@ export function UsersTable({
 											title={
 												isSelf ? "You can't change your own role" : undefined
 											}
-											onChange={(e) =>
-												changeRole(user.id, e.target.value as Role)
-											}
+											// Controlled by the saved role, so backing out of the
+											// dialog leaves the select where it was.
+											onChange={(e) => {
+												const role = e.target.value as Role;
+												setConfirming({
+													title: `Make ${user.name} ${ROLE_LABELS[role]}?`,
+													body: `${user.email} gets what that role can do from their next request.`,
+													confirmLabel: "Change role",
+													stepUp: true,
+													run: () => changeRole(user.id, role),
+												});
+											}}
 											className="select-chevron min-h-9 w-fit rounded-lg border border-[#d4d4d4] bg-white py-[7px] pl-2.5 text-[#404040] text-[12px] disabled:cursor-not-allowed disabled:opacity-50"
 										>
 											{STAFF_ROLES.map((role) => (

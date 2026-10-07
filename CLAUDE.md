@@ -637,9 +637,11 @@ Google-only (refused when it has no other sign-in), which the 2FA rule exempts
 password. Both Reset 2FA and Remove password log the actor's and target's ids.
 
 **Actions that move money or access ask twice, and ask for a passkey.**
-Cancel order, mark paid, refund through the gateway, mark refunded, delete
-user, reset passkey, reset 2FA and remove password open a confirmation dialog
-(`components/admin/ConfirmDialog.tsx`), and their routes pass
+Cancel order, mark paid, refund through the gateway, mark refunded, invite or
+promote a staff member, change a role, delete user, reset passkey, reset 2FA
+and remove password open a confirmation dialog
+(`components/admin/ConfirmDialog.tsx`); suspend and restore are one click
+with no dialog. All of their routes pass
 `{ stepUp: true }` to `withAuth`: the session must have passed a passkey
 authentication in the last five minutes (`lib/auth/stepUp.ts`), or the route
 answers 403 `step_up_required` and the browser prompts and repeats the call
@@ -647,15 +649,21 @@ once (`components/admin/stepUp.ts`). `Session.passkeyVerifiedAt` records
 when; `passkeyVerified` cannot, since it lasts the session's week and an
 enrolment sets it with no authentication at all. A coverage test lists the
 guarded routes by path — the order routes `cancel`, `paid`, `refunded` and
-`refund` among them. Staff enrol at `/admin/security`; this is separate
+`refund`, and `POST /api/admin/users` and `PATCH /api/admin/users/[id]`
+among them. The two user routes matter most: unguarded, a held superadmin
+session could promote an account it controls and pass every other guard as
+that account. Staff enrol at `/admin/security`; this is separate
 from sign-in, where staff still use a password and code, or Google. A
 superadmin's **Reset passkey** works on staff rows too, and
 `pnpm auth:reset-passkey <email>` covers a sole superadmin who lost their
 device. A passkey authentication replaces the session: `passkeyAfterHook`
 deletes the one the request came in with, so signing out afterwards leaves
-no older password or Google session behind. Four limits: a staff member's
-first passkey is enrolled by whoever holds their session (logged, as with
-customers); the window covers any guarded action in those five minutes, not
+no older password or Google session behind. Five limits: **until a staff
+member has enrolled a passkey, the step-up adds nothing for their account**,
+because a first enrolment is free — whoever holds their session can enrol
+one and pass every guard, so every staff member enrols on the day this
+ships; a staff member's first passkey is enrolled by whoever holds their
+session (logged, as with customers); the window covers any guarded action in those five minutes, not
 one named action; the step-up is skipped with `AUTH_ENABLED=false`, where no
 session exists to pass one; and user verification (biometric or PIN) is
 required at enrolment (`authenticatorSelection`) but the plugin at 1.7.5

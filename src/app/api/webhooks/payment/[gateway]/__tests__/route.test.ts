@@ -12,6 +12,7 @@ const markOrderPaid = vi.fn();
 const markRefunded = vi.fn();
 const refundFailed = vi.fn();
 const findFirst = vi.fn();
+const updateMany = vi.fn();
 vi.mock("@/lib/orders/markPaid", () => ({ markOrderPaid }));
 vi.mock("@/lib/orders/cancel", () => ({ markRefunded }));
 vi.mock("@/lib/orders/refund", () => ({ refundFailed }));
@@ -20,6 +21,7 @@ vi.mock("@/lib/catalogue/db", () => ({
 		order: {
 			findUnique: vi.fn(async () => ({ totalRm: 2641.76 })),
 			findFirst,
+			updateMany,
 		},
 	},
 }));
@@ -124,6 +126,7 @@ const order = {
 	paymentProvider: "stripe",
 	paymentRef: "pi_1",
 	refundRef: "re_1" as string | null,
+	refundRequestedAt: new Date() as Date | null,
 };
 
 describe("payment webhook", () => {
@@ -131,6 +134,8 @@ describe("payment webhook", () => {
 		vi.clearAllMocks();
 		vi.spyOn(console, "error").mockImplementation(() => {});
 		findFirst.mockResolvedValue(order);
+		markOrderPaid.mockResolvedValue(true);
+		updateMany.mockResolvedValue({ count: 0 });
 	});
 
 	it("refuses a forged signature and writes nothing", async () => {
@@ -154,6 +159,63 @@ describe("payment webhook", () => {
 		const res = await post(body, sign(body));
 		expect(res.status).toBe(200);
 		expect(markOrderPaid).not.toHaveBeenCalled();
+	});
+
+	it("records a payment that lands on an order cancelled while unpaid", async () => {
+		// The customer finished paying after staff cancelled. The money is
+		// real, so the order must show it as owed back.
+		markOrderPaid.mockResolvedValue(false);
+		updateMany.mockResolvedValue({ count: 1 });
+		const body = succeeded(264176);
+		const res = await post(body, sign(body));
+		expect(res.status).toBe(200);
+		expect(updateMany).toHaveBeenCalledTimes(1);
+		expect(updateMany.mock.calls[0][0]).toEqual({
+			where: { id: "ord1", status: "CANCELLED", paidAt: null },
+			data: {
+				paidAt: expect.any(Date),
+				paymentProvider: "stripe",
+				paymentRef: "pi_1",
+			},
+		});
+		expect(console.error).toHaveBeenCalledWith(
+			expect.stringContaining("cancelled order"),
+			expect.objectContaining({ orderId: "ord1" }),
+		);
+	});
+
+	it("stays quiet on a retry for an order already paid", async () => {
+		markOrderPaid.mockResolvedValue(false);
+		const body = succeeded(264176);
+		const res = await post(body, sign(body));
+		expect(res.status).toBe(200);
+		// The conditional write matched nothing: not cancelled-and-unpaid.
+		expect(console.error).not.toHaveBeenCalled();
+	});
+
+	it("never records a mismatched charge on a cancelled order", async () => {
+		markOrderPaid.mockResolvedValue(false);
+		const body = succeeded(100);
+		await post(body, sign(body));
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it("accepts our remainder refund before its id has been stored", async () => {
+		// The webhook can beat the write that stores `refundRef`: the event
+		// names our order, and an attempt is in flight.
+		findFirst.mockResolvedValue({ ...order, refundRef: null });
+		await deliver("refund.updated", { amount: 200000 });
+		expect(markRefunded).toHaveBeenCalledWith("ord1", { ref: "re_1" });
+	});
+
+	it("does not take a remainder for ours when no attempt is in flight", async () => {
+		findFirst.mockResolvedValue({
+			...order,
+			refundRef: null,
+			refundRequestedAt: null,
+		});
+		await deliver("refund.updated", { amount: 200000 });
+		expect(markRefunded).not.toHaveBeenCalled();
 	});
 
 	it("records our refund when the gateway says it succeeded", async () => {

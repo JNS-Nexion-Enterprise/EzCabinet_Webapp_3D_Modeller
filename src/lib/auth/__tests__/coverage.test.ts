@@ -93,6 +93,8 @@ describe("every admin surface is gated", () => {
 			["orders/[id]/paid/route.ts", "POST"],
 			["orders/[id]/refunded/route.ts", "POST"],
 			["orders/[id]/refund/route.ts", "POST"],
+			["users/route.ts", "POST"],
+			["users/[id]/route.ts", "PATCH"],
 			["users/[id]/route.ts", "DELETE"],
 			["users/[id]/reset-passkey/route.ts", "POST"],
 			["users/[id]/reset-2fa/route.ts", "POST"],
@@ -102,9 +104,10 @@ describe("every admin surface is gated", () => {
 			const source = readFileSync(`src/app/api/admin/${file}`, "utf8");
 			const from = source.indexOf(`export const ${method} = withAuth`);
 			if (from < 0) return true;
-			const next = source.indexOf("export const ", from + 1);
-			const body = source.slice(from, next < 0 ? undefined : next);
-			return !/\{ stepUp: true \},\n\);$/.test(body.trimEnd());
+			// The `withAuth(` call ends at the first `);` in column 0, and its
+			// last argument must be the options.
+			const end = source.indexOf("\n);", from);
+			return !source.slice(from, end).endsWith("{ stepUp: true },");
 		});
 		expect(missing).toEqual([]);
 	});

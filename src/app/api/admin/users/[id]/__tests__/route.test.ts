@@ -13,7 +13,7 @@ vi.mock("@/lib/auth/requireAuth", async () => {
 vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { findUnique } } }));
 vi.mock("@/lib/auth/deleteUser", () => ({ deleteUser }));
 
-const { DELETE } = await import("../route");
+const { DELETE, PATCH } = await import("../route");
 const { AuthError } = await import("@/lib/auth/requireAuth");
 
 const superadmin = {
@@ -81,4 +81,34 @@ describe("DELETE /api/admin/users/[id]", () => {
 			expect(console.info).not.toHaveBeenCalled();
 		},
 	);
+});
+
+describe("PATCH /api/admin/users/[id]", () => {
+	const update = vi.fn();
+	const patch = (body: unknown) =>
+		PATCH(
+			new Request("http://x", { method: "PATCH", body: JSON.stringify(body) }),
+			{ params: Promise.resolve({ id: "u1" }) },
+		);
+	beforeEach(() => {
+		vi.clearAllMocks();
+		requireAuth.mockResolvedValue({ ...superadmin, passkeyVerifiedAt: null });
+	});
+
+	// A role change or a restore grants access, so a held session alone must
+	// not be enough: it could otherwise mint itself a second superadmin.
+	it.each([
+		["a role change", { role: "SUPERADMIN" }],
+		["a suspend", { disabled: true }],
+		["a restore", { disabled: false }],
+	])("403s %s without a recent passkey ceremony", async (_, body) => {
+		const response = await patch(body);
+		expect(response.status).toBe(403);
+		await expect(response.json()).resolves.toEqual({
+			error: "step_up_required",
+		});
+		expect(requireAuth).toHaveBeenCalledWith("users:manage");
+		expect(findUnique).not.toHaveBeenCalled();
+		expect(update).not.toHaveBeenCalled();
+	});
 });

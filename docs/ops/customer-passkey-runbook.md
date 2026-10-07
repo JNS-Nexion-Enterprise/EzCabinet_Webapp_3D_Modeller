@@ -52,8 +52,8 @@ Reset straight away. Then follow the ring-back steps above before the customer s
 
 Staff sign in with a password and code, or Google, as before. A passkey is
 what confirms an action that moves money or access: cancel order, mark paid,
-refund through the gateway, mark refunded, delete user, reset passkey, reset
-2FA, remove password.
+refund through the gateway, mark refunded, invite a member, change a role,
+suspend or restore, delete user, reset passkey, reset 2FA, remove password.
 The prompt appears when no passkey was used in the last five minutes.
 
 - Set one up under **Security** in the admin header, on each device you work
@@ -64,3 +64,10 @@ The prompt appears when no passkey was used in the last five minutes.
   someone with database credentials.
 - Before resetting a colleague's passkey, confirm it is them asking, by voice
   or in person. Whoever signs in to that account next can enrol their own.
+
+Deploy-day checklist:
+
+- [ ] Every staff member enrols a passkey under **Security** on the day this
+  ships. Until an account has one, the passkey step protects nothing for it:
+  a first passkey needs no confirmation, so whoever holds that session could
+  set one up and confirm any guarded action with it.
