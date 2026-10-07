@@ -651,6 +651,7 @@ export const zh: Dictionary = {
 		menuLabel: "账户菜单",
 	},
 	orders: {
+		admin: "管理后台",
 		heading: "我的订单",
 		empty: "暂无订单",
 		emptyBody: "订购设计后，订单会显示在这里，并附上付款、生产和配送状态。",

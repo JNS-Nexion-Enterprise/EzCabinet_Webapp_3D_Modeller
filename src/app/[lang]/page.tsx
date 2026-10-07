@@ -247,6 +247,7 @@ export default async function Home({
 									signIn: t.account.signIn,
 									signOut: t.account.signOut,
 									myOrders: t.account.myOrders,
+									admin: t.account.admin,
 									menu: t.account.menuLabel,
 								}}
 							/>

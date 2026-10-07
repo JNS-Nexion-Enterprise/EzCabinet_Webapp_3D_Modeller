@@ -693,6 +693,7 @@ export const ms: Dictionary = {
 	},
 	orders: {
 		heading: "Pesanan saya",
+		admin: "Portal admin",
 		empty: "Belum ada pesanan",
 		emptyBody:
 			"Apabila anda memesan reka bentuk, ia dipaparkan di sini bersama status bayaran, pengeluaran dan penghantarannya.",

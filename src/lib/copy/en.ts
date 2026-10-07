@@ -705,6 +705,7 @@ export const en = {
 	},
 	orders: {
 		heading: "My orders",
+		admin: "Admin portal",
 		empty: "No orders yet",
 		emptyBody:
 			"When you order a design, it shows up here with its payment, production and delivery status.",
