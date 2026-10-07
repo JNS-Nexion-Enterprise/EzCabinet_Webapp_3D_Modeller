@@ -212,11 +212,21 @@ export function OrderDetail({ order }: { order: OrderView }) {
 						<h2 className={EYEBROW}>Payment</h2>
 						{awaiting && (
 							<>
-								<p className="text-[13px] text-neutral-600">
-									Waiting for a bank transfer of {rm(order.totalRm)} with{" "}
-									<span className="font-medium">{order.ref}</span> as the
-									reference. Mark it paid once it shows in the account.
-								</p>
+								{order.paymentProvider === "manual" ? (
+									<p className="text-[13px] text-neutral-600">
+										Waiting for a bank transfer of {rm(order.totalRm)} with{" "}
+										<span className="font-medium">{order.ref}</span> as the
+										reference. Mark it paid once it shows in the account.
+									</p>
+								) : (
+									<p className="text-[13px] text-neutral-600">
+										Waiting for {order.paymentProvider} to confirm{" "}
+										{rm(order.totalRm)}
+										{order.paymentRef ? ` (${order.paymentRef})` : ""}. It marks
+										itself paid when the payment lands. Mark it paid by hand
+										only after checking the payment in the gateway's dashboard.
+									</p>
+								)}
 								<div className="flex flex-wrap gap-3">
 									<label className="flex max-w-[260px] flex-1 flex-col gap-1 text-[12px] text-neutral-500">
 										Bank reference (optional)
