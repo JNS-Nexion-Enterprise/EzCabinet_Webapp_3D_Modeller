@@ -75,9 +75,18 @@ describe("lib/auth.ts", () => {
 			'"/account-info"',
 			'"/get-access-token"',
 			'"/refresh-token"',
+			'"/verify-password"',
+			'"/two-factor/send-otp"',
+			'"/two-factor/verify-otp"',
 			"...CLOSED_PATHS",
 			"",
 		]);
+	});
+
+	// A proxy in front of Vercel would put every visitor in one bucket; the
+	// note is what tells whoever adds one.
+	it("says what the rate limiter keys on", () => {
+		expect(auth).toContain("x-forwarded-for");
 	});
 
 	it("never awaits the mail", () => {

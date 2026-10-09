@@ -123,6 +123,11 @@ export const POST = withAuth(
 					},
 				}),
 			]);
+			// Once more, now that the role is committed. A code sign-in could land
+			// between the delete above and the commit, while the row was still a
+			// customer's, and leave a customer-made session on a staff row. From
+			// here `refuseStaffCodeSession` refuses any new one.
+			await prisma.session.deleteMany({ where: { userId: existing.id } });
 			const passwordSet = passwordHash !== null;
 			const emailed = await sendStaffInvite({
 				...mail,

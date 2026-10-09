@@ -96,6 +96,10 @@ export const auth = betterAuth({
 	// `/list-accounts`, `/account-info`, `/get-access-token`,
 	// `/refresh-token`: they hand the owner's Google account id, profile and
 	// tokens to a session that has not passed the passkey step.
+	// `/verify-password`: answers whether a password is the account's, to any
+	// session — an oracle nothing here needs. `/two-factor/send-otp`,
+	// `/two-factor/verify-otp`: the plugin's emailed second factor, which is
+	// not configured; the second factor is an authenticator or a backup code.
 	// The app calls none of the routes above.
 	// `CLOSED_PATHS`: the email-code plugin registers nine routes and the app
 	// uses two. Two of the other seven would put a password on a customer row.
@@ -119,6 +123,9 @@ export const auth = betterAuth({
 		"/account-info",
 		"/get-access-token",
 		"/refresh-token",
+		"/verify-password",
+		"/two-factor/send-otp",
+		"/two-factor/verify-otp",
 		...CLOSED_PATHS,
 	],
 	// Counted in Postgres. The default is memory, which on a serverless
@@ -126,6 +133,9 @@ export const auth = betterAuth({
 	// The send-code rule is the per-network half of the code limits; the
 	// per-address half is `takeSendSlot` (`lib/auth/emailCodeMail.ts`), whose
 	// rows share this table — see `SEND_WINDOW_S` before shortening the window.
+	// The limiter keys on `x-forwarded-for` holding one address, which is what
+	// Vercel overwrites it to. A proxy in front makes it a list, which is not
+	// trusted, and every visitor then shares one bucket per route.
 	rateLimit: {
 		storage: "database",
 		customRules: {

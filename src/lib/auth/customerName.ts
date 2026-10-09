@@ -10,22 +10,34 @@ import type { Role } from "@/lib/auth/permissions";
 const HIDDEN = /[\p{Cc}‪-‮⁦-⁩]/u;
 
 /**
- * A name that would read as the business on a staff screen or in a mail:
- * anything containing "ezcabinet", or starting with "admin" or "support".
- *
- * Tested on a folded copy — compatibility forms unified, lower-cased, and
- * everything that is not a letter or a digit removed — so spacing,
- * punctuation and invisible format characters (a zero-width space, a soft
- * hyphen) cannot dress the word up. Only this check folds; what is stored
- * is the name as typed. Look-alike letters from another script (Cyrillic
- * "а", Greek "ο") are not unified: out of scope.
+ * Compatibility forms unified, lower-cased, and everything that is not a
+ * letter or a digit removed — so spacing, punctuation and invisible format
+ * characters (a zero-width space, a soft hyphen) cannot dress a word up.
  */
-function posesAsBusiness(name: string): boolean {
-	const folded = name
+const fold = (text: string): string =>
+	text
 		.normalize("NFKC")
 		.toLowerCase()
 		.replace(/[^\p{L}\p{N}]/gu, "");
-	return folded.includes("ezcabinet") || /^(admin|support)/.test(folded);
+
+/**
+ * A name that would read as the business on a staff screen or in a mail:
+ * anything containing "ezcabinet", or whose first word starts with "admin"
+ * or "support".
+ *
+ * Both are tested folded; only this check folds, and what is stored is the
+ * name as typed. "ezcabinet" is looked for in the whole name, spaces and all.
+ * The prefix is looked for in the first word only, or real names whose
+ * opening letters spell it across a space are refused ("Ad Minh", "Sup
+ * Port"). A word ends at an ordinary space and nothing else — a hair space
+ * is all but invisible, so it must not end one — and the first word is the
+ * first that is anything once folded, so "- admin" does not hide behind its
+ * dash. Look-alike letters from another script (Cyrillic "а", Greek "ο")
+ * are not unified: out of scope.
+ */
+function posesAsBusiness(name: string): boolean {
+	const first = name.split(" ").map(fold).find(Boolean) ?? "";
+	return fold(name).includes("ezcabinet") || /^(admin|support)/.test(first);
 }
 
 /**
