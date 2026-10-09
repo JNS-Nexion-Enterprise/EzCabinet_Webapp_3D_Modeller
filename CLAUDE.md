@@ -523,7 +523,7 @@ webhook endpoint must be subscribed to `refund.created`, `refund.updated` and
 own orders; `/[lang]/order/[token]` and — for a delivery that belongs to an
 order — `/[lang]/track/[token]` open only for that account or staff with
 `orders:read` (`lib/orders/access.ts`). The token in the URL is an address,
-not a key: signed out, it bounces through Google sign-in and back; signed in
+not a key: signed out, it bounces through sign-in and back; signed in
 as anyone else, it is the same 404 as a made-up token. A standalone
 admin-booked delivery keeps link access — its recipient has no account.
 
@@ -543,7 +543,7 @@ in; access stays in each page (`viewerOf`, `canViewOrder`). `AccountMenu`
 reads the session in the browser so the statically rendered landing page,
 which also shows it, stays static. Profile, WhatsApp number, saved addresses
 and saved designs are later pieces of the Claude Design "Customer Account"
-file; customer sign-in stays Google only.
+file. How a customer signs in is under [Auth](#auth).
 
 **Not yet built.** Save writes the layout to Postgres under a `nanoid` slug, returns a short URL, creates the lead record, and attaches the screenshot. Then a `wa.me` deep link with the design URL prefilled.
 
@@ -579,13 +579,152 @@ PostHog **Cloud EU**, installed from the Vercel Marketplace, so we can see where
 ## Auth
 
 Accounts, with three roles: `SUPERADMIN`, `ADMIN`, `CUSTOMER`. Customers sign
-in with Google. Staff are invited by a superadmin and can use either Google or
-the password that superadmin set. A staff account promoted from an existing
-customer row keeps only the sign-in it already had, so a Google-only staff
+in with Google, or with a six-digit code mailed to any address — never a
+password. Staff are invited by a superadmin and can use either Google or the
+password that superadmin set. A staff account promoted from an existing
+customer row that has a Google sign-in keeps only that, so a Google-only staff
 member has no password fallback — the OAuth-misconfigured escape hatch only
-exists for a row the superadmin created directly. Public sign-up can only ever
+exists for a row that was given a password. A promoted row with no Google
+sign-in is given the invite's password (below). Public sign-up can only ever
 produce a `CUSTOMER`; a role is granted only by a superadmin acting on
 `/admin/users`.
+
+**A customer can sign in with any email.** Better Auth's `emailOTP` plugin:
+the address, then a code typed into the same tab — six digits, ten minutes,
+three wrong tries, single use, stored hashed in `Verification`. A code and
+not a link, because a link opens in the mail app's in-app browser, where the
+saved design is absent and passkeys do not work. The first code sign-in
+creates the row: `CUSTOMER`, `emailVerified: true`, and no name. The passkey
+rules are unchanged and do not know how the customer signed in.
+
+**A code customer gives their name next, once.** `/[lang]/welcome`, one
+required field, posted to `POST /api/account/name` — the only door for a
+name: it writes `name` on the caller's own row, only while it has none, and
+the write itself carries that condition, so two racing requests cannot both
+land. There is no rename. Asked after the code and never on the first screen:
+that screen serves new and returning customers alike, and a name field shown
+only to new ones would say which addresses have accounts. `AuthUser.mustSetName`
+is derived on every read (`owesName`, `lib/auth/customerName.ts`) and enforced
+exactly where the passkey step is, and before it, because the device's passkey
+prompt shows the name: `viewerOf` redirects to the welcome page, the verify
+page does the same, the three order routes answer 401 `name_required` (the
+coverage test requires both checks in every route under `api/orders`), and
+`/api/payments/config` reports `nameRequired` so the quote screen shows a
+card instead of losing the form. The email form always navigates by way of
+the welcome page, which passes a customer who owes nothing straight on — only
+the server knows which is which. A customer who closes the tab there meets
+the step again at their next sign-in. `customerNameSchema` is the whole rule
+for a name: trimmed, 2 to 80 characters, any script, no control or
+direction-override characters, and not one that poses as the business — one
+that contains "ezcabinet" or starts with "admin" or "support", tested on a
+folded copy (compatibility forms unified, lower-cased, everything but letters
+and digits removed) so spacing, punctuation and zero-width characters do not
+dress it up. Known limits, accepted: a single-character name is refused
+(one CJK character alone is asked to add a character), and look-alike
+letters from another script (Cyrillic "а") are not caught. It is not unique,
+not a credential, and never identifies a caller. Until it is given, the name
+is empty: the account menu hides the line and `/admin/users` labels the row
+with its address. Any mail that carries a name escapes it (`esc`,
+`lib/auth/inviteMail.ts`).
+
+**Staff cannot use a code**, because it would be a way round both the
+password and the authenticator. They are treated like any address on the two
+code routes, with two differences: no code is ever mailed to a non-`CUSTOMER`
+row (`sendSignInCode`, `lib/auth/emailCodeMail.ts`), and no session is ever
+created for one. `refuseStaffCodeSession` (`session.create.before`) is the one
+place a staff code sign-in is stopped. There used to be a second refusal at
+request time; it was removed because the plugin never counted a staff
+address's wrong tries, so the fourth guess answered differently and a staff
+address could be told apart by response bytes and by counting attempts. For
+the same reason a code that was not mailed — staff, past the cap, or a send
+the mail provider refused — is left until it expires (stored hashed, three
+tries, ten minutes) and not deleted. Do not "tidy" any of this: deleting the
+unmailed code or re-adding the request-time refusal brings the difference
+back. One narrow guard remains (`refuseUnverifiedStaff`,
+`emailCodeBeforeHook`): a non-customer row whose email is **not** verified is
+refused with the plugin's own wrong-code answer before the plugin runs,
+because given a correct code the plugin would delete every sign-in and
+session on that row. Invite, promotion and the seed all verify staff, so such
+a row should not exist; a verified staff row goes through the plugin like
+anyone's. So **promoting a customer with no Google sign-in sets the invite's
+password** on the row, with `mustChangePassword`, and the form shows it for
+handing over exactly as for a fresh invite.
+
+**The plugin registers nine routes and two are open**:
+`/email-otp/send-verification-otp` (type `sign-in` only) and
+`/sign-in/email-otp` (body `email` and `otp` only — the plugin would copy a
+posted `name` or `image` onto a new account, which is why the name has its
+own route). The other seven are in `disabledPaths` (`CLOSED_PATHS`,
+`lib/auth/emailCodeRules.ts`); two of them would put a password on a customer
+row. `emailCodeBeforeHook` refuses any other request to a path containing
+`email-otp`, so a route a plugin upgrade adds is a 403 until it is
+allow-listed — the passkey hooks' rule. `hooks.before` and
+`session.create.before` each hold two guards now; both are composed in
+`lib/auth.ts` and `__tests__/emailCodeConfig.test.ts` reads that file to
+check it, since `__tests__/emailCodeWiring.test.ts` drives the real plugin on
+an instance of its own. Keep both passing.
+
+**Twelve unused core routes are closed as well**, in the same `disabledPaths`:
+`/update-user`, `/change-email`, `/delete-user`, `/delete-user/callback`,
+`/send-verification-email`, `/verify-email`, `/link-social`,
+`/unlink-account`, `/list-accounts`, `/account-info`, `/get-access-token` and
+`/refresh-token`. `/update-user` was the live hole: it let any signed-in
+session, passkey step passed or not, set any name and picture, past every
+rule above. Five of the twelve were already refused by an unset option; they
+are closed anyway, so that switching an option on later does not open a route
+unnoticed (turning one on then takes two edits). The rest hand a session that
+has not passed the passkey step the owner's Google profile and tokens, or
+change who owns an address. `__tests__/emailCodeConfig.test.ts` pins every
+`disabledPaths` entry. Deliberately still open: `/two-factor/get-totp-uri` and
+`/two-factor/generate-backup-codes` (they need the account password and are
+the natural routes for a future staff "show my authenticator / new backup
+codes" screen). To be closed in the final fix of this feature, being unused:
+`/verify-password` (a password oracle), `/two-factor/send-otp` and
+`/two-factor/verify-otp` (inert).
+
+**The answer to a code request never depends on the address.** New,
+customer, staff and over-the-cap addresses all get `{ success: true }` in the
+same time: the plugin awaits its mail callback, so the callback only
+schedules `sendSignInCode` with `after()`, and everything that differs by
+address happens there. Abuse limits: BotID on the send request; three codes
+per address per hour (`takeSendSlot`); twenty send requests per network per
+hour (Better Auth's limiter, the only one that answers 429); and, outside the
+app, a Vercel firewall rule on the same route set looser than that
+(`docs/ops/customer-passkey-runbook.md`). Both app counters are rows in
+`RateLimit` — `rateLimit.storage: "database"`, which every Better Auth route
+now uses, so every `/api/auth` request reads and writes that table and the
+migration `20261009000000_rate_limit` must be applied before this code serves
+traffic, or nobody can sign in, staff included. The per-address rows share
+that table and Better Auth prunes it by its longest configured window, so the
+send rule's window must not drop below `SEND_WINDOW_S`. Because the cap is
+silent, the form counts its own sends and shows "too many" itself
+(`maySendAgain`). Accepted limits: anyone who knows an address can burn its
+three codes an hour (a nuisance to that customer, no access); the per-network
+rule is a rolling count, so a busy shared network (an office, a mobile
+carrier's NAT) can be refused for an hour; and a lost mailbox has no recovery.
+
+**One email is one account.** Google joins an existing row only when Google
+reports the email verified and our row is verified too — Better Auth's
+default, with `trustedProviders: []` written down so no provider is ever
+trusted past it.
+
+**The owner hears when the lock changes.** Before the first passkey the
+mailbox or the Google account is the only lock, and whoever holds it can
+enrol their own. So the account's own address is mailed every time, for
+every role: a passkey added, a passkey removed, passkeys reset by staff
+(`lib/auth/passkeyMail.ts`). What happened, when in Malaysia time, and the
+sales contact as a number — no link, so a forged copy has nothing to phish
+with. `queuePasskeyMail` schedules it with `after()` from `passkeyAfterHook`
+and the reset route, never throws and is never awaited; `pnpm
+auth:reset-passkey` has no request to run after, so it awaits the send
+itself. It cannot stop a change, only make it visible.
+
+**Customer-facing text names a provider only on that provider's own button
+and error.** `copy/__tests__/dictionary.test.ts` fails on any other string
+that says Google. With no `RESEND_API_KEY` (local, preview) the code is
+written to the server log and nothing is mailed; with one it is never logged.
+Mail delivery is now checkout-critical: a customer without Google cannot
+order if their code does not arrive.
 
 `lib/auth/permissions.ts` is the whole access model: ten permissions and a
 `Role → Permission[]` constant, with a table-driven test that is its
@@ -684,8 +823,8 @@ create a password on a customer row, and a mailbox alone must not be enough
 to enrol an authenticator. The link never touches the second factor.
 `RESEND_API_KEY` and `EMAIL_FROM` are production-only, like `WHATSAPP_TOKEN`.
 
-**A customer's Google session is not enough; a passkey is.** After Google
-sign-in a `CUSTOMER` session counts only once `session.passkeyVerified` is
+**Signing in is not enough for a customer; a passkey is.** After sign-in, by
+either route, a `CUSTOMER` session counts only once `session.passkeyVerified` is
 set, which only a passkey ceremony does (`@better-auth/passkey`).
 `AuthUser.mustVerifyPasskey` is derived on every read in
 `lib/auth/session.ts` from `needsPasskeyCheck` (`lib/auth/passkeyRules.ts`)
@@ -701,8 +840,9 @@ enforce.
 form, as it does for sign-in, and nothing typed is lost at the detour. The
 401 `passkey_required` handling there is only the backstop.
 
-**The limit: the first passkey is enrolled by whoever holds the Google
-account.** Until an account has a passkey, anyone who can sign in to it can
+**The limit: the first passkey is enrolled by whoever can sign in.** That is
+whoever holds the Google account, or the mailbox a code is sent to. Until an
+account has a passkey, anyone who can sign in to it can
 set one up; that covers every existing customer on launch day and any
 customer just after a reset. A passkey protects the account from then on,
 not before. Operators read `docs/ops/customer-passkey-runbook.md` (reset
@@ -710,8 +850,9 @@ procedure, ring-back, deploy checklist).
 
 Better Auth's session-management routes (`/list-sessions`, `/revoke-session`,
 `/revoke-sessions`, `/revoke-other-sessions`, `/update-session`) are in
-`disabledPaths`: the app calls none of them, and a Google-only session could
-otherwise list the owner's sessions or sign the owner out everywhere.
+`disabledPaths`: the app calls none of them, and a session that signed in
+with only Google or a code could otherwise list the owner's sessions or sign
+the owner out everywhere.
 
 The plugin's defaults would undo this, so `hooks.before` in `lib/auth.ts`
 runs `passkeyBeforeHook` (`lib/auth/passkeyHooks.ts`), which calls
@@ -747,10 +888,10 @@ Three rules in those hooks look like candidates for tidying and are not:
   and lookups by credential id are unordered, so a duplicate id registered on
   another account could break the real owner's passkey step.
 
-Enrolling needs a Google session under one day old — Better Auth's
+Enrolling needs a session under one day old — Better Auth's
 fresh-session rule, kept deliberately so that a stolen old session cannot
 enrol the thief's passkey. The verify screen sends a stale session back
-through Google sign-in; adding another device from the Passkeys page renews
+through sign-in; adding another device from the Passkeys page renews
 the session with a passkey prompt instead.
 
 `safeCustomerNext` (`lib/auth/safeCustomerNext.ts`) decides where the verify
@@ -765,7 +906,8 @@ Recovery is a staff action only — **Reset passkey** on a customer's row in
 confirm who is calling. It needs `users:manage`, which only `SUPERADMIN`
 holds: an `ADMIN` cannot reset a customer's passkey or see the phone line.
 There is deliberately no self-service path: anything a customer could do
-with only their Google account, so could whoever took it.
+with only their sign-in, so could whoever took it. A lost mailbox has no
+recovery at all.
 
 Passkeys are bound to the site's hostname (from `BETTER_AUTH_URL`). Changing
 the production domain invalidates every customer's passkey, and a passkey
@@ -812,7 +954,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 11. **`advance` takes its actor from the session; `book` and `split` still take a client-typed one.** `DeliveryDetail.tsx`'s name field feeds `bookedBy` and `split`'s `actor`, and `split` falls back to the literal `"Admin"` when the field is left blank — so the delivery activity log has mixed provenance, a session user's real name on some rows and whatever an admin typed (or nothing) on others. Narrowed, not closed.
 12. **`prisma.config.ts` sets no `shadowDatabaseUrl`.** That is why `prisma migrate dev` refuses non-interactively and `prisma migrate diff --from-migrations` cannot run — both need a shadow database to diff against. Until it is set, a migration written outside an interactive terminal has to be hand-written and independently verified (`prisma migrate diff --from-config-datasource --to-schema`) rather than generated. The fix is two lines in `prisma.config.ts` pointing at a disposable shadow database URL; not done here.
 13. **FedEx's sandbox cannot check our requests.** It answers only its own canned inputs — any request that differs from a documented example returns `SERVICE.PACKAGECOMBINATION.INVALID`, and its canned Malaysian rates are USD — so `adapters/fedex.ts` is tested against fixtures built from FedEx's documented shapes, not against FedEx. `pnpm fedex:ping` against **production** checks only the token, rate and track calls — it never ships. Ship, pickup, both cancels and the label fetch are first exercised by the first real booking: run it once production credentials exist, watch it with FedEx Ship Manager open, and cancel it there if anything looks wrong. Production also needs label certification with FedEx, which can take weeks.
-14. **Forgot-password throttling is per account, not per network.** `sendStaffReset` runs after the response (`after()`), so the answer and its timing are the same whoever asked, and it sends nothing once an account has more than three live reset links (about three mails an hour). What remains: Better Auth's own limit on `/request-password-reset` is per IP and memory-backed, so it does not hold across serverless instances, and a requester can still create unsent reset tokens in the `verification` table for any address. The three-link cap counts those unsent requests too, so about four requests an hour from anyone suppress a staff member's own reset mail while the page still says it was sent. Low value with three staff; the fix is `rateLimit: { storage: "database" }` and its table.
+14. **Resolved: Better Auth's rate limits are counted in the database.** `rateLimit.storage: "database"` and the `RateLimit` table, added with customer email sign-in, so the per-network limit on `/request-password-reset` (and every other route) holds across serverless instances. What is left is by design: `sendStaffReset` still sends nothing once an account has more than three live reset links, and that count includes requests anyone made, so about four requests an hour for a staff address suppress that staff member's own reset mail while the page still says it was sent. Kept as a numbered entry so references to later issues stay valid.
 15. **In-app browsers cannot do passkeys.** A customer who opens an order or
     tracking link inside WhatsApp, Facebook or Instagram is told to open it
     in Chrome or Safari (`passkeySupport.ts`); they cannot order from inside
@@ -825,7 +967,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
     can no longer add its own passkey or remove the owner's without a fresh
     passkey ceremony (five minutes), so it cannot make itself permanent. It
     can still act as the customer for its seven days. That is outside this
-    feature's threat (someone holding only the Google account), recorded so
+    feature's threat (someone holding only the sign-in), recorded so
     it is not mistaken for covered.
 
 ## Open questions — resolve before trusting pricing.ts
@@ -874,6 +1016,15 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 - Does Prisma Postgres offer an ap-southeast region? If not, quote submission eats a transpacific round trip.
 - Does EzCabinet have an EasyParcel account, and who tops up the wallet? `submit_orders` deducts at booking time and a shipment cannot be booked against an empty wallet.
 - **City-Link: a live host, credentials, and whether a rate API exists.** The guide we hold documents only the test server (`devsvr2019a.citylinkexpress.com:21145`) and its credentials page is blank — ask for the company code, account number and meter number, the live URL, and whether anything prices a shipment. Without a rate call an admin compares City-Link blind on price.
+- **Mail for sign-in codes needs EzCabinet's sending domain set up.** SPF,
+  DKIM and DMARC on the domain in `EMAIL_FROM`, or Outlook, Yahoo and iCloud
+  will junk the codes — and a junked code is a customer who cannot order.
+  Checkout now depends on mail delivery for every customer without Google.
+  Test with a real Outlook address before launch.
+- **Is "starts with admin or support" too wide for a name?** The name step
+  refuses it so nobody labels their account as the business. If a real
+  customer's name is caught, narrow `posesAsBusiness`
+  (`lib/auth/customerName.ts`).
 - **WhatsApp go-live is waiting on EzCabinet.** Meta Business verification, a dedicated number, a system-user token, a payment method, 24 template approvals, the factory's real stage names, the sales number and counsel's privacy sign-off. Checklist and template copy: `docs/ops/whatsapp-ezcabinet-setup.md`.
 - **Which Malaysian payment gateway?** Stripe is wired as the sandbox-test gateway, chosen by the `payment-gateway` Vercel flag (`src/flags.ts`: Stripe on development and preview, manual on production); Fiuu is the likely production one, account in progress. Both are adapters behind `lib/payments` — swap plan in `STRIPE_INTEGRATION_TODO.md`. Only the verified webhook marks an order paid, never the customer's return. With no gateway set, orders fall back to manual bank transfer, and `BANK_TRANSFER` in `lib/orders/payment.ts` is still a placeholder account the confirmation page shows customers.
 - **The delivery fee.** `RATES.deliveryFlatRm` is `85`, the figure from the client's Order Confirmation design; set the real one in the catalogue settings. It is flat — one fee whatever the load or the distance.
