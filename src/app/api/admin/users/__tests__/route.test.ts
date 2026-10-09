@@ -99,6 +99,9 @@ describe("POST /api/admin/users", () => {
 			where: { id: "u9" },
 			data: { role: "SUPERADMIN", invitedById: "boss" },
 		});
+		// A row made a moment ago has no session to end.
+		expect(sessionDeleteMany).not.toHaveBeenCalled();
+		expect(accountDeleteMany).not.toHaveBeenCalled();
 	});
 
 	describe("promoting an existing customer", () => {
@@ -142,10 +145,63 @@ describe("POST /api/admin/users", () => {
 			});
 			// Old sign-ins and sessions go in the same transaction as the role.
 			expect($transaction.mock.calls[0][0]).toHaveLength(4);
+			expect(accountDeleteMany).toHaveBeenCalledTimes(1);
+			expect(accountDeleteMany).toHaveBeenCalledWith({
+				where: { userId: "c1", providerId: "credential" },
+			});
 			expect(sendStaffInvite.mock.calls[0][0]).toMatchObject({
 				hasPassword: true,
 				name: "Aiman bin Ali",
 			});
+		});
+
+		// The row was made while public password sign-up was open, by someone
+		// other than the address's owner: that password must not outlive the
+		// promotion, and must go before the invite's own is written.
+		it("removes an old password before setting the invite's", async () => {
+			findUnique.mockResolvedValueOnce(codeCustomer);
+			accountFindFirst.mockResolvedValueOnce(null);
+			accountDeleteMany.mockReturnValueOnce({ count: 1 });
+			await invite("aiman@outlook.com");
+			expect(accountDeleteMany).toHaveBeenCalledWith({
+				where: { userId: "c1", providerId: "credential" },
+			});
+			const ops = $transaction.mock.calls[0][0] as unknown[];
+			expect(ops[0]).toEqual({ count: 1 });
+			expect(accountDeleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+				accountCreate.mock.invocationCallOrder[0],
+			);
+		});
+
+		// A code sign-in can land between the transaction's session delete and
+		// its commit, while the row is still a customer's. Once the role is
+		// committed the session hook refuses code sessions, so one more delete
+		// then leaves none.
+		it("ends the row's sessions again once the role is committed", async () => {
+			findUnique.mockResolvedValueOnce(codeCustomer);
+			accountFindFirst.mockResolvedValueOnce(null);
+			await invite("aiman@outlook.com");
+			expect(sessionDeleteMany).toHaveBeenCalledTimes(2);
+			for (const call of sessionDeleteMany.mock.calls) {
+				expect(call[0]).toEqual({ where: { userId: "c1" } });
+			}
+			const committed = $transaction.mock.invocationCallOrder[0];
+			expect(sessionDeleteMany.mock.invocationCallOrder[0]).toBeLessThan(
+				committed,
+			);
+			expect(sessionDeleteMany.mock.invocationCallOrder[1]).toBeGreaterThan(
+				committed,
+			);
+		});
+
+		it("ends a Google customer's sessions again too", async () => {
+			findUnique.mockResolvedValueOnce(codeCustomer);
+			accountFindFirst.mockResolvedValueOnce({ id: "a1" });
+			await invite("aiman@outlook.com");
+			expect(sessionDeleteMany).toHaveBeenCalledTimes(2);
+			expect(sessionDeleteMany.mock.invocationCallOrder[1]).toBeGreaterThan(
+				$transaction.mock.invocationCallOrder[0],
+			);
 		});
 
 		it("leaves a Google customer signing in with Google, with no password", async () => {
@@ -190,6 +246,7 @@ describe("POST /api/admin/users", () => {
 			expect(response.status).toBe(409);
 			expect(accountCreate).not.toHaveBeenCalled();
 			expect(update).not.toHaveBeenCalled();
+			expect(sessionDeleteMany).not.toHaveBeenCalled();
 		});
 	});
 });

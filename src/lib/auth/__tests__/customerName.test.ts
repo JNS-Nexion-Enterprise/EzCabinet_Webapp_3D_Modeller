@@ -20,6 +20,10 @@ describe("parseCustomerName", () => {
 		["exactly 80 characters", "a".repeat(80), "a".repeat(80)],
 		["a name that only contains admin", "Badminton Lee", "Badminton Lee"],
 		["a name that only contains support", "Lee Supporter", "Lee Supporter"],
+		// Real names whose first letters spell the word across a space.
+		["initials that spell admin", "Ad Minh", "Ad Minh"],
+		["dotted initials that spell admin", "A.D. Minhas", "A.D. Minhas"],
+		["two words that spell support", "Sup Port", "Sup Port"],
 	])("accepts %s, stored as typed and trimmed", (_label, typed, stored) => {
 		expect(parseCustomerName(typed)).toEqual({ name: stored });
 	});
@@ -61,6 +65,17 @@ describe("parseCustomerName", () => {
 		["admin behind an underscore", "_admin"],
 		["support in brackets", "(support)"],
 		["admin split by a soft hyphen", "ad\u00admin"],
+		["admin with a surname", "Admin Lee"],
+		["admin split by a zero-width space, with more", "ad\u200bmin x"],
+		["support with a team", "Support Team"],
+		["the business as two words", "Ez Cabinet"],
+		["the business as dotted initials", "E.Z. Cabinet Lee"],
+		// A first word that is nothing once folded must not hide the next.
+		["admin behind a zero-width space and a space", "\u200b admin"],
+		["admin behind a dash and a space", "- Admin"],
+		["support in spaced brackets", "( Support )"],
+		// A hair space is all but invisible: it does not end the word.
+		["admin split by a hair space", "ad\u200amin"],
 	])("refuses %s", (_label, typed) => {
 		expect(parseCustomerName(typed)).toEqual({ error: "name_refused" });
 	});

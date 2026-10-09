@@ -95,8 +95,17 @@ describe("codeRequest", () => {
 		expect(codeRequest(path, { email: "a@b.com" })).toBe("refuse");
 	});
 
+	// By value: a path swapped for another keeps the length and opens a route.
 	it("closes exactly the seven routes the form never calls", () => {
-		expect(CLOSED_PATHS).toHaveLength(7);
+		expect(CLOSED_PATHS).toEqual([
+			"/email-otp/verify-email",
+			"/email-otp/check-verification-otp",
+			"/email-otp/request-password-reset",
+			"/email-otp/reset-password",
+			"/forget-password/email-otp",
+			"/email-otp/request-email-change",
+			"/email-otp/change-email",
+		]);
 		expect(CLOSED_PATHS).not.toContain(SEND_PATH);
 		expect(CLOSED_PATHS).not.toContain(SIGN_IN_PATH);
 	});

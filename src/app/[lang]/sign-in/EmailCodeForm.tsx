@@ -10,10 +10,14 @@ import {
 	canStart,
 	cleanCode,
 	type FormMessage,
+	isFullCode,
 	looksLikeEmail,
-	maySendAgain,
+	maySendTo,
 	normaliseEmail,
 	RESEND_AFTER_S,
+	recordSend,
+	type SendCounts,
+	secondsLeft,
 	sendFailure,
 	verifyFailure,
 } from "./emailCode";
@@ -52,11 +56,13 @@ export function EmailCodeForm({
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
 	const [busy, setBusy] = useState(false);
-	const [message, setMessage] = useState<FormMessage | "emailInvalid" | null>(
-		null,
-	);
-	const [sent, setSent] = useState(0);
-	const [wait, setWait] = useState(0);
+	const [message, setMessage] = useState<FormMessage | null>(null);
+	// Epoch milliseconds: when "Send a new code" comes back, and the clock as
+	// last read. The wait is derived from the two, never counted down.
+	const [resendAt, setResendAt] = useState(0);
+	const [now, setNow] = useState(0);
+	const sends = useRef<SendCounts>(new Map());
+	const codeInput = useRef<HTMLInputElement>(null);
 	// `busy` is state, so two submits in one tick (Enter, then autofill) would
 	// both read it false. The second would spend the code the first is using.
 	const inFlight = useRef(false);
@@ -66,12 +72,29 @@ export function EmailCodeForm({
 	}, []);
 
 	useEffect(() => {
-		if (wait <= 0) return;
-		const timer = setTimeout(() => setWait((s) => s - 1), 1000);
-		return () => clearTimeout(timer);
-	}, [wait]);
+		if (resendAt <= Date.now()) return;
+		const read = () => {
+			const at = Date.now();
+			setNow(at);
+			if (at >= resendAt) clearInterval(timer);
+		};
+		const timer = setInterval(read, 1000);
+		// A background tab's timers are slowed or stopped; read the clock the
+		// moment the customer is back from their mail app.
+		document.addEventListener("visibilitychange", read);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener("visibilitychange", read);
+		};
+	}, [resendAt]);
+
+	// The code box is new on screen, and it is where the customer types next.
+	useEffect(() => {
+		if (step === "code") codeInput.current?.focus();
+	}, [step]);
 
 	const address = normaliseEmail(email);
+	const wait = secondsLeft(resendAt, now);
 
 	async function requestCode() {
 		if (inFlight.current) return;
@@ -79,7 +102,7 @@ export function EmailCodeForm({
 			setMessage("emailInvalid");
 			return;
 		}
-		if (!maySendAgain(sent)) {
+		if (!maySendTo(sends.current, address)) {
 			setMessage("tooMany");
 			return;
 		}
@@ -102,14 +125,20 @@ export function EmailCodeForm({
 			setMessage(sendFailure(failure.status));
 			return;
 		}
-		setSent((n) => n + 1);
+		recordSend(sends.current, address);
 		setCode("");
-		setWait(RESEND_AFTER_S);
+		const at = Date.now();
+		setNow(at);
+		setResendAt(at + RESEND_AFTER_S * 1000);
 		setStep("code");
 	}
 
 	async function submitCode() {
 		if (inFlight.current) return;
+		if (!isFullCode(code)) {
+			setMessage("wrongCode");
+			return;
+		}
 		inFlight.current = true;
 		setBusy(true);
 		setMessage(null);
@@ -169,12 +198,16 @@ export function EmailCodeForm({
 				</label>
 			) : (
 				<>
-					<p className="text-[13px] text-neutral-700 leading-[18px]">
+					<p
+						role="status"
+						className="text-[13px] text-neutral-700 leading-[18px]"
+					>
 						{fill(copy.codeSent, { email: address })}
 					</p>
 					<label className="flex flex-col gap-1 text-[13px]">
 						{copy.codeLabel}
 						<input
+							ref={codeInput}
 							type="text"
 							name="code"
 							autoComplete="one-time-code"
@@ -223,7 +256,6 @@ export function EmailCodeForm({
 						type="button"
 						onClick={() => {
 							setStep("address");
-							setSent(0);
 							setCode("");
 							setMessage(null);
 						}}

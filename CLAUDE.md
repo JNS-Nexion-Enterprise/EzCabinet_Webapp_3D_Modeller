@@ -621,10 +621,15 @@ the server knows which is which. A customer who closes the tab there meets
 the step again at their next sign-in. `customerNameSchema` is the whole rule
 for a name: trimmed, 2 to 80 characters, any script, no control or
 direction-override characters, and not one that poses as the business — one
-that contains "ezcabinet" or starts with "admin" or "support", tested on a
-folded copy (compatibility forms unified, lower-cased, everything but letters
-and digits removed) so spacing, punctuation and zero-width characters do not
-dress it up. Known limits, accepted: a single-character name is refused
+that contains "ezcabinet", or whose first word starts with "admin" or
+"support". Both are tested on a folded copy (compatibility forms unified,
+lower-cased, everything but letters and digits removed) so punctuation and
+zero-width characters do not dress it up; "ezcabinet" is looked for in the
+whole name, the prefix in the first word only, so "Ad Minh" and "Sup Port"
+are names. A word ends at an ordinary space and nothing else (a hair space
+does not end one), and the first word is the first that is anything once
+folded, so "- admin" is refused. Known limits, accepted: "Ad min" typed with
+a space is let through; a single-character name is refused
 (one CJK character alone is asked to add a character), and look-alike
 letters from another script (Cyrillic "а") are not caught. It is not unique,
 not a credential, and never identifies a caller. Until it is given, the name
@@ -669,13 +674,15 @@ allow-listed — the passkey hooks' rule. `hooks.before` and
 check it, since `__tests__/emailCodeWiring.test.ts` drives the real plugin on
 an instance of its own. Keep both passing.
 
-**Twelve unused core routes are closed as well**, in the same `disabledPaths`:
+**Fifteen unused routes are closed as well**, in the same `disabledPaths`:
 `/update-user`, `/change-email`, `/delete-user`, `/delete-user/callback`,
 `/send-verification-email`, `/verify-email`, `/link-social`,
-`/unlink-account`, `/list-accounts`, `/account-info`, `/get-access-token` and
-`/refresh-token`. `/update-user` was the live hole: it let any signed-in
+`/unlink-account`, `/list-accounts`, `/account-info`, `/get-access-token`,
+`/refresh-token`, `/verify-password` (a password oracle),
+`/two-factor/send-otp` and `/two-factor/verify-otp` (the plugin's emailed
+second factor, not configured). `/update-user` was the live hole: it let any signed-in
 session, passkey step passed or not, set any name and picture, past every
-rule above. Five of the twelve were already refused by an unset option; they
+rule above. Five of the fifteen were already refused by an unset option; they
 are closed anyway, so that switching an option on later does not open a route
 unnoticed (turning one on then takes two edits). The rest hand a session that
 has not passed the passkey step the owner's Google profile and tokens, or
@@ -683,9 +690,7 @@ change who owns an address. `__tests__/emailCodeConfig.test.ts` pins every
 `disabledPaths` entry. Deliberately still open: `/two-factor/get-totp-uri` and
 `/two-factor/generate-backup-codes` (they need the account password and are
 the natural routes for a future staff "show my authenticator / new backup
-codes" screen). To be closed in the final fix of this feature, being unused:
-`/verify-password` (a password oracle), `/two-factor/send-otp` and
-`/two-factor/verify-otp` (inert).
+codes" screen).
 
 **The answer to a code request never depends on the address.** New,
 customer, staff and over-the-cap addresses all get `{ success: true }` in the
@@ -763,7 +768,10 @@ Public password sign-up is closed (`disabledPaths: ["/sign-up/email"]` in
 `lib/auth.ts`); invites and the seed call `auth.api.signUpEmail` server-side,
 which the router never sees. Promoting an existing customer row strips any
 password and session it carries before granting the role — a customer row
-with a password was made by someone other than the address's owner.
+with a password was made by someone other than the address's owner. The
+sessions are deleted a second time once the role is committed: a code
+sign-in could land between the first delete and the commit, and from the
+commit on `refuseStaffCodeSession` refuses any new one.
 
 **Staff with a password need a second factor.** Better Auth's `twoFactor`
 plugin (TOTP + backup codes); `AuthUser.mustSetupTwoFactor` is derived on
@@ -1027,10 +1035,11 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   will junk the codes — and a junked code is a customer who cannot order.
   Checkout now depends on mail delivery for every customer without Google.
   Test with a real Outlook address before launch.
-- **Is "starts with admin or support" too wide for a name?** The name step
-  refuses it so nobody labels their account as the business. If a real
-  customer's name is caught, narrow `posesAsBusiness`
-  (`lib/auth/customerName.ts`).
+- **Is "first word starts with admin or support" too wide for a name?** The
+  name step refuses it so nobody labels their account as the business. It
+  was narrowed once already, from the whole name to the first word, for
+  names like "Ad Minh". If a real customer's name is still caught, narrow
+  `posesAsBusiness` (`lib/auth/customerName.ts`).
 - **WhatsApp go-live is waiting on EzCabinet.** Meta Business verification, a dedicated number, a system-user token, a payment method, 24 template approvals, the factory's real stage names, the sales number and counsel's privacy sign-off. Checklist and template copy: `docs/ops/whatsapp-ezcabinet-setup.md`.
 - **Which Malaysian payment gateway?** Stripe is wired as the sandbox-test gateway, chosen by the `payment-gateway` Vercel flag (`src/flags.ts`: Stripe on development and preview, manual on production); Fiuu is the likely production one, account in progress. Both are adapters behind `lib/payments` — swap plan in `STRIPE_INTEGRATION_TODO.md`. Only the verified webhook marks an order paid, never the customer's return. With no gateway set, orders fall back to manual bank transfer, and `BANK_TRANSFER` in `lib/orders/payment.ts` is still a placeholder account the confirmation page shows customers.
 - **The delivery fee.** `RATES.deliveryFlatRm` is `85`, the figure from the client's Order Confirmation design; set the real one in the catalogue settings. It is flat — one fee whatever the load or the distance.

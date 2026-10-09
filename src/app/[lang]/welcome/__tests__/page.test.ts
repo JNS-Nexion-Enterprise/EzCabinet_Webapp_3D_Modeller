@@ -40,22 +40,25 @@ const open = (next?: string | string[], lang = "en") =>
 		searchParams: Promise.resolve({ next }),
 	});
 
-/** The `next` the page hands its form, read off the rendered tree. */
-const formNext = (tree: unknown): string | undefined => {
+/** What the page hands its form, read off the rendered tree. */
+const formProps = (
+	tree: unknown,
+): { next?: string; signIn?: string } | undefined => {
 	const seen: unknown[] = [tree];
 	while (seen.length) {
 		const node = seen.pop() as {
 			type?: unknown;
-			props?: { next?: string; children?: unknown };
+			props?: { next?: string; signIn?: string; children?: unknown };
 		} | null;
 		if (!node || typeof node !== "object") continue;
-		if (node.type === WelcomeForm) return node.props?.next;
+		if (node.type === WelcomeForm) return node.props;
 		const children = node.props?.children;
 		if (Array.isArray(children)) seen.push(...children);
 		else seen.push(children);
 	}
 	return undefined;
 };
+const formNext = (tree: unknown) => formProps(tree)?.next;
 
 beforeEach(() => currentUser.mockReset());
 
@@ -64,6 +67,14 @@ describe("the name step", () => {
 		currentUser.mockResolvedValue(customer({ name: "", mustSetName: true }));
 		const tree = await open("/en/planner/kitchen?a=1#quote");
 		expect(formNext(tree)).toBe("/en/planner/kitchen?a=1#quote");
+	});
+
+	it("tells the form where to sign in again, keeping the target", async () => {
+		currentUser.mockResolvedValue(customer({ name: "", mustSetName: true }));
+		const tree = await open("/ms/planner/kitchen?a=1#quote", "ms");
+		expect(formProps(tree)?.signIn).toBe(
+			"/ms/sign-in?next=%2Fms%2Fplanner%2Fkitchen%3Fa%3D1%23quote",
+		);
 	});
 
 	// Closed the tab at this step and signed in again another day: the code
@@ -118,7 +129,8 @@ describe("nameMessage", () => {
 		[200, undefined, null],
 		[400, "name_required", "nameRequired"],
 		[400, "name_refused", "nameRefused"],
-		[401, "sign_in_required", "failed"],
+		// The session lapsed while the form was open: not an error to show.
+		[401, "sign_in_required", "signIn"],
 		[500, undefined, "failed"],
 	])("status %i, error %j", (status, error, expected) => {
 		expect(nameMessage(status, error)).toBe(expected);

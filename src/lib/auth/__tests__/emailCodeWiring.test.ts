@@ -2,7 +2,7 @@ import { betterAuth } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
 import { createAuthMiddleware } from "better-auth/api";
 import { handleOAuthUserInfo } from "better-auth/oauth2";
-import { emailOTP } from "better-auth/plugins";
+import { emailOTP, twoFactor } from "better-auth/plugins";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type Row = Record<string, unknown>;
@@ -113,6 +113,9 @@ const CLOSED_ACCOUNT_PATHS = [
 	"/account-info",
 	"/get-access-token",
 	"/refresh-token",
+	"/verify-password",
+	"/two-factor/send-otp",
+	"/two-factor/verify-otp",
 ];
 
 /** The same wiring as `lib/auth.ts`, minus `after()` and the cookie plugin. */
@@ -152,6 +155,8 @@ function makeAuth(opts: { rateLimit?: boolean } = {}) {
 			},
 		},
 		plugins: [
+			// Only so that its routes exist to be closed.
+			twoFactor(),
 			emailOTP({
 				otpLength: 6,
 				expiresIn: CODE_TTL_S,
@@ -654,6 +659,33 @@ describe("Better Auth's own account routes", () => {
 		expect((await post(path, {})).status).toBe(404);
 		const get = await auth.handler(new Request(`${ORIGIN}/api/auth${path}`));
 		expect(get.status).toBe(404);
+	});
+
+	// Open, each of these answers something other than 404 — so a 404 here is
+	// `disabledPaths` and not a route that was never there.
+	it("the harness has the routes that are closed", async () => {
+		const open = betterAuth({
+			baseURL: ORIGIN,
+			secret: "test-secret-test-secret-test-secret-0123",
+			database: memoryAdapter(store.db),
+			emailAndPassword: { enabled: true },
+			rateLimit: { enabled: false },
+			plugins: [twoFactor()],
+		});
+		for (const path of [
+			"/verify-password",
+			"/two-factor/send-otp",
+			"/two-factor/verify-otp",
+		]) {
+			const res = await open.handler(
+				new Request(`${ORIGIN}/api/auth${path}`, {
+					method: "POST",
+					headers: { "content-type": "application/json", origin: ORIGIN },
+					body: "{}",
+				}),
+			);
+			expect([path, res.status]).not.toEqual([path, 404]);
+		}
 	});
 
 	// The name has one door, `POST /api/account/name`, with its own rules.
