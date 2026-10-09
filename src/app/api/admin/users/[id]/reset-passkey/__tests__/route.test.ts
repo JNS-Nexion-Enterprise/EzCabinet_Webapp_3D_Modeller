@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireAuth = vi.hoisted(() => vi.fn());
 const findUnique = vi.hoisted(() => vi.fn());
 const resetPasskeys = vi.hoisted(() => vi.fn());
+const queuePasskeyMail = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth/requireAuth", async () => {
 	const actual = await vi.importActual<typeof import("@/lib/auth/requireAuth")>(
@@ -12,6 +13,7 @@ vi.mock("@/lib/auth/requireAuth", async () => {
 });
 vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { findUnique } } }));
 vi.mock("@/lib/auth/resetPasskeys", () => ({ resetPasskeys }));
+vi.mock("@/lib/auth/passkeyMail", () => ({ queuePasskeyMail }));
 
 const { POST } = await import("../route");
 const { AuthError } = await import("@/lib/auth/requireAuth");
@@ -65,6 +67,25 @@ describe("POST /api/admin/users/[id]/reset-passkey", () => {
 		findUnique.mockResolvedValue({ id: "s1" });
 		expect((await call("s1")).status).toBe(200);
 		expect(resetPasskeys).toHaveBeenCalledWith("s1");
+	});
+
+	it("tells the account's own address, after the reset and whatever its role", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue({ id: "c1" });
+		await call("c1");
+		expect(queuePasskeyMail).toHaveBeenCalledWith("c1", "reset");
+		expect(resetPasskeys.mock.invocationCallOrder[0]).toBeLessThan(
+			queuePasskeyMail.mock.invocationCallOrder[0],
+		);
+	});
+
+	it("tells nobody when nothing was reset", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue(null);
+		await call("ghost");
+		requireAuth.mockRejectedValue(new AuthError(403));
+		await call("c1");
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
 	});
 
 	it("403s without a recent passkey ceremony and resets nothing", async () => {

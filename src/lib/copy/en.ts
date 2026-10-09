@@ -616,16 +616,16 @@ export const en = {
 			"When you place an order we email you a confirmation, a receipt when your payment arrives and a notice if the order is refunded. If you did not choose WhatsApp updates, production and delivery updates come by email too. These are service messages about your order, not marketing, so they cannot be switched off. They are sent through Resend, our email provider, which processes your address and the messages, possibly outside Malaysia.",
 		accountHeading: "Your account",
 		account:
-			"When you sign in with Google we receive your name, email address and profile photo, and keep them as your account.",
+			"When you sign in through a sign-in provider we receive your name, email address and profile photo from it. When you sign in with an emailed code we receive your email address, and we ask for your name the first time. We keep these as your account.",
 		ordersHeading: "Your orders",
 		orders:
 			"When you place an order we keep your name, phone number, email, delivery address, the design you ordered and the price, as the record of the sale.",
 		recipientsHeading: "Who else receives your data",
 		recipients:
-			"Our payment processor receives your card and billing details — these never reach our servers. The courier that delivers your order receives your name, phone number and address. Google handles sign-in. Mux streams our tutorial videos and so sees a viewer's IP address. Some of these companies process data outside Malaysia.",
+			"Our payment processor receives your card and billing details — these never reach our servers. The courier that delivers your order receives your name, phone number and address. The sign-in provider you choose handles your sign-in, and our email service delivers sign-in codes to your address. Mux streams our tutorial videos and so sees a viewer's IP address. Some of these companies process data outside Malaysia.",
 		obligatoryHeading: "What you must give us",
 		obligatory:
-			"All of this comes from you directly, or from Google when you sign in. Browsing and planning need none of it. To place an order you must give your name, phone number and delivery address — without them we cannot deliver it. Email and WhatsApp updates are optional.",
+			"All of this comes from you directly, or from the sign-in provider you choose. Browsing and planning need none of it. To place an order you must give your name, phone number and delivery address — without them we cannot deliver it. Email and WhatsApp updates are optional.",
 		retentionHeading: "How long we keep it",
 		retention:
 			"Order records are kept for as long as tax and accounting law requires. An account with no orders is kept until you ask us to delete it.",
@@ -734,16 +734,51 @@ export const en = {
 	/** The one hard stop before checkout — see CLAUDE.md's conversion decision. */
 	signIn: {
 		heading: "Sign in",
-		body: "Save your design and follow your order.",
+		body: "Save your design and follow your order. Any email address works.",
+		/** A provider is named on its own button and its own error, nowhere else. */
 		continueWithGoogle: "Continue with Google",
-		error: "Could not open Google sign-in. Try again",
+		googleError: "Could not open Google sign-in. Try again",
+		orEmail: "or continue with email",
+		emailLabel: "Email address",
+		continueEmail: "Continue",
+		codeLabel: "Code",
+		submitCode: "Sign in",
+		resend: "Send a new code",
+		resendIn: "Send a new code in {seconds}s",
+		changeEmail: "Use a different email",
+		/** The email form's own lines carry their full stop; it adds none. */
+		emailInvalid: "Enter a valid email address.",
+		codeSent: "We sent a 6-digit code to {email}. It works for 10 minutes.",
+		codeHint:
+			"Nothing yet? Check your junk folder, and that the address above is right.",
+		wrongCode: "That code is not right. Check it and try again.",
+		codeExpired: "That code has expired. Send a new one.",
+		tooMany: "Too many codes requested. Try again in an hour.",
+		failed: "Something went wrong. Try again.",
+		/** No provider named: the page it leads to offers every way in. */
+		signInOrCreate: "Sign in or create an account",
 		/** The nudge beside the quote button, once something is placed. */
 		nudge: "Saved on this device. Sign in to check out.",
 		nudgeDismiss: "Not now",
 		back: "Back to home",
 		privacyNote: "By continuing you agree to our",
 	},
-	/** The second step after Google — see docs/superpowers/specs/2026-10-06-customer-passkey-design.md. */
+	/** The name step after a first code sign-in — `/[lang]/welcome`. */
+	welcome: {
+		heading: "What should we call you?",
+		body: "Your name goes on your account and your orders. You can use a different name for a delivery at checkout.",
+		nameLabel: "Your name",
+		submit: "Continue",
+		/** Carry their own full stop, like the email form's lines. */
+		nameRequired: "Enter your name.",
+		nameRefused: "Use your own name.",
+		failed: "Something went wrong. Try again.",
+		checkoutHeading: "One more step before you pay",
+		checkoutBody:
+			"Tell us your name. It takes a few seconds and your design stays as it is.",
+		checkoutButton: "Continue",
+	},
+	/** The second step after sign-in — see docs/superpowers/specs/2026-10-06-customer-passkey-design.md. */
 	passkey: {
 		heading: "One more step",
 		enrolBody:
@@ -755,8 +790,7 @@ export const en = {
 		failed: "That didn't work. Try again",
 		failedHint: "If this keeps happening, open this page in Chrome or Safari",
 		wrongAccount: "That passkey belongs to a different account",
-		sessionStale:
-			"For your security, sign in with Google again to set up your passkey",
+		sessionStale: "For your security, sign in again to set up your passkey",
 		signInAgain: "Sign in again",
 		unsupported:
 			"This browser can't use passkeys. Open this page in Chrome or Safari.",

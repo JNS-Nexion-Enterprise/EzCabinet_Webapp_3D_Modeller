@@ -144,6 +144,17 @@ describe("PATCH /api/orders/[token]", () => {
 		expect((await edit()).status).toBe(404);
 	});
 
+	it("401s name_required for the owner without a name, writing nothing", async () => {
+		currentUser.mockResolvedValue({
+			...customer("owner"),
+			mustSetName: true,
+		});
+		const response = await edit();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "name_required" });
+		expect(orderUpdateMany).not.toHaveBeenCalled();
+	});
+
 	it("401s passkey_required for the owner without a passkey", async () => {
 		currentUser.mockResolvedValue({
 			...customer("owner"),

@@ -4,8 +4,21 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { nextCookies } from "better-auth/next-js";
-import { twoFactor } from "better-auth/plugins";
+import { emailOTP, twoFactor } from "better-auth/plugins";
 import { after } from "next/server";
+import {
+	emailCodeBeforeHook,
+	refuseStaffCodeSession,
+} from "@/lib/auth/emailCodeHooks";
+import { sendSignInCode } from "@/lib/auth/emailCodeMail";
+import {
+	CLOSED_PATHS,
+	CODE_ATTEMPTS,
+	CODE_TTL_S,
+	SEND_PATH,
+	SEND_WINDOW_S,
+	SENDS_PER_NETWORK,
+} from "@/lib/auth/emailCodeRules";
 import {
 	assertPasskeyOwner,
 	passkeyAfterHook,
@@ -22,13 +35,18 @@ import { prisma } from "@/lib/catalogue/db";
 /**
  * One door, gated by who created the row — not by which provider they used.
  *
- * Customers arrive through Google, self-service. Staff sign in with either
- * Google or the password a superadmin set for them, on an account a
- * superadmin created (or promoted from an existing customer row) — public
- * sign-up can only ever produce a CUSTOMER, so there is no code path by
- * which a customer account grants itself a role. A staff row promoted from
- * an existing customer keeps only the sign-in it already had (Google), since
- * the promotion sets no password — see `POST /api/admin/users`.
+ * Customers arrive self-service: through Google, or a six-digit code mailed
+ * to any address (`emailOTP` below — never a password). Staff sign in with either Google or the password a superadmin
+ * set for them, on an account a superadmin created (or promoted from an
+ * existing customer row) — public sign-up can only ever produce a CUSTOMER,
+ * so there is no code path by which a customer account grants itself a role.
+ * Staff can never use a mailed code: it would be a way round both the
+ * password and the authenticator. A staff address is never mailed one
+ * (`emailCodeMail.ts`) and never given a session for one
+ * (`refuseStaffCodeSession`, `emailCodeHooks.ts`); in every other way it is
+ * treated like any address, so it cannot be told apart. So a promoted
+ * customer row with no Google sign-in is given an invite password — see
+ * `POST /api/admin/users`.
  *
  * `input: false` on every field below is the load-bearing line. Without it a
  * crafted sign-up body could post its own `role`, and the whole model is one
@@ -49,8 +67,8 @@ import { prisma } from "@/lib/catalogue/db";
  */
 export const auth = betterAuth({
 	database: prismaAdapter(prisma, { provider: "postgresql" }),
-	// Nobody signs themselves up with a password: customers use Google, and
-	// staff passwords are set by a superadmin's invite. Left open, a stranger
+	// Nobody signs themselves up with a password: customers use a provider or
+	// a mailed code, and staff passwords are set by a superadmin's invite. Left open, a stranger
 	// could register a password on a future colleague's address and ride the
 	// invite's promotion into the admin surface. `disabledPaths` closes the
 	// HTTP route only — the invite and the seed call `auth.api.signUpEmail`
@@ -59,9 +77,28 @@ export const auth = betterAuth({
 	// `/two-factor/disable`: a second factor a staff member can switch off
 	// with the password alone is not a second factor. Only a superadmin's
 	// Reset 2FA (`lib/auth/resetTwoFactor.ts`) removes one.
-	// Session management: the app calls none of these, and a Google-only
-	// session could otherwise list the owner's session rows or sign the owner
-	// out of every other device.
+	// Session management: the app calls none of these, and a session that
+	// has not passed the passkey step could otherwise list the owner's session
+	// rows or sign the owner out of every other device.
+	// `/update-user`: the name has one door, `POST /api/account/name`, which
+	// holds it to `parseCustomerName` and writes it once. This route would let
+	// any signed-in session, the passkey step passed or not, set any name and
+	// picture, and rename at will.
+	// `/change-email`, `/delete-user` (and its callback),
+	// `/send-verification-email`, `/verify-email`: each is refused today only
+	// because an option is unset. Closed so that setting the option is not
+	// what opens it: one address is one account, and an account with orders
+	// is never deleted (`lib/auth/deleteUser.ts`).
+	// `/link-social`, `/unlink-account`: sign-in methods change through Google
+	// sign-in itself or a superadmin's Remove password, never from a session.
+	// Unlinking would let staff drop their own password and, with it, the
+	// second factor.
+	// `/list-accounts`, `/account-info`, `/get-access-token`,
+	// `/refresh-token`: they hand the owner's Google account id, profile and
+	// tokens to a session that has not passed the passkey step.
+	// The app calls none of the routes above.
+	// `CLOSED_PATHS`: the email-code plugin registers nine routes and the app
+	// uses two. Two of the other seven would put a password on a customer row.
 	disabledPaths: [
 		"/sign-up/email",
 		"/two-factor/disable",
@@ -70,7 +107,36 @@ export const auth = betterAuth({
 		"/revoke-sessions",
 		"/revoke-other-sessions",
 		"/update-session",
+		"/update-user",
+		"/change-email",
+		"/delete-user",
+		"/delete-user/callback",
+		"/send-verification-email",
+		"/verify-email",
+		"/link-social",
+		"/unlink-account",
+		"/list-accounts",
+		"/account-info",
+		"/get-access-token",
+		"/refresh-token",
+		...CLOSED_PATHS,
 	],
+	// Counted in Postgres. The default is memory, which on a serverless
+	// deployment is one counter per instance and so no limit at all.
+	// The send-code rule is the per-network half of the code limits; the
+	// per-address half is `takeSendSlot` (`lib/auth/emailCodeMail.ts`), whose
+	// rows share this table — see `SEND_WINDOW_S` before shortening the window.
+	rateLimit: {
+		storage: "database",
+		customRules: {
+			[SEND_PATH]: { window: SEND_WINDOW_S, max: SENDS_PER_NETWORK },
+		},
+	},
+	// One email is one account, joined only when both sides proved the
+	// address: Better Auth links Google to an existing row only if Google
+	// reports the email verified and our row is verified too. That is its
+	// default; this line is here so that no provider is ever trusted past it.
+	account: { accountLinking: { trustedProviders: [] } },
 	emailAndPassword: {
 		enabled: true,
 		// See the module comment above: this is the line that stops a staff
@@ -145,20 +211,30 @@ export const auth = betterAuth({
 		},
 	},
 	hooks: {
+		// One slot, two guards, each ignoring every path that is not its own.
 		// Every passkey write goes through `checkPasskeyRequest` first — see
-		// that function for why the plugin's defaults are not enough.
-		before: createAuthMiddleware(passkeyBeforeHook),
+		// that function for why the plugin's defaults are not enough — and
+		// every email-code request through `emailCodeBeforeHook`.
+		before: createAuthMiddleware(async (ctx) => {
+			await emailCodeBeforeHook(ctx);
+			await passkeyBeforeHook(ctx);
+		}),
 		after: createAuthMiddleware(passkeyAfterHook),
 	},
 	databaseHooks: {
 		session: {
 			create: {
-				before: verifiedIfPasskeySession,
+				// The refusal first: it throws, and nothing is stamped on a
+				// session that will not exist.
+				before: async (session, ctx) => {
+					await refuseStaffCodeSession(session, ctx);
+					return verifiedIfPasskeySession(session, ctx);
+				},
 				// Stamped on session creation rather than on each request:
 				// /admin/users wants "has anyone used this account lately", not a
 				// precise last-seen, and a write per request would be a write per
 				// page view. This fires for every path that creates a session —
-				// credential sign-in and Google sign-in alike, both funnel through
+				// credential, provider and code sign-in alike, all funnel through
 				// the same `internalAdapter.createSession` — so a Google-only
 				// staff member's row updates too.
 				//
@@ -202,6 +278,25 @@ export const auth = betterAuth({
 					const current = await getSessionFromCtx(ctx);
 					await assertPasskeyOwner(current?.user.id ?? null, clientData.id);
 				},
+			},
+		}),
+		emailOTP({
+			otpLength: 6,
+			expiresIn: CODE_TTL_S,
+			allowedAttempts: CODE_ATTEMPTS,
+			storeOTP: "hashed",
+			// Scheduled, not awaited, for `sendResetPassword`'s reason: Better
+			// Auth awaits this callback, and whether a code is mailed depends on
+			// who the address belongs to, so awaiting would let response time
+			// tell a requester who is staff. Everything that differs by address
+			// happens inside `sendSignInCode`.
+			sendVerificationOTP: async ({ email, otp, type }) => {
+				if (type !== "sign-in") return;
+				after(() =>
+					sendSignInCode(email, otp).catch((error) =>
+						console.error("Sign-in code not sent", error),
+					),
+				);
 			},
 		}),
 		nextCookies(),

@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { safeWelcomeNext } from "@/lib/auth/safeCustomerNext";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { isLocale } from "@/lib/copy/locales";
+import { EmailCodeForm } from "./EmailCodeForm";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 /** Never indexed: it exists to bounce a customer back into checkout. */
@@ -15,9 +17,9 @@ export const metadata = { robots: { index: false, follow: false } };
  * back to in every case. The design itself is already safe in
  * `plannerDraft`'s localStorage, not carried through this redirect.
  *
- * Google only. Facebook is deferred — it needs EzCabinet's business
- * verification — and lands as one more button here plus one more block in
- * `src/lib/auth.ts`, nothing else.
+ * Two ways in, one account per email: Google, and a code mailed to any
+ * address, whose first sign-in is followed by the name step
+ * (`/[lang]/welcome`).
  */
 export default async function SignInPage({
 	params,
@@ -44,8 +46,18 @@ export default async function SignInPage({
 				<GoogleSignInButton
 					callbackURL={next || `/${lang}`}
 					label={s.continueWithGoogle}
-					errorMessage={s.error}
+					errorMessage={s.googleError}
 				/>
+
+				<p className="text-center text-[12px] text-neutral-500">{s.orEmail}</p>
+				<EmailCodeForm
+					// Always by way of the name step: only the server knows whether
+					// this account owes one, and that page passes straight on if not.
+					next={`/${lang}/welcome?next=${encodeURIComponent(safeWelcomeNext(next, lang))}`}
+					copy={s}
+					unsupported={t.passkey.unsupported}
+				/>
+
 				<p className="text-center text-[12px] text-neutral-500 leading-[17px]">
 					{s.privacyNote}{" "}
 					<Link href={`/${lang}/privacy`} className="underline">

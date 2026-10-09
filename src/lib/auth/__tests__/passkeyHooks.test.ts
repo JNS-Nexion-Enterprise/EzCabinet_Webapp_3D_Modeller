@@ -5,6 +5,8 @@ const findFirst = vi.hoisted(() => vi.fn());
 const sessionUpdate = vi.hoisted(() => vi.fn());
 
 const getSessionFromCtx = vi.hoisted(() => vi.fn());
+const queuePasskeyMail = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth/passkeyMail", () => ({ queuePasskeyMail }));
 vi.mock("better-auth/api", async () => ({
 	...(await vi.importActual<typeof import("better-auth/api")>(
 		"better-auth/api",
@@ -245,6 +247,67 @@ describe("passkeyAfterHook, any successful registration", () => {
 		});
 		expect(info).toHaveBeenCalledWith("Passkey enrolled", { user: "u1" });
 		info.mockRestore();
+	});
+});
+
+describe("passkeyAfterHook, telling the owner the lock changed", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.spyOn(console, "info").mockImplementation(() => {});
+		getSessionFromCtx.mockResolvedValue({
+			user: { id: "u1", email: "a@x.com" },
+			session: { token: "tok" },
+		});
+	});
+
+	it("queues a mail to the account when a passkey is registered", async () => {
+		count.mockResolvedValue(1);
+		await passkeyAfterHook(hookCtx("/passkey/verify-registration"));
+		expect(queuePasskeyMail).toHaveBeenCalledTimes(1);
+		expect(queuePasskeyMail).toHaveBeenCalledWith("u1", "added");
+	});
+
+	it("queues none when the registration failed", async () => {
+		const { APIError } = await import("better-auth/api");
+		count.mockResolvedValue(1);
+		await passkeyAfterHook(
+			hookCtx("/passkey/verify-registration", new APIError("BAD_REQUEST")),
+		);
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
+	});
+
+	it("queues none when nothing was enrolled, whatever was returned", async () => {
+		count.mockResolvedValue(0);
+		await passkeyAfterHook(hookCtx("/passkey/verify-registration"));
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
+	});
+
+	it("queues a mail to the account when a passkey is removed", async () => {
+		await passkeyAfterHook(hookCtx("/passkey/delete-passkey"));
+		expect(queuePasskeyMail).toHaveBeenCalledTimes(1);
+		expect(queuePasskeyMail).toHaveBeenCalledWith("u1", "removed");
+		// A removal verifies nothing.
+		expect(sessionUpdate).not.toHaveBeenCalled();
+	});
+
+	it("queues none when the removal was refused or nobody is signed in", async () => {
+		const { APIError } = await import("better-auth/api");
+		await passkeyAfterHook(
+			hookCtx("/passkey/delete-passkey", new APIError("BAD_REQUEST")),
+		);
+		getSessionFromCtx.mockResolvedValue(null);
+		await passkeyAfterHook(hookCtx("/passkey/delete-passkey"));
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		"/passkey/update-passkey",
+		"/passkey/list-user-passkeys",
+		"/passkey/generate-register-options",
+		"/sign-in/email-otp",
+	])("queues none for %s", async (path) => {
+		await passkeyAfterHook(hookCtx(path));
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
 	});
 });
 

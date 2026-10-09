@@ -13,7 +13,26 @@ const ROLE_DESCRIPTIONS: Partial<Record<Role, string>> = {
 		"Manage cabinet designs and prices, orders, deliveries, site content and tutorials.",
 };
 
-/** Mails the invite; the wording and layout are `staffInvite`. */
+/** Names are typed by a person and land in HTML. */
+export function esc(value: string): string {
+	return value.replace(
+		/[&<>"']/g,
+		(c) =>
+			({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+				c
+			] as string,
+	);
+}
+
+/**
+ * Tells a new staff member that an account exists and where to sign in. The
+ * password is deliberately not in it: the superadmin still hands that over
+ * themselves, so a mailbox alone never opens a staff account.
+ *
+ * Layout is the Claude Design `emails/admin-invite.html`; its "accept invite
+ * to set your password" and expiry lines are dropped because an invite here
+ * creates the account at once and carries no token.
+ */
 export function sendStaffInvite(input: {
 	to: string;
 	name: string;

@@ -22,6 +22,9 @@ export async function PATCH(
 	const { token } = await params;
 	// As at checkout: locally, a signed-out order belongs to the demo customer.
 	const user = (await currentUser()) ?? (await demoCustomer());
+	if (authEnabled() && user?.mustSetName) {
+		return NextResponse.json({ error: "name_required" }, { status: 401 });
+	}
 	if (authEnabled() && user?.mustVerifyPasskey) {
 		return NextResponse.json({ error: "passkey_required" }, { status: 401 });
 	}

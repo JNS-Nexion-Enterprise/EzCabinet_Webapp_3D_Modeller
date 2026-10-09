@@ -24,7 +24,7 @@ export type PasskeyDecision =
  * What a session may do to its account's passkeys.
  *
  * The plugin's defaults let any fresh session register another passkey and
- * any session delete one — so whoever held only the Google account could add
+ * any session delete one — so whoever held only the sign-in could add
  * their own and verify with it. Hence: the first passkey is free (there is
  * nothing to verify against yet), every later change needs a passkey
  * ceremony in the last few minutes, and the last passkey is never deleted
@@ -36,7 +36,7 @@ export type PasskeyDecision =
  * caller derives `recentPasskey` with `recentStepUp` (`stepUp.ts`).
  *
  * `authenticate` needs a signed-in account because the passkey is a second
- * step after Google, never a sign-in on its own.
+ * step after sign-in, never a sign-in on its own.
  */
 export function passkeyDecision(s: {
 	action: PasskeyAction;

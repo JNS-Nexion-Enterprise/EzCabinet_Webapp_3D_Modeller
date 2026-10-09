@@ -100,6 +100,32 @@ describe("viewerOf", () => {
 		);
 	});
 
+	it("sends a customer with no name to the name step, and back", async () => {
+		currentUser.mockResolvedValue(user({ name: "", mustSetName: true }));
+		await expect(viewerOf("ms", "/ms/order/t1")).rejects.toThrow(
+			"REDIRECT:/ms/welcome?next=%2Fms%2Forder%2Ft1",
+		);
+	});
+
+	// Closed the tab at the name step, came back later: the name is still
+	// asked first, because the passkey prompt shows it.
+	it("asks for the name before the passkey when both are owed", async () => {
+		currentUser.mockResolvedValue(
+			user({ name: "", mustSetName: true, mustVerifyPasskey: true }),
+		);
+		await expect(viewerOf("en", "/en/orders")).rejects.toThrow(
+			"REDIRECT:/en/welcome?next=%2Fen%2Forders",
+		);
+	});
+
+	it("does not ask for a name with AUTH_ENABLED off", async () => {
+		vi.stubEnv("AUTH_ENABLED", "false");
+		currentUser.mockResolvedValue(user({ name: "", mustSetName: true }));
+		await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({
+			id: "u1",
+		});
+	});
+
 	it("lets a verified customer through", async () => {
 		currentUser.mockResolvedValue(user({}));
 		await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({

@@ -31,6 +31,9 @@ export async function POST(
 ) {
 	const { token } = await params;
 	const viewer = authEnabled() ? await currentUser() : BYPASS_USER;
+	if (authEnabled() && viewer?.mustSetName) {
+		return NextResponse.json({ error: "name_required" }, { status: 401 });
+	}
 	if (authEnabled() && viewer?.mustVerifyPasskey) {
 		return NextResponse.json({ error: "passkey_required" }, { status: 401 });
 	}

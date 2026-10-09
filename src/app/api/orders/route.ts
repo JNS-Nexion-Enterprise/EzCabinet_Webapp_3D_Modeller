@@ -65,8 +65,12 @@ export async function POST(request: Request) {
 	if (!user) {
 		return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
 	}
-	// Same boundary as the order pages. `authEnabled()` keeps local checkout
-	// working with AUTH_ENABLED off, where the demo customer never has one.
+	// Same boundary as the order pages, in the same order: the name, then the
+	// passkey. `authEnabled()` keeps local checkout working with AUTH_ENABLED
+	// off, where the demo customer has a name and never a passkey.
+	if (authEnabled() && user.mustSetName) {
+		return NextResponse.json({ error: "name_required" }, { status: 401 });
+	}
 	if (authEnabled() && user.mustVerifyPasskey) {
 		return NextResponse.json({ error: "passkey_required" }, { status: 401 });
 	}

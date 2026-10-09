@@ -42,6 +42,9 @@ vi.mock("@/lib/catalogue/db", () => ({
 	},
 }));
 
+const queuePasskeyMail = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/auth/passkeyMail", () => ({ queuePasskeyMail }));
+
 const {
 	assertPasskeyOwner,
 	passkeyAfterHook,
@@ -142,6 +145,7 @@ describe("passkey hooks, through the real plugin", () => {
 		const res = await post("/passkey/verify-registration", { name: 5 }, cookie);
 		expect(res.status).toBe(400);
 		expect(sessionRow().passkeyVerified).toBe(false);
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
 	});
 
 	it("does not verify the session when the handler itself fails", async () => {
@@ -156,6 +160,8 @@ describe("passkey hooks, through the real plugin", () => {
 			"CHALLENGE_NOT_FOUND",
 		);
 		expect(sessionRow().passkeyVerified).toBe(false);
+		// No passkey was added, so the owner is told of none.
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
 	});
 
 	it("refuses createSession on registration", async () => {

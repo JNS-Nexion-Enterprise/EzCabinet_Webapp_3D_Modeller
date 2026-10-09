@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
-import { useCopy } from "./CopyContext";
+import { useCopy, useLocale } from "./CopyContext";
 
 const DISMISSED = "ezcabinet.planner.nudgeDismissed";
 
@@ -24,18 +23,17 @@ const DISMISSED = "ezcabinet.planner.nudgeDismissed";
  * modal too. Being about checkout, beside the checkout button is where it
  * belongs anyway.
  *
- * The button says "Continue with Google", not "Sign in" or "Sign up".
- * Customers only have Google, and Better Auth makes the account on first use,
- * so signing up and signing in are the same click — and until they click, a
- * visitor is anonymous and nothing can tell a new one from a returning one.
- * One label that is right for both beats a guess that is sometimes wrong.
+ * The action says "Sign in or create an account" and names no provider: it
+ * leads to the sign-in page, which offers every way in. The account is
+ * made on first use whichever way that is, so signing up and signing in are
+ * the same click — and until they click, a visitor is anonymous and nothing
+ * can tell a new one from a returning one.
  */
 export function SignInNudge({ cabinetCount }: { cabinetCount: number }) {
 	const t = useCopy();
+	const locale = useLocale();
 	const { data: session, isPending } = authClient.useSession();
 	const [dismissed, setDismissed] = useState(true);
-	const [busy, setBusy] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 
 	useEffect(() => {
 		try {
@@ -57,41 +55,24 @@ export function SignInNudge({ cabinetCount }: { cabinetCount: number }) {
 
 	if (!visible) return null;
 
-	async function signIn() {
-		setBusy(true);
-		setError(null);
-		try {
-			const { error: failure } = await authClient.signIn.social({
-				provider: "google",
-				callbackURL: window.location.href,
-			});
-			if (failure) {
-				setError(t.signIn.error);
-				setBusy(false);
-				return;
-			}
-			// Firing on success only, or the funnel counts nudges that never
-			// reached Google — the browser is mid-redirect from here, so `busy`
-			// is left set rather than cleared.
-			track("sign_in_nudge", { action: "accepted" });
-		} catch {
-			setError(t.signIn.error);
-			setBusy(false);
-		}
-	}
-
 	return (
 		<div className="flex flex-col gap-2 rounded-[10px] border border-neutral-200 bg-[#faf9f7] px-3 py-2.5">
 			<p className="text-[12px] text-neutral-700 leading-4">{t.signIn.nudge}</p>
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
 				<button
 					type="button"
-					onClick={signIn}
-					disabled={busy}
-					className="whitespace-nowrap rounded-[8px] bg-neutral-900 px-3 py-1.5 font-medium text-[12px] text-white disabled:opacity-60"
+					onClick={() => {
+						// Fired beside a navigation, so it can be lost — known issue 8.
+						track("sign_in_nudge", { action: "accepted" });
+						// Read at the click: the planner's URL moves as the customer works.
+						const here = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+						window.location.assign(
+							`/${locale}/sign-in?next=${encodeURIComponent(here)}`,
+						);
+					}}
+					className="whitespace-nowrap rounded-[8px] bg-neutral-900 px-3 py-1.5 font-medium text-[12px] text-white"
 				>
-					{busy && <Spinner />}
-					{t.signIn.continueWithGoogle}
+					{t.signIn.signInOrCreate}
 				</button>
 				<button
 					type="button"
@@ -107,7 +88,6 @@ export function SignInNudge({ cabinetCount }: { cabinetCount: number }) {
 					{t.signIn.nudgeDismiss}
 				</button>
 			</div>
-			{error && <p className="text-[12px] text-red-700">{error}.</p>}
 		</div>
 	);
 }

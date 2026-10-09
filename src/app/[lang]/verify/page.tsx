@@ -6,11 +6,11 @@ import { getDictionary } from "@/lib/copy/dictionary";
 import { isLocale } from "@/lib/copy/locales";
 import { PasskeyGate } from "./PasskeyGate";
 
-/** Never indexed: it exists only between Google sign-in and the page asked for. */
+/** Never indexed: it exists only between sign-in and the page asked for. */
 export const metadata = { robots: { index: false, follow: false } };
 
 /**
- * The second step after Google. Reads `currentUser()` directly rather than
+ * The second step after sign-in. Reads `currentUser()` directly rather than
  * `viewerOf`, which redirects an unverified customer straight back here.
  */
 export default async function VerifyPage({
@@ -29,6 +29,10 @@ export default async function VerifyPage({
 		redirect(
 			`/${lang}/sign-in?next=${encodeURIComponent(`/${lang}/verify?next=${encodeURIComponent(target)}`)}`,
 		);
+	}
+	// The name first: it is what the device's passkey prompt will show.
+	if (user.mustSetName) {
+		redirect(`/${lang}/welcome?next=${encodeURIComponent(target)}`);
 	}
 	// Staff, and a customer who has already passed, have nothing to do here.
 	if (!user.mustVerifyPasskey) redirect(target);

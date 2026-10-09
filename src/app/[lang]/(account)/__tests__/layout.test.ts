@@ -83,6 +83,13 @@ describe("account layout", () => {
 		expect(passkeyCount).not.toHaveBeenCalled();
 	});
 
+	it("queries nothing for a customer who owes a name", async () => {
+		currentUser.mockResolvedValue({ ...signedIn, mustSetName: true });
+		await open();
+		expect(count).not.toHaveBeenCalled();
+		expect(passkeyCount).not.toHaveBeenCalled();
+	});
+
 	it("does not query when nobody is signed in (the page redirects)", async () => {
 		currentUser.mockResolvedValue(null);
 		await open();

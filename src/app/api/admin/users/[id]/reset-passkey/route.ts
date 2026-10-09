@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { queuePasskeyMail } from "@/lib/auth/passkeyMail";
 import { resetPasskeys } from "@/lib/auth/resetPasskeys";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
@@ -22,6 +23,9 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			return NextResponse.json({ error: "not_found" }, { status: 404 });
 		}
 		await resetPasskeys(target.id);
+		// The account's own address hears of it: a reset is exactly what
+		// someone talking their way past staff would be after.
+		queuePasskeyMail(target.id, "reset");
 		// Ids only. The one action that removes someone's passkeys leaves a trace.
 		console.info("Passkeys reset", { actor: actor.id, target: target.id });
 		return NextResponse.json({ ok: true });

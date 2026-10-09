@@ -25,11 +25,12 @@ export default async function AccountLayout({
 	const { lang } = await params;
 	if (!isLocale(lang)) notFound();
 	const [user, t] = await Promise.all([currentUser(), getDictionary(lang)]);
-	// An unverified customer is about to be redirected by the page; on a
-	// client-side navigation this layout can stream ahead of that redirect,
-	// so it shows them nothing about the account.
+	// A customer who still owes the passkey step or a name is about to be
+	// redirected by the page; on a client-side navigation this layout can
+	// stream ahead of that redirect, so it shows them nothing about the
+	// account.
 	const [orders, passkeys] =
-		user && !user.mustVerifyPasskey
+		user && !user.mustVerifyPasskey && !user.mustSetName
 			? await Promise.all([
 					prisma.order.count({ where: { userId: user.id } }),
 					prisma.passkey.count({ where: { userId: user.id } }),

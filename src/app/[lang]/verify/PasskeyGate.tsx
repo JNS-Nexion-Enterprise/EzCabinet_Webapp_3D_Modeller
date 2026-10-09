@@ -65,8 +65,8 @@ export function PasskeyGate({
 				{ reason },
 			);
 			if (reason === "stale") {
-				// Enrolling needs a session under a day old; a new Google sign-in
-				// makes one and lands back here.
+				// Enrolling needs a session under a day old; signing in again, by
+				// whichever route, makes one and lands back here.
 				setStale(true);
 				setBusy(false);
 				return;

@@ -77,9 +77,9 @@ configured, nothing is sent and nothing sensitive is logged.
 Staff sign in with a password and an authenticator code, or Google. A mailed
 code would be a way round both.
 
-- A request for a code for an address whose row is not `CUSTOMER` sends nothing and answers exactly as a customer request does.
-- `/sign-in/email-otp` is refused for a non-`CUSTOMER` row even with a correct code, in case a code exists from before a promotion.
-- Checked a third time where the session is created: a session born on `/sign-in/email-otp` for a non-`CUSTOMER` user is refused.
+- Never mailed: a request for a code for an address whose row is not `CUSTOMER` sends nothing, logs nothing, and answers exactly as a customer request does.
+- Never a session: a session born on `/sign-in/email-otp` for a non-`CUSTOMER` user is refused where the session is created, even with a correct code (one may exist from before a promotion). This is the only place a staff code sign-in is stopped.
+- Otherwise treated like any address, so it cannot be told apart: the request is counted against the per-address cap and its stored code dropped past it, the stored code is otherwise kept, and the plugin counts wrong tries against it. Staff are not refused before the plugin runs — that made the fourth wrong guess answer differently for a staff address.
 - Promotion knock-on: promoting an email-code customer to staff leaves them no sign-in, since promotion keeps "the sign-in it already had" and staff cannot use codes. Promotion of a row with no Google account sets an invite password, as a fresh invite does.
 
 ### Plugin surface

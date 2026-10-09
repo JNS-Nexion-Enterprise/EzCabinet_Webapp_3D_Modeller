@@ -20,9 +20,11 @@ const ROLE_HINTS: Record<Role, string> = {
 /**
  * Invite creates staff and only staff. Inviting an email that already has a
  * customer row promotes that row instead — the client's decision that an
- * employee who already used the planner with their own Google account must
- * not be locked out of it — so this shows a different success message and
- * never shows a generated password for that path, because it was never used.
+ * employee who already used the planner with their own account must not be
+ * locked out of it — so this shows a different success message. A promoted
+ * row with a Google sign-in keeps it and the generated password is never
+ * used or shown. One without (it signed in with an emailed code, which staff
+ * cannot use) is given the password, and it is shown as for a fresh invite.
  *
  * Inline card, not a dialog: the invite-a-member form sits above the table
  * so a superadmin never leaves the page to add someone.
@@ -36,6 +38,7 @@ export function InviteStaff() {
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 	const [result, setResult] = useState<{
 		promoted: boolean;
+		passwordSet: boolean;
 		emailed: boolean;
 		password: string;
 	} | null>(null);
@@ -64,6 +67,8 @@ export function InviteStaff() {
 		}
 		setResult({
 			promoted: Boolean(data?.promoted),
+			// A fresh invite always sets one; a promotion says whether it did.
+			passwordSet: data?.promoted ? Boolean(data?.passwordSet) : true,
 			emailed: Boolean(data?.emailed),
 			password,
 		});
@@ -77,7 +82,7 @@ export function InviteStaff() {
 		e.preventDefault();
 		setConfirming({
 			title: `Invite ${name} as ${ROLE_LABELS[role]}?`,
-			body: `${email} gets the ${ROLE_LABELS[role]} role. If that address already has a customer account, that account is given the role instead.`,
+			body: `${email} gets the ${ROLE_LABELS[role]} role. If that address already has a customer account, that account is given the role instead, with this password if it has no Google sign-in.`,
 			confirmLabel: "Invite",
 			stepUp: true,
 			run: invite,
@@ -92,7 +97,7 @@ export function InviteStaff() {
 			</p>
 			{result ? (
 				<div className="flex flex-col gap-3">
-					{result.promoted ? (
+					{result.promoted && !result.passwordSet ? (
 						<p
 							role="status"
 							className="rounded-lg border border-[#c8d8ce] bg-[#f2f7f4] px-3 py-[9px] text-[#1f5138] text-[12px]"
@@ -109,7 +114,9 @@ export function InviteStaff() {
 								role="status"
 								className="rounded-lg border border-[#c8d8ce] bg-[#f2f7f4] px-3 py-[9px] text-[#1f5138] text-[12px]"
 							>
-								Staff account created.{" "}
+								{result.promoted
+									? `Role granted. Existing account given the ${ROLE_LABELS[role]} role. It had no Google sign-in and staff cannot sign in with an emailed code, so it now has this password.`
+									: "Staff account created."}{" "}
 								{result.emailed
 									? "They have been emailed the sign-in link, without the password."
 									: "No email was sent, so send them the sign-in link yourself."}{" "}
