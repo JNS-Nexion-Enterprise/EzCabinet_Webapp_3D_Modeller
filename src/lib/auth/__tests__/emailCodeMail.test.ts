@@ -33,6 +33,7 @@ beforeEach(() => {
 	vi.clearAllMocks();
 	findUnique.mockResolvedValue(null);
 	upsert.mockResolvedValue({ count: 1 });
+	codeDelete.mockResolvedValue({ count: 1 });
 	for (const level of ["info", "log", "warn", "error"] as const) {
 		vi.spyOn(console, level).mockImplementation(() => {});
 	}
@@ -73,20 +74,75 @@ describe("sendSignInCode", () => {
 		expect(logs()).toContain("482913");
 	});
 
-	it.each(["ADMIN", "SUPERADMIN"])(
-		"sends a %s nothing, logs nothing, and drops the stored code",
-		async (role) => {
-			delete process.env.RESEND_API_KEY;
-			findUnique.mockResolvedValue({ role });
+	// Counted and kept like a customer's, so the plugin's attempt counting and
+	// the cap cannot tell the address apart. Only the mail and the log differ.
+	describe.each(["ADMIN", "SUPERADMIN"])("to a %s", (role) => {
+		beforeEach(() => findUnique.mockResolvedValue({ role }));
+
+		it.each([
+			["with a mail key", true],
+			["with none", false],
+		])("sends nothing and logs nothing, %s", async (_label, key) => {
+			if (!key) delete process.env.RESEND_API_KEY;
 			await sendSignInCode("boss@x.com", "482913");
 			expect(sendEmail).not.toHaveBeenCalled();
 			expect(logs()).not.toContain("482913");
-			expect(upsert).not.toHaveBeenCalled();
+			expect(upsert).toHaveBeenCalledTimes(1);
+			expect(upsert.mock.calls[0][0]).toMatchObject({
+				where: { key: "email-code|boss@x.com" },
+			});
+			expect(codeDelete).not.toHaveBeenCalled();
+		});
+
+		it("drops the code past the cap, still unmailed and unlogged", async () => {
+			delete process.env.RESEND_API_KEY;
+			upsert.mockResolvedValueOnce({ count: 4 });
+			await sendSignInCode("boss@x.com", "482913");
+			expect(sendEmail).not.toHaveBeenCalled();
+			expect(logs()).not.toContain("482913");
 			expect(codeDelete).toHaveBeenCalledWith({
 				where: { identifier: "sign-in-otp-boss@x.com" },
 			});
-		},
-	);
+		});
+	});
+
+	describe("a code that was not delivered is not left live", () => {
+		const dropped = { where: { identifier: "sign-in-otp-cust@x.com" } };
+
+		it("when the mail provider refuses it", async () => {
+			findUnique.mockResolvedValue({ role: "CUSTOMER" });
+			sendEmail.mockResolvedValueOnce(false);
+			await sendSignInCode("cust@x.com", "482913");
+			expect(codeDelete).toHaveBeenCalledWith(dropped);
+			expect(logs()).not.toContain("482913");
+		});
+
+		it("when the send cannot be counted", async () => {
+			upsert.mockRejectedValueOnce(new Error("db down"));
+			await expect(sendSignInCode("cust@x.com", "482913")).rejects.toThrow(
+				"db down",
+			);
+			expect(codeDelete).toHaveBeenCalledWith(dropped);
+			expect(sendEmail).not.toHaveBeenCalled();
+			expect(logs()).not.toContain("482913");
+		});
+
+		it("when the address cannot be looked up", async () => {
+			findUnique.mockRejectedValueOnce(new Error("db down"));
+			await expect(sendSignInCode("cust@x.com", "482913")).rejects.toThrow(
+				"db down",
+			);
+			expect(codeDelete).toHaveBeenCalledWith(dropped);
+			expect(sendEmail).not.toHaveBeenCalled();
+		});
+
+		// Local and preview: the developer reads it from the log, so it stays.
+		it("but a code logged for want of a mail key stays", async () => {
+			delete process.env.RESEND_API_KEY;
+			await sendSignInCode("cust@x.com", "482913");
+			expect(codeDelete).not.toHaveBeenCalled();
+		});
+	});
 
 	it("mails a known customer", async () => {
 		findUnique.mockResolvedValue({ role: "CUSTOMER" });

@@ -37,23 +37,43 @@ async function takeSendSlot(email: string): Promise<boolean> {
  * address, a capped address and a customer all got the same answer in the
  * same time.
  *
- * A code that is not mailed is deleted: left in place it could still be
- * guessed at, three tries per request, with the cap doing nothing.
+ * A staff address takes the same path as a customer's — counted against the
+ * cap, its code dropped past it — except that nothing is mailed or logged.
+ * Under the cap its stored code is left in place on purpose: the plugin then
+ * counts wrong tries against it exactly as for a customer, so the tries
+ * cannot tell the address apart. Nobody was sent it, and guessing it right
+ * still makes no session (`refuseStaffCodeSession`).
+ *
+ * A customer's code that never went out is deleted instead: nobody can type
+ * it, so all it could do for its ten minutes is be guessed at.
  */
 export async function sendSignInCode(
 	email: string,
 	code: string,
 ): Promise<void> {
-	const row = await prisma.user.findUnique({
-		where: { email },
-		select: { role: true },
-	});
-	if (!mayUseCode(row) || !(await takeSendSlot(email))) {
-		await prisma.verification.deleteMany({
+	const dropCode = () =>
+		prisma.verification.deleteMany({
 			where: { identifier: `sign-in-otp-${email}` },
 		});
+	let staff: boolean;
+	let withinCap: boolean;
+	try {
+		const row = await prisma.user.findUnique({
+			where: { email },
+			select: { role: true },
+		});
+		staff = !mayUseCode(row);
+		withinCap = await takeSendSlot(email);
+	} catch (error) {
+		// Not counted, so not sent. The same database may refuse this too.
+		await dropCode().catch(() => {});
+		throw error;
+	}
+	if (!withinCap) {
+		await dropCode();
 		return;
 	}
+	if (staff) return;
 	// Local and preview have no mail key: the developer reads the code here,
 	// and a preview deployment cannot be used to mail strangers. With a key
 	// the code is never logged.
@@ -62,7 +82,7 @@ export async function sendSignInCode(
 		return;
 	}
 	const minutes = CODE_TTL_S / 60;
-	await sendEmail({
+	const sent = await sendEmail({
 		to: email,
 		subject: "Your EzCabinet sign-in code",
 		text: [
@@ -74,4 +94,5 @@ export async function sendSignInCode(
 		].join("\n"),
 		html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;color:#262626;"><p>Your EzCabinet sign-in code is</p><p style="font-size:28px;line-height:34px;font-weight:bold;letter-spacing:4px;color:#171717;">${code}</p><p>Type it into the page that asked for it. It works once, for ${minutes} minutes.</p><p style="font-size:13px;color:#5c574e;">If you did not ask for this, ignore this email.</p></div>`,
 	});
+	if (!sent) await dropCode();
 }

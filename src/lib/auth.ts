@@ -41,9 +41,10 @@ import { prisma } from "@/lib/catalogue/db";
  * existing customer row) — public sign-up can only ever produce a CUSTOMER,
  * so there is no code path by which a customer account grants itself a role.
  * Staff can never use a mailed code: it would be a way round both the
- * password and the authenticator. That is refused three times over — when
- * the code would be mailed, when it is presented, and when the session is
- * made (`lib/auth/emailCodeHooks.ts`, `emailCodeMail.ts`). So a promoted
+ * password and the authenticator. A staff address is never mailed one
+ * (`emailCodeMail.ts`) and never given a session for one
+ * (`refuseStaffCodeSession`, `emailCodeHooks.ts`); in every other way it is
+ * treated like any address, so it cannot be told apart. So a promoted
  * customer row with no Google sign-in is given an invite password — see
  * `POST /api/admin/users`.
  *

@@ -97,7 +97,7 @@ const { passkeyBeforeHook, verifiedIfPasskeySession } = await import(
 const ORIGIN = "http://localhost:3000";
 
 /** The same wiring as `lib/auth.ts`, minus `after()` and the cookie plugin. */
-function makeAuth(opts: { beforeHook?: boolean; rateLimit?: boolean } = {}) {
+function makeAuth(opts: { rateLimit?: boolean } = {}) {
 	return betterAuth({
 		baseURL: ORIGIN,
 		secret: "test-secret-test-secret-test-secret-0123",
@@ -118,7 +118,7 @@ function makeAuth(opts: { beforeHook?: boolean; rateLimit?: boolean } = {}) {
 		},
 		hooks: {
 			before: createAuthMiddleware(async (ctx) => {
-				if (opts.beforeHook !== false) await emailCodeBeforeHook(ctx);
+				await emailCodeBeforeHook(ctx);
 				await passkeyBeforeHook(ctx);
 			}),
 		},
@@ -177,20 +177,27 @@ const plant = (email: string, role: string) =>
 	});
 
 /** The plugin's stored form of a code: unsalted SHA-256, base64url. */
-async function plantCode(email: string, code: string) {
+async function stored(code: string) {
 	const digest = await crypto.subtle.digest(
 		"SHA-256",
 		new TextEncoder().encode(code),
 	);
+	return `${Buffer.from(digest).toString("base64url")}:0`;
+}
+
+async function plantCode(email: string, code: string) {
 	store.db.verification.push({
 		id: `v-${email}`,
 		identifier: `sign-in-otp-${email}`,
-		value: `${Buffer.from(digest).toString("base64url")}:0`,
+		value: await stored(code),
 		expiresAt: new Date(Date.now() + 60_000),
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	});
 }
+
+/** Status and body exactly as sent: key order is part of what a caller sees. */
+const raw = async (res: Response) => [res.status, await res.text()];
 
 beforeEach(() => {
 	store.db = {
@@ -270,20 +277,48 @@ describe("one address is one account", () => {
 });
 
 describe("staff", () => {
-	it("are sent nothing, and the stored code is dropped", async () => {
+	// Kept, not dropped: the plugin must count tries against it as it does for
+	// anyone, or the fourth wrong guess tells a staff address apart.
+	it("are sent nothing, and are counted like anyone", async () => {
 		plant("boss@x.com", "ADMIN");
 		expect((await send("boss@x.com")).status).toBe(200);
+		expect(store.mailed).toHaveLength(0);
+		expect(store.db.verification).toHaveLength(1);
+		expect(store.db.rateLimit).toMatchObject([
+			{ key: "email-code|boss@x.com", count: 1 },
+		]);
+	});
+
+	it("lose the stored code past the cap, like anyone", async () => {
+		plant("boss@x.com", "ADMIN");
+		for (let i = 0; i < 4; i++) await send("boss@x.com");
 		expect(store.mailed).toHaveLength(0);
 		expect(store.db.verification).toHaveLength(0);
 	});
 
-	it("cannot sign in with a code that exists anyway", async () => {
+	it("get no session from a code that exists anyway", async () => {
 		plant("boss@x.com", "SUPERADMIN");
 		await plantCode("boss@x.com", "123456");
 		const res = await signIn("boss@x.com", "123456");
 		expect(res.status).toBe(400);
 		expect(await codeOf(res)).toBe("INVALID_OTP");
 		expect(store.db.session).toHaveLength(0);
+	});
+
+	// The code nobody was mailed, guessed right.
+	it("get no session from the right code for their own request", async () => {
+		plant("boss@x.com", "ADMIN");
+		const before = { ...store.db.user[0] };
+		await send("boss@x.com");
+		store.db.verification[0].value = await stored("123456");
+		const res = await signIn("boss@x.com", "123456");
+		expect(res.status).toBe(400);
+		expect(res.headers.get("set-cookie")).toBeNull();
+		expect(store.db.session).toHaveLength(0);
+		expect(store.db.account).toHaveLength(0);
+		expect(store.db.user).toEqual([before]);
+		// Spent, as a customer's would be.
+		expect(store.db.verification).toHaveLength(0);
 	});
 
 	// Promoted between asking for the code and typing it.
@@ -297,29 +332,77 @@ describe("staff", () => {
 		expect(store.db.session).toHaveLength(0);
 	});
 
-	// Each refusal is pinned on its own: together, one would hide the other.
-	it("are refused by the request hook itself, before the plugin runs", async () => {
+	it("are not refused by the request hook: the plugin must run", async () => {
 		plant("boss@x.com", "ADMIN");
-		plant("cust@x.com", "CUSTOMER");
-		const ask = (email: string) =>
+		await expect(
 			emailCodeBeforeHook({
 				path: SIGN_IN_PATH,
-				body: { email, otp: "123456" },
-			} as never);
-		await expect(ask("Boss@X.com")).rejects.toMatchObject({
-			body: { code: "INVALID_OTP" },
-		});
-		await expect(ask("cust@x.com")).resolves.toBeUndefined();
-		await expect(ask("new@x.com")).resolves.toBeUndefined();
+				body: { email: "boss@x.com", otp: "123456" },
+			} as never),
+		).resolves.toBeUndefined();
 	});
 
-	it("are refused where the session is made, without the request hook", async () => {
-		auth = makeAuth({ beforeHook: false });
+	it("are refused a code session even when the row is gone", async () => {
+		await expect(
+			refuseStaffCodeSession({ userId: "nobody" }, { path: SIGN_IN_PATH }),
+		).rejects.toMatchObject({ body: { code: "INVALID_OTP" } });
+	});
+
+	it("still get a session from their password", async () => {
+		await auth.api.signUpEmail({
+			body: {
+				email: "boss@x.com",
+				name: "Boss",
+				password: "a-long-enough-password",
+			},
+		});
+		store.db.user[0].role = "ADMIN";
+		store.db.session = [];
+		const res = await post("/sign-in/email", {
+			email: "boss@x.com",
+			password: "a-long-enough-password",
+		});
+		expect(res.status).toBe(200);
+		expect(store.db.session).toHaveLength(1);
+	});
+});
+
+describe("the sign-in response says nothing about the address", () => {
+	const three = () => {
+		plant("cust@x.com", "CUSTOMER");
 		plant("boss@x.com", "ADMIN");
-		await plantCode("boss@x.com", "123456");
-		const res = await signIn("boss@x.com", "123456");
-		expect(res.status).toBe(400);
-		expect(store.db.session).toHaveLength(0);
+		return ["new@x.com", "cust@x.com", "boss@x.com"];
+	};
+
+	it("is the same four answers to four wrong guesses after one send", async () => {
+		const runs = [];
+		for (const email of three()) {
+			await send(email);
+			const answers = [];
+			for (let i = 0; i < 4; i++) {
+				answers.push(await raw(await signIn(email, "abcdef")));
+			}
+			runs.push(answers);
+		}
+		expect(runs[0].map(([status]) => status)).toEqual([400, 400, 400, 403]);
+		expect(runs[0][0][1]).toBe(
+			'{"message":"Invalid OTP","code":"INVALID_OTP"}',
+		);
+		expect(runs[1]).toEqual(runs[0]);
+		expect(runs[2]).toEqual(runs[0]);
+	});
+
+	it("is the same answer to a guess when no code was asked for", async () => {
+		const answers = [];
+		for (const email of three()) {
+			answers.push(await raw(await signIn(email, "abcdef")));
+		}
+		expect(answers[0]).toEqual([
+			400,
+			'{"message":"Invalid OTP","code":"INVALID_OTP"}',
+		]);
+		expect(answers[1]).toEqual(answers[0]);
+		expect(answers[2]).toEqual(answers[0]);
 	});
 });
 
@@ -457,6 +540,17 @@ describe("the plugin's other routes", () => {
 		},
 	);
 
+	it("a send with a field the form does not send is refused", async () => {
+		const res = await post(SEND_PATH, {
+			email: "aiman@outlook.com",
+			type: "sign-in",
+			name: "x",
+		});
+		expect(res.status).toBe(403);
+		expect(await codeOf(res)).toBe("EMAIL_CODE_ROUTE_REFUSED");
+		expect(store.db.verification).toHaveLength(0);
+	});
+
 	// What a plugin upgrade's new route would meet. The hook is asked directly
 	// because a path the router does not know never reaches a hook.
 	it.each(["/email-otp/some-new-route", "/sign-in/email-otp/extra"])(
@@ -485,6 +579,21 @@ describe("abuse", () => {
 		expect(res.status).toBe(403);
 		expect(store.db.verification).toHaveLength(0);
 		expect(store.mailed).toHaveLength(0);
+	});
+
+	it("bot-checks a browser's request only, not a server-side call", async () => {
+		store.bot = true;
+		const call = {
+			path: SEND_PATH,
+			body: { email: "a@x.com", type: "sign-in" },
+		};
+		await expect(emailCodeBeforeHook(call as never)).resolves.toBeUndefined();
+		await expect(
+			emailCodeBeforeHook({
+				...call,
+				request: new Request(`${ORIGIN}/api/auth${SEND_PATH}`),
+			} as never),
+		).rejects.toMatchObject({ body: { code: "EMAIL_CODE_BOT" } });
 	});
 
 	it("limits one network across addresses, counted in the database", async () => {

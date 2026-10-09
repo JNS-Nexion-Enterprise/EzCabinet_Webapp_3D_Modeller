@@ -546,7 +546,7 @@ model Verification {
 /// and route (`rateLimit.storage: "database"`), keyed `<ip>|<path>`; the
 /// per-address cap on sign-in codes keeps its own rows here, keyed
 /// `email-code|<address>` (`lib/auth/emailCodeMail.ts`). Columns are Better
-/// Auth's (node_modules/@better-auth/core/dist/db/get-tables.mjs).
+/// Auth's (the `@better-auth/core` package, `dist/db/get-tables.mjs`).
 /// `lastRequest` is epoch milliseconds. Rows are pruned by the limiter; none
 /// of this is a record of anything.
 model RateLimit {
