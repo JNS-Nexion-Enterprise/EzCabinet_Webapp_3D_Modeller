@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/catalogue/db";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
-import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
+import { draftsFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 
 export type CancelBlock =
 	| "already_cancelled"
@@ -129,7 +129,7 @@ export async function markRefunded(
 			where: { id },
 			select: NOTIFY_ORDER_SELECT,
 		});
-		return enqueue(tx, [draftFor({ kind: "ORDER_REFUNDED", order })]);
+		return enqueue(tx, draftsFor({ kind: "ORDER_REFUNDED", order }));
 	});
 	if (!notificationIds) return false;
 	flushSoon(notificationIds);

@@ -6,7 +6,7 @@ import { flushSoon } from "@/lib/whatsapp/outbox";
 export const runtime = "nodejs";
 
 /**
- * Put a failed WhatsApp message back in the queue.
+ * Put a failed message — WhatsApp or email — back in the queue.
  *
  * Only a `FAILED` row, and only one belonging to this order. Resetting
  * `queuedAt` restarts the 48 h expiry — the admin chose to send it late.

@@ -10,6 +10,7 @@
 		"lint": "biome check .",
 		"typecheck": "next typegen && tsc --noEmit",
 		"test": "vitest run",
+		"email:preview": "tsx scripts/preview-emails.ts",
 		"generate:grain": "node scripts/generate-grain-texture.mjs",
 		"lalamove:ping": "node --env-file=.env.local scripts/lalamove-ping.mjs",
 		"easyparcel:ping": "node --env-file=.env.local scripts/easyparcel-ping.mjs",

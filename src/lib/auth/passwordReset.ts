@@ -2,6 +2,7 @@ import "server-only";
 import { canEmailReset } from "@/lib/auth/twoFactor";
 import { prisma } from "@/lib/catalogue/db";
 import { sendEmail } from "@/lib/email";
+import { staffReset } from "@/lib/email/templates/staffReset";
 
 /**
  * Mails allowed per account per hour. Better Auth's own limiter is per IP and
@@ -28,6 +29,7 @@ export async function sendStaffReset(
 		where: { id: userId },
 		select: {
 			email: true,
+			name: true,
 			role: true,
 			disabled: true,
 			twoFactorEnabled: true,
@@ -63,16 +65,7 @@ export async function sendStaffReset(
 
 	await sendEmail({
 		to: row.email,
-		subject: "Reset your EzCabinet admin password",
-		text: [
-			"Someone asked to reset the password on your EzCabinet admin account.",
-			"",
-			"Choose a new password here (the link works once, for one hour):",
-			url,
-			"",
-			"You will still need your authenticator code to sign in.",
-			"If this was not you, ignore this email — nothing has changed.",
-		].join("\n"),
+		...staffReset({ name: row.name, link: url }),
 	});
 }
 

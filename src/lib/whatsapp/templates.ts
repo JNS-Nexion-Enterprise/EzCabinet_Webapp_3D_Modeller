@@ -10,6 +10,7 @@ import {
 	type DeliveryStatusName,
 } from "@/lib/logistics/types";
 import { orderRef } from "@/lib/orders/ref";
+import { whatsappConfigured } from "./send";
 
 /**
  * Which event becomes which WhatsApp message.
@@ -31,6 +32,8 @@ export const NOTIFY_ORDER_SELECT = {
 	totalRm: true,
 	locale: true,
 	whatsappOptIn: true,
+	customerEmail: true,
+	user: { select: { email: true } },
 } as const;
 
 export type NotifyOrder = {
@@ -43,6 +46,8 @@ export type NotifyOrder = {
 	totalRm: number;
 	locale: string;
 	whatsappOptIn: boolean;
+	customerEmail: string | null;
+	user: { email: string };
 };
 
 type DeliveryRef = { id: string; publicToken: string };
@@ -77,6 +82,7 @@ export type NotificationDraft = {
 	orderId: string;
 	deliveryId: string | null;
 	kind: NotificationKind;
+	channel: "WHATSAPP" | "EMAIL";
 	stage: ProductionStage | null;
 	dedupeKey: string;
 	to: string;
@@ -143,6 +149,7 @@ export function draftFor(event: NotifyEvent): NotificationDraft | null {
 		orderId: order.id,
 		deliveryId: null,
 		kind: event.kind,
+		channel: "WHATSAPP" as const,
 		stage: null,
 		to: order.customerPhone,
 		template: TEMPLATE[event.kind],
@@ -205,6 +212,48 @@ export function draftFor(event: NotifyEvent): NotificationDraft | null {
 				vars: { body: [ref], button: event.delivery.publicToken },
 			};
 	}
+}
+
+/** The mails that are a record of money: sent whatever else the customer gets. */
+const RECEIPTS = new Set<NotificationKind>([
+	"ORDER_PLACED",
+	"PAYMENT_CONFIRMED",
+	"ORDER_REFUNDED",
+]);
+
+/**
+ * The email row for an event, or null when WhatsApp already carries it.
+ *
+ * Receipts always go by email. Production and delivery updates go by email
+ * unless WhatsApp carries them, so nobody hears each step twice — and
+ * "carries" means the customer opted in *and* we can send: until WhatsApp is
+ * live, a ticked box would otherwise mean silence. The mail itself is rendered when it is sent
+ * (`lib/email/orderMail.ts`), so the row carries no variables.
+ */
+export function emailDraftFor(event: NotifyEvent): NotificationDraft | null {
+	const { order } = event;
+	const onWhatsapp = order.whatsappOptIn && whatsappConfigured();
+	if (onWhatsapp && !RECEIPTS.has(event.kind)) return null;
+	// The same event as the WhatsApp row, so the same key with a suffix.
+	const whatsapp = draftFor({
+		...event,
+		order: { ...order, whatsappOptIn: true },
+	});
+	if (!whatsapp) return null;
+	return {
+		...whatsapp,
+		channel: "EMAIL",
+		dedupeKey: `${whatsapp.dedupeKey}:email`,
+		to: order.customerEmail ?? order.user.email,
+		vars: { body: [], button: "" },
+	};
+}
+
+/** Every row an event owes, across channels. */
+export function draftsFor(event: NotifyEvent): NotificationDraft[] {
+	return [draftFor(event), emailDraftFor(event)].filter(
+		(draft): draft is NotificationDraft => draft !== null,
+	);
 }
 
 const recipient = (to: string) => to.replace(/^\+/, "");

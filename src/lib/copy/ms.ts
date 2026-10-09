@@ -601,6 +601,9 @@ export const ms: Dictionary = {
 		whatsappHeading: "Kemas kini pesanan melalui WhatsApp",
 		whatsapp:
 			"Jika anda menanda kotak semasa pembayaran, kami akan menghantar kemas kini tentang pesanan anda — bayaran, langkah pengeluaran dan penghantaran — ke nombor telefon anda melalui WhatsApp. WhatsApp dikendalikan oleh Meta Platforms, yang memproses nombor anda dan mesej ini, mungkin di luar Malaysia. Kami tidak menghantar apa-apa lagi, dan anda boleh menghentikan kemas kini dengan menyekat nombor tersebut.",
+		emailHeading: "E-mel pesanan",
+		email:
+			"Apabila anda membuat pesanan, kami menghantar e-mel pengesahan, resit apabila bayaran anda diterima dan notis jika pesanan dibayar balik. Jika anda tidak memilih kemas kini WhatsApp, kemas kini pengeluaran dan penghantaran juga dihantar melalui e-mel. Ini ialah mesej perkhidmatan tentang pesanan anda, bukan pemasaran, jadi ia tidak boleh dimatikan. E-mel dihantar melalui Resend, pembekal e-mel kami, yang memproses alamat anda dan mesej tersebut, mungkin di luar Malaysia.",
 		accountHeading: "Akaun anda",
 		account:
 			"Apabila anda log masuk dengan Google, kami menerima nama, alamat e-mel dan foto profil anda, dan menyimpannya sebagai akaun anda.",

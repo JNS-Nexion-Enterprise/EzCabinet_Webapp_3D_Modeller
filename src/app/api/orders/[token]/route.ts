@@ -69,10 +69,15 @@ export async function PATCH(
 		});
 		if (count === 0) return false;
 		// `Notification.to` is a snapshot. A queued message must not go to the
-		// number the customer has just told us is wrong; sent ones are history.
+		// number or address the customer has just told us is wrong; sent ones
+		// are history. Without an order email, mail goes to the account's.
 		await tx.notification.updateMany({
-			where: { orderId: order.id, status: "PENDING" },
+			where: { orderId: order.id, status: "PENDING", channel: "WHATSAPP" },
 			data: { to: phone },
+		});
+		await tx.notification.updateMany({
+			where: { orderId: order.id, status: "PENDING", channel: "EMAIL" },
+			data: { to: details.email ?? user.email },
 		});
 		return true;
 	});

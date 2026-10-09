@@ -6,7 +6,7 @@ import { getDictionary } from "@/lib/copy/dictionary";
 import { STAGES, stageRefusal } from "@/lib/orders/stage";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
 import {
-	draftFor,
+	draftsFor,
 	localeOf,
 	NOTIFY_ORDER_SELECT,
 } from "@/lib/whatsapp/templates";
@@ -65,9 +65,10 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			});
 			if (count !== 1) return { error: "not_next_stage" as const };
 
-			const ids = await enqueue(tx, [
-				draftFor({ kind: "STAGE", order, stage, stageLabel }),
-			]);
+			const ids = await enqueue(
+				tx,
+				draftsFor({ kind: "STAGE", order, stage, stageLabel }),
+			);
 			return { ids };
 		});
 

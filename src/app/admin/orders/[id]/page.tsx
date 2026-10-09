@@ -37,6 +37,7 @@ export default async function OrderAdminPage({
 					select: {
 						id: true,
 						kind: true,
+						channel: true,
 						stage: true,
 						status: true,
 						lastError: true,
