@@ -136,6 +136,7 @@ beforeEach(() => {
 		passkey: [],
 	};
 	auth = makeAuth();
+	queuePasskeyMail.mockClear();
 });
 
 describe("passkey hooks, through the real plugin", () => {
@@ -221,6 +222,66 @@ describe("passkey hooks, through the real plugin", () => {
 		sessionRow().passkeyVerifiedAt = new Date();
 		const recent = await get("/passkey/generate-register-options", cookie);
 		expect(recent.status).toBe(200);
+	});
+});
+
+// Deleting needs no WebAuthn ceremony of its own — only a session that had
+// one recently — so the whole path runs here: guard, plugin, after hook.
+describe("removing a passkey, through the real plugin", () => {
+	/** Signed in, holding `count` passkeys, the ceremony moments ago. */
+	async function withPasskeys(count: number) {
+		const cookie = await signedIn();
+		const userId = store.db.user[0].id as string;
+		for (let i = 1; i <= count; i++) {
+			store.db.passkey.push({
+				id: `p${i}`,
+				userId,
+				credentialID: `cred-${i}`,
+			});
+		}
+		Object.assign(sessionRow(), {
+			passkeyVerified: true,
+			passkeyVerifiedAt: new Date(),
+		});
+		return { cookie, userId };
+	}
+
+	it("tells the owner once the passkey is gone", async () => {
+		const { cookie, userId } = await withPasskeys(2);
+		const res = await post("/passkey/delete-passkey", { id: "p1" }, cookie);
+		expect(res.status).toBe(200);
+		expect(store.db.passkey.map((r) => r.id)).toEqual(["p2"]);
+		expect(queuePasskeyMail).toHaveBeenCalledTimes(1);
+		expect(queuePasskeyMail).toHaveBeenCalledWith(userId, "removed");
+	});
+
+	it("tells nobody when the last passkey is kept", async () => {
+		const { cookie } = await withPasskeys(1);
+		const res = await post("/passkey/delete-passkey", { id: "p1" }, cookie);
+		expect(res.status).toBe(400);
+		expect(((await res.json()) as { code: string }).code).toBe(
+			"PASSKEY_LAST_ONE",
+		);
+		expect(store.db.passkey).toHaveLength(1);
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
+	});
+
+	it("tells nobody when a session with no recent ceremony is refused", async () => {
+		const { cookie } = await withPasskeys(2);
+		sessionRow().passkeyVerifiedAt = new Date(Date.now() - 60 * 60_000);
+		const res = await post("/passkey/delete-passkey", { id: "p1" }, cookie);
+		expect(res.status).toBe(403);
+		expect(store.db.passkey).toHaveLength(2);
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
+	});
+
+	// The guard passes, and the plugin itself finds nothing to delete.
+	it("tells nobody when the plugin deletes nothing", async () => {
+		const { cookie } = await withPasskeys(2);
+		const res = await post("/passkey/delete-passkey", { id: "nope" }, cookie);
+		expect(res.status).not.toBe(200);
+		expect(store.db.passkey).toHaveLength(2);
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
 	});
 });
 
