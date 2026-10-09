@@ -5,6 +5,7 @@ import { getDictionary } from "@/lib/copy/dictionary";
 import { isLocale } from "@/lib/copy/locales";
 import { EmailCodeForm } from "./EmailCodeForm";
 import { GoogleSignInButton } from "./GoogleSignInButton";
+import { googleCallback } from "./signInNext";
 
 /** Never indexed: it exists to bounce a customer back into checkout. */
 export const metadata = { robots: { index: false, follow: false } };
@@ -26,7 +27,7 @@ export default async function SignInPage({
 	searchParams,
 }: {
 	params: Promise<{ lang: string }>;
-	searchParams: Promise<{ next?: string }>;
+	searchParams: Promise<{ next?: string | string[] }>;
 }) {
 	const [{ lang }, { next }] = await Promise.all([params, searchParams]);
 	if (!isLocale(lang)) notFound();
@@ -44,7 +45,7 @@ export default async function SignInPage({
 				</div>
 
 				<GoogleSignInButton
-					callbackURL={next || `/${lang}`}
+					callbackURL={googleCallback(next, lang)}
 					label={s.continueWithGoogle}
 					errorMessage={s.googleError}
 				/>

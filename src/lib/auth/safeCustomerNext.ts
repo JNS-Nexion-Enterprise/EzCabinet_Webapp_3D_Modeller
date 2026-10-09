@@ -21,20 +21,34 @@ function sameSitePath(next: unknown, refused: string[]): string | null {
 	if (/[\u0000-\u001f\u007f\\]/.test(next)) return null;
 
 	let url: URL;
-	let segments: string[];
+	let decoded: string;
 	try {
 		url = new URL(next, BASE);
-		segments = decodeURIComponent(url.pathname).split("/").filter(Boolean);
+		decoded = decodeURIComponent(url.pathname);
 	} catch {
 		return null;
 	}
+	const segments = decoded.split("/").filter(Boolean);
 	if (url.origin !== BASE) return null;
-	// The asking page itself, however it is spelled (%76erify, VERIFY, ./, //).
-	if (refused.includes(segments[1]?.toLowerCase())) return null;
+	// The asking page itself, however it is spelled (%76erify, VERIFY, ./, //)
+	// — after the locale, or first: the proxy gives "/verify" a locale and it
+	// lands on the same page.
+	if (
+		refused.includes(segments[0]?.toLowerCase()) ||
+		refused.includes(segments[1]?.toLowerCase())
+	)
+		return null;
 	// Dot segments are resolved but an empty segment survives them:
 	// "/a/..//evil.example" parses to "//evil.example", which a browser reads
-	// as another site. Refuse any empty segment rather than repair it.
-	if (url.pathname === "/" || url.pathname.includes("//")) return null;
+	// as another site. Refuse any empty segment rather than repair it — an
+	// encoded one too ("/%2F%2Fevil.example"), which anything downstream that
+	// decodes the path would turn into the same thing.
+	if (
+		url.pathname === "/" ||
+		url.pathname.includes("//") ||
+		decoded.includes("//")
+	)
+		return null;
 
 	// Second, independent proof: what we return must re-parse to itself, on
 	// our origin.
