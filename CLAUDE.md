@@ -16,7 +16,7 @@ The wardrobe survives only as a seed family (`id: "wardrobe"`) in `lib/planner/c
 
 ## Status
 
-Phase 0 (catalogue + pricing spec with client) not yet complete — see Open questions. The engine, the planner UI, and the admin catalogue surface are built. `/admin/cabinet-designs` is the one catalogue screen: each uploaded design is one cabinet, filed under the rooms that offer it, and `POST /api/admin/cabinet-designs/publish` rebuilds the catalogue from the design rows (`lib/catalogue/buildCatalogue.ts`). Customers can check out: `POST /api/orders` re-validates and re-prices the design and stores an `Order` (manual bank transfer until a gateway is chosen), `/admin/orders` marks it paid, and **Create delivery** opens the logistics form pre-filled from the design (`lib/orders`). Opted-in customers get WhatsApp updates for the order, each admin-advanced production stage and the delivery (`lib/whatsapp`, Meta Cloud API); go-live waits on EzCabinet — see Open questions. Share links are the remaining Phase 3 work.
+Phase 0 (catalogue + pricing spec with client) not yet complete — see Open questions. The engine, the planner UI, and the admin catalogue surface are built. `/admin/cabinet-designs` is the one catalogue screen: each uploaded design is one cabinet, filed under the rooms that offer it, and `POST /api/admin/cabinet-designs/publish` rebuilds the catalogue from the design rows (`lib/catalogue/buildCatalogue.ts`). Customers can check out: `POST /api/orders` re-validates and re-prices the design and stores an `Order` (manual bank transfer until a gateway is chosen), `/admin/orders` marks it paid, and **Create delivery** opens the logistics form pre-filled from the design (`lib/orders`). Customers get updates for the order, each admin-advanced production stage and the delivery: by WhatsApp when they opted in (`lib/whatsapp`, Meta Cloud API; go-live waits on EzCabinet — see Open questions), and by email (`lib/email`, Resend) — receipts always, the rest when WhatsApp is off. Share links are the remaining Phase 3 work.
 
 **Confirmed client requirement (resolved):** EzCabinet designs in SketchUp and asked for "upload SketchUp designs so we can maintain new configurations." It is resolved the literal way: the planner **renders the model they drew** — see [3D](#3d). This reversed an earlier decision to rebuild each cabinet procedurally from extracted numbers; that section carries the measurements that changed it.
 
@@ -202,8 +202,13 @@ src/
   lib/whatsapp/          ← customer WhatsApp updates via Meta's Cloud API
     templates.ts         ← event → template name, variables, payload; pure
     send.ts              ← one API call; retryable or not
-    outbox.ts            ← enqueue in the state change's transaction; flush after
+    outbox.ts            ← enqueue in the state change's transaction; flush after, by channel
     webhook.ts           ← Meta's signature, status order; pure
+  lib/email/             ← every email the app sends
+    layout.ts            ← one look: blocks → { html, text }, escaping included
+    copy.ts              ← mail wording, en / ms / zh; server-side, never in the site dictionary
+    templates/           ← one pure function per mail; order.ts holds the eight order mails
+    orderMail.ts         ← an outbox row → its order → a sent mail
   lib/mesh/              ← reads an OBJ export into catalogue data
     archive.ts           ← unzip; the .obj text and the texture filenames
     objRead.ts           ← OBJ parse: named boxes in the file's own units
@@ -269,7 +274,7 @@ published. "Which catalogue is live" is now a value with an owner.
 - **Sizes are validated against the family's ladder.** Reject off-ladder widths server-side.
 - **The catalogue lives in the database.** Cabinets and their prices are `CabinetDesign` rows, rebuilt into a `CatalogueVersion` on every publish — the version table is the price history. The disaster-recovery copy for cabinets is Postgres plus the design files in Blob; `lib/planner/catalogue.ts` seeds only settings. Ship seed changes as their own commit.
 - **Every admin route calls `requireAuth`.** `lib/auth/route.ts`'s `withAuth` wraps every handler under `src/app/api/admin`, with one named exemption in the coverage test's allow-list (`logistics/easyparcel/callback/route.ts` — EasyParcel's own redirect, checked by its `state` cookie instead), and the test fails the build on any other exported method it does not see gated — see [Auth](#auth).
-- **A WhatsApp message is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey` — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. Preview deployments never get `WHATSAPP_TOKEN`.
+- **A customer notification is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey`, one row per channel (`Notification.channel`) — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. `draftsFor` (`lib/whatsapp/templates.ts`) is the one place that decides channels: order placed, payment confirmed and refunded always go by email; stage and delivery mails only when WhatsApp is off. Preview deployments never get `WHATSAPP_TOKEN` or `RESEND_API_KEY`.
 
 ## 3D
 
@@ -827,6 +832,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
     can still act as the customer for its seven days. That is outside this
     feature's threat (someone holding only the Google account), recorded so
     it is not mistaken for covered.
+17. **Order mail has no bounce handling and no second chance on a dead WhatsApp.** Resend accepting a mail is recorded as sent; a mailbox that then rejects it is never seen. A customer with WhatsApp on gets no stage or delivery mail even when their WhatsApp sends are failing. A failed mail is retried five times, then shown as failed on the order's Messages card, where staff can resend it. Order mail also needs `BETTER_AUTH_URL`: its links are built from it, and without it mail waits in the queue. `pnpm email:preview <dir>` writes every mail in every language for a read-through.
 
 ## Open questions — resolve before trusting pricing.ts
 
@@ -894,6 +900,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   Consumer Protection (Electronic Trade Transactions) Regulations 2024 want
   the registered address there, and the Malay page is the one the law reads. GDPR was checked and does not apply: an
   EU-hosted processor does not bring a Malaysian seller under it.
+- **Order emails print placeholders.** `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` and `BANK_TRANSFER` now appear in mail a customer keeps, and "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads. The ms and zh mail wording (`lib/email/copy.ts`) needs a native read, as the WhatsApp templates do. The privacy notice's "Email and WhatsApp updates are optional" is no longer exact — order emails are not optional — and goes to counsel with the new "Order emails" paragraph.
 
 ## Conventions
 

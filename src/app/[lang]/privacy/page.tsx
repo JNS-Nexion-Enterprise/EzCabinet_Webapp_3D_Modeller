@@ -30,6 +30,7 @@ export default async function PrivacyPage({
 		[p.whereHeading, p.where],
 		[p.recipientsHeading, p.recipients],
 		[p.whatsappHeading, p.whatsapp],
+		[p.emailHeading, p.email],
 		[p.obligatoryHeading, p.obligatory],
 		[p.retentionHeading, p.retention],
 		[p.rightsHeading, p.rights],

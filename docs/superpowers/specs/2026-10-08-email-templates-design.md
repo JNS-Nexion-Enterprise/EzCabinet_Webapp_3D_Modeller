@@ -64,9 +64,11 @@ Rules:
 
 ## One file per mail
 
-`src/lib/email/templates/`, one file each, `(input) => { subject, html, text }`,
-no I/O. Customer wording lives in a new `email` section of
-`src/lib/copy/{en,ms,zh}.ts`; the two staff mails keep their English inline.
+`src/lib/email/templates/`, each `(input) => { subject, html, text }`, no I/O.
+The three account mails have a file each; the eight order mails are one file,
+`order.ts`, switching on the kind. Customer wording lives in
+`src/lib/email/copy.ts`, kept out of the site dictionary because that
+dictionary ships to the browser; the two staff mails keep their English inline.
 
 | Template | Sent by | When |
 | --- | --- | --- |
@@ -109,8 +111,9 @@ retries from the cron and expires after 48 hours. It gains one column:
 - "Is this channel configured" is asked per row. A missing `WHATSAPP_TOKEN` no
   longer stops mail; a missing `RESEND_API_KEY` leaves email rows pending, as
   WhatsApp rows are without a token. Preview deployments get neither.
-- `sendEmail` returns only true or false. A false is retried by the cron until
-  the 48-hour expiry; there is no retryable/permanent split for mail.
+- A failed send is retried up to five times through the existing `nextState`,
+  then marked failed and shown on the order's Messages card for a staff resend.
+- Order mail links are built from `BETTER_AUTH_URL`; without it mail waits.
 - `PATCH /api/orders/[token]` already re-points `PENDING` WhatsApp rows when
   the phone changes. It does the same for `EMAIL` rows when the email changes.
 - A customer who turns WhatsApp off after ordering gets stage and delivery
@@ -177,8 +180,8 @@ passkeys do not work.
 | Address line | Delivering to: {siteAddress} | Dihantar ke: {siteAddress} | 送货地址：{siteAddress} |
 | Button | View your order | Lihat pesanan anda | 查看订单 |
 
-The rows are the order's own `breakdown.categories` lines, already translated
-by the keys the quote screen uses, then delivery, then the total. Exactly one
+The rows are `summaryLines` and `summaryExtras` of the stored breakdown — the
+lines the order page shows — then delivery, then the total. Exactly one
 of the two payment paragraphs appears: bank transfer when
 `paymentProvider` is `manual`, else online. An order already paid when the
 mail is rendered shows neither; the payment-confirmed mail says it.
@@ -271,13 +274,14 @@ WhatsApp repeats the order reference.
 | --- | --- |
 | `lib/email/layout.ts` | `renderEmail`: blocks to `{ html, text }`, escaping included |
 | `lib/email/templates/*.ts` | Eleven pure functions, one per mail |
-| `lib/copy/{en,ms,zh}.ts` | New `email` section holding the tables above |
+| `lib/email/copy.ts` | Mail wording in three languages |
+| `lib/email/orderMail.ts` | Loads the order for an outbox row, renders and sends |
 | `lib/whatsapp/templates.ts` | `draftsFor`: the overlap rule, one place |
 | `lib/whatsapp/outbox.ts` | `flush` sends by channel |
 | `prisma` | `Notification.channel`, a hand-written migration (known issue 12) |
 | `scripts/preview-emails.ts` | Writes every mail in every language to a folder, from fixtures |
 
-`lib/email.ts` (`sendEmail`) is unchanged.
+`lib/email.ts` gains `emailConfigured()`; `sendEmail` is unchanged.
 
 ## Before go-live
 

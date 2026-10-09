@@ -611,6 +611,9 @@ export const en = {
 		whatsappHeading: "WhatsApp order updates",
 		whatsapp:
 			"If you tick the box at checkout, we send updates about your order — payment, production steps and delivery — to your phone number on WhatsApp. WhatsApp is operated by Meta Platforms, which processes your number and these messages, possibly outside Malaysia. We send nothing else, and you can stop the updates by blocking the number.",
+		emailHeading: "Order emails",
+		email:
+			"When you place an order we email you a confirmation, a receipt when your payment arrives and a notice if the order is refunded. If you did not choose WhatsApp updates, production and delivery updates come by email too. These are service messages about your order, not marketing, so they cannot be switched off. They are sent through Resend, our email provider, which processes your address and the messages, possibly outside Malaysia.",
 		accountHeading: "Your account",
 		account:
 			"When you sign in with Google we receive your name, email address and profile photo, and keep them as your account.",

@@ -562,6 +562,9 @@ export const zh: Dictionary = {
 		whatsappHeading: "WhatsApp 订单通知",
 		whatsapp:
 			"如果您在结账时勾选此选项，我们会通过 WhatsApp 向您的电话号码发送订单进度——付款、生产步骤和送货。WhatsApp 由 Meta Platforms 运营，Meta 会处理您的号码和这些信息，处理地点可能在马来西亚境外。我们不会发送其他内容，您可以屏蔽该号码以停止接收通知。",
+		emailHeading: "订单邮件",
+		email:
+			"您下单后，我们会通过电子邮件向您发送订单确认、收到付款后的收据，以及订单退款时的通知。如果您没有选择 WhatsApp 通知，生产和送货进度也会通过电子邮件发送。这些是与您订单相关的服务信息，并非营销内容，因此无法关闭。邮件通过我们的邮件服务商 Resend 发送，Resend 会处理您的邮箱地址和这些邮件，处理地点可能在马来西亚境外。",
 		accountHeading: "您的账户",
 		account:
 			"当您使用 Google 登录时，我们会收到您的姓名、电子邮箱和头像，并将其保存为您的账户。",
