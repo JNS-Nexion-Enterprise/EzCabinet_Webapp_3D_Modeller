@@ -37,7 +37,7 @@ const en = {
 		bankTransfer:
 			"To confirm your order, transfer {total} to {bank}, {accountName}, account {accountNumber}. Use {ref} as the reference.",
 		online:
-			"Your payment is being confirmed. We'll email you as soon as it is.",
+			"Your order is confirmed once your payment goes through. We'll email your receipt when it does.",
 		address: "Delivering to: {siteAddress}",
 		button: "View your order",
 	},
@@ -128,7 +128,7 @@ const ms: EmailCopy = {
 		bankTransfer:
 			"Untuk mengesahkan pesanan anda, pindahkan {total} ke {bank}, {accountName}, akaun {accountNumber}. Gunakan {ref} sebagai rujukan.",
 		online:
-			"Bayaran anda sedang disahkan. Kami akan menghantar e-mel sebaik sahaja ia selesai.",
+			"Pesanan anda disahkan sebaik sahaja bayaran anda berjaya. Kami akan menghantar resit melalui e-mel selepas itu.",
 		address: "Dihantar ke: {siteAddress}",
 		button: "Lihat pesanan anda",
 	},
@@ -210,7 +210,7 @@ const zh: EmailCopy = {
 		total: "总计",
 		bankTransfer:
 			"请将 {total} 转账至 {bank}，{accountName}，账号 {accountNumber}，并以 {ref} 作为付款参考，以确认您的订单。",
-		online: "您的付款正在确认中，确认后我们会立即发邮件通知您。",
+		online: "付款成功后，您的订单即获确认，届时我们会通过电子邮件发送收据。",
 		address: "送货地址：{siteAddress}",
 		button: "查看订单",
 	},

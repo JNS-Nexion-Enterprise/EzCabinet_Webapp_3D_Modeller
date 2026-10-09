@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	deliveryKindFor,
 	draftFor,
@@ -218,6 +218,15 @@ describe("payloads", () => {
 	});
 });
 
+// WhatsApp is live in these tests unless one says otherwise.
+beforeEach(() => {
+	vi.stubEnv("WHATSAPP_TOKEN", "t0ken");
+	vi.stubEnv("WHATSAPP_PHONE_NUMBER_ID", "123");
+});
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
+
 describe("draftsFor", () => {
 	const noWhatsapp = { ...order, whatsappOptIn: false };
 	const channels = (event: Parameters<typeof draftsFor>[0]) =>
@@ -260,6 +269,23 @@ describe("draftsFor", () => {
 		} as const;
 		expect(channels({ ...booked, order })).toEqual(["WHATSAPP"]);
 		expect(channels({ ...booked, order: noWhatsapp })).toEqual(["EMAIL"]);
+	});
+
+	// Before WhatsApp goes live a ticked box would otherwise mean silence.
+	it("an opted-in customer still gets mail while WhatsApp cannot send", () => {
+		vi.stubEnv("WHATSAPP_TOKEN", "");
+		expect(
+			channels({
+				kind: "STAGE",
+				stage: "CUTTING",
+				stageLabel: "Cutting",
+				order,
+			}),
+		).toEqual(["EMAIL", "WHATSAPP"]);
+		expect(channels({ kind: "DELIVERED", order, delivery })).toEqual([
+			"EMAIL",
+			"WHATSAPP",
+		]);
 	});
 
 	it("the two channels never share a dedupe key", () => {

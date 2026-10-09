@@ -6,7 +6,12 @@ import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
 import { emailConfigured } from "@/lib/email";
 import { sendOrderEmail } from "@/lib/email/orderMail";
-import { nextState, sendMessage, whatsappConfigured } from "./send";
+import {
+	nextState,
+	type SendResult,
+	sendMessage,
+	whatsappConfigured,
+} from "./send";
 import {
 	localeOf,
 	type NotificationDraft,
@@ -63,8 +68,10 @@ export async function enqueue(
  * so the post-response flush and a cron run cannot both send it. The cron's
  * one-minute settle keeps it off rows a request is still flushing.
  *
- * A channel that is not configured is not looked at: its rows wait, unclaimed
- * and unexpired, until it is. Local dev and preview have neither.
+ * Each channel is read and sent on its own: a channel that is not configured
+ * is not looked at — its rows wait, unclaimed and unexpired, until it is —
+ * and one that stops answering mid-run holds its own rows without taking a
+ * place in the other's queue. Local dev and preview have neither.
  */
 export async function flush(
 	ids?: string[],
@@ -92,111 +99,123 @@ export async function flush(
 		data: { status: "FAILED", lastError: "expired" },
 	});
 
-	const rows = await prisma.notification.findMany({
-		where: {
-			channel: { in: channels },
-			...(ids
-				? { id: { in: ids }, status: "PENDING" }
-				: { status: "PENDING", updatedAt: { lt: new Date(now - SETTLE_MS) } }),
-		},
-		orderBy: { queuedAt: "asc" },
-		take: MAX_PER_RUN,
-	});
-
 	let sent = 0;
 	let failed = 0;
-	// Set by a dead WhatsApp token: every later WhatsApp row would be refused
-	// the same way, so they are left unclaimed. Email rows still go.
-	let whatsappBlocked = false;
 	// ponytail: a send that succeeds and is then followed by a failed DB update
 	// (the `notification.update` below) leaves the row PENDING with `attempts`
 	// already bumped, so the next flush re-sends it — at-least-once, not
 	// exactly-once. Fine for a template message or a receipt; upgrade to a
 	// two-phase claim (mark SENDING before the API call, verify before
 	// re-sending) if a duplicate ever matters.
-	for (const row of rows) {
-		if (row.channel === "WHATSAPP" && whatsappBlocked) continue;
-		const claimed = await prisma.notification.updateMany({
-			where: { id: row.id, status: "PENDING", attempts: row.attempts },
-			data: { attempts: { increment: 1 } },
+	for (const channel of channels) {
+		const rows = await prisma.notification.findMany({
+			where: {
+				channel,
+				...(ids
+					? { id: { in: ids }, status: "PENDING" }
+					: {
+							status: "PENDING",
+							updatedAt: { lt: new Date(now - SETTLE_MS) },
+						}),
+			},
+			orderBy: { queuedAt: "asc" },
+			take: MAX_PER_RUN,
 		});
-		if (claimed.count === 0) continue;
 
-		if (row.channel === "EMAIL") {
-			// `sendEmail` never throws, but loading the order can.
-			const error = await sendOrderEmail(row, base as string).then(
-				(ok) => (ok ? null : "email not sent"),
-				(cause: Error) => cause.message,
-			);
+		for (const row of rows) {
+			const claimed = await prisma.notification.updateMany({
+				where: { id: row.id, status: "PENDING", attempts: row.attempts },
+				data: { attempts: { increment: 1 } },
+			});
+			if (claimed.count === 0) continue;
+
+			const result =
+				channel === "EMAIL"
+					? await sendMail(row, base as string)
+					: await sendMessage(
+							templatePayload(
+								row.to,
+								row.template,
+								localeOf(row.locale),
+								row.vars as unknown as TemplateVars,
+							),
+						);
 			await prisma.notification.update({
 				where: { id: row.id },
-				data:
-					error === null
-						? { status: "SENT", sentAt: new Date(), lastError: null }
-						: nextState(
-								{ ok: false, retryable: true, error },
-								row.attempts + 1,
-								new Date(),
-							),
+				data: nextState(result, row.attempts + 1, new Date()),
 			});
-			if (error === null) {
+			if (result.ok) {
 				sent++;
-			} else {
-				failed++;
+				continue;
+			}
+			failed++;
+			if (result.blocked) {
+				// Every row behind this one on the channel would be refused the
+				// same way. They stay pending, their tries untouched, and go out
+				// on the first run after the token or key is replaced.
 				console.error(
 					JSON.stringify({
-						type: "EMAIL_SEND_FAILED",
-						notificationId: row.id,
-						kind: row.kind,
-						message: error,
+						type:
+							channel === "EMAIL"
+								? "EMAIL_UNAVAILABLE"
+								: "WHATSAPP_TOKEN_INVALID",
+						message: result.error,
 					}),
 				);
+				break;
 			}
-			continue;
-		}
-
-		const result = await sendMessage(
-			templatePayload(
-				row.to,
-				row.template,
-				localeOf(row.locale),
-				row.vars as unknown as TemplateVars,
-			),
-		);
-		await prisma.notification.update({
-			where: { id: row.id },
-			data: nextState(result, row.attempts + 1, new Date()),
-		});
-		if (result.ok) {
-			sent++;
-			continue;
-		}
-		failed++;
-		if (result.blocked) {
-			// They stay pending and go out on the first run after the token is
-			// replaced.
 			console.error(
-				JSON.stringify({
-					type: "WHATSAPP_TOKEN_INVALID",
-					message: result.error,
-				}),
+				JSON.stringify(
+					channel === "EMAIL"
+						? {
+								type: "EMAIL_SEND_FAILED",
+								notificationId: row.id,
+								kind: row.kind,
+								message: result.error,
+							}
+						: {
+								type: TEMPLATE_CODES.has(errorCode(result.error))
+									? "WHATSAPP_TEMPLATE_REJECTED"
+									: "WHATSAPP_SEND_FAILED",
+								notificationId: row.id,
+								template: row.template,
+								retryable: result.retryable,
+								message: result.error,
+							},
+				),
 			);
-			whatsappBlocked = true;
-			continue;
 		}
-		console.error(
-			JSON.stringify({
-				type: TEMPLATE_CODES.has(errorCode(result.error))
-					? "WHATSAPP_TEMPLATE_REJECTED"
-					: "WHATSAPP_SEND_FAILED",
-				notificationId: row.id,
-				template: row.template,
-				retryable: result.retryable,
-				message: result.error,
-			}),
-		);
 	}
 	return { sent, failed };
+}
+
+/**
+ * One order mail, as the result `nextState` reads. Resend being unreachable
+ * or refusing our key is `blocked`, like a dead WhatsApp token: the row keeps
+ * its try. A mail has no provider id worth keeping, so `messageId` is null.
+ */
+async function sendMail(
+	row: Parameters<typeof sendOrderEmail>[0],
+	base: string,
+): Promise<SendResult> {
+	// `deliverEmail` never throws, but loading the order can.
+	const outcome = await sendOrderEmail(row, base).catch(
+		(cause: Error) => cause.message,
+	);
+	if (outcome === "sent") return { ok: true, messageId: null };
+	if (outcome === "unavailable") {
+		return {
+			ok: false,
+			retryable: true,
+			blocked: true,
+			error: "email service unavailable",
+		};
+	}
+	return {
+		ok: false,
+		retryable: true,
+		error: outcome === "refused" ? "email not sent" : outcome,
+	};
 }
 
 /** Send these rows once the response is on its way. */

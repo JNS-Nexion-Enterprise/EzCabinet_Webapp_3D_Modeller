@@ -6,7 +6,7 @@ import type {
 import { prisma } from "@/lib/catalogue/db";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { isLocale } from "@/lib/copy/locales";
-import { sendEmail } from "@/lib/email";
+import { deliverEmail, type EmailOutcome } from "@/lib/email";
 import { LABEL as CARRIER_LABEL } from "@/lib/logistics/carriers";
 import { orderEmail } from "./templates/order";
 
@@ -26,7 +26,7 @@ export async function sendOrderEmail(
 		locale: string;
 	},
 	base: string,
-): Promise<boolean> {
+): Promise<EmailOutcome> {
 	const order = await prisma.order.findUnique({
 		where: { id: row.orderId },
 		select: {
@@ -43,7 +43,7 @@ export async function sendOrderEmail(
 			totalRm: true,
 		},
 	});
-	if (!order) return false;
+	if (!order) return "refused";
 
 	// A bare id, not a relation: a split consumes the delivery, and the mail
 	// about it then points at the order page instead.
@@ -72,5 +72,5 @@ export async function sendOrderEmail(
 				delivery.carrierId === "manual" ? null : delivery.carrierOrderId,
 		},
 	});
-	return sendEmail({ to: row.to, ...mail });
+	return deliverEmail({ to: row.to, ...mail });
 }

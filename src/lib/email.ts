@@ -14,17 +14,25 @@ import "server-only";
 export const emailConfigured = (): boolean =>
 	Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 
-export async function sendEmail(message: {
+/**
+ * What became of one mail. The outbox retries on it: `refused` is Resend
+ * saying no to this mail, which uses up a try; `unavailable` is our key,
+ * their rate limit or their outage, where every mail would fail the same way
+ * and none of them should be given up on.
+ */
+export type EmailOutcome = "sent" | "refused" | "unavailable";
+
+export async function deliverEmail(message: {
 	to: string;
 	subject: string;
 	text: string;
 	html?: string;
-}): Promise<boolean> {
+}): Promise<EmailOutcome> {
 	const key = process.env.RESEND_API_KEY;
 	const from = process.env.EMAIL_FROM;
 	if (!key || !from) {
 		console.warn("Email not configured; nothing sent", message.subject);
-		return false;
+		return "unavailable";
 	}
 	try {
 		const response = await fetch("https://api.resend.com/emails", {
@@ -36,13 +44,19 @@ export async function sendEmail(message: {
 			body: JSON.stringify({ from, ...message }),
 			signal: AbortSignal.timeout(10_000),
 		});
-		if (!response.ok) {
-			console.error("Resend refused an email", response.status);
-			return false;
-		}
-		return true;
+		if (response.ok) return "sent";
+		console.error("Resend refused an email", response.status);
+		const ours = [401, 403, 429].includes(response.status);
+		return ours || response.status >= 500 ? "unavailable" : "refused";
 	} catch (error) {
 		console.error("Could not reach Resend", error);
-		return false;
+		return "unavailable";
 	}
+}
+
+/** For a caller that only reports on something already done: sent, or not. */
+export async function sendEmail(
+	message: Parameters<typeof deliverEmail>[0],
+): Promise<boolean> {
+	return (await deliverEmail(message)) === "sent";
 }

@@ -602,7 +602,6 @@ enum NotificationKind {
   ORDER_REFUNDED
 }
 
-/// `FAILED` is terminal until an admin presses Resend.
 /// How a notification reaches the customer. WhatsApp needs their opt-in;
 /// email carries the receipts, and the rest when WhatsApp is off.
 enum NotificationChannel {
@@ -610,6 +609,7 @@ enum NotificationChannel {
   EMAIL
 }
 
+/// `FAILED` is terminal until an admin presses Resend.
 enum NotificationStatus {
   PENDING
   SENT

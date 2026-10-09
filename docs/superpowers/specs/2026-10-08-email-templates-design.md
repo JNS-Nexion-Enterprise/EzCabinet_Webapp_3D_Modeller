@@ -21,7 +21,7 @@ languages, and every customer gets a written record of their money.
 | Question | Answer |
 | --- | --- |
 | Which mails? | The 3 account mails, plus the 8 order events WhatsApp already reports |
-| A customer has WhatsApp updates on. What does email do? | Order placed, payment confirmed and refunded always go by email. Production stage and the four delivery mails go by email only when WhatsApp is off |
+| A customer has WhatsApp updates on. What does email do? | Order placed, payment confirmed and refunded always go by email. Production stage and the four delivery mails go by email unless WhatsApp carries them: the customer opted in and WhatsApp is configured to send. Until WhatsApp is live, everyone gets them by email |
 | Language | Customer mails follow `Order.locale` (en / ms / zh); the sign-in code follows the page's language. Staff mails are English |
 | Brand name | `EzCabinet`, the dictionary's `common.brand`. The Claude Design files say "Infinite Cabinet"; the mails follow the code |
 | Dependencies | None added. No React Email. No Resend hosted templates: the wording would leave the repo and its review |
@@ -111,8 +111,12 @@ retries from the cron and expires after 48 hours. It gains one column:
 - "Is this channel configured" is asked per row. A missing `WHATSAPP_TOKEN` no
   longer stops mail; a missing `RESEND_API_KEY` leaves email rows pending, as
   WhatsApp rows are without a token. Preview deployments get neither.
-- A failed send is retried up to five times through the existing `nextState`,
-  then marked failed and shown on the order's Messages card for a staff resend.
+- A mail Resend refuses is retried up to five times through the existing
+  `nextState`, then marked failed and shown on the order's Messages card for a
+  staff resend. A bad key, a rate limit, a 5xx or a timeout uses up no try and
+  holds the rest of the channel's rows for the next run.
+- `flush` reads and sends each channel on its own, so a backlog on one never
+  takes the other's place in the queue.
 - Order mail links are built from `BETTER_AUTH_URL`; without it mail waits.
 - `PATCH /api/orders/[token]` already re-points `PENDING` WhatsApp rows when
   the phone changes. It does the same for `EMAIL` rows when the email changes.
@@ -176,7 +180,7 @@ passkeys do not work.
 | Box note | Placed {date} | Dibuat pada {date} | 下单日期 {date} |
 | Rows | Delivery / Total | Penghantaran / Jumlah | 送货费 / 总计 |
 | Bank transfer | To confirm your order, transfer {total} to {bank}, {accountName}, account {accountNumber}. Use {ref} as the reference. | Untuk mengesahkan pesanan anda, pindahkan {total} ke {bank}, {accountName}, akaun {accountNumber}. Gunakan {ref} sebagai rujukan. | 请将 {total} 转账至 {bank}，{accountName}，账号 {accountNumber}，并以 {ref} 作为付款参考，以确认您的订单。 |
-| Online payment | Your payment is being confirmed. We'll email you as soon as it is. | Bayaran anda sedang disahkan. Kami akan menghantar e-mel sebaik sahaja ia selesai. | 您的付款正在确认中，确认后我们会立即发邮件通知您。 |
+| Online payment | Your order is confirmed once your payment goes through. We'll email your receipt when it does. | Pesanan anda disahkan sebaik sahaja bayaran anda berjaya. Kami akan menghantar resit melalui e-mel selepas itu. | 付款成功后，您的订单即获确认，届时我们会通过电子邮件发送收据。 |
 | Address line | Delivering to: {siteAddress} | Dihantar ke: {siteAddress} | 送货地址：{siteAddress} |
 | Button | View your order | Lihat pesanan anda | 查看订单 |
 
@@ -306,8 +310,10 @@ These are not built here, and each one is now printed in mail a customer keeps:
   corrected one.
 - Mail that Resend accepts and the mailbox rejects is not seen. No bounce
   webhook is built.
-- A customer with WhatsApp on gets no stage or delivery mail, even if their
-  WhatsApp messages are failing.
+- Once WhatsApp is live, a customer with it on gets no stage or delivery mail,
+  even if their own WhatsApp messages are failing.
+- The order-placed mail goes out before an online payment is attempted, so its
+  wording promises nothing about that payment.
 
 ## Testing
 

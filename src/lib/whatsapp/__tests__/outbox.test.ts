@@ -35,13 +35,16 @@ vi.mock("@/lib/catalogue/db", () => ({
 				return { count: 1 };
 			},
 			// Copies, as Prisma returns: the claim must not reach into the snapshot.
-			findMany: async ({ where }: { where: { channel?: { in: string[] } } }) =>
+			findMany: async ({
+				where,
+				take,
+			}: {
+				where: { channel: string };
+				take: number;
+			}) =>
 				rows
-					.filter(
-						(r) =>
-							r.status === "PENDING" &&
-							(where.channel?.in.includes(r.channel) ?? true),
-					)
+					.filter((r) => r.status === "PENDING" && r.channel === where.channel)
+					.slice(0, take)
 					.map((r) => ({ ...r })),
 			update: async ({
 				where,
@@ -55,7 +58,12 @@ vi.mock("@/lib/catalogue/db", () => ({
 }));
 
 const sendOrderEmail = vi.hoisted(() =>
-	vi.fn(async (_row: unknown, _base: string) => true),
+	vi.fn(
+		async (
+			_row: unknown,
+			_base: string,
+		): Promise<"sent" | "refused" | "unavailable"> => "sent",
+	),
 );
 vi.mock("@/lib/email/orderMail", () => ({ sendOrderEmail }));
 
@@ -100,7 +108,7 @@ beforeEach(() => {
 	process.env.WHATSAPP_TOKEN = "t0ken";
 	process.env.WHATSAPP_PHONE_NUMBER_ID = "123";
 	errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
-	sendOrderEmail.mockReset().mockResolvedValue(true);
+	sendOrderEmail.mockReset().mockResolvedValue("sent");
 	vi.stubEnv("RESEND_API_KEY", "re_test");
 	vi.stubEnv("EMAIL_FROM", "EzCabinet <no-reply@example.com>");
 	vi.stubEnv("BETTER_AUTH_URL", "https://x.test");
@@ -196,13 +204,55 @@ describe("flush with email rows", () => {
 	});
 
 	it("retries a failed send, then gives up at the attempt limit", async () => {
-		sendOrderEmail.mockResolvedValue(false);
+		sendOrderEmail.mockResolvedValue("refused");
 		rows.push(email("e"));
 		await flush();
 		expect([rows[0].status, rows[0].attempts]).toEqual(["PENDING", 1]);
 		rows[0].attempts = 4;
 		await flush();
 		expect(rows[0].status).toBe("FAILED");
+	});
+
+	// A bad key or an outage is ours, not the mail's: it must not use up the
+	// five tries and leave every receipt failed for staff to resend by hand.
+	it("holds every mail, attempts untouched, while Resend cannot be reached", async () => {
+		sendOrderEmail.mockResolvedValue("unavailable");
+		rows.push(email("e1"), email("e2"));
+
+		await flush();
+
+		expect(sendOrderEmail).toHaveBeenCalledTimes(1);
+		expect(rows.map((r) => [r.id, r.status, r.attempts])).toEqual([
+			["e1", "PENDING", 0],
+			["e2", "PENDING", 0],
+		]);
+		expect(loggedTypes(errorSpy)).toContain("EMAIL_UNAVAILABLE");
+	});
+
+	it("still sends WhatsApp while Resend cannot be reached", async () => {
+		sendOrderEmail.mockResolvedValue("unavailable");
+		rows.push(email("e"), pending("w"));
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(
+				async () =>
+					new Response(JSON.stringify({ messages: [{ id: "wamid.1" }] })),
+			),
+		);
+
+		await flush();
+
+		expect(rows.map((r) => r.status)).toEqual(["PENDING", "SENT"]);
+	});
+
+	it("a backlog of blocked WhatsApp rows does not starve mail", async () => {
+		for (let i = 0; i < 60; i++) rows.push(pending(`w${i}`));
+		rows.push(email("e"));
+		metaAnswers(401, 190);
+
+		await flush();
+
+		expect(rows.at(-1)?.status).toBe("SENT");
 	});
 
 	it("survives a send that throws", async () => {

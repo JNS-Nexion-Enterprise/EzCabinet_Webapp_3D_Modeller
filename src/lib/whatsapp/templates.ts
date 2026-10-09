@@ -10,6 +10,7 @@ import {
 	type DeliveryStatusName,
 } from "@/lib/logistics/types";
 import { orderRef } from "@/lib/orders/ref";
+import { whatsappConfigured } from "./send";
 
 /**
  * Which event becomes which WhatsApp message.
@@ -224,13 +225,15 @@ const RECEIPTS = new Set<NotificationKind>([
  * The email row for an event, or null when WhatsApp already carries it.
  *
  * Receipts always go by email. Production and delivery updates go by email
- * only to a customer who did not opt in to WhatsApp, so nobody hears each
- * step twice. The mail itself is rendered when it is sent
+ * unless WhatsApp carries them, so nobody hears each step twice — and
+ * "carries" means the customer opted in *and* we can send: until WhatsApp is
+ * live, a ticked box would otherwise mean silence. The mail itself is rendered when it is sent
  * (`lib/email/orderMail.ts`), so the row carries no variables.
  */
 export function emailDraftFor(event: NotifyEvent): NotificationDraft | null {
 	const { order } = event;
-	if (order.whatsappOptIn && !RECEIPTS.has(event.kind)) return null;
+	const onWhatsapp = order.whatsappOptIn && whatsappConfigured();
+	if (onWhatsapp && !RECEIPTS.has(event.kind)) return null;
 	// The same event as the WhatsApp row, so the same key with a suffix.
 	const whatsapp = draftFor({
 		...event,

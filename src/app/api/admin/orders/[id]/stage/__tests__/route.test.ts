@@ -36,6 +36,8 @@ const order = {
 	totalRm: 2641.76,
 	locale: "en",
 	whatsappOptIn: true,
+	customerEmail: null,
+	user: { email: "c@example.com" },
 	status: "PAID",
 	productionStage: null,
 };

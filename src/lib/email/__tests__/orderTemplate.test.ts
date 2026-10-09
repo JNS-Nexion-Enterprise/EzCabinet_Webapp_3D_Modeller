@@ -77,13 +77,14 @@ describe("orderEmail", () => {
 		expect(html).toContain('href="https://x.test/en/order/tok_order"');
 	});
 
-	it("order placed, online: says the payment is being confirmed", () => {
+	it("order placed, online: does not claim a payment that may not exist", () => {
 		const { text } = orderEmail(
 			input("ORDER_PLACED", {
 				order: { ...order, paymentProvider: "stripe" },
 			}),
 		);
-		expect(text).toContain("being confirmed");
+		expect(text).toContain("once your payment goes through");
+		expect(text).not.toContain("being confirmed");
 		expect(text).not.toContain("transfer RM");
 	});
 
@@ -91,7 +92,7 @@ describe("orderEmail", () => {
 		const { text } = orderEmail(
 			input("ORDER_PLACED", { order: { ...order, paidAt: new Date() } }),
 		);
-		expect(text).not.toContain("being confirmed");
+		expect(text).not.toContain("once your payment goes through");
 		expect(text).not.toContain("transfer RM");
 	});
 
