@@ -89,11 +89,23 @@ describe("PATCH /api/orders/[token]", () => {
 		expect(data.whatsappOptInAt).toBeInstanceOf(Date);
 	});
 
-	it("re-points queued WhatsApp messages, and only queued ones", async () => {
+	it("re-points queued messages by channel, and only queued ones", async () => {
 		await edit();
 		expect(notificationUpdateMany).toHaveBeenCalledWith({
-			where: { orderId: "o1", status: "PENDING" },
+			where: { orderId: "o1", status: "PENDING", channel: "WHATSAPP" },
 			data: { to: "+60123456789" },
+		});
+		expect(notificationUpdateMany).toHaveBeenCalledWith({
+			where: { orderId: "o1", status: "PENDING", channel: "EMAIL" },
+			data: { to: "a@example.com" },
+		});
+	});
+
+	it("a cleared email sends queued mail to the account's address", async () => {
+		await edit({ ...details, email: null });
+		expect(notificationUpdateMany).toHaveBeenCalledWith({
+			where: { orderId: "o1", status: "PENDING", channel: "EMAIL" },
+			data: { to: "owner@x.com" },
 		});
 	});
 

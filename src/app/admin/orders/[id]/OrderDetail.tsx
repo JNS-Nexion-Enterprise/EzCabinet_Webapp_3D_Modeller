@@ -8,6 +8,7 @@ import { fetchGuarded } from "@/components/admin/stepUp";
 import { fieldClass } from "@/components/admin/styles";
 import { Spinner } from "@/components/Spinner";
 import type {
+	NotificationChannel,
 	NotificationKind,
 	NotificationStatus,
 	ProductionStage,
@@ -65,6 +66,7 @@ export type OrderView = {
 	notifications: {
 		id: string;
 		kind: NotificationKind;
+		channel: NotificationChannel;
 		stage: ProductionStage | null;
 		status: NotificationStatus;
 		lastError: string | null;
@@ -82,6 +84,11 @@ const CHIP = `min-h-9 rounded-full border border-neutral-200 bg-white px-[15px] 
 const PRIMARY = `inline-flex min-h-9 items-center self-start rounded-full bg-[#1f5138] px-[18px] py-2.5 font-semibold text-[12px] text-white hover:bg-[#17402c] disabled:cursor-not-allowed disabled:opacity-40 ${FOCUS}`;
 
 const STAGE_LABEL = en.order.stages;
+
+const CHANNEL_LABEL: Record<NotificationChannel, string> = {
+	WHATSAPP: "WhatsApp",
+	EMAIL: "Email",
+};
 
 const KIND_LABEL: Record<NotificationKind, string> = {
 	ORDER_PLACED: "Order placed",
@@ -653,19 +660,20 @@ export function OrderDetail({
 					</section>
 
 					<section className={CARD}>
-						<h2 className={EYEBROW}>WhatsApp</h2>
-						{!order.whatsappOptIn ? (
+						<h2 className={EYEBROW}>Messages</h2>
+						{!order.whatsappOptIn && (
 							<p className="text-[12px] text-neutral-500">
-								Customer did not opt in to WhatsApp.
+								No WhatsApp opt-in: updates go by email.
 							</p>
-						) : order.notifications.length === 0 ? (
+						)}
+						{order.notifications.length === 0 ? (
 							<p className="text-[12px] text-neutral-500">No messages yet.</p>
 						) : (
 							<ul className="flex flex-col gap-2">
 								{order.notifications.map((n) => (
 									<li key={n.id} className="flex flex-col gap-0.5 text-[12px]">
 										<span className="text-neutral-700">
-											{KIND_LABEL[n.kind]}
+											{CHANNEL_LABEL[n.channel]} · {KIND_LABEL[n.kind]}
 											{n.stage ? ` · ${STAGE_LABEL[n.stage]}` : ""}
 										</span>
 										<span
