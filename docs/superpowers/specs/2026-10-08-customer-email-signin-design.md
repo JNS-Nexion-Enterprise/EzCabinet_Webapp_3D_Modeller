@@ -20,7 +20,7 @@ design keeps all three properties.
 | Same email through two routes? | One account. Linked only when both sides proved the address |
 | What is asked at sign-up? | The email address, then the customer's name once the code is accepted. Phone and address stay at checkout |
 | A unique username? | No. A name labels the account and prefills checkout; a handle would add an "already taken" answer that reveals accounts, and nothing would use it |
-| Facebook? | Built, hidden until its keys exist (needs EzCabinet's Meta business verification) |
+| Facebook? | Dropped (2026-10-09). Not planned; nothing is built for it |
 | Passwords, phone codes, Apple sign-in | Out of scope |
 
 ## The journey
@@ -44,13 +44,13 @@ saved design is absent and passkeys do not work (known issue 15).
 
 ### Account
 - A code sign-in can only ever create or open a `CUSTOMER` row. `role` stays `input: false`; `/sign-up/email` stays in `disabledPaths`.
-- One email is one account. Google and Facebook link to an existing row only when the provider reports the email as verified. A Facebook account with no email is told to use the email route.
+- One email is one account. Google links to an existing row only when it reports the email as verified, which is Better Auth's default; no provider is added to `trustedProviders`.
 - The passkey rules are unchanged and apply to every route in. `needsPasskeyCheck` does not learn about sign-in methods.
 
 ### The name
 - Asked after the code, never on the first screen: that screen serves new and returning customers alike, and a name field shown only to new ones would reveal which addresses have accounts.
 - Required. A nameless account would be labelled with a random id in the phone's passkey prompt.
-- A row owes the step while it has no name. `viewerOf` sends such a customer to `/[lang]/welcome` before the passkey step, and `POST /api/orders` refuses it, so the step cannot be skipped by URL. Google and Facebook customers arrive with a name and never owe it.
+- A row owes the step while it has no name. `viewerOf` sends such a customer to `/[lang]/welcome` before the passkey step, and `POST /api/orders` refuses it, so the step cannot be skipped by URL. Google customers arrive with a name and never owe it.
 - Its own route, `POST /api/account/name`: signed-in customer only, updates that account's own `name` and nothing else. Zod: trimmed, 2 to 80 characters, no control or direction-override characters, and not a name that poses as the business ("EzCabinet", "admin", "support"). The sign-in request itself stays held to `email` and `otp`.
 - Not unique, not a credential, never used to identify a caller. It labels the account, appears in the account menu and on staff screens beside the email, and prefills the checkout name field.
 - Any mail that includes it escapes it, as the staff invite mail does.
@@ -104,6 +104,15 @@ follow. A plugin upgrade that adds a route gets a 403 until it is allow-listed.
 - At most three codes per address per hour and a per-network limit, counted in the database (`rateLimit: { storage: "database" }` and its table). This also closes known issue 14, where the memory-backed limit did not hold across serverless instances.
 - The send-code response is identical for a new address, a known customer, a staff address and a rate-limited one. Timing too: the mail is scheduled with `after()`, not awaited.
 
+### On Vercel
+Checked against Vercel's documentation on 2026-10-09.
+
+- **The visitor's address can be trusted.** Vercel overwrites `x-forwarded-for` and does not forward a client-supplied value, so the per-network limit cannot be dodged by sending a forged header. (A post-deploy check still confirms Better Auth reads it as one address.)
+- **A firewall rule in front of the code route.** A Vercel WAF rate-limit rule on `POST /api/auth/email-otp/send-verification-otp`, keyed by IP, stops a flood before it reaches a function or the database. It is configuration (`vercel firewall rules add … --action rate_limit`), set looser than the app's own limit so it never fires first for a real customer. The app's limits remain the rule; this is the outer wall.
+- **BotID needs both halves.** The path is listed in `instrumentation-client.ts` and checked on the server, at the same level; a path checked on the server but not listed in the client fails every real visitor. Locally `checkBotId` answers "human".
+- **Secrets are stored as sensitive variables** (`vercel env add … --sensitive`): `RESEND_API_KEY`, and the Stripe, WhatsApp and Better Auth secrets already in the project. A sensitive value cannot be read back from the dashboard.
+- **Work after the response uses `after()`**, which Vercel keeps the function alive for; the mail is sent there.
+
 ### Mail
 - Sent through `lib/email.ts` (Resend). Text and a plain HTML version.
 - With no `RESEND_API_KEY` (local, preview) the code is written to the server log and nothing is mailed. Preview deployments therefore cannot be used to mail codes to strangers.
@@ -135,7 +144,7 @@ about Google.
 | `lib/auth/emailCodeRules.ts` | Pure: may this address be sent a code; may this row sign in by code |
 | `lib/auth/emailCodeHooks.ts` | `hooks.before` for the plugin's routes: allow-list, staff refusal, BotID; the session-create check |
 | `lib/auth/emailCodeMail.ts` | Builds and sends the code mail, or logs it when mail is not configured |
-| `lib/auth.ts` | Wires the plugin, `disabledPaths`, database rate limit, Facebook provider when its keys exist |
+| `lib/auth.ts` | Wires the plugin, `disabledPaths`, database rate limit |
 | `app/[lang]/sign-in/` | `EmailCodeForm.tsx` (address, then code), provider buttons, page copy |
 | `lib/copy/{en,ms,zh}.ts` | New strings and the de-Googled ones |
 | `prisma/schema.prisma` | The rate-limit table. Codes use the existing `Verification` table |
@@ -176,5 +185,5 @@ A staff address sees the same "code sent" screen and never receives one.
 
 ## Out of scope
 
-Passwords, usernames, phone or WhatsApp codes, Apple sign-in, profile fields at
+Passwords, usernames, Facebook, phone or WhatsApp codes, Apple sign-in, profile fields at
 sign-up beyond the name, changing an account's email, staff-entered orders.
