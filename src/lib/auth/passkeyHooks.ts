@@ -5,6 +5,7 @@ import {
 	getSessionFromCtx,
 	isAPIError,
 } from "better-auth/api";
+import { queuePasskeyMail } from "@/lib/auth/passkeyMail";
 import { type PasskeyAction, passkeyDecision } from "@/lib/auth/passkeyRules";
 import { recentStepUp } from "@/lib/auth/stepUp";
 import { prisma } from "@/lib/catalogue/db";
@@ -35,8 +36,9 @@ const refuse = (
 /**
  * Runs before every Better Auth request (`hooks.before` in `lib/auth.ts`)
  * and throws unless `passkeyDecision` allows it. This is the load-bearing
- * guard of the whole feature: without it, whoever holds only the Google
- * account can register their own passkey or delete the real one.
+ * guard of the whole feature: without it, whoever holds only the sign-in
+ * (the Google account, or the mailbox a code goes to) can register their own
+ * passkey or delete the real one.
  *
  * `verifiedAt` is when this session last authenticated with a passkey
  * (`Session.passkeyVerifiedAt`), null if it never has. Every change after
@@ -84,7 +86,7 @@ export async function checkPasskeyRequest(
 
 /**
  * The plugin signs in whoever owns the presented passkey. Here a passkey is
- * a second step for the account already signed in with Google, so a passkey
+ * a second step for the account already signed in, so a passkey
  * that belongs to anyone else is refused — on a shared family device it
  * would otherwise switch the browser to the other person's account.
  */
@@ -154,8 +156,8 @@ export async function passkeyBeforeHook(ctx: HookContext): Promise<void> {
 /**
  * A passkey authentication mints a new session and swaps the cookie to it,
  * leaving the one the request came in with alive in the database. Signing
- * out afterwards would then end only the new one, and the original password
- * or Google session would outlive it. So the old one ends here.
+ * out afterwards would then end only the new one, and the original password,
+ * Google or code session would outlive it. So the old one ends here.
  *
  * Only on positive evidence, like the registration branch: not an API error,
  * and a new session for the same account that is not the old one.
@@ -185,6 +187,14 @@ export async function passkeyAfterHook(ctx: HookContext): Promise<void> {
 	if (ctx.path === "/passkey/verify-authentication") {
 		return endReplacedSession(ctx);
 	}
+	if (ctx.path === "/passkey/delete-passkey") {
+		// The owner is told of every removal — see `passkeyMail.ts`. Only once
+		// the plugin has actually deleted one.
+		if (isAPIError(ctx.context.returned)) return;
+		const owner = await getSessionFromCtx(ctx);
+		if (owner) queuePasskeyMail(owner.user.id, "removed");
+		return;
+	}
 	if (ctx.path !== "/passkey/verify-registration") return;
 	// `instanceof APIError` is not enough: a body that fails validation makes
 	// better-call throw its base APIError, which is not an instance of Better
@@ -202,6 +212,7 @@ export async function passkeyAfterHook(ctx: HookContext): Promise<void> {
 		// Every successful registration, a second device included. Id only: an
 		// enrolment on an account with orders leaves a trace, as a reset does.
 		console.info("Passkey enrolled", { user: current.user.id });
+		queuePasskeyMail(current.user.id, "added");
 	}
 }
 

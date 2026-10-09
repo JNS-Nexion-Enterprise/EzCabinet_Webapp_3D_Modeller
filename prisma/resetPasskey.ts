@@ -1,3 +1,4 @@
+import { sendPasskeyChange } from "@/lib/auth/passkeyMail";
 import { resetPasskeys } from "@/lib/auth/resetPasskeys";
 import { prisma } from "@/lib/catalogue/db";
 
@@ -18,6 +19,11 @@ async function main() {
 	if (!user) throw new Error(`No user with email ${email}`);
 
 	await resetPasskeys(user.id);
+	// Awaited here, unlike in a request: there is no response to send first,
+	// and the process is about to exit. It never throws on a failed send.
+	await sendPasskeyChange(user.id, "reset").catch((error) =>
+		console.error("Passkey mail failed", error),
+	);
 	console.log(
 		`Removed every passkey for ${email} and signed them out. They set up a new one under Security.`,
 	);

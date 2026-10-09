@@ -11,7 +11,7 @@ const ROLE_DESCRIPTIONS: Partial<Record<Role, string>> = {
 };
 
 /** Names are typed by a person and land in HTML. */
-function esc(value: string): string {
+export function esc(value: string): string {
 	return value.replace(
 		/[&<>"']/g,
 		(c) =>
