@@ -5,7 +5,7 @@ import { getAdapter } from "@/lib/logistics/registry";
 import { toJob } from "@/lib/logistics/store";
 import { bookInputSchema, CarrierNotConfigured } from "@/lib/logistics/types";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
-import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
+import { draftsFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 
 export const runtime = "nodejs";
 
@@ -135,8 +135,9 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 							where: { id: orderId },
 							select: NOTIFY_ORDER_SELECT,
 						});
-						return enqueue(tx, [
-							draftFor({
+						return enqueue(
+							tx,
+							draftsFor({
 								kind: "DELIVERY_BOOKED",
 								order,
 								delivery: {
@@ -146,7 +147,7 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 									carrierOrderId: booking.carrierOrderId,
 								},
 							}),
-						]);
+						);
 					});
 					flushSoon(ids);
 				} catch (error) {

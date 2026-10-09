@@ -5,7 +5,7 @@ const updateMany = vi.hoisted(() => vi.fn());
 const findUniqueOrThrow = vi.hoisted(() => vi.fn());
 const enqueue = vi.hoisted(() => vi.fn());
 const flushSoon = vi.hoisted(() => vi.fn());
-const draftFor = vi.hoisted(() => vi.fn());
+const draftsFor = vi.hoisted(() => vi.fn());
 /** What `markRefunded`'s transaction writes through. */
 const tx = vi.hoisted(() => ({ order: {} as Record<string, unknown> }));
 vi.mock("@/lib/catalogue/db", () => {
@@ -19,7 +19,7 @@ vi.mock("@/lib/catalogue/db", () => {
 });
 vi.mock("@/lib/whatsapp/outbox", () => ({ enqueue, flushSoon }));
 vi.mock("@/lib/whatsapp/templates", () => ({
-	draftFor,
+	draftsFor,
 	NOTIFY_ORDER_SELECT: {},
 }));
 
@@ -125,7 +125,7 @@ describe("markRefunded", () => {
 		vi.clearAllMocks();
 		updateMany.mockResolvedValue({ count: 1 });
 		findUniqueOrThrow.mockResolvedValue(order);
-		draftFor.mockReturnValue({ dedupeKey: "order:o1:refunded" });
+		draftsFor.mockReturnValue([{ dedupeKey: "order:o1:refunded" }]);
 		enqueue.mockResolvedValue(["n1"]);
 	});
 
@@ -168,7 +168,7 @@ describe("markRefunded", () => {
 
 	it("queues the customer's message exactly once, in the same transaction", async () => {
 		await markRefunded("o1", { ref: "re_1" });
-		expect(draftFor).toHaveBeenCalledWith({ kind: "ORDER_REFUNDED", order });
+		expect(draftsFor).toHaveBeenCalledWith({ kind: "ORDER_REFUNDED", order });
 		expect(enqueue).toHaveBeenCalledTimes(1);
 		expect(enqueue).toHaveBeenCalledWith(tx, [
 			{ dedupeKey: "order:o1:refunded" },

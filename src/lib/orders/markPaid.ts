@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/catalogue/db";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
-import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
+import { draftsFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 
 /**
  * AWAITING_PAYMENT → PAID, with its WhatsApp message queued in the same
@@ -32,7 +32,7 @@ export async function markOrderPaid(
 			where: { id },
 			select: NOTIFY_ORDER_SELECT,
 		});
-		return enqueue(tx, [draftFor({ kind: "PAYMENT_CONFIRMED", order })]);
+		return enqueue(tx, draftsFor({ kind: "PAYMENT_CONFIRMED", order }));
 	});
 	if (!notificationIds) return false;
 	flushSoon(notificationIds);

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
 	deliveryKindFor,
 	draftFor,
+	draftsFor,
+	emailDraftFor,
 	localeOf,
 	type NotifyOrder,
 	templatePayload,
@@ -18,6 +20,8 @@ const order: NotifyOrder = {
 	totalRm: 12345.5,
 	locale: "ms",
 	whatsappOptIn: true,
+	customerEmail: "aisyah@example.com",
+	user: { email: "account@example.com" },
 };
 const delivery = { id: "del1", publicToken: "tok_delivery" };
 
@@ -36,6 +40,7 @@ describe("draftFor", () => {
 			orderId: "ord1",
 			deliveryId: null,
 			kind: "ORDER_PLACED",
+			channel: "WHATSAPP",
 			stage: null,
 			dedupeKey: "order:ord1:placed",
 			to: "+60123456789",
@@ -210,5 +215,98 @@ describe("payloads", () => {
 	it("localeOf keeps a served locale", () => {
 		expect(localeOf("zh")).toBe("zh");
 		expect(localeOf("")).toBe("en");
+	});
+});
+
+describe("draftsFor", () => {
+	const noWhatsapp = { ...order, whatsappOptIn: false };
+	const channels = (event: Parameters<typeof draftsFor>[0]) =>
+		draftsFor(event)
+			.map((draft) => draft.channel)
+			.sort();
+
+	it.each(["ORDER_PLACED", "PAYMENT_CONFIRMED", "ORDER_REFUNDED"] as const)(
+		"%s goes by email whether or not WhatsApp is on",
+		(kind) => {
+			expect(channels({ kind, order })).toEqual(["EMAIL", "WHATSAPP"]);
+			expect(channels({ kind, order: noWhatsapp })).toEqual(["EMAIL"]);
+		},
+	);
+
+	it("a stage update goes by one channel only", () => {
+		const event = {
+			kind: "STAGE",
+			stage: "CUTTING",
+			stageLabel: "Cutting",
+		} as const;
+		expect(channels({ ...event, order })).toEqual(["WHATSAPP"]);
+		expect(channels({ ...event, order: noWhatsapp })).toEqual(["EMAIL"]);
+	});
+
+	it.each(["PICKED_UP", "DELIVERED", "DELIVERY_FAILED"] as const)(
+		"%s goes by one channel only",
+		(kind) => {
+			expect(channels({ kind, order, delivery })).toEqual(["WHATSAPP"]);
+			expect(channels({ kind, order: noWhatsapp, delivery })).toEqual([
+				"EMAIL",
+			]);
+		},
+	);
+
+	it("delivery booked goes by one channel only", () => {
+		const booked = {
+			kind: "DELIVERY_BOOKED",
+			delivery: { ...delivery, carrierId: "lalamove", carrierOrderId: "LM1" },
+		} as const;
+		expect(channels({ ...booked, order })).toEqual(["WHATSAPP"]);
+		expect(channels({ ...booked, order: noWhatsapp })).toEqual(["EMAIL"]);
+	});
+
+	it("the two channels never share a dedupe key", () => {
+		const [a, b] = draftsFor({ kind: "ORDER_PLACED", order });
+		expect(a.dedupeKey).not.toBe(b.dedupeKey);
+	});
+});
+
+describe("emailDraftFor", () => {
+	it("goes to the address typed at checkout", () => {
+		expect(emailDraftFor({ kind: "ORDER_PLACED", order })).toMatchObject({
+			channel: "EMAIL",
+			to: "aisyah@example.com",
+			dedupeKey: "order:ord1:placed:email",
+			orderId: "ord1",
+			kind: "ORDER_PLACED",
+			locale: "ms",
+		});
+	});
+
+	it("falls back to the account's address", () => {
+		expect(
+			emailDraftFor({
+				kind: "ORDER_PLACED",
+				order: { ...order, customerEmail: null },
+			})?.to,
+		).toBe("account@example.com");
+	});
+
+	it("keeps the delivery and the stage on the row", () => {
+		expect(
+			emailDraftFor({
+				kind: "DELIVERED",
+				order: { ...order, whatsappOptIn: false },
+				delivery,
+			}),
+		).toMatchObject({
+			deliveryId: "del1",
+			dedupeKey: "delivery:del1:DELIVERED:email",
+		});
+		expect(
+			emailDraftFor({
+				kind: "STAGE",
+				order: { ...order, whatsappOptIn: false },
+				stage: "CUTTING",
+				stageLabel: "Cutting",
+			}),
+		).toMatchObject({ stage: "CUTTING" });
 	});
 });

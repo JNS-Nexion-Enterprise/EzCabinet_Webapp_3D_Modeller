@@ -19,7 +19,7 @@ import { TERMS_VERSION } from "@/lib/orders/terms";
 import { validateOrder } from "@/lib/orders/validate";
 import { startPayment } from "@/lib/payments/start";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
-import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
+import { draftsFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 
 export const runtime = "nodejs";
 
@@ -135,9 +135,10 @@ export async function POST(request: Request) {
 			},
 			select: NOTIFY_ORDER_SELECT,
 		});
-		const notificationIds = await enqueue(tx, [
-			draftFor({ kind: "ORDER_PLACED", order }),
-		]);
+		const notificationIds = await enqueue(
+			tx,
+			draftsFor({ kind: "ORDER_PLACED", order }),
+		);
 		return { order, notificationIds };
 	});
 	flushSoon(notificationIds);
