@@ -18,7 +18,8 @@ design keeps all three properties.
 | --- | --- |
 | How does a non-Google customer prove who they are? | A six-digit code mailed to their address. No password, ever |
 | Same email through two routes? | One account. Linked only when both sides proved the address |
-| What is asked at sign-up? | The email address only. Name, phone and address stay at checkout |
+| What is asked at sign-up? | The email address, then the customer's name once the code is accepted. Phone and address stay at checkout |
+| A unique username? | No. A name labels the account and prefills checkout; a handle would add an "already taken" answer that reveals accounts, and nothing would use it |
 | Facebook? | Built, hidden until its keys exist (needs EzCabinet's Meta business verification) |
 | Passwords, phone codes, Apple sign-in | Out of scope |
 
@@ -31,9 +32,10 @@ Aiman has `aiman@outlook.com` and no Google account.
 3. He types his address and presses **Continue**. The page says a code was sent.
 4. He reads the code in his mailbox and types it into the same tab. He is signed in.
 5. First time only, an account is created: role `CUSTOMER`, `emailVerified: true`.
-6. He meets the existing passkey step (`/[lang]/verify`) and sets one up.
-7. He returns to the quote, fills in contact and delivery details, and pays.
-8. Next visit: email, code, passkey prompt.
+6. First time only, he is asked for his name (`/[lang]/welcome`), one required field. A returning customer never sees it.
+7. He meets the existing passkey step (`/[lang]/verify`) and sets one up.
+8. He returns to the quote, where his name is already filled in, adds phone and delivery details, and pays.
+9. Next visit: email, code, passkey prompt.
 
 A code, not a link: a link opens in the mail app's in-app browser, where the
 saved design is absent and passkeys do not work (known issue 15).
@@ -44,6 +46,14 @@ saved design is absent and passkeys do not work (known issue 15).
 - A code sign-in can only ever create or open a `CUSTOMER` row. `role` stays `input: false`; `/sign-up/email` stays in `disabledPaths`.
 - One email is one account. Google and Facebook link to an existing row only when the provider reports the email as verified. A Facebook account with no email is told to use the email route.
 - The passkey rules are unchanged and apply to every route in. `needsPasskeyCheck` does not learn about sign-in methods.
+
+### The name
+- Asked after the code, never on the first screen: that screen serves new and returning customers alike, and a name field shown only to new ones would reveal which addresses have accounts.
+- Required. A nameless account would be labelled with a random id in the phone's passkey prompt.
+- A row owes the step while it has no name. `viewerOf` sends such a customer to `/[lang]/welcome` before the passkey step, and `POST /api/orders` refuses it, so the step cannot be skipped by URL. Google and Facebook customers arrive with a name and never owe it.
+- Its own route, `POST /api/account/name`: signed-in customer only, updates that account's own `name` and nothing else. Zod: trimmed, 2 to 80 characters, no control or direction-override characters, and not a name that poses as the business ("EzCabinet", "admin", "support"). The sign-in request itself stays held to `email` and `otp`.
+- Not unique, not a credential, never used to identify a caller. It labels the account, appears in the account menu and on staff screens beside the email, and prefills the checkout name field.
+- Any mail that includes it escapes it, as the staff invite mail does.
 
 ### The code
 - Six digits, valid 10 minutes, three wrong attempts end it, single use, stored hashed (`storeOTP: "hashed"`).
@@ -115,6 +125,9 @@ about Google.
 | `app/[lang]/sign-in/` | `EmailCodeForm.tsx` (address, then code), provider buttons, page copy |
 | `lib/copy/{en,ms,zh}.ts` | New strings and the de-Googled ones |
 | `prisma/schema.prisma` | The rate-limit table. Codes use the existing `Verification` table |
+| `lib/auth/customerName.ts` | Pure: the name schema, and whether a row still owes its name |
+| `app/api/account/name/route.ts` | Sets the signed-in customer's own name |
+| `app/[lang]/welcome/` | The one-field name step |
 | `app/api/admin/users/route.ts` | Promotion sets an invite password when the row has no Google account |
 
 ## Errors the customer can see
@@ -123,6 +136,8 @@ about Google.
 - Expired or used up: "That code has expired. Send a new one."
 - Too many requests: "Too many codes requested. Try again in an hour."
 - Mail not received: a "Send a new code" action, available after 30 seconds.
+- Name missing or too short: "Enter your name."
+- Name refused: "Use your own name."
 
 A staff address sees the same "code sent" screen and never receives one.
 
@@ -139,10 +154,11 @@ A staff address sees the same "code sent" screen and never receives one.
 - Hooks driven through the real plugin on Better Auth's in-memory adapter, in the style of `passkeyWiring.test.ts`: a new address creates a `CUSTOMER`; a staff address is sent nothing and cannot sign in with a planted code; each closed route answers 404 or 403; an unknown route is refused; wrong, expired and reused codes; the attempt limit; identical responses across address kinds.
 - Account linking: a verified provider email joins the existing row; an unverified one is refused.
 - Promotion of a code-only customer sets an invite password.
+- The name: the schema's table (too short, too long, control characters, a business-posing name, surrounding spaces trimmed); the route refuses a signed-out caller and a staff caller and writes only `name`; a nameless customer is sent to the name step before the passkey step and cannot place an order; a customer who has a name never sees it.
 - A copy test that fails if a customer string outside the provider buttons names Google.
 - By hand: the whole journey with a real Outlook address once mail is configured; iOS Safari and Android Chrome.
 
 ## Out of scope
 
-Passwords, phone or WhatsApp codes, Apple sign-in, profile fields at sign-up,
-changing an account's email, staff-entered orders.
+Passwords, usernames, phone or WhatsApp codes, Apple sign-in, profile fields at
+sign-up beyond the name, changing an account's email, staff-entered orders.
