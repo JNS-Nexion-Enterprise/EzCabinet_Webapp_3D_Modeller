@@ -1,10 +1,11 @@
 /**
  * The customer's work-in-progress design, kept in the browser.
  *
- * Signing in navigates away from the page — Google's redirect takes the whole
- * document, and with it the R3F scene and every piece of React state. So the
- * layout is written down on every change rather than at the moment we happen
- * to ask for an account. That also survives a refresh, a crash and a closed
+ * Signing in navigates away from the page — to the sign-in page, and from
+ * there perhaps to a provider — which takes the whole document, and with it
+ * the R3F scene and every piece of React state. So the layout is written
+ * down on every change rather than at the moment we happen to ask for an
+ * account. That also survives a refresh, a crash and a closed
  * tab, which no amount of prompting earlier would have.
  *
  * Deliberately NOT in `lib/planner`: that folder is the pure engine Phase 4

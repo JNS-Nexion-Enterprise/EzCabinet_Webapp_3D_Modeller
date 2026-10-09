@@ -44,7 +44,7 @@ export default async function SignInPage({
 				<GoogleSignInButton
 					callbackURL={next || `/${lang}`}
 					label={s.continueWithGoogle}
-					errorMessage={s.error}
+					errorMessage={s.googleError}
 				/>
 				<p className="text-center text-[12px] text-neutral-500 leading-[17px]">
 					{s.privacyNote}{" "}

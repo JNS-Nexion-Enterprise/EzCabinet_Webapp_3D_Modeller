@@ -3,7 +3,6 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { GoogleSignInButton } from "@/app/[lang]/sign-in/GoogleSignInButton";
 import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
@@ -135,10 +134,12 @@ export function QuoteScreen({
 	// False only on a local run with AUTH_ENABLED off, where a signed-out
 	// order goes to the demo customer and the sign-in card would be a lie.
 	const [signInRequired, setSignInRequired] = useState(true);
-	// True for a customer signed in with Google who still owes the passkey
+	// True for a customer signed-in customer who still owes the passkey
 	// step. Like the sign-in card, it replaces the form rather than following
 	// a failed Pay, so nothing they typed is thrown away by the detour.
 	const [passkeyRequired, setPasskeyRequired] = useState(false);
+	// The same for a code customer who has not given a name, asked for first.
+	const [nameRequired, setNameRequired] = useState(false);
 	useEffect(() => {
 		fetch("/api/payments/config")
 			.then((res) => res.json())
@@ -147,10 +148,12 @@ export function QuoteScreen({
 					client: PaymentClient | null;
 					signIn?: boolean;
 					passkeyRequired?: boolean;
+					nameRequired?: boolean;
 				}) => {
 					setPayClient(json.client);
 					setSignInRequired(json.signIn !== false);
 					setPasskeyRequired(json.passkeyRequired === true);
+					setNameRequired(json.nameRequired === true);
 				},
 			)
 			.catch(() => setPayClient(null));
@@ -166,7 +169,7 @@ export function QuoteScreen({
 		payment: PaymentStart | null;
 	} | null>(null);
 
-	// The person paying is not always the person whose Google account it is,
+	// The person paying is not always the person whose account it is,
 	// so this only pre-fills the fields — both stay editable.
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [name, setName] = useState("");
@@ -267,6 +270,13 @@ export function QuoteScreen({
 				);
 				return;
 			}
+			if (res?.status === 401 && body?.error === "name_required") {
+				// Backstop only, like the passkey one below.
+				router.push(
+					`/${locale}/welcome?next=${encodeURIComponent(quoteUrl())}`,
+				);
+				return;
+			}
 			if (res?.status === 401 && body?.error === "passkey_required") {
 				// Backstop only: the passkey card normally replaces the form, so
 				// this fires only if it was bypassed (config fetch failed, or the
@@ -342,7 +352,9 @@ export function QuoteScreen({
 	// Unknown until both the session and the checkout config have answered.
 	const authPending = sessionPending || payClient === undefined;
 	const signedOut = !authPending && signInRequired && !session?.user;
-	const needsPasskey = !authPending && passkeyRequired;
+	const needsName = !authPending && nameRequired;
+	// One card at a time: the name step leads on to the passkey step itself.
+	const needsPasskey = !authPending && passkeyRequired && !nameRequired;
 	const clearError = (key: keyof FieldErrors) =>
 		setFieldErrors((current) =>
 			current[key] ? { ...current, [key]: undefined } : current,
@@ -402,7 +414,7 @@ export function QuoteScreen({
 
 						{signedOut && (
 							// Before the form, not after it: the old stop was a 401 on
-							// Pay, which sent a customer to Google with every field
+							// Pay, which sent a customer off to sign in with every field
 							// they had just typed thrown away.
 							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
 								<div>
@@ -413,11 +425,30 @@ export function QuoteScreen({
 										{t.quote.signInBody}
 									</p>
 								</div>
-								<GoogleSignInButton
-									callbackURL={quoteUrl()}
-									label={t.signIn.continueWithGoogle}
-									errorMessage={t.signIn.error}
-								/>
+								<a
+									href={`/${locale}/sign-in?next=${encodeURIComponent(quoteUrl())}`}
+									className="flex items-center justify-center rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white"
+								>
+									{t.signIn.signInOrCreate}
+								</a>
+							</div>
+						)}
+						{needsName && (
+							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
+								<div>
+									<p className="font-semibold text-[15px]">
+										{t.welcome.checkoutHeading}
+									</p>
+									<p className="mt-1 text-[#5c574e] text-[13px] leading-[18px]">
+										{t.welcome.checkoutBody}
+									</p>
+								</div>
+								<a
+									href={`/${locale}/welcome?next=${encodeURIComponent(quoteUrl())}`}
+									className="flex items-center justify-center rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white"
+								>
+									{t.welcome.checkoutButton}
+								</a>
 							</div>
 						)}
 						{needsPasskey && (
@@ -440,7 +471,7 @@ export function QuoteScreen({
 						)}
 						<form
 							noValidate
-							hidden={authPending || signedOut || needsPasskey}
+							hidden={authPending || signedOut || needsName || needsPasskey}
 							className="flex max-w-[480px] flex-col gap-7"
 							aria-describedby={error ? "order-error" : undefined}
 							onChange={(e) =>

@@ -279,7 +279,10 @@ export function UsersTable({
 					<span />
 				</div>
 				<ul>
-					{shown.map((user) => {
+					{shown.map((row) => {
+						// A code customer who left before the name step has none;
+						// the address labels the row and its dialogs instead.
+						const user = { ...row, name: row.name || row.email };
 						const isSelf = user.id === selfId;
 						return (
 							<li

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { en } from "../en";
 import { LOCALES } from "../locales";
@@ -25,6 +26,13 @@ const SHARED = new Set([
 	// "Unit" is the Malay word too, and a count of one takes no plural.
 	"orders.unitsOne",
 ]);
+
+/** The only strings that may name a sign-in provider: its button, its error. */
+const PROVIDER_KEYS = new Set([
+	"signIn.continueWithGoogle",
+	"signIn.googleError",
+]);
+const PROVIDER_NAME = /google|谷歌/i;
 
 describe("dictionaries", () => {
 	it("serves exactly the three locales", () => {
@@ -56,5 +64,43 @@ describe("dictionaries", () => {
 				expect(at(dict, path).trim()).not.toBe("");
 			}
 		}
+	});
+
+	// A customer can sign in with any email, so nothing outside a provider's
+	// own button may read as if Google were the only way in.
+	it.each([
+		["en", en],
+		["zh", zh],
+		["ms", ms],
+	])(
+		"%s names a sign-in provider only on its own button and error",
+		(_name, dict) => {
+			const naming = paths(dict).filter(
+				(p) => !PROVIDER_KEYS.has(p) && PROVIDER_NAME.test(at(dict, p)),
+			);
+			expect(naming).toEqual([]);
+		},
+	);
+
+	// A customer who mistyped can only notice if the address is shown back.
+	it.each([
+		["en", en],
+		["zh", zh],
+		["ms", ms],
+	])(
+		"%s shows the address a code went to, and the resend countdown",
+		(_name, dict) => {
+			expect(dict.signIn.codeSent).toContain("{email}");
+			expect(dict.signIn.resendIn).toContain("{seconds}");
+		},
+	);
+
+	it("names no provider on the page a wrong-account link lands on", () => {
+		// Its strings are inline, not in the dictionary — see the file's comment.
+		const notFound = readFileSync(
+			new URL("../../../app/[lang]/not-found.tsx", import.meta.url),
+			"utf8",
+		);
+		expect(notFound).not.toMatch(PROVIDER_NAME);
 	});
 });

@@ -603,16 +603,16 @@ export const ms: Dictionary = {
 			"Jika anda menanda kotak semasa pembayaran, kami akan menghantar kemas kini tentang pesanan anda — bayaran, langkah pengeluaran dan penghantaran — ke nombor telefon anda melalui WhatsApp. WhatsApp dikendalikan oleh Meta Platforms, yang memproses nombor anda dan mesej ini, mungkin di luar Malaysia. Kami tidak menghantar apa-apa lagi, dan anda boleh menghentikan kemas kini dengan menyekat nombor tersebut.",
 		accountHeading: "Akaun anda",
 		account:
-			"Apabila anda log masuk dengan Google, kami menerima nama, alamat e-mel dan foto profil anda, dan menyimpannya sebagai akaun anda.",
+			"Apabila anda log masuk melalui penyedia log masuk, kami menerima nama, alamat e-mel dan foto profil anda daripadanya. Apabila anda log masuk dengan kod yang dihantar melalui e-mel, kami menerima alamat e-mel anda, dan kami meminta nama anda pada kali pertama. Kami menyimpannya sebagai akaun anda.",
 		ordersHeading: "Pesanan anda",
 		orders:
 			"Apabila anda membuat pesanan, kami menyimpan nama, nombor telefon, e-mel, alamat penghantaran, reka bentuk yang dipesan dan harganya sebagai rekod jualan.",
 		recipientsHeading: "Siapa lagi yang menerima data anda",
 		recipients:
-			"Pemproses pembayaran kami menerima butiran kad dan bil anda — butiran ini tidak sampai ke pelayan kami. Syarikat kurier yang menghantar pesanan anda menerima nama, nombor telefon dan alamat anda. Google mengendalikan log masuk. Mux menstrim video tutorial kami dan oleh itu melihat alamat IP penonton. Sebahagian syarikat ini memproses data di luar Malaysia.",
+			"Pemproses pembayaran kami menerima butiran kad dan bil anda — butiran ini tidak sampai ke pelayan kami. Syarikat kurier yang menghantar pesanan anda menerima nama, nombor telefon dan alamat anda. Penyedia log masuk yang anda pilih mengendalikan log masuk anda, dan perkhidmatan e-mel kami menghantar kod log masuk ke alamat anda. Mux menstrim video tutorial kami dan oleh itu melihat alamat IP penonton. Sebahagian syarikat ini memproses data di luar Malaysia.",
 		obligatoryHeading: "Apa yang anda mesti berikan",
 		obligatory:
-			"Semua ini datang terus daripada anda, atau daripada Google apabila anda log masuk. Melayari dan merancang tidak memerlukan apa-apa data. Untuk membuat pesanan, anda mesti memberikan nama, nombor telefon dan alamat penghantaran — tanpanya kami tidak dapat menghantar pesanan. E-mel dan kemas kini WhatsApp adalah pilihan.",
+			"Semua ini datang terus daripada anda, atau daripada penyedia log masuk yang anda pilih. Melayari dan merancang tidak memerlukan apa-apa data. Untuk membuat pesanan, anda mesti memberikan nama, nombor telefon dan alamat penghantaran — tanpanya kami tidak dapat menghantar pesanan. E-mel dan kemas kini WhatsApp adalah pilihan.",
 		retentionHeading: "Tempoh simpanan",
 		retention:
 			"Rekod pesanan disimpan selama yang dikehendaki oleh undang-undang cukai dan perakaunan. Akaun tanpa pesanan disimpan sehingga anda meminta kami memadamnya.",
@@ -718,13 +718,44 @@ export const ms: Dictionary = {
 	},
 	signIn: {
 		heading: "Log masuk",
-		body: "Simpan reka bentuk anda dan jejaki pesanan anda.",
+		body: "Simpan reka bentuk anda dan jejaki pesanan anda. Mana-mana alamat e-mel boleh digunakan.",
 		continueWithGoogle: "Teruskan dengan Google",
-		error: "Tidak dapat membuka log masuk Google. Cuba lagi",
+		googleError: "Tidak dapat membuka log masuk Google. Cuba lagi",
+		orEmail: "atau teruskan dengan e-mel",
+		emailLabel: "Alamat e-mel",
+		continueEmail: "Teruskan",
+		codeLabel: "Kod",
+		submitCode: "Sahkan kod",
+		resend: "Hantar kod baharu",
+		resendIn: "Hantar kod baharu dalam {seconds}s",
+		changeEmail: "Guna e-mel lain",
+		emailInvalid: "Masukkan alamat e-mel yang sah.",
+		codeSent:
+			"Kami telah menghantar kod 6 digit ke {email}. Kod ini sah selama 10 minit.",
+		codeHint:
+			"Belum terima? Semak folder spam anda, dan pastikan alamat di atas betul.",
+		wrongCode: "Kod itu tidak betul. Semak dan cuba lagi.",
+		codeExpired: "Kod itu telah tamat tempoh. Hantar kod baharu.",
+		tooMany: "Terlalu banyak kod diminta. Cuba lagi dalam masa sejam.",
+		failed: "Ada sesuatu yang tidak kena. Cuba lagi.",
+		signInOrCreate: "Log masuk atau cipta akaun",
 		nudge: "Disimpan pada peranti ini. Log masuk untuk membuat pesanan.",
 		nudgeDismiss: "Bukan sekarang",
 		back: "Kembali ke laman utama",
 		privacyNote: "Dengan meneruskan, anda bersetuju dengan",
+	},
+	welcome: {
+		heading: "Apakah nama anda?",
+		body: "Nama anda dipaparkan pada akaun dan pesanan anda. Anda boleh menggunakan nama lain untuk penghantaran semasa membuat pesanan.",
+		nameLabel: "Nama anda",
+		submit: "Teruskan",
+		nameRequired: "Masukkan nama anda.",
+		nameRefused: "Gunakan nama anda sendiri.",
+		failed: "Ada sesuatu yang tidak kena. Cuba lagi.",
+		checkoutHeading: "Satu langkah lagi sebelum membayar",
+		checkoutBody:
+			"Beritahu kami nama anda. Ia hanya mengambil beberapa saat dan reka bentuk anda kekal seperti sedia ada.",
+		checkoutButton: "Teruskan",
 	},
 	passkey: {
 		heading: "Satu langkah lagi",
@@ -738,7 +769,7 @@ export const ms: Dictionary = {
 		failedHint: "Jika ini berulang, buka halaman ini dalam Chrome atau Safari",
 		wrongAccount: "Kunci laluan itu milik akaun lain",
 		sessionStale:
-			"Demi keselamatan anda, log masuk semula dengan Google untuk menyediakan kunci laluan",
+			"Demi keselamatan anda, log masuk semula untuk menyediakan kunci laluan",
 		signInAgain: "Log masuk semula",
 		unsupported:
 			"Pelayar ini tidak menyokong kunci laluan. Buka halaman ini dalam Chrome atau Safari.",

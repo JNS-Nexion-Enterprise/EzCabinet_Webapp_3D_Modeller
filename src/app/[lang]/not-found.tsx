@@ -9,7 +9,7 @@ import { isLocale, type Locale } from "@/lib/copy/locales";
  * no props, and three dictionaries is the wrong trade for four strings.
  *
  * The body names the likeliest cause. An order or tracking link opened under
- * a different Google account is deliberately the same 404 as a made-up one,
+ * a different account is deliberately the same 404 as a made-up one,
  * so this is the only place a customer can be told to check the account.
  */
 const COPY: Record<
@@ -18,19 +18,19 @@ const COPY: Record<
 > = {
 	en: {
 		title: "We can't find that page",
-		body: "If this is an order or tracking link, check you're signed in with the Google account that placed the order.",
+		body: "If this is an order or tracking link, check you're signed in to the account that placed the order.",
 		orders: "My orders",
 		home: "Back to home",
 	},
 	zh: {
 		title: "找不到该页面",
-		body: "如果这是订单或物流追踪链接，请确认您登录的是下单时使用的 Google 账户。",
+		body: "如果这是订单或物流追踪链接，请确认您登录的是下单时使用的账户。",
 		orders: "我的订单",
 		home: "返回首页",
 	},
 	ms: {
 		title: "Halaman itu tidak ditemui",
-		body: "Jika ini pautan pesanan atau penjejakan, pastikan anda log masuk dengan akaun Google yang membuat pesanan itu.",
+		body: "Jika ini pautan pesanan atau penjejakan, pastikan anda log masuk ke akaun yang membuat pesanan itu.",
 		orders: "Pesanan saya",
 		home: "Kembali ke laman utama",
 	},
