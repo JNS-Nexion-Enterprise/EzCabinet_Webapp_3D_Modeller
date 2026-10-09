@@ -542,6 +542,22 @@ model Verification {
   @@map("verification")
 }
 
+/// Request counters. Better Auth's rate limiter writes one row per network
+/// and route (`rateLimit.storage: "database"`), keyed `<ip>|<path>`; the
+/// per-address cap on sign-in codes keeps its own rows here, keyed
+/// `email-code|<address>` (`lib/auth/emailCodeMail.ts`). Columns are Better
+/// Auth's (node_modules/@better-auth/core/dist/db/get-tables.mjs).
+/// `lastRequest` is epoch milliseconds. Rows are pruned by the limiter; none
+/// of this is a record of anything.
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+
+  @@map("rateLimit")
+}
+
 /// Better Auth's two-factor plugin. `secret` and `backupCodes` are encrypted
 /// with BETTER_AUTH_SECRET. Columns are the plugin's own
 /// (node_modules/better-auth/dist/plugins/two-factor/schema.mjs).

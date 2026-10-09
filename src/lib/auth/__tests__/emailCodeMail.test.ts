@@ -1,0 +1,132 @@
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const findUnique = vi.hoisted(() => vi.fn());
+const limitDelete = vi.hoisted(() => vi.fn());
+const upsert = vi.hoisted(() => vi.fn());
+const codeDelete = vi.hoisted(() => vi.fn());
+const sendEmail = vi.hoisted(() =>
+	vi.fn(
+		async (_m: { to: string; subject: string; text: string; html?: string }) =>
+			true,
+	),
+);
+
+vi.mock("@/lib/catalogue/db", () => ({
+	prisma: {
+		user: { findUnique },
+		rateLimit: { deleteMany: limitDelete, upsert },
+		verification: { deleteMany: codeDelete },
+	},
+}));
+vi.mock("@/lib/email", () => ({ sendEmail }));
+
+const { sendSignInCode } = await import("@/lib/auth/emailCodeMail");
+
+const logs = () =>
+	[console.info, console.log, console.warn, console.error]
+		.flatMap((fn) => vi.mocked(fn).mock.calls)
+		.flat()
+		.map(String)
+		.join("\n");
+
+beforeEach(() => {
+	vi.clearAllMocks();
+	findUnique.mockResolvedValue(null);
+	upsert.mockResolvedValue({ count: 1 });
+	for (const level of ["info", "log", "warn", "error"] as const) {
+		vi.spyOn(console, level).mockImplementation(() => {});
+	}
+	process.env.RESEND_API_KEY = "test-key";
+});
+
+afterEach(() => {
+	delete process.env.RESEND_API_KEY;
+	vi.restoreAllMocks();
+});
+
+describe("sendSignInCode", () => {
+	it("mails the code, the site name and the ignore line, with no link", async () => {
+		await sendSignInCode("aiman@outlook.com", "482913");
+		const message = sendEmail.mock.calls[0][0];
+		expect(message.to).toBe("aiman@outlook.com");
+		for (const part of [message.text, message.html ?? ""]) {
+			expect(part).toContain("482913");
+			expect(part).toContain("EzCabinet");
+			expect(part).toContain("If you did not ask for this, ignore this email.");
+			// A scanner that follows links must find nothing to follow.
+			expect(part).not.toMatch(/https?:|href|www\./i);
+		}
+		expect(message.subject).not.toContain("482913");
+	});
+
+	it("never logs the code when mail is configured", async () => {
+		await sendSignInCode("aiman@outlook.com", "482913");
+		sendEmail.mockResolvedValueOnce(false);
+		await sendSignInCode("aiman@outlook.com", "482913");
+		expect(logs()).not.toContain("482913");
+	});
+
+	it("logs the code instead of mailing when there is no mail key", async () => {
+		delete process.env.RESEND_API_KEY;
+		await sendSignInCode("aiman@outlook.com", "482913");
+		expect(sendEmail).not.toHaveBeenCalled();
+		expect(logs()).toContain("482913");
+	});
+
+	it.each(["ADMIN", "SUPERADMIN"])(
+		"sends a %s nothing, logs nothing, and drops the stored code",
+		async (role) => {
+			delete process.env.RESEND_API_KEY;
+			findUnique.mockResolvedValue({ role });
+			await sendSignInCode("boss@x.com", "482913");
+			expect(sendEmail).not.toHaveBeenCalled();
+			expect(logs()).not.toContain("482913");
+			expect(upsert).not.toHaveBeenCalled();
+			expect(codeDelete).toHaveBeenCalledWith({
+				where: { identifier: "sign-in-otp-boss@x.com" },
+			});
+		},
+	);
+
+	it("mails a known customer", async () => {
+		findUnique.mockResolvedValue({ role: "CUSTOMER" });
+		await sendSignInCode("cust@x.com", "482913");
+		expect(sendEmail).toHaveBeenCalledTimes(1);
+		expect(codeDelete).not.toHaveBeenCalled();
+	});
+
+	it("counts each send against the address, in an hour's window", async () => {
+		vi.useFakeTimers({ now: new Date("2026-10-08T02:00:00Z") });
+		await sendSignInCode("aiman@outlook.com", "482913");
+		vi.useRealTimers();
+		const now = Date.parse("2026-10-08T02:00:00Z");
+		expect(limitDelete).toHaveBeenCalledWith({
+			where: {
+				key: "email-code|aiman@outlook.com",
+				lastRequest: { lt: now - 3_600_000 },
+			},
+		});
+		expect(upsert.mock.calls[0][0]).toMatchObject({
+			where: { key: "email-code|aiman@outlook.com" },
+			create: {
+				key: "email-code|aiman@outlook.com",
+				count: 1,
+				lastRequest: now,
+			},
+			update: { count: { increment: 1 } },
+		});
+	});
+
+	it("mails the third code of the hour and drops the fourth", async () => {
+		upsert.mockResolvedValueOnce({ count: 3 });
+		await sendSignInCode("aiman@outlook.com", "111111");
+		expect(sendEmail).toHaveBeenCalledTimes(1);
+
+		upsert.mockResolvedValueOnce({ count: 4 });
+		await sendSignInCode("aiman@outlook.com", "222222");
+		expect(sendEmail).toHaveBeenCalledTimes(1);
+		expect(codeDelete).toHaveBeenCalledWith({
+			where: { identifier: "sign-in-otp-aiman@outlook.com" },
+		});
+	});
+});
