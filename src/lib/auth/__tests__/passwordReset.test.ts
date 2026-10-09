@@ -25,6 +25,7 @@ const { sendStaffReset, afterPasswordReset, resetLink } = await import(
 
 const staff = {
 	email: "a@b.com",
+	name: "Ali",
 	role: "ADMIN",
 	disabled: false,
 	twoFactorEnabled: true,
