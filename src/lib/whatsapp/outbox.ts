@@ -4,6 +4,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/catalogue/db";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
+import { emailConfigured } from "@/lib/email";
+import { sendOrderEmail } from "@/lib/email/orderMail";
 import { nextState, sendMessage, whatsappConfigured } from "./send";
 import {
 	localeOf,
@@ -14,7 +16,7 @@ import {
 } from "./templates";
 
 /**
- * The WhatsApp outbox.
+ * The notification outbox: WhatsApp messages and order emails.
  *
  * A trigger calls `enqueue` inside the transaction that changes the state it
  * reports, so "the order is paid" and "the customer must be told" commit
@@ -60,47 +62,98 @@ export async function enqueue(
  * Each row is claimed by bumping `attempts` conditionally before it is sent,
  * so the post-response flush and a cron run cannot both send it. The cron's
  * one-minute settle keeps it off rows a request is still flushing.
+ *
+ * A channel that is not configured is not looked at: its rows wait, unclaimed
+ * and unexpired, until it is. Local dev and preview have neither.
  */
 export async function flush(
 	ids?: string[],
 ): Promise<{ sent: number; failed: number }> {
-	if (!whatsappConfigured()) {
-		// Local dev and preview: rows wait indefinitely — the 48 h expiry sweep
-		// below never runs while the token is unset, so nothing is marked failed
-		// until a token is present and a flush actually happens. Never a throw —
-		// a missing token must not break checkout.
-		if (ids?.length) console.warn("WHATSAPP_TOKEN unset; message left pending");
+	// Order mail links back to the site; the cron has no request to read an
+	// origin from, so without this there is nothing to link to.
+	const base = process.env.BETTER_AUTH_URL;
+	const channels = [
+		...(whatsappConfigured() ? (["WHATSAPP"] as const) : []),
+		...(emailConfigured() && base ? (["EMAIL"] as const) : []),
+	];
+	if (channels.length === 0) {
+		// Never a throw — a missing token must not break checkout.
+		if (ids?.length) console.warn("No channel configured; left pending");
 		return { sent: 0, failed: 0 };
 	}
 
 	const now = Date.now();
 	await prisma.notification.updateMany({
-		where: { status: "PENDING", queuedAt: { lt: new Date(now - EXPIRE_MS) } },
+		where: {
+			status: "PENDING",
+			channel: { in: channels },
+			queuedAt: { lt: new Date(now - EXPIRE_MS) },
+		},
 		data: { status: "FAILED", lastError: "expired" },
 	});
 
 	const rows = await prisma.notification.findMany({
-		where: ids
-			? { id: { in: ids }, status: "PENDING" }
-			: { status: "PENDING", updatedAt: { lt: new Date(now - SETTLE_MS) } },
+		where: {
+			channel: { in: channels },
+			...(ids
+				? { id: { in: ids }, status: "PENDING" }
+				: { status: "PENDING", updatedAt: { lt: new Date(now - SETTLE_MS) } }),
+		},
 		orderBy: { queuedAt: "asc" },
 		take: MAX_PER_RUN,
 	});
 
 	let sent = 0;
 	let failed = 0;
+	// Set by a dead WhatsApp token: every later WhatsApp row would be refused
+	// the same way, so they are left unclaimed. Email rows still go.
+	let whatsappBlocked = false;
 	// ponytail: a send that succeeds and is then followed by a failed DB update
 	// (the `notification.update` below) leaves the row PENDING with `attempts`
 	// already bumped, so the next flush re-sends it — at-least-once, not
-	// exactly-once. Fine for a template message; upgrade to a two-phase claim
-	// (mark SENDING before the API call, verify before re-sending) if a
-	// duplicate WhatsApp message ever matters.
+	// exactly-once. Fine for a template message or a receipt; upgrade to a
+	// two-phase claim (mark SENDING before the API call, verify before
+	// re-sending) if a duplicate ever matters.
 	for (const row of rows) {
+		if (row.channel === "WHATSAPP" && whatsappBlocked) continue;
 		const claimed = await prisma.notification.updateMany({
 			where: { id: row.id, status: "PENDING", attempts: row.attempts },
 			data: { attempts: { increment: 1 } },
 		});
 		if (claimed.count === 0) continue;
+
+		if (row.channel === "EMAIL") {
+			// `sendEmail` never throws, but loading the order can.
+			const error = await sendOrderEmail(row, base as string).then(
+				(ok) => (ok ? null : "email not sent"),
+				(cause: Error) => cause.message,
+			);
+			await prisma.notification.update({
+				where: { id: row.id },
+				data:
+					error === null
+						? { status: "SENT", sentAt: new Date(), lastError: null }
+						: nextState(
+								{ ok: false, retryable: true, error },
+								row.attempts + 1,
+								new Date(),
+							),
+			});
+			if (error === null) {
+				sent++;
+			} else {
+				failed++;
+				console.error(
+					JSON.stringify({
+						type: "EMAIL_SEND_FAILED",
+						notificationId: row.id,
+						kind: row.kind,
+						message: error,
+					}),
+				);
+			}
+			continue;
+		}
 
 		const result = await sendMessage(
 			templatePayload(
@@ -120,15 +173,16 @@ export async function flush(
 		}
 		failed++;
 		if (result.blocked) {
-			// Every row behind this one would be refused the same way. They stay
-			// pending and go out on the first run after the token is replaced.
+			// They stay pending and go out on the first run after the token is
+			// replaced.
 			console.error(
 				JSON.stringify({
 					type: "WHATSAPP_TOKEN_INVALID",
 					message: result.error,
 				}),
 			);
-			break;
+			whatsappBlocked = true;
+			continue;
 		}
 		console.error(
 			JSON.stringify({

@@ -10,6 +10,10 @@ import "server-only";
  * credentials are the normal state on a preview deployment — preview never
  * gets `RESEND_API_KEY`, the same rule as `WHATSAPP_TOKEN`.
  */
+/** Whether a send would even be attempted. The outbox asks before claiming a row. */
+export const emailConfigured = (): boolean =>
+	Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
+
 export async function sendEmail(message: {
 	to: string;
 	subject: string;
