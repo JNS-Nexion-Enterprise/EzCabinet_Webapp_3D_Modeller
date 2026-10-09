@@ -55,6 +55,20 @@ saved design is absent and passkeys do not work (known issue 15).
 - Not unique, not a credential, never used to identify a caller. It labels the account, appears in the account menu and on staff screens beside the email, and prefills the checkout name field.
 - Any mail that includes it escapes it, as the staff invite mail does.
 
+### The owner hears when the lock changes
+Before a customer's first passkey, the mailbox is the only lock, and whoever
+reads it can enrol their own. The account's address is therefore told, every
+time, for every role:
+
+- a passkey was added;
+- a passkey was removed;
+- staff reset the account's passkeys.
+
+One short mail each: what happened, when, and "if this was not you, contact
+us" with the sales contact. No link to act on, so a forged copy has nothing to
+phish with. Sent after the change commits, never blocking it; with mail not
+configured, nothing is sent and nothing sensitive is logged.
+
 ### The code
 - Six digits, valid 10 minutes, three wrong attempts end it, single use, stored hashed (`storeOTP: "hashed"`).
 - Sent only for sign-in. The mail carries the code, the site name and "if you did not ask for this, ignore it". No link.
@@ -125,6 +139,7 @@ about Google.
 | `app/[lang]/sign-in/` | `EmailCodeForm.tsx` (address, then code), provider buttons, page copy |
 | `lib/copy/{en,ms,zh}.ts` | New strings and the de-Googled ones |
 | `prisma/schema.prisma` | The rate-limit table. Codes use the existing `Verification` table |
+| `lib/auth/passkeyMail.ts` | The three "your passkey changed" mails |
 | `lib/auth/customerName.ts` | Pure: the name schema, and whether a row still owes its name |
 | `app/api/account/name/route.ts` | Sets the signed-in customer's own name |
 | `app/[lang]/welcome/` | The one-field name step |
@@ -154,6 +169,7 @@ A staff address sees the same "code sent" screen and never receives one.
 - Hooks driven through the real plugin on Better Auth's in-memory adapter, in the style of `passkeyWiring.test.ts`: a new address creates a `CUSTOMER`; a staff address is sent nothing and cannot sign in with a planted code; each closed route answers 404 or 403; an unknown route is refused; wrong, expired and reused codes; the attempt limit; identical responses across address kinds.
 - Account linking: a verified provider email joins the existing row; an unverified one is refused.
 - Promotion of a code-only customer sets an invite password.
+- Passkey mails: one is queued on a successful registration, on a deletion and on a staff reset, to the account's own address; none on a failed registration; a mail failure never fails the change.
 - The name: the schema's table (too short, too long, control characters, a business-posing name, surrounding spaces trimmed); the route refuses a signed-out caller and a staff caller and writes only `name`; a nameless customer is sent to the name step before the passkey step and cannot place an order; a customer who has a name never sees it.
 - A copy test that fails if a customer string outside the provider buttons names Google.
 - By hand: the whole journey with a real Outlook address once mail is configured; iOS Safari and Android Chrome.
