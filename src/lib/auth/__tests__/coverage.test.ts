@@ -171,17 +171,21 @@ describe("every account page goes through viewerOf", () => {
 		expect(ungated).toEqual([]);
 	});
 
-	it("checks mustVerifyPasskey in each order route", async () => {
+	it("checks the name and the passkey in each order route", async () => {
 		const routes = (await walk("src/app/api/orders")).filter((f) =>
 			f.endsWith("route.ts"),
 		);
 		expect(routes.length).toBeGreaterThan(1);
 		// Order routes read the signed-in user themselves, outside `viewerOf`.
 		// A new one that forgets the passkey check would pass every other test
-		// and let a Google-only session place or pay for an order.
-		const unchecked = routes.filter(
-			(file) => !readFileSync(file, "utf8").includes("mustVerifyPasskey"),
-		);
+		// and let a session that has only signed in place or pay for an order;
+		// one that forgets the name check lets a nameless account do it.
+		const unchecked = routes.filter((file) => {
+			const source = readFileSync(file, "utf8");
+			return !["mustVerifyPasskey", "mustSetName"].every((flag) =>
+				source.includes(flag),
+			);
+		});
 		expect(unchecked).toEqual([]);
 	});
 });

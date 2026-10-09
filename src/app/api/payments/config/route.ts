@@ -20,10 +20,15 @@ export async function GET() {
 	// customer types is lost at the detour. One boolean, no other user data.
 	// A failed user read must not take the gateway down with it (the screen
 	// would fall back to bank transfer): the server's 401 on Pay is the real check.
+	// `nameRequired`: the same for a code customer who has not given a name,
+	// which is asked for first.
 	let passkeyRequired = false;
+	let nameRequired = false;
 	if (authEnabled()) {
 		try {
-			passkeyRequired = (await currentUser())?.mustVerifyPasskey === true;
+			const user = await currentUser();
+			nameRequired = user?.mustSetName === true;
+			passkeyRequired = user?.mustVerifyPasskey === true;
 		} catch (error) {
 			console.error("payments/config: could not read the user", error);
 		}
@@ -34,6 +39,7 @@ export async function GET() {
 		{
 			client: gateway?.client ?? null,
 			signIn: authEnabled(),
+			nameRequired,
 			passkeyRequired,
 		},
 		{ headers: { "Cache-Control": "no-store" } },

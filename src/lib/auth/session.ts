@@ -2,6 +2,7 @@ import "server-only";
 import { headers } from "next/headers";
 import type { $Enums } from "@/generated/prisma/client";
 import { auth } from "@/lib/auth";
+import { owesName } from "@/lib/auth/customerName";
 import { needsPasskeyCheck } from "@/lib/auth/passkeyRules";
 import type { Role } from "@/lib/auth/permissions";
 import { needsTwoFactorSetup } from "@/lib/auth/twoFactor";
@@ -19,6 +20,11 @@ export type AuthUser = {
 	mustSetupTwoFactor: boolean;
 	/** Derived on every read from the session row — see `needsPasskeyCheck`. */
 	mustVerifyPasskey: boolean;
+	/**
+	 * A customer who signed in with a code and has not given a name yet —
+	 * derived on every read, see `owesName`. Absent means not owed.
+	 */
+	mustSetName?: boolean;
 	/**
 	 * When this session passed a passkey authentication, if it ever did —
 	 * what `withAuth`'s `stepUp` reads. Absent means never.
@@ -85,6 +91,7 @@ export async function currentUser(): Promise<AuthUser | null> {
 			hasPassword: accounts.length > 0,
 			twoFactorEnabled: twoFactorEnabled === true,
 		}),
+		mustSetName: owesName(user),
 		mustVerifyPasskey: needsPasskeyCheck({
 			role: user.role,
 			sessionVerified: sessionRow.passkeyVerified === true,

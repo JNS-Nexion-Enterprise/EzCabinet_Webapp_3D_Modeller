@@ -60,6 +60,7 @@ describe("GET /api/payments/config, passkeyRequired", () => {
 		expect(await response.json()).toEqual({
 			client: CLIENT,
 			signIn: true,
+			nameRequired: false,
 			passkeyRequired: false,
 		});
 		expect(error).toHaveBeenCalled();
@@ -71,5 +72,32 @@ describe("GET /api/payments/config, passkeyRequired", () => {
 		currentUser.mockResolvedValue(customer(true));
 		expect((await (await GET()).json()).passkeyRequired).toBe(false);
 		expect(currentUser).not.toHaveBeenCalled();
+	});
+});
+
+describe("GET /api/payments/config, nameRequired", () => {
+	it("is false signed out and for a customer with a name", async () => {
+		currentUser.mockResolvedValue(null);
+		expect((await (await GET()).json()).nameRequired).toBe(false);
+		currentUser.mockResolvedValue(customer(true));
+		expect((await (await GET()).json()).nameRequired).toBe(false);
+	});
+
+	it("is true for a customer who owes a name, beside the passkey", async () => {
+		currentUser.mockResolvedValue({
+			...customer(true),
+			name: "",
+			mustSetName: true,
+		});
+		expect(await (await GET()).json()).toMatchObject({
+			nameRequired: true,
+			passkeyRequired: true,
+		});
+	});
+
+	it("is false with AUTH_ENABLED off", async () => {
+		vi.stubEnv("AUTH_ENABLED", "false");
+		currentUser.mockResolvedValue({ ...customer(false), mustSetName: true });
+		expect((await (await GET()).json()).nameRequired).toBe(false);
 	});
 });

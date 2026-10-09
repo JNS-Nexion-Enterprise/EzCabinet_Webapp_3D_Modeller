@@ -32,6 +32,7 @@ const user = {
 	disabled: false,
 	mustChangePassword: false,
 	mustSetupTwoFactor: false,
+	mustSetName: false,
 	mustVerifyPasskey: false,
 	passkeyVerifiedAt: null,
 };
@@ -179,6 +180,21 @@ describe("currentUser", () => {
 		findUnique.mockResolvedValue(row);
 		await expect(currentUser()).resolves.toMatchObject({
 			mustVerifyPasskey: false,
+		});
+	});
+
+	it.each([
+		["a code customer who has not given a name", "CUSTOMER", "", true],
+		["a customer with a name", "CUSTOMER", "Aiman", false],
+		["staff, whatever their name", "ADMIN", "", false],
+	])("mustSetName for %s", async (_label, role, name, expected) => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue({ ...row, role, name });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustSetName: expected,
 		});
 	});
 });

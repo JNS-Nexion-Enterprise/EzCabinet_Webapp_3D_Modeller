@@ -71,6 +71,23 @@ describe("POST /api/orders for a customer who has not passed a passkey", () => {
 	});
 });
 
+describe("POST /api/orders for a customer who has not given a name", () => {
+	it("401s name_required before the passkey is even asked about", async () => {
+		vi.stubEnv("AUTH_ENABLED", "true");
+		currentUser.mockResolvedValue({
+			id: "u1",
+			role: "CUSTOMER",
+			name: "",
+			mustSetName: true,
+			mustVerifyPasskey: true,
+		});
+		const response = await post();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "name_required" });
+		expect(upsert).not.toHaveBeenCalled();
+	});
+});
+
 describe("POST /api/orders terms acceptance", () => {
 	const postBody = (body: unknown) =>
 		POST(

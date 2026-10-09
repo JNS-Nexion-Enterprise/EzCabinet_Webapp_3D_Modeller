@@ -68,6 +68,18 @@ describe("POST /api/orders/[token]/pay access", () => {
 		expect(startPayment).not.toHaveBeenCalled();
 	});
 
+	it("401s name_required for the owner without a name, starting nothing", async () => {
+		currentUser.mockResolvedValue({
+			...customer("owner"),
+			mustSetName: true,
+			mustVerifyPasskey: true,
+		});
+		const response = await pay();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "name_required" });
+		expect(startPayment).not.toHaveBeenCalled();
+	});
+
 	it("401s passkey_required for the owner without a passkey, starting nothing", async () => {
 		currentUser.mockResolvedValue({
 			...customer("owner"),
