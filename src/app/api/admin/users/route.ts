@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { inviteSchema } from "@/lib/auth/invite";
@@ -53,7 +54,10 @@ export const POST = withAuth(
 				{ status: 400 },
 			);
 		}
-		const { email, name, role, password } = parsed.data;
+		const { name, role, password } = parsed.data;
+		// Better Auth stores every address lower-case, whichever way in made the
+		// row, so a typed capital must not miss the customer it means.
+		const email = parsed.data.email.toLowerCase();
 		const invitedById = actor.id === BYPASS_USER.id ? null : actor.id;
 		const mail = {
 			to: email,
@@ -65,15 +69,24 @@ export const POST = withAuth(
 		const existing = await prisma.user.findUnique({ where: { email } });
 		if (existing) {
 			// Not self-service escalation: this is a superadmin deliberately
-			// granting a role on /admin/users, gated by users:manage. The account
-			// keeps whatever sign-in it already has — if they arrived through
-			// Google there is no password to set, and the `password` field of this
-			// form is ignored.
+			// granting a role on /admin/users, gated by users:manage. A row with a
+			// Google sign-in keeps it and the `password` field of this form is
+			// ignored. A row without one — an emailed-code customer — would be
+			// left with no way in, since staff cannot use a code, so it gets the
+			// invite's password exactly as a fresh invite does.
 			if (existing.role !== "CUSTOMER") {
 				return NextResponse.json({ error: "already_staff" }, { status: 409 });
 			}
-			// A customer row should carry no password — customers sign in with
-			// Google. One that does was made by someone other than the address's
+			const google = await prisma.account.findFirst({
+				where: { userId: existing.id, providerId: "google" },
+				select: { id: true },
+			});
+			// Hashed by Better Auth, so sign-in verifies it like any other.
+			const passwordHash = google
+				? null
+				: await (await auth.$context).password.hash(password);
+			// A customer row should carry no password — customers sign in with a
+			// provider or a code. One that does was made by someone other than the address's
 			// owner (public password sign-up was open until it was closed), so the
 			// password and any session it opened go before the row gains a role.
 			// `emailVerified` then follows the invite's own reasoning below: the
@@ -84,20 +97,43 @@ export const POST = withAuth(
 					where: { userId: existing.id, providerId: "credential" },
 				}),
 				prisma.session.deleteMany({ where: { userId: existing.id } }),
+				...(passwordHash
+					? [
+							prisma.account.create({
+								data: {
+									id: randomUUID(),
+									// Better Auth's own shape for a password sign-in.
+									accountId: existing.id,
+									providerId: "credential",
+									userId: existing.id,
+									password: passwordHash,
+								},
+							}),
+						]
+					: []),
 				prisma.user.update({
 					where: { id: existing.id },
-					data: { role, invitedById, emailVerified: true },
+					data: {
+						role,
+						invitedById,
+						emailVerified: true,
+						// Empty if they left before the name step.
+						name: existing.name || name,
+						...(passwordHash ? { mustChangePassword: true } : {}),
+					},
 				}),
 			]);
+			const passwordSet = passwordHash !== null;
 			const emailed = await sendStaffInvite({
 				...mail,
-				name: existing.name,
-				hasPassword: false,
+				name: existing.name || name,
+				hasPassword: passwordSet,
 			});
 			return NextResponse.json({
 				ok: true,
 				id: existing.id,
 				promoted: true,
+				passwordSet,
 				emailed,
 			});
 		}
