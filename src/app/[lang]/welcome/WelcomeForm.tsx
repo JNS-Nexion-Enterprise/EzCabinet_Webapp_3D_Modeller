@@ -6,9 +6,17 @@ import type { Dictionary } from "@/lib/copy/en";
 
 type Message = "nameRequired" | "nameRefused" | "failed";
 
-/** The server's answer as a key of `welcome` in the dictionary. */
-export function nameMessage(status: number, error: unknown): Message | null {
+/**
+ * The server's answer as a key of `welcome` in the dictionary — or `signIn`
+ * for a session that lapsed while the form was open, which is not an error
+ * the customer can act on here.
+ */
+export function nameMessage(
+	status: number,
+	error: unknown,
+): Message | "signIn" | null {
 	if (status === 200) return null;
+	if (status === 401) return "signIn";
 	if (error === "name_required") return "nameRequired";
 	if (error === "name_refused") return "nameRefused";
 	return "failed";
@@ -22,10 +30,13 @@ export function nameMessage(status: number, error: unknown): Message | null {
  */
 export function WelcomeForm({
 	next,
+	signIn,
 	copy,
 }: {
 	/** Already checked by `safeWelcomeNext`. */
 	next: string;
+	/** The sign-in page, with `next` carried, for a session that lapsed. */
+	signIn: string;
 	copy: Dictionary["welcome"];
 }) {
 	const [name, setName] = useState("");
@@ -40,7 +51,7 @@ export function WelcomeForm({
 		inFlight.current = true;
 		setBusy(true);
 		setMessage(null);
-		let failure: Message | null = "failed";
+		let failure: Message | "signIn" | null = "failed";
 		try {
 			const res = await fetch("/api/account/name", {
 				method: "POST",
@@ -53,6 +64,11 @@ export function WelcomeForm({
 				res.status === 409 ? null : nameMessage(res.status, body?.error);
 		} catch {
 			// The request never left the phone.
+		}
+		if (failure === "signIn") {
+			// The code form leads back through this page, so nothing is skipped.
+			window.location.assign(signIn);
+			return;
 		}
 		if (failure) {
 			inFlight.current = false;

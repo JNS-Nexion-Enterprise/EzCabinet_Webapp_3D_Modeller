@@ -29,12 +29,30 @@ export function cleanCode(input: string): string {
 	return input.normalize("NFKC").replace(/\D/g, "").slice(0, 6);
 }
 
-/** Keys of `signIn` in the dictionary. */
-export type FormMessage = "wrongCode" | "codeExpired" | "tooMany" | "failed";
+/**
+ * Whether the box holds a whole code. A short one is not sent: it cannot be
+ * right, and it would cost one of the three tries.
+ */
+export function isFullCode(input: string): boolean {
+	return cleanCode(input).length === 6;
+}
 
-/** 429 is Better Auth's per-network limit; anything else is ours or the network's. */
+/** Keys of `signIn` in the dictionary. */
+export type FormMessage =
+	| "emailInvalid"
+	| "wrongCode"
+	| "codeExpired"
+	| "tooMany"
+	| "failed";
+
+/**
+ * 429 is Better Auth's per-network limit. 400 is the server refusing an
+ * address `looksLikeEmail` let through — its check is the stricter one.
+ * Anything else is ours or the network's.
+ */
 export function sendFailure(status: number | undefined): FormMessage {
-	return status === 429 ? "tooMany" : "failed";
+	if (status === 429) return "tooMany";
+	return status === 400 ? "emailInvalid" : "failed";
 }
 
 /**
@@ -63,6 +81,31 @@ export function verifyFailure(error: {
  */
 export function maySendAgain(sent: number): boolean {
 	return sent < CODES_PER_HOUR;
+}
+
+/**
+ * Sends so far, by address as the server will read it. Per address and never
+ * reset: "Use a different email" and back to the same one must not buy a
+ * fourth "we sent a code". Kept for the life of the page; a reload forgets.
+ */
+export type SendCounts = Map<string, number>;
+
+export function maySendTo(counts: SendCounts, typed: string): boolean {
+	return maySendAgain(counts.get(normaliseEmail(typed)) ?? 0);
+}
+
+export function recordSend(counts: SendCounts, typed: string): void {
+	const address = normaliseEmail(typed);
+	counts.set(address, (counts.get(address) ?? 0) + 1);
+}
+
+/**
+ * Whole seconds until `deadline`, both in epoch milliseconds. Read off the
+ * clock instead of counted down: a timer is paused while the tab is in the
+ * background, which is exactly when the customer is in their mail app.
+ */
+export function secondsLeft(deadline: number, now: number): number {
+	return Math.max(0, Math.ceil((deadline - now) / 1000));
 }
 
 /**

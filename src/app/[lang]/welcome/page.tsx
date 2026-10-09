@@ -29,10 +29,12 @@ export default async function WelcomePage({
 	if (!isLocale(lang)) notFound();
 	const target = safeWelcomeNext(next, lang);
 
+	const signIn = `/${lang}/sign-in?next=${encodeURIComponent(target)}`;
+
 	const user = await currentUser();
 	// Straight to the target: signing in by code leads back through here
 	// anyway, and signing in with a provider needs no name.
-	if (!user) redirect(`/${lang}/sign-in?next=${encodeURIComponent(target)}`);
+	if (!user) redirect(signIn);
 	if (!user.mustSetName) redirect(target);
 
 	const t = await getDictionary(lang);
@@ -45,7 +47,7 @@ export default async function WelcomePage({
 						{t.welcome.body}
 					</p>
 				</div>
-				<WelcomeForm next={target} copy={t.welcome} />
+				<WelcomeForm next={target} signIn={signIn} copy={t.welcome} />
 			</div>
 		</main>
 	);
