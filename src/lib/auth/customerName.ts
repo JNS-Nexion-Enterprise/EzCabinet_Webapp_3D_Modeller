@@ -11,15 +11,21 @@ const HIDDEN = /[\p{Cc}‪-‮⁦-⁩]/u;
 
 /**
  * A name that would read as the business on a staff screen or in a mail:
- * anything containing "ezcabinet" however it is spaced, or starting with
- * "admin" or "support".
+ * anything containing "ezcabinet", or starting with "admin" or "support".
+ *
+ * Tested on a folded copy — compatibility forms unified, lower-cased, and
+ * everything that is not a letter or a digit removed — so spacing,
+ * punctuation and invisible format characters (a zero-width space, a soft
+ * hyphen) cannot dress the word up. Only this check folds; what is stored
+ * is the name as typed. Look-alike letters from another script (Cyrillic
+ * "а", Greek "ο") are not unified: out of scope.
  */
 function posesAsBusiness(name: string): boolean {
-	const plain = name.normalize("NFKC").toLowerCase();
-	return (
-		plain.replace(/[\s._-]+/g, "").includes("ezcabinet") ||
-		/^(admin|support)/.test(plain)
-	);
+	const folded = name
+		.normalize("NFKC")
+		.toLowerCase()
+		.replace(/[^\p{L}\p{N}]/gu, "");
+	return folded.includes("ezcabinet") || /^(admin|support)/.test(folded);
 }
 
 /**

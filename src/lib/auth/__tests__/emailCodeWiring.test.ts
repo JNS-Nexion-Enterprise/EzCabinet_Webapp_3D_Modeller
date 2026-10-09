@@ -11,6 +11,8 @@ const store = vi.hoisted(() => ({
 	/** Every code that reached the mail module, newest last. */
 	mailed: [] as { to: string; code: string }[],
 	bot: false,
+	/** The mail provider refusing or timing out: `sendEmail` answers false. */
+	mailDown: false,
 }));
 
 vi.mock("botid/server", () => ({
@@ -18,6 +20,7 @@ vi.mock("botid/server", () => ({
 }));
 vi.mock("@/lib/email", () => ({
 	sendEmail: async (message: { to: string; text: string }) => {
+		if (store.mailDown) return false;
 		store.mailed.push({
 			to: message.to,
 			code: /\d{6}/.exec(message.text)?.[0] ?? "",
@@ -96,6 +99,22 @@ const { passkeyBeforeHook, verifiedIfPasskeySession } = await import(
 
 const ORIGIN = "http://localhost:3000";
 
+/** `disabledPaths` in `lib/auth.ts`, less the email-code plugin's own. */
+const CLOSED_ACCOUNT_PATHS = [
+	"/update-user",
+	"/change-email",
+	"/delete-user",
+	"/delete-user/callback",
+	"/send-verification-email",
+	"/verify-email",
+	"/link-social",
+	"/unlink-account",
+	"/list-accounts",
+	"/account-info",
+	"/get-access-token",
+	"/refresh-token",
+];
+
 /** The same wiring as `lib/auth.ts`, minus `after()` and the cookie plugin. */
 function makeAuth(opts: { rateLimit?: boolean } = {}) {
 	return betterAuth({
@@ -103,7 +122,7 @@ function makeAuth(opts: { rateLimit?: boolean } = {}) {
 		secret: "test-secret-test-secret-test-secret-0123",
 		database: memoryAdapter(store.db),
 		emailAndPassword: { enabled: true },
-		disabledPaths: ["/sign-up/email", ...CLOSED_PATHS],
+		disabledPaths: ["/sign-up/email", ...CLOSED_ACCOUNT_PATHS, ...CLOSED_PATHS],
 		rateLimit: {
 			enabled: opts.rateLimit === true,
 			storage: "database",
@@ -165,12 +184,12 @@ const codeOf = async (res: Response) =>
 const lastCode = () => store.mailed[store.mailed.length - 1].code;
 
 /** A row as an invite would have left it. */
-const plant = (email: string, role: string) =>
+const plant = (email: string, role: string, emailVerified = true) =>
 	store.db.user.push({
 		id: `id-${email}`,
 		email,
 		name: "Planted",
-		emailVerified: true,
+		emailVerified,
 		role,
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -209,6 +228,7 @@ beforeEach(() => {
 	};
 	store.mailed = [];
 	store.bot = false;
+	store.mailDown = false;
 	process.env.RESEND_API_KEY = "test-key";
 	auth = makeAuth();
 });
@@ -342,6 +362,44 @@ describe("staff", () => {
 		).resolves.toBeUndefined();
 	});
 
+	// A staff row is always made verified (invite, promotion, seed). For an
+	// unverified row the plugin would delete its password, its Google link and
+	// its sessions on a correct code, before the session hook could refuse.
+	it("with an unverified email are not wiped by a correct code", async () => {
+		plant("boss@x.com", "ADMIN", false);
+		const userId = store.db.user[0].id;
+		store.db.account.push(
+			{ id: "a1", userId, providerId: "credential", accountId: userId },
+			{ id: "a2", userId, providerId: "google", accountId: "g-1" },
+		);
+		store.db.session.push({
+			id: "s1",
+			userId,
+			token: "theirs",
+			expiresAt: new Date(Date.now() + 60_000),
+		});
+		await plantCode("boss@x.com", "123456");
+		const res = await signIn("boss@x.com", "123456");
+		expect(await raw(res)).toEqual([
+			400,
+			'{"message":"Invalid OTP","code":"INVALID_OTP"}',
+		]);
+		expect(res.headers.get("set-cookie")).toBeNull();
+		expect(store.db.account.map((a) => a.id)).toEqual(["a1", "a2"]);
+		expect(store.db.session.map((s) => s.id)).toEqual(["s1"]);
+		expect(store.db.user[0].emailVerified).toBe(false);
+	});
+
+	it("with a verified email have their wrong guesses counted", async () => {
+		plant("boss@x.com", "ADMIN");
+		await send("boss@x.com");
+		const statuses = [];
+		for (let i = 0; i < 4; i++) {
+			statuses.push((await signIn("boss@x.com", "abcdef")).status);
+		}
+		expect(statuses).toEqual([400, 400, 400, 403]);
+	});
+
 	it("are refused a code session even when the row is gone", async () => {
 		await expect(
 			refuseStaffCodeSession({ userId: "nobody" }, { path: SIGN_IN_PATH }),
@@ -388,6 +446,25 @@ describe("the sign-in response says nothing about the address", () => {
 		expect(runs[0][0][1]).toBe(
 			'{"message":"Invalid OTP","code":"INVALID_OTP"}',
 		);
+		expect(runs[1]).toEqual(runs[0]);
+		expect(runs[2]).toEqual(runs[0]);
+	});
+
+	// An outage, the provider's own rate limit, EMAIL_FROM unset: nobody is
+	// mailed, and a staff address is never mailed, so both must keep the code.
+	it("is the same four answers when the mail provider is refusing", async () => {
+		store.mailDown = true;
+		const runs = [];
+		for (const email of three()) {
+			await send(email);
+			const answers = [];
+			for (let i = 0; i < 4; i++) {
+				answers.push(await raw(await signIn(email, "abcdef")));
+			}
+			runs.push(answers);
+		}
+		expect(store.mailed).toHaveLength(0);
+		expect(runs[0].map(([status]) => status)).toEqual([400, 400, 400, 403]);
 		expect(runs[1]).toEqual(runs[0]);
 		expect(runs[2]).toEqual(runs[0]);
 	});
@@ -569,6 +646,37 @@ describe("the plugin's other routes", () => {
 		await expect(
 			emailCodeBeforeHook({ path: undefined, body: {} } as never),
 		).resolves.toBeUndefined();
+	});
+});
+
+describe("Better Auth's own account routes", () => {
+	it.each(CLOSED_ACCOUNT_PATHS)("%s is closed", async (path) => {
+		expect((await post(path, {})).status).toBe(404);
+		const get = await auth.handler(new Request(`${ORIGIN}/api/auth${path}`));
+		expect(get.status).toBe(404);
+	});
+
+	// The name has one door, `POST /api/account/name`, with its own rules.
+	it("a signed-in customer cannot name the account through /update-user", async () => {
+		await send("aiman@outlook.com");
+		const signedIn = await signIn("aiman@outlook.com", lastCode());
+		const cookie = signedIn.headers
+			.getSetCookie()
+			.map((c) => c.split(";")[0])
+			.join("; ");
+		const res = await auth.handler(
+			new Request(`${ORIGIN}/api/auth/update-user`, {
+				method: "POST",
+				headers: { "content-type": "application/json", origin: ORIGIN, cookie },
+				body: JSON.stringify({
+					name: "EzCabinet Support",
+					image: "https://x/y",
+				}),
+			}),
+		);
+		expect(res.status).toBe(404);
+		expect(store.db.user[0].name).toBe("");
+		expect(store.db.user[0].image ?? null).toBeNull();
 	});
 });
 

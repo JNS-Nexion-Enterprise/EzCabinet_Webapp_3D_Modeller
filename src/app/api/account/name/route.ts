@@ -15,6 +15,10 @@ export const runtime = "nodejs";
  * a session that has signed in but not passed the passkey step must not be
  * able to relabel an account that already has a name.
  *
+ * The write carries that condition itself, on the name this request read:
+ * of two requests that both saw no name, the first one's stands and the
+ * second is told the name is set.
+ *
  * `currentUser()` only: with AUTH_ENABLED off there is no demo-customer
  * fallback here, because the demo customer is already named.
  */
@@ -34,9 +38,12 @@ export async function POST(request: Request) {
 	if ("error" in parsed) {
 		return NextResponse.json({ error: parsed.error }, { status: 400 });
 	}
-	await prisma.user.update({
-		where: { id: user.id },
+	const { count } = await prisma.user.updateMany({
+		where: { id: user.id, role: "CUSTOMER", name: user.name },
 		data: { name: parsed.name },
 	});
+	if (count === 0) {
+		return NextResponse.json({ error: "name_set" }, { status: 409 });
+	}
 	return NextResponse.json({ ok: true });
 }

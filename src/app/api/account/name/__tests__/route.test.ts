@@ -2,9 +2,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthUser } from "@/lib/auth/session";
 
 const currentUser = vi.hoisted(() => vi.fn<() => Promise<AuthUser | null>>());
-const update = vi.hoisted(() => vi.fn());
+const updateMany = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/session", () => ({ currentUser }));
-vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { update } } }));
+vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { updateMany } } }));
 
 const { POST } = await import("../route");
 
@@ -33,6 +33,7 @@ const post = (body: unknown) =>
 beforeEach(() => {
 	vi.clearAllMocks();
 	currentUser.mockResolvedValue(nameless());
+	updateMany.mockResolvedValue({ count: 1 });
 });
 
 describe("POST /api/account/name", () => {
@@ -44,11 +45,29 @@ describe("POST /api/account/name", () => {
 			id: "someone-else",
 		});
 		expect(response.status).toBe(200);
-		expect(update).toHaveBeenCalledTimes(1);
-		expect(update).toHaveBeenCalledWith({
-			where: { id: "c1" },
+		expect(updateMany).toHaveBeenCalledTimes(1);
+		expect(updateMany).toHaveBeenCalledWith({
+			where: { id: "c1", role: "CUSTOMER", name: "" },
 			data: { name: "Aiman bin Ali" },
 		});
+	});
+
+	// Two requests that both read "no name yet": the write itself decides.
+	it("409s the second of two writes, and the first name stands", async () => {
+		let stored = "";
+		updateMany.mockImplementation(async ({ where, data }) => {
+			if (stored !== where.name) return { count: 0 };
+			stored = data.name;
+			return { count: 1 };
+		});
+		const [first, second] = await Promise.all([
+			post({ name: "Aiman bin Ali" }),
+			post({ name: "Somebody Else" }),
+		]);
+		expect(first.status).toBe(200);
+		expect(second.status).toBe(409);
+		expect(await second.json()).toEqual({ error: "name_set" });
+		expect(stored).toBe("Aiman bin Ali");
 	});
 
 	it.each([
@@ -57,7 +76,7 @@ describe("POST /api/account/name", () => {
 		["an emoji", "Aiman 🙂"],
 	])("stores a name in %s as typed", async (_label, name) => {
 		expect((await post({ name })).status).toBe(200);
-		expect(update.mock.calls[0][0].data).toEqual({ name });
+		expect(updateMany.mock.calls[0][0].data).toEqual({ name });
 	});
 
 	it("401s a signed-out caller and writes nothing", async () => {
@@ -65,7 +84,7 @@ describe("POST /api/account/name", () => {
 		const response = await post({ name: "Aiman" });
 		expect(response.status).toBe(401);
 		expect(await response.json()).toEqual({ error: "sign_in_required" });
-		expect(update).not.toHaveBeenCalled();
+		expect(updateMany).not.toHaveBeenCalled();
 	});
 
 	it.each(["ADMIN", "SUPERADMIN"] as const)(
@@ -75,7 +94,7 @@ describe("POST /api/account/name", () => {
 				nameless({ role, mustSetName: false, mustVerifyPasskey: false }),
 			);
 			expect((await post({ name: "Aiman" })).status).toBe(403);
-			expect(update).not.toHaveBeenCalled();
+			expect(updateMany).not.toHaveBeenCalled();
 		},
 	);
 
@@ -86,7 +105,7 @@ describe("POST /api/account/name", () => {
 		);
 		const response = await post({ name: "Somebody Else" });
 		expect(response.status).toBe(409);
-		expect(update).not.toHaveBeenCalled();
+		expect(updateMany).not.toHaveBeenCalled();
 	});
 
 	it.each([
@@ -103,6 +122,6 @@ describe("POST /api/account/name", () => {
 		const response = await post(body);
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({ error });
-		expect(update).not.toHaveBeenCalled();
+		expect(updateMany).not.toHaveBeenCalled();
 	});
 });

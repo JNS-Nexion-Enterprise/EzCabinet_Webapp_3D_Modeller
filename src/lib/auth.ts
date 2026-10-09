@@ -80,6 +80,23 @@ export const auth = betterAuth({
 	// Session management: the app calls none of these, and a session that
 	// has not passed the passkey step could otherwise list the owner's session
 	// rows or sign the owner out of every other device.
+	// `/update-user`: the name has one door, `POST /api/account/name`, which
+	// holds it to `parseCustomerName` and writes it once. This route would let
+	// any signed-in session, the passkey step passed or not, set any name and
+	// picture, and rename at will.
+	// `/change-email`, `/delete-user` (and its callback),
+	// `/send-verification-email`, `/verify-email`: each is refused today only
+	// because an option is unset. Closed so that setting the option is not
+	// what opens it: one address is one account, and an account with orders
+	// is never deleted (`lib/auth/deleteUser.ts`).
+	// `/link-social`, `/unlink-account`: sign-in methods change through Google
+	// sign-in itself or a superadmin's Remove password, never from a session.
+	// Unlinking would let staff drop their own password and, with it, the
+	// second factor.
+	// `/list-accounts`, `/account-info`, `/get-access-token`,
+	// `/refresh-token`: they hand the owner's Google account id, profile and
+	// tokens to a session that has not passed the passkey step.
+	// The app calls none of the routes above.
 	// `CLOSED_PATHS`: the email-code plugin registers nine routes and the app
 	// uses two. Two of the other seven would put a password on a customer row.
 	disabledPaths: [
@@ -90,6 +107,18 @@ export const auth = betterAuth({
 		"/revoke-sessions",
 		"/revoke-other-sessions",
 		"/update-session",
+		"/update-user",
+		"/change-email",
+		"/delete-user",
+		"/delete-user/callback",
+		"/send-verification-email",
+		"/verify-email",
+		"/link-social",
+		"/unlink-account",
+		"/list-accounts",
+		"/account-info",
+		"/get-access-token",
+		"/refresh-token",
 		...CLOSED_PATHS,
 	],
 	// Counted in Postgres. The default is memory, which on a serverless

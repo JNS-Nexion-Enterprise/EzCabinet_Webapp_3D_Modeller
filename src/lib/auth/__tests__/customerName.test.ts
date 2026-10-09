@@ -54,6 +54,13 @@ describe("parseCustomerName", () => {
 		["Admin with more", "Administrator Aiman"],
 		["support", "Support"],
 		["support with more", "support team"],
+		// Dressed up so that a plain prefix test misses it.
+		["admin behind a zero-width space", "\u200badmin"],
+		["admin split by a zero-width space", "ad\u200bmin"],
+		["the business split by a zero-width space", "Ez\u200bcabinet"],
+		["admin behind an underscore", "_admin"],
+		["support in brackets", "(support)"],
+		["admin split by a soft hyphen", "ad\u00admin"],
 	])("refuses %s", (_label, typed) => {
 		expect(parseCustomerName(typed)).toEqual({ error: "name_refused" });
 	});

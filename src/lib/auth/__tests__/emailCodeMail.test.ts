@@ -109,14 +109,6 @@ describe("sendSignInCode", () => {
 	describe("a code that was not delivered is not left live", () => {
 		const dropped = { where: { identifier: "sign-in-otp-cust@x.com" } };
 
-		it("when the mail provider refuses it", async () => {
-			findUnique.mockResolvedValue({ role: "CUSTOMER" });
-			sendEmail.mockResolvedValueOnce(false);
-			await sendSignInCode("cust@x.com", "482913");
-			expect(codeDelete).toHaveBeenCalledWith(dropped);
-			expect(logs()).not.toContain("482913");
-		});
-
 		it("when the send cannot be counted", async () => {
 			upsert.mockRejectedValueOnce(new Error("db down"));
 			await expect(sendSignInCode("cust@x.com", "482913")).rejects.toThrow(
@@ -134,6 +126,19 @@ describe("sendSignInCode", () => {
 			);
 			expect(codeDelete).toHaveBeenCalledWith(dropped);
 			expect(sendEmail).not.toHaveBeenCalled();
+		});
+
+		// A staff address is never mailed and keeps its row, so a customer's
+		// must stay too, or the fourth wrong guess tells the two apart.
+		it.each([
+			["a customer", { role: "CUSTOMER" }],
+			["a new address", null],
+		])("but one the mail provider refused stays, for %s", async (_l, row) => {
+			findUnique.mockResolvedValue(row);
+			sendEmail.mockResolvedValueOnce(false);
+			await sendSignInCode("cust@x.com", "482913");
+			expect(codeDelete).not.toHaveBeenCalled();
+			expect(logs()).not.toContain("482913");
 		});
 
 		// Local and preview: the developer reads it from the log, so it stays.

@@ -43,8 +43,41 @@ describe("lib/auth.ts", () => {
 			"after(() => sendSignInCode(email, otp).catch(",
 		],
 		["mails sign-in codes only", 'if (type !== "sign-in") return;'],
+		[
+			"marks a session verified after a passkey registration",
+			"after: createAuthMiddleware(passkeyAfterHook),",
+		],
 	])("%s", (_label, needle) => {
 		expect(auth).toContain(needle);
+	});
+
+	// Every entry, in order: one dropped in a merge reopens a route, and
+	// nothing else would notice.
+	it("closes exactly these routes", () => {
+		const list = /disabledPaths: \[(.*?)\],/.exec(auth)?.[1] ?? "";
+		expect(list.split(",").map((entry) => entry.trim())).toEqual([
+			'"/sign-up/email"',
+			'"/two-factor/disable"',
+			'"/list-sessions"',
+			'"/revoke-session"',
+			'"/revoke-sessions"',
+			'"/revoke-other-sessions"',
+			'"/update-session"',
+			'"/update-user"',
+			'"/change-email"',
+			'"/delete-user"',
+			'"/delete-user/callback"',
+			'"/send-verification-email"',
+			'"/verify-email"',
+			'"/link-social"',
+			'"/unlink-account"',
+			'"/list-accounts"',
+			'"/account-info"',
+			'"/get-access-token"',
+			'"/refresh-token"',
+			"...CLOSED_PATHS",
+			"",
+		]);
 	});
 
 	it("never awaits the mail", () => {

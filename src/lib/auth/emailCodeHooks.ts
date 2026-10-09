@@ -16,10 +16,10 @@ const invalidCode = () =>
 
 /**
  * `hooks.before` for the email-code plugin: the allow-list, and BotID on the
- * request that makes us send mail. Nothing here reads who the address belongs
- * to, so nothing here can answer differently by address: whether a code is
- * mailed is decided in `sendSignInCode`, after the response has gone, and
- * whether a session is made in `refuseStaffCodeSession`.
+ * request that makes us send mail. With the one exception below, nothing
+ * here answers differently by address: whether a code is mailed is decided
+ * in `sendSignInCode`, after the response has gone, and whether a session is
+ * made in `refuseStaffCodeSession`.
  */
 export async function emailCodeBeforeHook(ctx: HookContext): Promise<void> {
 	const kind = codeRequest(ctx.path, ctx.body);
@@ -35,6 +35,36 @@ export async function emailCodeBeforeHook(ctx: HookContext): Promise<void> {
 			code: "EMAIL_CODE_BOT",
 			message: "Request refused",
 		});
+	}
+	if (kind === "sign_in") await refuseUnverifiedStaff(ctx.body);
+}
+
+/**
+ * A staff row whose email is not verified is refused before the plugin runs.
+ * For such a row the plugin, given a correct code, deletes every sign-in the
+ * account has — password, Google link — and every session, then marks the
+ * email verified, all before `refuseStaffCodeSession` is asked. One lucky
+ * guess of a code nobody was mailed would lock a staff member out.
+ *
+ * This is a request-time check only for a row that should not exist: the
+ * invite, promotion and the seed all make staff verified. A verified staff
+ * row still goes through the plugin, so its tries are counted like anyone's
+ * and it cannot be told apart. The answer is the plugin's own wrong-code
+ * one.
+ *
+ * A CUSTOMER row with an unverified email is deliberately not guarded: there
+ * the wipe is the plugin doing the right thing. The code proved the mailbox;
+ * whatever was attached to the row before did not.
+ */
+async function refuseUnverifiedStaff(body: unknown): Promise<void> {
+	const email = (body as { email?: unknown } | null)?.email;
+	if (typeof email !== "string") return;
+	const row = await prisma.user.findUnique({
+		where: { email: email.toLowerCase() },
+		select: { role: true, emailVerified: true },
+	});
+	if (row && row.role !== "CUSTOMER" && row.emailVerified !== true) {
+		throw invalidCode();
 	}
 }
 

@@ -44,8 +44,15 @@ async function takeSendSlot(email: string): Promise<boolean> {
  * cannot tell the address apart. Nobody was sent it, and guessing it right
  * still makes no session (`refuseStaffCodeSession`).
  *
- * A customer's code that never went out is deleted instead: nobody can type
- * it, so all it could do for its ten minutes is be guessed at.
+ * A code the mail provider refused is left in place too, for the same
+ * symmetry: a staff address is never mailed and keeps its row, so deleting a
+ * customer's undelivered one would let the fourth wrong guess tell them
+ * apart whenever mail is down. It simply expires: nobody was sent it, it is
+ * stored hashed, and it takes three tries in ten minutes.
+ *
+ * Every delete below happens for staff and customer alike: when the lookup
+ * or the count throws (the role is unknown, or not consulted), and past the
+ * cap.
  */
 export async function sendSignInCode(
 	email: string,
@@ -82,7 +89,7 @@ export async function sendSignInCode(
 		return;
 	}
 	const minutes = CODE_TTL_S / 60;
-	const sent = await sendEmail({
+	await sendEmail({
 		to: email,
 		subject: "Your EzCabinet sign-in code",
 		text: [
@@ -94,5 +101,4 @@ export async function sendSignInCode(
 		].join("\n"),
 		html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;color:#262626;"><p>Your EzCabinet sign-in code is</p><p style="font-size:28px;line-height:34px;font-weight:bold;letter-spacing:4px;color:#171717;">${code}</p><p>Type it into the page that asked for it. It works once, for ${minutes} minutes.</p><p style="font-size:13px;color:#5c574e;">If you did not ask for this, ignore this email.</p></div>`,
 	});
-	if (!sent) await dropCode();
 }
