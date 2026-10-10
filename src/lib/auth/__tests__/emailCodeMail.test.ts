@@ -54,7 +54,9 @@ describe("sendSignInCode", () => {
 		for (const part of [message.text, message.html ?? ""]) {
 			expect(part).toContain("482913");
 			expect(part).toContain("EzCabinet");
-			expect(part).toContain("If you did not ask for this, ignore this email.");
+			expect(part).toMatch(
+				/If you didn(&#39;|')t ask for this, ignore this email\./,
+			);
 			// A scanner that follows links must find nothing to follow.
 			expect(part).not.toMatch(/https?:|href|www\./i);
 		}

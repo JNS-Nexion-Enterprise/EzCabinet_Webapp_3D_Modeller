@@ -8,6 +8,7 @@ import {
 } from "@/lib/auth/emailCodeRules";
 import { prisma } from "@/lib/catalogue/db";
 import { sendEmail } from "@/lib/email";
+import { signInCode } from "@/lib/email/templates/signInCode";
 
 /**
  * Counts this send against the address and says whether it is within the
@@ -94,17 +95,13 @@ export async function sendSignInCode(
 		}
 		return;
 	}
-	const minutes = CODE_TTL_S / 60;
+	// English until the send request carries the page's language.
+	const mail = signInCode({ locale: "en", code, minutes: CODE_TTL_S / 60 });
 	await sendEmail({
 		to: email,
+		// Not the template's subject: that one carries the code.
 		subject: "Your EzCabinet sign-in code",
-		text: [
-			`Your EzCabinet sign-in code is ${code}`,
-			"",
-			`Type it into the page that asked for it. It works once, for ${minutes} minutes.`,
-			"",
-			"If you did not ask for this, ignore this email.",
-		].join("\n"),
-		html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;color:#262626;"><p>Your EzCabinet sign-in code is</p><p style="font-size:28px;line-height:34px;font-weight:bold;letter-spacing:4px;color:#171717;">${code}</p><p>Type it into the page that asked for it. It works once, for ${minutes} minutes.</p><p style="font-size:13px;color:#5c574e;">If you did not ask for this, ignore this email.</p></div>`,
+		text: mail.text,
+		html: mail.html,
 	});
 }

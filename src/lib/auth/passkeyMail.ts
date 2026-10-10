@@ -1,26 +1,14 @@
 import "server-only";
 import { after } from "next/server";
-import { esc } from "@/lib/auth/inviteMail";
 import { prisma } from "@/lib/catalogue/db";
 import { sendEmail } from "@/lib/email";
+import {
+	type PasskeyChange,
+	passkeyChange,
+} from "@/lib/email/templates/passkeyChange";
 import { WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 
-export type PasskeyChange = "added" | "removed" | "reset";
-
-const WHAT: Record<PasskeyChange, { subject: string; line: string }> = {
-	added: {
-		subject: "A passkey was added to your EzCabinet account",
-		line: "A passkey was added to your EzCabinet account",
-	},
-	removed: {
-		subject: "A passkey was removed from your EzCabinet account",
-		line: "A passkey was removed from your EzCabinet account",
-	},
-	reset: {
-		subject: "Your EzCabinet passkeys were reset",
-		line: "EzCabinet staff removed every passkey from your EzCabinet account, and signed it out everywhere",
-	},
-};
+export type { PasskeyChange };
 
 /** As a customer in Malaysia would read it, wherever the server runs. */
 function when(at: Date): string {
@@ -60,15 +48,14 @@ export async function sendPasskeyChange(
 		select: { email: true, name: true },
 	});
 	if (!row) return;
-	const { subject, line } = WHAT[change];
-	const hello = row.name.trim() ? `Hi ${row.name.trim()},` : "Hello,";
-	const happened = `${line} on ${when(at)}.`;
-	const ifNot = `If this was you, there is nothing to do. If it was not, ${contact()} straight away.`;
 	await sendEmail({
 		to: row.email,
-		subject,
-		text: [hello, "", happened, "", ifNot].join("\n"),
-		html: `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:23px;color:#262626;"><p>${esc(hello)}</p><p>${esc(happened)}</p><p>${esc(ifNot)}</p></div>`,
+		...passkeyChange({
+			change,
+			name: row.name,
+			when: when(at),
+			contact: contact(),
+		}),
 	});
 }
 

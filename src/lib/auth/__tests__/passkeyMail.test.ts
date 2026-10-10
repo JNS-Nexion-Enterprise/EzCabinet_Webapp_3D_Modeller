@@ -86,7 +86,8 @@ describe("sendPasskeyChange", () => {
 	it("greets an account with no name yet without one", async () => {
 		findUnique.mockResolvedValue({ email: "a@b.com", name: "" });
 		await sendPasskeyChange("u1", "added", AT);
-		expect(sendEmail.mock.calls[0][0].text.startsWith("Hello,\n")).toBe(true);
+		// The heading comes first now; the greeting is the next paragraph.
+		expect(sendEmail.mock.calls[0][0].text).toContain("\n\nHello,\n\n");
 	});
 
 	it("sends nothing for an account that no longer exists", async () => {

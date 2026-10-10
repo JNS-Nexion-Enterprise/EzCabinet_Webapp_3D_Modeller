@@ -15,6 +15,7 @@ import {
 	type OrderMailInput,
 	orderEmail,
 } from "../src/lib/email/templates/order";
+import { passkeyChange } from "../src/lib/email/templates/passkeyChange";
 import { signInCode } from "../src/lib/email/templates/signInCode";
 import { staffInvite } from "../src/lib/email/templates/staffInvite";
 import { staffReset } from "../src/lib/email/templates/staffReset";
@@ -79,6 +80,14 @@ const mails: Record<string, { subject: string; html: string; text: string }> = {
 		link: `${base}/admin/reset-password?token=abc123`,
 	}),
 };
+for (const change of ["added", "removed", "reset"] as const) {
+	mails[`passkey-${change}`] = passkeyChange({
+		change,
+		name: "Aiman",
+		when: "9 Oct 2026, 1:30 pm (Malaysia time)",
+		contact: "call EzCabinet on 03-0000 0000",
+	});
+}
 for (const locale of LOCALES) {
 	mails[`sign-in-code.${locale}`] = signInCode({
 		locale,

@@ -205,7 +205,8 @@ src/
     outbox.ts            ← enqueue in the state change's transaction; flush after, by channel
     webhook.ts           ← Meta's signature, status order; pure
   lib/email/             ← every email the app sends
-    layout.ts            ← one look: blocks → { html, text }, escaping included
+    layout.ts            ← one look: blocks → { html, text }, escaping included; the only
+                           place mail HTML is written (`oneLook.test.ts` fails any other)
     copy.ts              ← mail wording, en / ms / zh; server-side, never in the site dictionary
     templates/           ← one pure function per mail; order.ts holds the eight order mails
     orderMail.ts         ← an outbox row → its order → a sent mail
