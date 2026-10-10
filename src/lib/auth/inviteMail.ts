@@ -13,17 +13,6 @@ const ROLE_DESCRIPTIONS: Partial<Record<Role, string>> = {
 		"Manage cabinet designs and prices, orders, deliveries, site content and tutorials.",
 };
 
-/** Names are typed by a person and land in HTML. */
-export function esc(value: string): string {
-	return value.replace(
-		/[&<>"']/g,
-		(c) =>
-			({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
-				c
-			] as string,
-	);
-}
-
 /**
  * Tells a new staff member that an account exists and where to sign in. The
  * password is deliberately not in it: the superadmin still hands that over
