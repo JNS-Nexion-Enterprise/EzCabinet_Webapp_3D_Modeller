@@ -8,33 +8,38 @@ const NAV =
 /** The design's header for the account pages and the track page. */
 export function SiteHeader({ lang, t }: { lang: string; t: Dictionary }) {
 	return (
-		<header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-[#e5e5e5] border-b bg-white px-4 py-2.5 sm:px-7">
-			<div className="flex items-center gap-5">
-				<Link
-					href={`/${lang}`}
-					className="px-0.5 py-1.5 font-bold text-[#171717] text-[14px]"
-				>
-					{t.common.brand}
-				</Link>
-				<nav aria-label="Main" className="hidden gap-1 sm:flex">
-					<Link href={`/${lang}/planner`} className={NAV}>
-						{t.planner.crumbs.roomPlanner}
+		<header className="relative z-10 shrink-0 border-[#e5e5e5] border-b bg-white">
+			{/* 1096px is the account area's 1040px column plus its 28px gutters,
+			    so the brand and the account menu line up with the page below
+			    instead of drifting to the edges of an ultrawide screen. */}
+			<div className="mx-auto flex w-full max-w-[1096px] items-center justify-between gap-4 px-4 py-2.5 sm:px-7">
+				<div className="flex items-center gap-5">
+					<Link
+						href={`/${lang}`}
+						className="px-0.5 py-1.5 font-bold text-[#171717] text-[14px]"
+					>
+						{t.common.brand}
 					</Link>
-					<Link href={`/${lang}/tutorials`} className={NAV}>
-						{t.landing.nav.tutorials}
-					</Link>
-				</nav>
+					<nav aria-label="Main" className="hidden gap-1 sm:flex">
+						<Link href={`/${lang}/planner`} className={NAV}>
+							{t.planner.crumbs.roomPlanner}
+						</Link>
+						<Link href={`/${lang}/tutorials`} className={NAV}>
+							{t.landing.nav.tutorials}
+						</Link>
+					</nav>
+				</div>
+				<AccountMenu
+					lang={lang}
+					labels={{
+						signIn: t.account.signIn,
+						signOut: t.account.signOut,
+						myOrders: t.account.myOrders,
+						admin: t.account.admin,
+						menu: t.account.menuLabel,
+					}}
+				/>
 			</div>
-			<AccountMenu
-				lang={lang}
-				labels={{
-					signIn: t.account.signIn,
-					signOut: t.account.signOut,
-					myOrders: t.account.myOrders,
-					admin: t.account.admin,
-					menu: t.account.menuLabel,
-				}}
-			/>
 		</header>
 	);
 }

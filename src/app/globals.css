@@ -13,6 +13,9 @@
 		"Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
 	--font-mono: var(--font-geist-mono);
 	--font-serif: var(--font-caslon), Georgia, "Times New Roman", serif;
+	/* Ultrawide. A named breakpoint, not `min-[1800px]:`: Tailwind sorts
+	   arbitrary breakpoints before the named ones, so `lg:` would win. */
+	--breakpoint-3xl: 112.5rem;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -74,6 +77,21 @@ body {
 @media (min-width: 1024px) {
 	[data-cabinet-ground="hero"] {
 		background: radial-gradient(ellipse 52% 72% at 66% 50%, var(--ground));
+	}
+}
+
+/* ...and on an ultrawide, where the stage is anchored to the page's centre
+ * rather than the viewport (see the hero in `app/[lang]/page.tsx`), the wash
+ * is anchored with it: centred 260px right of the middle, and sized in pixels
+ * at the proportion to the 1240px stage that the 1440×900 wash has to its
+ * 979px one. A percentage height would follow a tall monitor's viewport and
+ * draw the wash's dark ring straight through the headline. */
+@media (min-width: 1800px) {
+	[data-cabinet-ground="hero"] {
+		background: radial-gradient(
+			ellipse 950px 820px at calc(50% + 260px) 50%,
+			var(--ground)
+		);
 	}
 }
 
