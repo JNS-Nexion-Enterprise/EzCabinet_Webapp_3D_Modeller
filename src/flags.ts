@@ -15,13 +15,18 @@ import { flag } from "flags/next";
  * env vars, so a gateway without them still falls back to bank transfer. It
  * never gates a webhook — a payment started before a switch must still land.
  *
- * `manual` when Vercel Flags cannot answer: bank transfer always works.
+ * When Vercel Flags cannot answer — an outage, or the expired token of a
+ * local checkout — the flag answers `PAYMENT_GATEWAY_FALLBACK`, set per
+ * environment to the gateway that environment is meant to take payment
+ * with. Unset, that is `manual`: bank transfer always works, but an
+ * environment selling through a gateway must name it, or a flags outage
+ * quietly turns online payment off.
  * Add `fiuu` as a variant (`vercel flags update`) when its adapter exists.
  */
 export const paymentGatewayFlag = flag<string>({
 	key: "payment-gateway",
 	description: "Which gateway takes new online payments",
-	defaultValue: "manual",
+	defaultValue: process.env.PAYMENT_GATEWAY_FALLBACK || "manual",
 	options: [
 		{ value: "manual", label: "Bank transfer (manual)" },
 		{ value: "stripe", label: "Stripe" },
