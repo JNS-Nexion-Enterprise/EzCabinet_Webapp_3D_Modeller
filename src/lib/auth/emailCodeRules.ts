@@ -22,12 +22,26 @@ export const CODE_TTL_S = 10 * 60;
 export const CODE_ATTEMPTS = 3;
 export const CODES_PER_HOUR = 3;
 /**
- * One hour, for both limits. Better Auth prunes the rate-limit table by its
- * longest configured window, and the per-address rows live in that table, so
- * the per-network rule must not be given a shorter window than this.
+ * One hour, for both send limits. Better Auth prunes the rate-limit table by
+ * its longest configured window, and the per-address rows live in that table,
+ * so the per-network send rule must not be given a shorter window than this.
  */
 export const SEND_WINDOW_S = 60 * 60;
-export const SENDS_PER_NETWORK = 20;
+/**
+ * Codes one network may ask for in the window, across addresses. Better
+ * Auth's rule is rolling: while requests keep arriving under an hour apart
+ * the count never resets, so this is really "N, then an hour's refusal" for
+ * a whole carrier address or a showroom's Wi-Fi. Thirty is the owner's
+ * starting value; raise it if real customers on a shared network are refused.
+ */
+export const SENDS_PER_NETWORK = 30;
+/**
+ * Code tries one network may make in a minute, across addresses. The plugin's
+ * own limit is three, which three typos — or two customers behind one carrier
+ * address — use up, and the right code is then refused. Guessing is bounded
+ * elsewhere: three tries per code, three codes an hour per address.
+ */
+export const SIGN_IN_TRIES_PER_MINUTE = 10;
 
 /**
  * May this address be sent a code, and may this row sign in with one. `null`

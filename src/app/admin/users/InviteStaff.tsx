@@ -5,6 +5,7 @@ import { useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
+import { inviteFailure } from "./inviteFailure";
 
 function generatePassword(): string {
 	return crypto.randomUUID().slice(0, 16);
@@ -60,11 +61,7 @@ export function InviteStaff() {
 		});
 		if (typeof res === "string") return res;
 		const data = await res.json().catch(() => null);
-		if (!res.ok) {
-			return data?.error === "already_staff"
-				? "That email already has a staff account."
-				: "Could not create that account.";
-		}
+		if (!res.ok) return inviteFailure(data?.error);
 		setResult({
 			promoted: Boolean(data?.promoted),
 			// A fresh invite always sets one; a promotion says whether it did.

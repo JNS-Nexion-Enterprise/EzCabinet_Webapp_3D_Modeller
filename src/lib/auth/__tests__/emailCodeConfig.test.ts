@@ -29,6 +29,10 @@ describe("lib/auth.ts", () => {
 			"limits code requests per network",
 			"[SEND_PATH]: { window: SEND_WINDOW_S, max: SENDS_PER_NETWORK },",
 		],
+		[
+			"allows one network ten code tries a minute",
+			"[SIGN_IN_PATH]: { window: 60, max: SIGN_IN_TRIES_PER_MINUTE },",
+		],
 		["trusts no provider's word past its own", "trustedProviders: []"],
 		[
 			"runs both request guards in the one before slot",
@@ -37,6 +41,10 @@ describe("lib/auth.ts", () => {
 		[
 			"refuses a staff code session before stamping a passkey one",
 			"before: async (session, ctx) => { await refuseStaffCodeSession(session, ctx); return verifiedIfPasskeySession(session, ctx); },",
+		],
+		[
+			"ends a code session whose row stopped being a customer's, before stamping the sign-in",
+			"after: async (session, ctx) => { await dropCodeSessionIfNotCustomer(session, ctx); try { await prisma.user.update({",
 		],
 		[
 			"schedules the mail instead of awaiting it",

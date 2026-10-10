@@ -740,6 +740,8 @@ export const ms: Dictionary = {
 		wrongCode: "Kod itu tidak betul. Semak dan cuba lagi.",
 		codeExpired: "Kod itu telah tamat tempoh. Hantar kod baharu.",
 		tooMany: "Terlalu banyak kod diminta. Cuba lagi dalam masa sejam.",
+		tooManyTries:
+			"Terlalu banyak cubaan. Tunggu seminit, kemudian cuba kod yang sama sekali lagi.",
 		failed: "Ada sesuatu yang tidak kena. Cuba lagi.",
 		signInOrCreate: "Log masuk atau cipta akaun",
 		nudge: "Disimpan pada peranti ini. Log masuk untuk membuat pesanan.",

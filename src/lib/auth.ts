@@ -7,6 +7,7 @@ import { nextCookies } from "better-auth/next-js";
 import { emailOTP, twoFactor } from "better-auth/plugins";
 import { after } from "next/server";
 import {
+	dropCodeSessionIfNotCustomer,
 	emailCodeBeforeHook,
 	refuseStaffCodeSession,
 } from "@/lib/auth/emailCodeHooks";
@@ -18,6 +19,8 @@ import {
 	SEND_PATH,
 	SEND_WINDOW_S,
 	SENDS_PER_NETWORK,
+	SIGN_IN_PATH,
+	SIGN_IN_TRIES_PER_MINUTE,
 } from "@/lib/auth/emailCodeRules";
 import {
 	assertPasskeyOwner,
@@ -133,6 +136,8 @@ export const auth = betterAuth({
 	// The send-code rule is the per-network half of the code limits; the
 	// per-address half is `takeSendSlot` (`lib/auth/emailCodeMail.ts`), whose
 	// rows share this table — see `SEND_WINDOW_S` before shortening the window.
+	// The sign-in rule replaces the plugin's own three tries a minute, which
+	// one household's typos use up — see `SIGN_IN_TRIES_PER_MINUTE`.
 	// The limiter keys on `x-forwarded-for` holding one address, which is what
 	// Vercel overwrites it to. A proxy in front makes it a list, which is not
 	// trusted, and every visitor then shares one bucket per route.
@@ -140,6 +145,7 @@ export const auth = betterAuth({
 		storage: "database",
 		customRules: {
 			[SEND_PATH]: { window: SEND_WINDOW_S, max: SENDS_PER_NETWORK },
+			[SIGN_IN_PATH]: { window: 60, max: SIGN_IN_TRIES_PER_MINUTE },
 		},
 	},
 	// One email is one account, joined only when both sides proved the
@@ -260,7 +266,13 @@ export const auth = betterAuth({
 				// unhandled throw here would propagate out of session creation and
 				// fail the sign-in itself. A stale `lastLoginAt` is a cosmetic
 				// miss; a failed sign-in is not an acceptable price for it.
-				after: async (session) => {
+				//
+				// First, and outside the try: a code session whose row stopped
+				// being a customer's while the sign-in was in flight is deleted —
+				// see `dropCodeSessionIfNotCustomer`. If that check cannot run, the
+				// sign-in fails.
+				after: async (session, ctx) => {
+					await dropCodeSessionIfNotCustomer(session, ctx);
 					try {
 						await prisma.user.update({
 							where: { id: session.userId },

@@ -1,4 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { en } from "@/lib/copy/en";
+import { ms } from "@/lib/copy/ms";
+import { zh } from "@/lib/copy/zh";
 import {
 	canStart,
 	cleanCode,
@@ -60,12 +63,27 @@ describe("what the customer is told", () => {
 		[{ status: 400, code: "INVALID_OTP" }, "wrongCode"],
 		[{ status: 400, code: "OTP_EXPIRED" }, "codeExpired"],
 		[{ status: 403, code: "TOO_MANY_ATTEMPTS" }, "codeExpired"],
-		[{ status: 429 }, "codeExpired"],
+		// The code is still good: only the network's tries ran out.
+		[{ status: 429 }, "tooManyTries"],
 		[{ status: 500 }, "failed"],
 		// The request never left the phone.
 		[{}, "failed"],
 	])("a failed code %j", (error, expected) => {
 		expect(verifyFailure(error)).toBe(expected);
+	});
+
+	// "Send a new one" here would spend one of three sends an hour and kill
+	// a code that still works.
+	it("tells a rate-limited try to wait and use the same code", () => {
+		expect(en.signIn.tooManyTries).toBe(
+			"Too many tries. Wait a minute, then try the same code again.",
+		);
+		expect(ms.signIn.tooManyTries).toBe(
+			"Terlalu banyak cubaan. Tunggu seminit, kemudian cuba kod yang sama sekali lagi.",
+		);
+		expect(zh.signIn.tooManyTries).toBe(
+			"尝试次数过多。请等一分钟，然后再试同一个验证码。",
+		);
 	});
 
 	it.each([

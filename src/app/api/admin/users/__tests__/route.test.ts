@@ -93,8 +93,14 @@ describe("POST /api/admin/users", () => {
 		findUnique
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce({ id: "u9", role: "CUSTOMER" });
+		// The password sign-in the sign-up made.
+		accountFindFirst.mockResolvedValueOnce({ id: "a9" });
 		const response = await invite();
 		expect(response.status).toBe(201);
+		expect(accountFindFirst).toHaveBeenCalledWith({
+			where: { userId: "u9", providerId: "credential" },
+			select: { id: true },
+		});
 		expect(update.mock.calls[0][0]).toMatchObject({
 			where: { id: "u9" },
 			data: { role: "SUPERADMIN", invitedById: "boss" },
@@ -102,6 +108,23 @@ describe("POST /api/admin/users", () => {
 		// A row made a moment ago has no session to end.
 		expect(sessionDeleteMany).not.toHaveBeenCalled();
 		expect(accountDeleteMany).not.toHaveBeenCalled();
+	});
+
+	// The invitee's first code sign-in made the row between the `existing`
+	// check and the sign-up, which was then swallowed as a duplicate. Given
+	// the role, that row would be staff with no password and no way in.
+	it("409s when the row it finds is not the one its sign-up made", async () => {
+		findUnique
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({ id: "code-made", role: "CUSTOMER" });
+		accountFindFirst.mockResolvedValueOnce(null);
+		const response = await invite();
+		expect(response.status).toBe(409);
+		await expect(response.json()).resolves.toEqual({
+			error: "signed_in_meanwhile",
+		});
+		expect(update).not.toHaveBeenCalled();
+		expect(sendStaffInvite).not.toHaveBeenCalled();
 	});
 
 	describe("promoting an existing customer", () => {

@@ -42,6 +42,7 @@ beforeEach(() => {
 
 afterEach(() => {
 	delete process.env.RESEND_API_KEY;
+	vi.unstubAllEnvs();
 	vi.restoreAllMocks();
 });
 
@@ -71,6 +72,25 @@ describe("sendSignInCode", () => {
 		delete process.env.RESEND_API_KEY;
 		await sendSignInCode("aiman@outlook.com", "482913");
 		expect(sendEmail).not.toHaveBeenCalled();
+		expect(logs()).toContain("482913");
+	});
+
+	// Function logs are read by more people than a mailbox is, and kept.
+	it("in production with no mail key, logs an error without the code or the address", async () => {
+		vi.stubEnv("VERCEL_ENV", "production");
+		delete process.env.RESEND_API_KEY;
+		await sendSignInCode("aiman@outlook.com", "482913");
+		expect(sendEmail).not.toHaveBeenCalled();
+		expect(logs()).not.toContain("482913");
+		expect(logs()).not.toContain("aiman@outlook.com");
+		expect(console.error).toHaveBeenCalledTimes(1);
+		expect(console.info).not.toHaveBeenCalled();
+	});
+
+	it("on a preview deployment with no mail key, still logs the code", async () => {
+		vi.stubEnv("VERCEL_ENV", "preview");
+		delete process.env.RESEND_API_KEY;
+		await sendSignInCode("aiman@outlook.com", "482913");
 		expect(logs()).toContain("482913");
 	});
 

@@ -115,7 +115,7 @@ Checked against Vercel's documentation on 2026-10-09.
 
 ### Mail
 - Sent through `lib/email.ts` (Resend). Text and a plain HTML version.
-- With no `RESEND_API_KEY` (local, preview) the code is written to the server log and nothing is mailed. Preview deployments therefore cannot be used to mail codes to strangers.
+- With no `RESEND_API_KEY` (local, preview) the code is written to the server log and nothing is mailed. In production it is never logged: a missing key there logs an error line with neither the code nor the address. Preview deployments therefore cannot be used to mail codes to strangers.
 - Before launch EzCabinet's sending domain needs SPF, DKIM and DMARC, or Outlook, Yahoo and iCloud will junk the codes. A junked code is a customer who cannot order.
 
 ## Text must not assume Google

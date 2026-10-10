@@ -83,9 +83,15 @@ export async function sendSignInCode(
 	if (staff) return;
 	// Local and preview have no mail key: the developer reads the code here,
 	// and a preview deployment cannot be used to mail strangers. With a key
-	// the code is never logged.
+	// the code is never logged. Nor in production without one: a missing key
+	// there is a fault, and function logs are no place for a working code or
+	// for who asked for it.
 	if (!process.env.RESEND_API_KEY) {
-		console.info(`Sign-in code for ${email}: ${code}`);
+		if (process.env.VERCEL_ENV === "production") {
+			console.error("Sign-in code not sent: RESEND_API_KEY is not set");
+		} else {
+			console.info(`Sign-in code for ${email}: ${code}`);
+		}
 		return;
 	}
 	const minutes = CODE_TTL_S / 60;

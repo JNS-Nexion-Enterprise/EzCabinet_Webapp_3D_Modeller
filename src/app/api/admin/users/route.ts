@@ -126,7 +126,8 @@ export const POST = withAuth(
 			// Once more, now that the role is committed. A code sign-in could land
 			// between the delete above and the commit, while the row was still a
 			// customer's, and leave a customer-made session on a staff row. From
-			// here `refuseStaffCodeSession` refuses any new one.
+			// here `refuseStaffCodeSession` refuses any new one, and one already
+			// past that check is deleted by `dropCodeSessionIfNotCustomer`.
 			await prisma.session.deleteMany({ where: { userId: existing.id } });
 			const passwordSet = passwordHash !== null;
 			const emailed = await sendStaffInvite({
@@ -169,6 +170,23 @@ export const POST = withAuth(
 		// legitimate path is unaffected.
 		if (created.role !== "CUSTOMER") {
 			return NextResponse.json({ error: "already_staff" }, { status: 409 });
+		}
+
+		// The invitee's own first code sign-in can make the row between the
+		// `existing` check and the sign-up, which is then swallowed the same
+		// way. That row has no password, and staff cannot use a code: given the
+		// role it would have no way in. Refused rather than promoted here —
+		// pressing Invite again finds the row and takes the promotion branch
+		// above, which sets the password and ends the customer's sessions.
+		const credential = await prisma.account.findFirst({
+			where: { userId: created.id, providerId: "credential" },
+			select: { id: true },
+		});
+		if (!credential) {
+			return NextResponse.json(
+				{ error: "signed_in_meanwhile" },
+				{ status: 409 },
+			);
 		}
 
 		// The role is set here, never by the sign-up body — `input: false` in the

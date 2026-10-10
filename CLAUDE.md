@@ -697,10 +697,18 @@ customer, staff and over-the-cap addresses all get `{ success: true }` in the
 same time: the plugin awaits its mail callback, so the callback only
 schedules `sendSignInCode` with `after()`, and everything that differs by
 address happens there. Abuse limits: BotID on the send request; three codes
-per address per hour (`takeSendSlot`); twenty send requests per network per
-hour (Better Auth's limiter, the only one that answers 429); and, outside the
-app, a Vercel firewall rule on the same route set looser than that
-(`docs/ops/customer-passkey-runbook.md`). Both app counters are rows in
+per address per hour (`takeSendSlot`, silent); thirty send requests per
+network per hour (`SENDS_PER_NETWORK`) and ten code tries per network per
+minute (`SIGN_IN_TRIES_PER_MINUTE`), both Better Auth's limiter and both
+answering 429; and, outside the app, a Vercel firewall rule on the send route
+at ninety an hour, three times the app's own so the app's message is always
+met first (`docs/ops/customer-passkey-runbook.md`). Thirty is the owner's
+starting figure, to be raised with the firewall rule if real customers on a
+shared network are refused. The tries rule replaces the plugin's own three a
+minute, which three typos or two customers behind one carrier address used
+up. A 429 on a try is not an expired code: the form says "Too many tries.
+Wait a minute, then try the same code again." (`verifyFailure`) and must
+never suggest a new code, which would kill the good one and spend a send. Both app counters are rows in
 `RateLimit` — `rateLimit.storage: "database"`, which every Better Auth route
 now uses, so every `/api/auth` request reads and writes that table and the
 migration `20261009000000_rate_limit` must be applied before this code serves
@@ -710,8 +718,38 @@ send rule's window must not drop below `SEND_WINDOW_S`. Because the cap is
 silent, the form counts its own sends and shows "too many" itself
 (`maySendAgain`). Accepted limits: anyone who knows an address can burn its
 three codes an hour (a nuisance to that customer, no access); the per-network
-rule is a rolling count, so a busy shared network (an office, a mobile
-carrier's NAT) can be refused for an hour; and a lost mailbox has no recovery.
+send rule is a rolling count that never resets while requests keep arriving
+under an hour apart, so it is really "thirty, then an hour's refusal" for a
+busy shared network (an office, a mobile carrier's NAT); and a lost mailbox
+has no recovery.
+
+**A code session is checked twice.** `refuseStaffCodeSession` before the
+session is made, and `dropCodeSessionIfNotCustomer`
+(`session.create.after`, ahead of the `lastLoginAt` stamp) once it exists:
+if the row is no longer a customer's — a promotion committed while the
+sign-in was in flight — the session is deleted. The response may still set a
+cookie for it; the next request is signed out. A staff address never reaches
+the second check, so it tells nothing apart. The matching hole on the invite
+side: a fresh invite whose sign-up was swallowed because the invitee's first
+code sign-in made the row a moment earlier finds a row with no `credential`
+account, and answers 409 `signed_in_meanwhile` instead of giving a
+passwordless row a role. Pressing Invite again promotes it properly.
+
+**A customer's name needs a letter.** `parseCustomerName` answers
+`name_required` for a name with no letter at all ("..", emoji alone,
+zero-width spaces, Hangul fillers) and `name_refused` for one carrying a
+format character, a line or paragraph separator or a Hangul filler. The
+zero-width joiner is the one format character allowed, because emoji are
+built with it; that also refuses the zero-width non-joiner some scripts
+(Persian) spell with.
+
+**Before a deploy**, two queries must answer 0 — unverified staff rows, and
+`SELECT count(*) FROM "user" WHERE email <> lower(email);` (a mixed-case
+staff row would be mailed codes and gain a shadow customer row) — and on the
+preview, not after production, the `rateLimit` keys must start with a real
+address, not `no-trusted-ip`. Migration `20261009000000_rate_limit` sorts
+before the already-applied `20261009010000_notification_channel` and still
+applies with `migrate deploy`. The runbook has the checklist.
 
 **One email is one account.** Google joins an existing row only when Google
 reports the email verified and our row is verified too — Better Auth's
@@ -733,6 +771,8 @@ itself. It cannot stop a change, only make it visible.
 and error.** `copy/__tests__/dictionary.test.ts` fails on any other string
 that says Google. With no `RESEND_API_KEY` (local, preview) the code is
 written to the server log and nothing is mailed; with one it is never logged.
+In production (`VERCEL_ENV === "production"`) it is never logged either way:
+a missing key there logs an error naming neither the code nor the address.
 Mail delivery is now checkout-critical: a customer without Google cannot
 order if their code does not arrive.
 

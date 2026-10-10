@@ -8,7 +8,9 @@ import {
 	mayUseCode,
 	SEND_PATH,
 	SEND_WINDOW_S,
+	SENDS_PER_NETWORK,
 	SIGN_IN_PATH,
+	SIGN_IN_TRIES_PER_MINUTE,
 	withinSendCap,
 } from "@/lib/auth/emailCodeRules";
 
@@ -29,6 +31,10 @@ describe("the spec's numbers", () => {
 		expect(CODE_ATTEMPTS).toBe(3);
 		expect(CODES_PER_HOUR).toBe(3);
 		expect(SEND_WINDOW_S).toBe(3600);
+	});
+	it("thirty sends an hour and ten tries a minute for one network", () => {
+		expect(SENDS_PER_NETWORK).toBe(30);
+		expect(SIGN_IN_TRIES_PER_MINUTE).toBe(10);
 	});
 	it.each([
 		[1, true],

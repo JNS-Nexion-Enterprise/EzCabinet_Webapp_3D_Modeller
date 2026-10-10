@@ -162,7 +162,7 @@ Expected: migrations apply; a superadmin row exists for `SUPERADMIN_EMAIL` (the 
 - Produces (all from `@/lib/auth/emailCodeRules`, no `server-only`, safe in client components):
   - `SEND_PATH = "/email-otp/send-verification-otp"`, `SIGN_IN_PATH = "/sign-in/email-otp"`
   - `CLOSED_PATHS: string[]` (seven)
-  - `CODE_TTL_S = 600`, `CODE_ATTEMPTS = 3`, `CODES_PER_HOUR = 3`, `SEND_WINDOW_S = 3600`, `SENDS_PER_NETWORK = 20`
+  - `CODE_TTL_S = 600`, `CODE_ATTEMPTS = 3`, `CODES_PER_HOUR = 3`, `SEND_WINDOW_S = 3600`, `SENDS_PER_NETWORK = 30`
   - `mayUseCode(row: { role: Role } | null): boolean`
   - `withinSendCap(sendsThisHour: number): boolean`
   - `codeRequest(path: string | undefined, body: unknown): "ignore" | "send" | "sign_in" | "refuse"`
@@ -316,7 +316,7 @@ export const CODES_PER_HOUR = 3;
  * the per-network rule must not be given a shorter window than this.
  */
 export const SEND_WINDOW_S = 60 * 60;
-export const SENDS_PER_NETWORK = 20;
+export const SENDS_PER_NETWORK = 30;
 
 /**
  * May this address be sent a code, and may this row sign in with one. `null`
@@ -5626,7 +5626,7 @@ The on-disk file is the one to edit; it has moved on from any copy quoted elsewh
 +schedules `sendSignInCode` with `after()`, and everything that differs by
 +address happens there. A code that is not mailed is deleted, so it cannot be
 +guessed at. Abuse limits: BotID on the send request; three codes per address
-+per hour (`takeSendSlot`); twenty send requests per network per hour (Better
++per hour (`takeSendSlot`); thirty send requests per network per hour (Better
 +Auth's limiter, the only one that answers 429); and, outside the app, a
 +Vercel firewall rule on the same route set looser than that
 +(`docs/ops/customer-passkey-runbook.md`). Both app counters are rows in
@@ -5808,14 +5808,14 @@ It named Google as the only route in five places. It also gains the deploy steps
 +
 +## The firewall rule in front of sign-in codes
 +
-+The app already limits code requests: three an hour to one address, twenty an hour from one network. This rule is the wall outside the app. It stops a flood before it reaches a function or the database. It is set at sixty an hour, three times the app's limit, so a real customer always meets the app's own message first and never this.
++The app already limits code requests: three an hour to one address, thirty an hour from one network. This rule is the wall outside the app. It stops a flood before it reaches a function or the database. It is set at ninety an hour, three times the app's limit, so a real customer always meets the app's own message first and never this.
 +
 +Someone with access to the Vercel project runs these, in the linked project folder.
 +
 +1. Stage the rule, counting only. Nothing is blocked yet.
 +
 +   ```bash
-+   vercel firewall rules add "Sign-in code requests" --condition '{"type":"path","op":"eq","value":"/api/auth/email-otp/send-verification-otp"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 3600 --rate-limit-requests 60 --rate-limit-keys ip --rate-limit-action log --description "Outer wall for emailed sign-in codes. Looser than the app's 20 per hour per network."
++   vercel firewall rules add "Sign-in code requests" --condition '{"type":"path","op":"eq","value":"/api/auth/email-otp/send-verification-otp"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 3600 --rate-limit-requests 90 --rate-limit-keys ip --rate-limit-action log --description "Outer wall for emailed sign-in codes. Looser than the app's 30 per hour per network."
 +   ```
 +
 +2. Read what was staged, then make it live.
@@ -5908,7 +5908,7 @@ These change the live project, not the repo. Do not run them yourself: hand them
 2. Put the firewall rule in front of the code route. It is keyed by IP and set at 60 requests an hour, three times the app's own 20, so a real customer always meets the app's message first and never this. Stage it counting only:
 
    ```bash
-   vercel firewall rules add "Sign-in code requests" --condition '{"type":"path","op":"eq","value":"/api/auth/email-otp/send-verification-otp"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 3600 --rate-limit-requests 60 --rate-limit-keys ip --rate-limit-action log --description "Outer wall for emailed sign-in codes. Looser than the app's 20 per hour per network."
+   vercel firewall rules add "Sign-in code requests" --condition '{"type":"path","op":"eq","value":"/api/auth/email-otp/send-verification-otp"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 3600 --rate-limit-requests 90 --rate-limit-keys ip --rate-limit-action log --description "Outer wall for emailed sign-in codes. Looser than the app's 30 per hour per network."
    ```
 
    Read what was staged, then make it live:

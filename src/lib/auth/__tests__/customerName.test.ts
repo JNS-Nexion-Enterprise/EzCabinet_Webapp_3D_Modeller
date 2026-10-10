@@ -24,6 +24,14 @@ describe("parseCustomerName", () => {
 		["initials that spell admin", "Ad Minh", "Ad Minh"],
 		["dotted initials that spell admin", "A.D. Minhas", "A.D. Minhas"],
 		["two words that spell support", "Sup Port", "Sup Port"],
+		["two Chinese characters", "李伟", "李伟"],
+		["Arabic", "عائشة", "عائشة"],
+		// U+FE0F, the variation selector that makes the heart an emoji.
+		[
+			"an emoji with a variation selector",
+			"Aiman \u2764\ufe0f",
+			"Aiman \u2764\ufe0f",
+		],
 	])("accepts %s, stored as typed and trimmed", (_label, typed, stored) => {
 		expect(parseCustomerName(typed)).toEqual({ name: stored });
 	});
@@ -37,6 +45,18 @@ describe("parseCustomerName", () => {
 		["null", null],
 		["a number", 42],
 		["an object", { name: "Aiman" }],
+		// Long enough, and a blank label on a staff screen all the same.
+		["only zero-width spaces", "\u200b\u200b"],
+		["only dots", ".."],
+		["only dashes", "--"],
+		["only emoji", "🙂🙂"],
+		["only digits", "42"],
+		// Hangul fillers are letters to Unicode and draw nothing.
+		["only Hangul fillers", "\u3164\u3164"],
+		["only Hangul choseong fillers", "\u115f\u115f"],
+		["only Hangul jungseong fillers", "\u1160\u1160"],
+		["only half-width Hangul fillers", "\uffa0\uffa0"],
+		["a filler and a dot", "\u3164."],
 	])("asks for a name when given %s", (_label, typed) => {
 		expect(parseCustomerName(typed)).toEqual({ error: "name_required" });
 	});
@@ -49,6 +69,11 @@ describe("parseCustomerName", () => {
 		["a right-to-left override", "Aiman‮ilA"],
 		["a left-to-right embedding", "‪Aiman"],
 		["a directional isolate", "Aiman⁦Ali⁩"],
+		["a line separator inside", "Aiman\u2028Ali"],
+		["a paragraph separator inside", "Aiman\u2029Ali"],
+		["a Hangul filler inside", "Kim\u3164Lee"],
+		["a zero-width space inside", "Aiman\u200bAli"],
+		["a byte-order mark inside", "Aiman\ufeffAli"],
 		["the business", "EzCabinet"],
 		["the business, spaced", "Ez Cabinet Sdn Bhd"],
 		["the business, dotted", "ez.cabinet"],

@@ -2,12 +2,34 @@ import { z } from "zod";
 import type { Role } from "@/lib/auth/permissions";
 
 /**
- * Control characters, and the Unicode direction overrides and isolates
- * (U+202A–202E, U+2066–2069). A name carrying one can reorder the text
- * around it on a staff screen or in a mail. The zero-width joiner is not
- * here on purpose: emoji are built with it.
+ * The Hangul fillers. Unicode files them as letters and they draw nothing,
+ * so a name made of them is a blank label on a staff screen.
  */
-const HIDDEN = /[\p{Cc}‪-‮⁦-⁩]/u;
+const FILLERS = "\u115f\u1160\u3164\uffa0";
+
+/**
+ * Characters no name may carry: control characters, line and paragraph
+ * separators, the Hangul fillers, and every format character — the direction
+ * overrides and isolates, which can reorder the text around the name on a
+ * staff screen or in a mail, and the zero-width ones, which hide. The
+ * zero-width joiner (U+200D) is the one format character let through: emoji
+ * are built with it. Their variation selectors are marks, not format
+ * characters, so they pass untouched.
+ */
+const HIDDEN = new RegExp(
+	`[\\p{Cc}\\p{Zl}\\p{Zp}${FILLERS}]|(?!\u200d)\\p{Cf}`,
+	"u",
+);
+
+/**
+ * At least one letter that draws something. Without it — "..", "--", emoji
+ * alone, zero-width spaces — the name reads as empty wherever it is shown.
+ */
+const hasLetter = (name: string): boolean =>
+	/\p{L}/u.test(name.replace(new RegExp(`[${FILLERS}]`, "g"), ""));
+
+/** Marks the "no letter" issue, so it is answered like an empty name. */
+const NO_LETTER = "no_letter";
 
 /**
  * Compatibility forms unified, lower-cased, and everything that is not a
@@ -51,12 +73,13 @@ export const customerNameSchema = z
 	.trim()
 	.min(2)
 	.max(80)
+	.refine(hasLetter, { message: NO_LETTER })
 	.refine((name) => !HIDDEN.test(name) && !posesAsBusiness(name));
 
 /**
  * The schema's verdict as the two answers the customer can be given:
- * `name_required` ("Enter your name.") for nothing or too little, and
- * `name_refused` ("Use your own name.") for everything else.
+ * `name_required` ("Enter your name.") for nothing, too little or no letter
+ * at all, and `name_refused` ("Use your own name.") for everything else.
  */
 export function parseCustomerName(
 	input: unknown,
@@ -64,7 +87,10 @@ export function parseCustomerName(
 	const parsed = customerNameSchema.safeParse(input);
 	if (parsed.success) return { name: parsed.data };
 	const short = parsed.error.issues.some(
-		(issue) => issue.code === "too_small" || issue.code === "invalid_type",
+		(issue) =>
+			issue.code === "too_small" ||
+			issue.code === "invalid_type" ||
+			issue.message === NO_LETTER,
 	);
 	return { error: short ? "name_required" : "name_refused" };
 }

@@ -94,3 +94,33 @@ export async function refuseStaffCodeSession(
 	// No row is refused too: here the account always exists already.
 	if (row?.role !== "CUSTOMER") throw invalidCode();
 }
+
+/**
+ * `databaseHooks.session.create.after`: the same question as
+ * `refuseStaffCodeSession`, asked again once the session exists. The row can
+ * stop being a customer's between the two — a promotion committing, whose
+ * last session delete has already run, or an invite giving the role to a row
+ * this very sign-in made. The session is then a customer-made one on a staff
+ * row, and it is deleted.
+ *
+ * The response may still carry a cookie for it. That is accepted: the cookie
+ * names a session that no longer exists, so the next request is signed out.
+ *
+ * A staff address never gets this far — its session is refused before it is
+ * made — so nothing here can tell one apart.
+ *
+ * Not caught by the caller: if the role cannot be read the sign-in fails,
+ * which is the safe way for this to go wrong.
+ */
+export async function dropCodeSessionIfNotCustomer(
+	session: { id: string; userId: string },
+	ctx: { path?: string } | null,
+): Promise<void> {
+	if (ctx?.path !== SIGN_IN_PATH) return;
+	const row = await prisma.user.findUnique({
+		where: { id: session.userId },
+		select: { role: true },
+	});
+	if (row?.role === "CUSTOMER") return;
+	await prisma.session.deleteMany({ where: { id: session.id } });
+}

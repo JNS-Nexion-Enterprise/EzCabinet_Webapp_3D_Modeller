@@ -46,6 +46,8 @@ Nobody at EzCabinet can see or send a code by hand. Ask them to:
 2. Read back the address shown above the code box. If it is wrong, press **Use a different email**.
 3. Wait for the newest email. Each new code cancels the one before it.
 
+If the screen says "Too many tries. Wait a minute, then try the same code again.", the code is still good. Too many codes were tried from their network in one minute (ten are allowed, counted across everyone on that network). They wait a minute and type the same code. They should not ask for a new one: a new code cancels the one they have and uses up one of their three an hour.
+
 After three codes in an hour, no more are sent to that address until the hour is up, and the screen says so. Anyone who knows an address can use up its three codes, so a customer may be locked out of codes for an hour by a stranger; it gives the stranger no access. If the customer no longer has that mailbox at all, there is no way back into the account: they sign in with an address they do have, which is a new account.
 
 ## If a customer says a passkey is not theirs
@@ -57,26 +59,27 @@ Reset straight away. Then follow the ring-back steps above before the customer s
 - [ ] `BETTER_AUTH_URL` is the one production address. A passkey is tied to that exact hostname, and `www.example.com` and `example.com` are different to a passkey. Redirect every other hostname to this one before launch. Never change it afterwards: every customer's passkey would stop working.
 - [ ] `WHATSAPP_SALES_NUMBER` is set. The "Lost your device?" link on the passkey screen needs it.
 - [ ] Sales staff know what the screen looks like.
-- [ ] The database migration `20261009000000_rate_limit` is applied **before** the new code serves traffic (`pnpm exec prisma migrate deploy`). Every sign-in request counts itself in that table, so without it nobody can sign in, staff included.
+- [ ] The database migration `20261009000000_rate_limit` is applied **before** the new code serves traffic (`pnpm exec prisma migrate deploy`). Every sign-in request counts itself in that table, so without it nobody can sign in, staff included. Its name sorts before `20261009010000_notification_channel`, which a database may already have applied; `migrate deploy` applies it all the same, since it runs every migration the database has not recorded, whatever the order.
 - [ ] Before deploy, no staff row has an unverified email: `SELECT count(*) FROM "user" WHERE role <> 'CUSTOMER' AND "emailVerified" = false;` answers 0. Fix any row found by confirming the address with its owner and setting `emailVerified` to true. (A correct code on such a row would otherwise wipe its sign-ins; the app refuses the request, but the row should not exist.)
-- [ ] `RESEND_API_KEY` and `EMAIL_FROM` are set in production, and the sending domain has SPF, DKIM and DMARC. Send a sign-in code to an Outlook address and a Yahoo address and check both arrive in the inbox, not junk. Without the key, codes are written to the server log and no customer receives one. Checkout depends on this mail for every customer without Google.
+- [ ] Before deploy, every stored address is lower-case: `SELECT count(*) FROM "user" WHERE email <> lower(email);` answers 0. A sign-in code looks an address up in lower case, so a staff row stored with a capital would not be recognised as staff: it would be mailed codes, and a correct one would make a second, customer account on the same address. Fix any row found by lower-casing its email.
+- [ ] On the Vercel preview, before production: sign in with a code from two different networks, then check the `rateLimit` table. The keys for the code routes start with a visitor's address, a different one for each visitor. A key starting `no-trusted-ip` means every visitor shares one counter: stop and tell the developer. Do not deploy to production until this is right.
+- [ ] `RESEND_API_KEY` and `EMAIL_FROM` are set in production, and the sending domain has SPF, DKIM and DMARC. Send a sign-in code to an Outlook address and a Yahoo address and check both arrive in the inbox, not junk. Without the key no customer receives a code, and production logs only an error line that names neither the code nor the address. Checkout depends on this mail for every customer without Google.
 - [ ] `RESEND_API_KEY` is stored as a sensitive variable, so it cannot be read back from the dashboard: `vercel env add RESEND_API_KEY production --sensitive`. The secrets already in the project should be stored the same way: `BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_SECRET`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `WHATSAPP_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_VERIFY_TOKEN`, `MUX_TOKEN_SECRET`, `BLOB_READ_WRITE_TOKEN`, `CRON_SECRET`, `FLAGS_SECRET` and each carrier's secret or token. To change one, remove it and add it again with `--sensitive`.
 - [ ] The firewall rule in front of the sign-in code route exists and is published (next section). Stage it counting only first.
 - [ ] BotID's two halves agree: the send-code request in the browser's Network tab is exactly `/api/auth/email-otp/send-verification-otp`, the path in `src/instrumentation-client.ts`, and answers 200; the same request from `curl` answers 403 `EMAIL_CODE_BOT`.
-- [ ] After the first sign-in in production, check the `rateLimit` table: the keys for the code route start with a visitor's address, a different one for each visitor. A key starting `no-trusted-ip` means every visitor shares one counter. Tell the developer before launch.
 - [ ] Everyone knows what to expect on launch day. Every existing customer is asked to set up a passkey at their next order page. A customer whose sign-in is more than a day old is asked to sign in once more first.
 - [ ] Section J of `docs/ops/staff-2fa-test-checklist.md` has been run on a Vercel preview. The checkout step cannot be tried on a local production build, because the bot check only runs on Vercel.
 
 ## The firewall rule in front of sign-in codes
 
-The app already limits code requests: three an hour to one address, twenty an hour from one network. The per-network limit is a rolling count, so a busy shared network can be refused for an hour; that is accepted. This rule is the wall outside the app. It stops a flood before it reaches a function or the database. It is set at sixty an hour, three times the app's limit, so a real customer always meets the app's own message first and never this.
+The app already limits code requests: three an hour to one address, thirty an hour from one network. The per-network limit is a rolling count: while requests keep arriving less than an hour apart it never starts again, so a busy shared network (a carrier's address, the showroom Wi-Fi) that reaches thirty is refused until it has been quiet for an hour. Thirty is the owner's starting figure; if real customers on a shared network are refused, the developer raises it, and this rule with it. This rule is the wall outside the app. It stops a flood before it reaches a function or the database. It is set at ninety an hour, three times the app's limit, so a real customer always meets the app's own message first and never this.
 
 Someone with access to the Vercel project runs these, in the linked project folder.
 
 1. Stage the rule, counting only. Nothing is blocked yet.
 
    ```bash
-   vercel firewall rules add "Sign-in code requests" --condition '{"type":"path","op":"eq","value":"/api/auth/email-otp/send-verification-otp"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 3600 --rate-limit-requests 60 --rate-limit-keys ip --rate-limit-action log --description "Outer wall for emailed sign-in codes. Looser than the app's 20 per hour per network."
+   vercel firewall rules add "Sign-in code requests" --condition '{"type":"path","op":"eq","value":"/api/auth/email-otp/send-verification-otp"}' --condition '{"type":"method","op":"eq","value":"POST"}' --action rate_limit --rate-limit-window 3600 --rate-limit-requests 90 --rate-limit-keys ip --rate-limit-action log --description "Outer wall for emailed sign-in codes. Looser than the app's 30 per hour per network."
    ```
 
 2. Read what was staged, then make it live.

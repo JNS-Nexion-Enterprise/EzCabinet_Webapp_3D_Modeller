@@ -43,6 +43,7 @@ export type FormMessage =
 	| "wrongCode"
 	| "codeExpired"
 	| "tooMany"
+	| "tooManyTries"
 	| "failed";
 
 /**
@@ -56,19 +57,21 @@ export function sendFailure(status: number | undefined): FormMessage {
 }
 
 /**
- * A used-up code and a rate-limited try get the "expired" message: either
- * way the next step is a new code, which is what that message says.
+ * A used-up code gets the "expired" message: the next step is a new code,
+ * which is what that message says.
+ *
+ * A rate-limited try (429) does not. It is the network's tries that ran out
+ * — three typos, or another customer behind the same carrier address — and
+ * the code is still good. Sending a new one would kill it and spend one of
+ * three sends an hour, so the customer is told to wait and use the same one.
  */
 export function verifyFailure(error: {
 	status?: number;
 	code?: string;
 }): FormMessage {
+	if (error.status === 429) return "tooManyTries";
 	if (error.code === "INVALID_OTP") return "wrongCode";
-	if (
-		error.code === "OTP_EXPIRED" ||
-		error.code === "TOO_MANY_ATTEMPTS" ||
-		error.status === 429
-	) {
+	if (error.code === "OTP_EXPIRED" || error.code === "TOO_MANY_ATTEMPTS") {
 		return "codeExpired";
 	}
 	return "failed";

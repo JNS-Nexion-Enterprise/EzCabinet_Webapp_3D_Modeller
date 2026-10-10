@@ -693,6 +693,7 @@ export const zh: Dictionary = {
 		wrongCode: "验证码不正确。请检查后重试。",
 		codeExpired: "验证码已过期。请发送新的验证码。",
 		tooMany: "请求验证码的次数过多。请一小时后再试。",
+		tooManyTries: "尝试次数过多。请等一分钟，然后再试同一个验证码。",
 		failed: "出了点问题。请重试。",
 		signInOrCreate: "登录或创建账户",
 		nudge: "已保存在此设备上。登录后即可下单。",

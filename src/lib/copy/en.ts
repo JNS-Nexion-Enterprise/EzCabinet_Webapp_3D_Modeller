@@ -754,6 +754,8 @@ export const en = {
 		wrongCode: "That code is not right. Check it and try again.",
 		codeExpired: "That code has expired. Send a new one.",
 		tooMany: "Too many codes requested. Try again in an hour.",
+		tooManyTries:
+			"Too many tries. Wait a minute, then try the same code again.",
 		failed: "Something went wrong. Try again.",
 		/** No provider named: the page it leads to offers every way in. */
 		signInOrCreate: "Sign in or create an account",

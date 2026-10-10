@@ -13,6 +13,8 @@ const store = vi.hoisted(() => ({
 	bot: false,
 	/** The mail provider refusing or timing out: `sendEmail` answers false. */
 	mailDown: false,
+	/** Run between the session's before-check and its after-check. */
+	betweenChecks: null as null | (() => void),
 }));
 
 vi.mock("botid/server", () => ({
@@ -76,13 +78,20 @@ vi.mock("@/lib/catalogue/db", () => ({
 			},
 		},
 		passkey: { count: async () => 0, findFirst: async () => null },
-		session: { update: async () => null },
+		session: {
+			update: async () => null,
+			deleteMany: async ({ where }: { where: { id: string } }) => {
+				store.db.session = store.db.session.filter((r) => r.id !== where.id);
+			},
+		},
 	},
 }));
 
-const { emailCodeBeforeHook, refuseStaffCodeSession } = await import(
-	"@/lib/auth/emailCodeHooks"
-);
+const {
+	dropCodeSessionIfNotCustomer,
+	emailCodeBeforeHook,
+	refuseStaffCodeSession,
+} = await import("@/lib/auth/emailCodeHooks");
 const { sendSignInCode } = await import("@/lib/auth/emailCodeMail");
 const {
 	CLOSED_PATHS,
@@ -92,6 +101,7 @@ const {
 	SEND_WINDOW_S,
 	SENDS_PER_NETWORK,
 	SIGN_IN_PATH,
+	SIGN_IN_TRIES_PER_MINUTE,
 } = await import("@/lib/auth/emailCodeRules");
 const { passkeyBeforeHook, verifiedIfPasskeySession } = await import(
 	"@/lib/auth/passkeyHooks"
@@ -131,6 +141,7 @@ function makeAuth(opts: { rateLimit?: boolean } = {}) {
 			storage: "database",
 			customRules: {
 				[SEND_PATH]: { window: SEND_WINDOW_S, max: SENDS_PER_NETWORK },
+				[SIGN_IN_PATH]: { window: 60, max: SIGN_IN_TRIES_PER_MINUTE },
 			},
 		},
 		user: {
@@ -149,8 +160,10 @@ function makeAuth(opts: { rateLimit?: boolean } = {}) {
 				create: {
 					before: async (session, ctx) => {
 						await refuseStaffCodeSession(session, ctx);
+						store.betweenChecks?.();
 						return verifiedIfPasskeySession(session, ctx);
 					},
+					after: (session, ctx) => dropCodeSessionIfNotCustomer(session, ctx),
 				},
 			},
 		},
@@ -234,6 +247,7 @@ beforeEach(() => {
 	store.mailed = [];
 	store.bot = false;
 	store.mailDown = false;
+	store.betweenChecks = null;
 	process.env.RESEND_API_KEY = "test-key";
 	auth = makeAuth();
 });
@@ -745,6 +759,71 @@ describe("abuse", () => {
 		expect(
 			store.db.rateLimit.some((r) => String(r.key).endsWith(`|${SEND_PATH}`)),
 		).toBe(true);
+	});
+});
+
+describe("a row whose role changes while a code sign-in is in flight", () => {
+	// The promotion's last session delete has already run when this sign-in,
+	// which read the row as a customer's, inserts its session.
+	it("promoted between the two checks, ends with no session", async () => {
+		await send("aiman@outlook.com");
+		await signIn("aiman@outlook.com", lastCode());
+		store.db.session = [];
+		await send("aiman@outlook.com");
+		store.betweenChecks = () => {
+			store.db.user[0].role = "ADMIN";
+		};
+		await signIn("aiman@outlook.com", lastCode());
+		expect(store.db.user[0].role).toBe("ADMIN");
+		expect(store.db.session).toHaveLength(0);
+	});
+
+	it("deleted between the two checks, ends with no session", async () => {
+		await send("aiman@outlook.com");
+		await signIn("aiman@outlook.com", lastCode());
+		store.db.session = [];
+		await send("aiman@outlook.com");
+		store.betweenChecks = () => {
+			store.db.user = [];
+		};
+		await signIn("aiman@outlook.com", lastCode());
+		expect(store.db.session).toHaveLength(0);
+	});
+
+	it("unchanged, keeps its session", async () => {
+		await send("aiman@outlook.com");
+		store.betweenChecks = () => {};
+		expect((await signIn("aiman@outlook.com", lastCode())).status).toBe(200);
+		expect(store.db.session).toHaveLength(1);
+	});
+
+	// The after-check is for code sign-ins only: staff sessions made any other
+	// way are none of its business.
+	it("leaves a session made on another route alone", async () => {
+		plant("boss@x.com", "ADMIN");
+		store.db.session.push({ id: "s1", userId: "id-boss@x.com" });
+		await dropCodeSessionIfNotCustomer(
+			{ id: "s1", userId: "id-boss@x.com" },
+			{ path: "/sign-in/email" },
+		);
+		expect(store.db.session).toHaveLength(1);
+		await dropCodeSessionIfNotCustomer(
+			{ id: "s1", userId: "id-boss@x.com" },
+			{ path: SIGN_IN_PATH },
+		);
+		expect(store.db.session).toHaveLength(0);
+	});
+});
+
+describe("code tries from one network", () => {
+	// The plugin's own limit is three a minute: three typos, or two customers
+	// behind one carrier address, and the right code is refused.
+	it("are allowed ten a minute, across addresses, then refused", async () => {
+		auth = makeAuth({ rateLimit: true });
+		for (let i = 0; i < SIGN_IN_TRIES_PER_MINUTE; i++) {
+			expect((await signIn(`a${i}@x.com`, "000000")).status).toBe(400);
+		}
+		expect((await signIn("one-more@x.com", "000000")).status).toBe(429);
 	});
 });
 
