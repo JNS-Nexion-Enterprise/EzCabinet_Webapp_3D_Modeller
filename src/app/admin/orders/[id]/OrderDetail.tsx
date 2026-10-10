@@ -3,15 +3,19 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { fetchGuarded } from "@/components/admin/stepUp";
 import { fieldClass } from "@/components/admin/styles";
 import { Spinner } from "@/components/Spinner";
 import type {
+	NotificationChannel,
 	NotificationKind,
 	NotificationStatus,
 	ProductionStage,
 } from "@/generated/prisma/enums";
 import { en } from "@/lib/copy/en";
 import type { DeliveryStatusName } from "@/lib/logistics/types";
+import type { RefundState } from "@/lib/orders/refund";
 import { nextStage } from "@/lib/orders/stage";
 import type { SummaryLine } from "@/lib/orders/summary";
 import { shortTime } from "../../logistics/time";
@@ -44,12 +48,25 @@ export type OrderView = {
 	paymentRef: string | null;
 	paidAt: string | null;
 	paidByName: string | null;
+	cancelledAt: string | null;
+	cancelledByName: string | null;
+	cancelReason: string | null;
+	refundedAt: string | null;
+	refundedByName: string | null;
+	refundRef: string | null;
+	refundRequestedAt: string | null;
+	refundError: string | null;
+	/** `refundState` (`lib/orders/refund.ts`), derived on the server. */
+	refundState: RefundState;
+	/** The unanswered gateway refund is old enough to repeat. */
+	canAskAgain: boolean;
 	deliveries: { id: string; number: number; status: DeliveryStatusName }[];
 	productionStage: ProductionStage | null;
 	whatsappOptIn: boolean;
 	notifications: {
 		id: string;
 		kind: NotificationKind;
+		channel: NotificationChannel;
 		stage: ProductionStage | null;
 		status: NotificationStatus;
 		lastError: string | null;
@@ -68,6 +85,11 @@ const PRIMARY = `inline-flex min-h-9 items-center self-start rounded-full bg-[#1
 
 const STAGE_LABEL = en.order.stages;
 
+const CHANNEL_LABEL: Record<NotificationChannel, string> = {
+	WHATSAPP: "WhatsApp",
+	EMAIL: "Email",
+};
+
 const KIND_LABEL: Record<NotificationKind, string> = {
 	ORDER_PLACED: "Order placed",
 	PAYMENT_CONFIRMED: "Payment confirmed",
@@ -76,6 +98,33 @@ const KIND_LABEL: Record<NotificationKind, string> = {
 	PICKED_UP: "Picked up",
 	DELIVERED: "Delivered",
 	DELIVERY_FAILED: "Delivery failed",
+	ORDER_REFUNDED: "Order refunded",
+};
+
+/** What a route's refusal means to the person pressing the button. */
+const ACTION_ERROR: Record<string, string> = {
+	not_next_stage:
+		"Someone else moved this order on. Reload to see where it is.",
+	changed: "Someone else moved this order on. Reload to see where it is.",
+	not_awaiting_payment:
+		"This order is no longer awaiting payment. Reload to see where it is.",
+	already_cancelled: "This order is already cancelled. Reload to see it.",
+	in_production:
+		"Production has started, so this order can no longer be cancelled.",
+	has_delivery: "Cancel this order's delivery first.",
+	reason_required: "Give a reason for cancelling a paid order.",
+	not_refundable:
+		"This order is no longer waiting on a refund. Reload to see where it is.",
+	manual_order:
+		"This order was paid by bank transfer. Send the money back, then mark it refunded.",
+	not_configured:
+		"This order's payment gateway is not connected, so it cannot be refunded from here.",
+	gateway_unreachable:
+		"Could not reach the payment gateway, so nothing was changed. Try again in a few minutes.",
+	gateway_refused:
+		"The payment gateway refused the refund. Nothing was sent; the reason is on the order.",
+	not_acknowledged:
+		"The payment gateway did not answer, so the refund may or may not have gone through. Ask again in a few minutes: it repeats the same request and cannot refund twice.",
 };
 
 const MESSAGE_STATUS: Record<NotificationStatus, string> = {
@@ -90,31 +139,66 @@ const MESSAGE_STATUS: Record<NotificationStatus, string> = {
  * One order: what was bought, who for, and its admin moves — mark it paid,
  * advance production, create its delivery.
  */
-export function OrderDetail({ order }: { order: OrderView }) {
+export function OrderDetail({
+	order,
+	canRefund,
+}: {
+	order: OrderView;
+	/** `orders:refund` — a superadmin. The route checks it again. */
+	canRefund: boolean;
+}) {
 	const router = useRouter();
 	const [paymentRef, setPaymentRef] = useState("");
+	const [cancelReason, setCancelReason] = useState("");
+	const [refundRef, setRefundRef] = useState("");
 	const [busy, setBusy] = useState<string | null>(null);
 	const [error, setError] = useState<string | null>(null);
+	const [confirming, setConfirming] = useState<Confirm | null>(null);
+	const [cancelling, setCancelling] = useState(false);
+	const [stillPending, setStillPending] = useState(false);
 
-	async function act(kind: "paid" | "cancel") {
-		if (kind === "cancel" && !confirm(`Cancel order ${order.ref}?`)) return;
-		setBusy(kind);
-		setError(null);
-		const res = await fetch(`/api/admin/orders/${order.id}/${kind}`, {
+	/** A step-up guarded action; the dialog shows whatever this returns. */
+	async function guarded(
+		action: "paid" | "cancel" | "refunded" | "refund",
+		body: unknown,
+	): Promise<string | null> {
+		const res = await fetchGuarded(`/api/admin/orders/${order.id}/${action}`, {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ paymentRef: paymentRef.trim() || null }),
+			body: JSON.stringify(body),
+		});
+		if (typeof res === "string") return res;
+		// Even a refusal can have moved the order: a refused refund leaves its
+		// reason on it.
+		router.refresh();
+		if (res.ok) return null;
+		const payload = await res.json().catch(() => null);
+		return ACTION_ERROR[payload?.error] ?? "Could not update this order.";
+	}
+
+	/**
+	 * Ask the gateway where a pending refund has got to. No dialog: by itself
+	 * it changes nothing, it only records what the gateway already did. The
+	 * route is step-up guarded all the same.
+	 */
+	async function checkRefund() {
+		setBusy("check");
+		setError(null);
+		setStillPending(false);
+		const res = await fetchGuarded(`/api/admin/orders/${order.id}/refund`, {
+			method: "POST",
 		});
 		setBusy(null);
+		if (typeof res === "string") return setError(res);
+		const payload = await res.json().catch(() => null);
 		if (!res.ok) {
-			const body = await res.json().catch(() => null);
-			setError(
-				body?.error === "not_awaiting_payment"
-					? "This order is no longer awaiting payment. Reload to see where it is."
-					: "Could not update this order.",
+			return setError(
+				ACTION_ERROR[payload?.error] ?? "Could not check this refund.",
 			);
-			return;
 		}
+		// Still pending is an answer, but the page looks the same as before
+		// the press, so it has to be said.
+		setStillPending(payload?.state === "pending");
 		router.refresh();
 	}
 
@@ -129,11 +213,7 @@ export function OrderDetail({ order }: { order: OrderView }) {
 		setBusy(null);
 		if (!res.ok) {
 			const payload = await res.json().catch(() => null);
-			setError(
-				payload?.error === "not_next_stage"
-					? "Someone else moved this order on. Reload to see where it is."
-					: "Could not update this order.",
-			);
+			setError(ACTION_ERROR[payload?.error] ?? "Could not update this order.");
 			return;
 		}
 		router.refresh();
@@ -143,9 +223,69 @@ export function OrderDetail({ order }: { order: OrderView }) {
 
 	const awaiting = order.status === "AWAITING_PAYMENT";
 	const paid = order.status === "PAID";
+	const hasLiveDelivery = order.deliveries.some(
+		(d) => d.status !== "CANCELLED" && d.status !== "FAILED",
+	);
+	// Mirrors `cancelBlock` (`lib/orders/cancel.ts`); the server decides.
+	const canCancelPaid =
+		paid && order.productionStage === null && !hasLiveDelivery;
+	const refund = order.refundState;
+	const refundDue =
+		refund === "due" || refund === "unacknowledged" || refund === "pending";
+	const provider = order.paymentProvider;
+	const throughGateway = refund === "due" && provider !== "manual" && canRefund;
+	const askAgain = refund === "unacknowledged" && canRefund;
+	/** The request is the same either way; only the wording differs. */
+	const confirmRefund = (again: boolean) =>
+		setConfirming({
+			title: again
+				? `Ask ${provider} again?`
+				: `Refund ${rm(order.totalRm)} through ${provider}?`,
+			body: again
+				? "The first request was never acknowledged. Asking again cannot refund twice: it repeats the same request."
+				: `${rm(order.totalRm)} goes back to ${order.customerName}, to the method they paid with. This cannot be undone.`,
+			confirmLabel: again ? "Ask again" : `Refund ${rm(order.totalRm)}`,
+			danger: true,
+			stepUp: true,
+			run: () => guarded("refund", undefined),
+		});
 
 	return (
 		<main className="mx-auto flex w-full max-w-[1080px] flex-col gap-[18px] px-7 pt-7 pb-16">
+			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
+			<ConfirmDialog
+				// Built on each render, not stored: `run` must read the reason as
+				// typed after the dialog opened.
+				confirm={
+					cancelling
+						? {
+								title: `Cancel order ${order.ref}?`,
+								body: paid
+									? `${rm(order.totalRm)} will be owed back to ${order.customerName}. The order cannot be reopened; the customer would have to order again.`
+									: `${order.customerName}'s order for ${rm(order.totalRm)} will be cancelled. It cannot be reopened; the customer would have to order again.`,
+								confirmLabel: "Cancel order",
+								danger: true,
+								stepUp: true,
+								run: () =>
+									guarded("cancel", { reason: cancelReason.trim() || null }),
+							}
+						: null
+				}
+				onClose={() => setCancelling(false)}
+				blocked={paid && cancelReason.trim() === ""}
+			>
+				{paid && (
+					<label className="flex flex-col gap-1 text-[12px] text-neutral-500">
+						Reason for cancelling (kept on the order)
+						<input
+							className={fieldClass(false, FOCUS)}
+							maxLength={300}
+							value={cancelReason}
+							onChange={(e) => setCancelReason(e.target.value)}
+						/>
+					</label>
+				)}
+			</ConfirmDialog>
 			{error && (
 				<p
 					role="alert"
@@ -212,11 +352,21 @@ export function OrderDetail({ order }: { order: OrderView }) {
 						<h2 className={EYEBROW}>Payment</h2>
 						{awaiting && (
 							<>
-								<p className="text-[13px] text-neutral-600">
-									Waiting for a bank transfer of {rm(order.totalRm)} with{" "}
-									<span className="font-medium">{order.ref}</span> as the
-									reference. Mark it paid once it shows in the account.
-								</p>
+								{order.paymentProvider === "manual" ? (
+									<p className="text-[13px] text-neutral-600">
+										Waiting for a bank transfer of {rm(order.totalRm)} with{" "}
+										<span className="font-medium">{order.ref}</span> as the
+										reference. Mark it paid once it shows in the account.
+									</p>
+								) : (
+									<p className="text-[13px] text-neutral-600">
+										Waiting for {order.paymentProvider} to confirm{" "}
+										{rm(order.totalRm)}
+										{order.paymentRef ? ` (${order.paymentRef})` : ""}. It marks
+										itself paid when the payment lands. Mark it paid by hand
+										only after checking the payment in the gateway's dashboard.
+									</p>
+								)}
 								<div className="flex flex-wrap gap-3">
 									<label className="flex max-w-[260px] flex-1 flex-col gap-1 text-[12px] text-neutral-500">
 										Bank reference (optional)
@@ -232,18 +382,27 @@ export function OrderDetail({ order }: { order: OrderView }) {
 										type="button"
 										className={PRIMARY}
 										disabled={busy !== null}
-										onClick={() => act("paid")}
+										onClick={() =>
+											setConfirming({
+												title: `Mark ${order.ref} as paid?`,
+												body: `Only once ${rm(order.totalRm)} shows in the account. The customer is told their payment arrived, and this cannot be undone here.`,
+												confirmLabel: "Mark paid",
+												stepUp: true,
+												run: () =>
+													guarded("paid", {
+														paymentRef: paymentRef.trim() || null,
+													}),
+											})
+										}
 									>
-										{busy === "paid" && <Spinner />}
-										{busy === "paid" ? "Marking paid…" : "Mark paid"}
+										Mark paid
 									</button>
 									<button
 										type="button"
 										className={CHIP}
 										disabled={busy !== null}
-										onClick={() => act("cancel")}
+										onClick={() => setCancelling(true)}
 									>
-										{busy === "cancel" && <Spinner />}
 										Cancel order
 									</button>
 								</div>
@@ -257,9 +416,151 @@ export function OrderDetail({ order }: { order: OrderView }) {
 								{order.paymentProvider}
 							</p>
 						)}
+						{canCancelPaid && (
+							<button
+								type="button"
+								className={`${CHIP} self-start`}
+								disabled={busy !== null}
+								onClick={() => setCancelling(true)}
+							>
+								Cancel order and refund
+							</button>
+						)}
 						{order.status === "CANCELLED" && (
 							<p className="text-[13px] text-neutral-500">
-								Cancelled before payment.
+								{order.paidAt
+									? "Cancelled after payment"
+									: "Cancelled before payment"}
+								{order.cancelledAt ? ` · ${shortTime(order.cancelledAt)}` : ""}
+								{order.cancelledByName ? ` · by ${order.cancelledByName}` : ""}
+								{order.cancelReason ? ` · ${order.cancelReason}` : ""}
+							</p>
+						)}
+						{order.refundError && (
+							<p
+								role="alert"
+								className="rounded-[10px] bg-[#fbf1ee] px-3 py-2.5 text-[#7a2c1c] text-[13px]"
+							>
+								Last refund attempt: {order.refundError}
+							</p>
+						)}
+						{refundDue && (
+							<div className="flex flex-col gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3">
+								<p className="font-semibold text-[13px] text-amber-900">
+									Refund due: {rm(order.totalRm)}
+								</p>
+								{refund === "due" && (
+									<p className="text-[12px] text-amber-900">
+										Paid by {provider}
+										{order.paymentRef ? ` (${order.paymentRef})` : ""}.{" "}
+										{throughGateway
+											? `Send it back through ${provider}, or refund it by hand and record it here.`
+											: provider === "manual"
+												? "Refund it by bank transfer, then record it here."
+												: `A superadmin can send it back through ${provider}. Otherwise refund it by bank transfer or in the gateway's dashboard, then record it here.`}
+									</p>
+								)}
+								{refund === "unacknowledged" && (
+									<p className="text-[12px] text-amber-900">
+										{provider} has not acknowledged the refund requested
+										{order.refundRequestedAt
+											? ` ${shortTime(order.refundRequestedAt)}`
+											: ""}
+										{order.refundedByName ? ` by ${order.refundedByName}` : ""}.
+										It may or may not have gone through: check the gateway's
+										dashboard before refunding by hand. If asking again keeps
+										failing, refund it in the gateway's dashboard and record it
+										with Mark refunded.
+										{askAgain && !order.canAskAgain
+											? " You can ask again two minutes after the request; reload this page then."
+											: ""}
+									</p>
+								)}
+								{refund === "pending" && (
+									<p className="text-[12px] text-amber-900">
+										Waiting for {provider} to confirm ({order.refundRef}). FPX
+										refunds take a few working days; this marks itself refunded.
+										{stillPending
+											? ` ${provider} says it is still processing.`
+											: ""}
+									</p>
+								)}
+								{refund === "pending" && canRefund && (
+									<button
+										type="button"
+										className={`${CHIP} self-start`}
+										disabled={busy !== null}
+										onClick={checkRefund}
+									>
+										{busy === "check" && <Spinner />}
+										Check with {provider}
+									</button>
+								)}
+								{throughGateway && (
+									<button
+										type="button"
+										className={PRIMARY}
+										disabled={busy !== null}
+										onClick={() => confirmRefund(false)}
+									>
+										Refund {rm(order.totalRm)} through {provider}
+									</button>
+								)}
+								{askAgain && order.canAskAgain && (
+									<button
+										type="button"
+										className={PRIMARY}
+										disabled={busy !== null}
+										onClick={() => confirmRefund(true)}
+									>
+										Ask again
+									</button>
+								)}
+								{/* The manual way out. Not while the gateway is processing a
+								    refund: that one records itself. */}
+								{refund !== "pending" && (
+									<>
+										<label className="flex max-w-[260px] flex-col gap-1 text-[12px] text-amber-900">
+											Refund reference (optional)
+											<input
+												className={fieldClass(false, FOCUS)}
+												maxLength={120}
+												value={refundRef}
+												onChange={(e) => setRefundRef(e.target.value)}
+											/>
+										</label>
+										<button
+											type="button"
+											className={
+												throughGateway || askAgain
+													? `${CHIP} self-start`
+													: PRIMARY
+											}
+											disabled={busy !== null}
+											onClick={() =>
+												setConfirming({
+													title: `Mark ${order.ref} as refunded?`,
+													body: `Only once ${rm(order.totalRm)} has gone back to ${order.customerName} outside this app. The customer is told it was refunded, and this cannot be undone here.`,
+													confirmLabel: "Mark refunded",
+													stepUp: true,
+													run: () =>
+														guarded("refunded", {
+															refundRef: refundRef.trim() || null,
+														}),
+												})
+											}
+										>
+											Mark refunded
+										</button>
+									</>
+								)}
+							</div>
+						)}
+						{order.refundedAt && (
+							<p className="text-[13px] text-neutral-600">
+								Refunded {shortTime(order.refundedAt)}
+								{order.refundedByName ? ` · by ${order.refundedByName}` : ""}
+								{order.refundRef ? ` · ref ${order.refundRef}` : ""}
 							</p>
 						)}
 					</section>
@@ -359,19 +660,20 @@ export function OrderDetail({ order }: { order: OrderView }) {
 					</section>
 
 					<section className={CARD}>
-						<h2 className={EYEBROW}>WhatsApp</h2>
-						{!order.whatsappOptIn ? (
+						<h2 className={EYEBROW}>Messages</h2>
+						{!order.whatsappOptIn && (
 							<p className="text-[12px] text-neutral-500">
-								Customer did not opt in to WhatsApp.
+								No WhatsApp opt-in: updates go by email.
 							</p>
-						) : order.notifications.length === 0 ? (
+						)}
+						{order.notifications.length === 0 ? (
 							<p className="text-[12px] text-neutral-500">No messages yet.</p>
 						) : (
 							<ul className="flex flex-col gap-2">
 								{order.notifications.map((n) => (
 									<li key={n.id} className="flex flex-col gap-0.5 text-[12px]">
 										<span className="text-neutral-700">
-											{KIND_LABEL[n.kind]}
+											{CHANNEL_LABEL[n.channel]} · {KIND_LABEL[n.kind]}
 											{n.stage ? ` · ${STAGE_LABEL[n.stage]}` : ""}
 										</span>
 										<span

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { authClient } from "@/lib/auth/client";
+import { ROLE_PERMISSIONS, type Role } from "@/lib/auth/permissions";
 import { initialsOf } from "@/lib/initials";
 
 /**
@@ -16,7 +17,13 @@ export function AccountMenu({
 	labels,
 }: {
 	lang: string;
-	labels: { signIn: string; signOut: string; myOrders: string; menu: string };
+	labels: {
+		signIn: string;
+		signOut: string;
+		myOrders: string;
+		admin: string;
+		menu: string;
+	};
 }) {
 	const { data, isPending } = authClient.useSession();
 	const pathname = usePathname();
@@ -92,9 +99,23 @@ export function AccountMenu({
 					className="absolute top-[calc(100%+6px)] right-0 z-20 flex w-60 flex-col rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_12px_32px_rgba(23,23,23,.12)]"
 				>
 					<div className="mb-1 border-[#ecebe7] border-b px-2.5 pt-2.5 pb-3">
-						<p className="truncate font-semibold text-[13px]">{user.name}</p>
+						{/* Empty for a customer who left before the name step. */}
+						{user.name && (
+							<p className="truncate font-semibold text-[13px]">{user.name}</p>
+						)}
 						<p className="truncate text-[#5c574e] text-[12px]">{user.email}</p>
 					</div>
+					{/* A shortcut, not a gate: every admin page calls `requireAuth`. */}
+					{ROLE_PERMISSIONS[user.role as Role]?.includes("orders:read") && (
+						<Link
+							role="menuitem"
+							href="/admin/orders"
+							className={item}
+							onClick={() => setOpen(false)}
+						>
+							{labels.admin}
+						</Link>
+					)}
 					<Link
 						role="menuitem"
 						href={`/${lang}/orders`}

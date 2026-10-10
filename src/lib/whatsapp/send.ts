@@ -19,7 +19,8 @@ export const whatsappConfigured = (): boolean =>
 	Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID);
 
 export type SendResult =
-	| { ok: true; messageId: string }
+	/** `messageId` is Meta's; null for a mail, which has none worth keeping. */
+	| { ok: true; messageId: string | null }
 	| {
 			ok: false;
 			retryable: boolean;

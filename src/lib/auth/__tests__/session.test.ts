@@ -19,6 +19,22 @@ const row = {
 	role: "ADMIN",
 	disabled: false,
 	mustChangePassword: false,
+	twoFactorEnabled: false,
+	accounts: [] as { id: string }[],
+};
+
+const user = {
+	id: "u1",
+	email: "a@b.com",
+	name: "A",
+	image: null,
+	role: "ADMIN",
+	disabled: false,
+	mustChangePassword: false,
+	mustSetupTwoFactor: false,
+	mustSetName: false,
+	mustVerifyPasskey: false,
+	passkeyVerifiedAt: null,
 };
 
 beforeEach(() => {
@@ -27,10 +43,65 @@ beforeEach(() => {
 });
 
 describe("currentUser", () => {
-	it("returns the row for a live session", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+	it("returns the user for a live session", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue(row);
-		await expect(currentUser()).resolves.toEqual(row);
+		await expect(currentUser()).resolves.toEqual(user);
+	});
+
+	it("carries when the session passed a passkey authentication", async () => {
+		const at = new Date("2026-10-07T12:00:00Z");
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: true, passkeyVerifiedAt: at.toISOString() },
+		});
+		findUnique.mockResolvedValue(row);
+		await expect(currentUser()).resolves.toMatchObject({
+			passkeyVerifiedAt: at,
+		});
+	});
+
+	it("asks staff with a password and no second factor to set one up", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue({ ...row, accounts: [{ id: "acc1" }] });
+		await expect(currentUser()).resolves.toEqual({
+			...user,
+			mustSetupTwoFactor: true,
+		});
+	});
+
+	it("does not ask once the second factor is enabled", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue({
+			...row,
+			accounts: [{ id: "acc1" }],
+			twoFactorEnabled: true,
+		});
+		await expect(currentUser()).resolves.toEqual(user);
+	});
+
+	it("treats a null twoFactorEnabled as not enabled", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue({
+			...row,
+			accounts: [{ id: "acc1" }],
+			twoFactorEnabled: null,
+		});
+		await expect(currentUser()).resolves.toMatchObject({
+			mustSetupTwoFactor: true,
+		});
 	});
 
 	it("is null when there is no session", async () => {
@@ -40,22 +111,90 @@ describe("currentUser", () => {
 	});
 
 	it("is null when the session names a row that is gone", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue(null);
 		await expect(currentUser()).resolves.toBeNull();
 	});
 
 	it("is null for a disabled user holding a valid session", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue({ ...row, disabled: true });
 		await expect(currentUser()).resolves.toBeNull();
 	});
 
 	it("reads the row on every call, never a cached role", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" } });
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
 		findUnique.mockResolvedValue(row);
 		await currentUser();
 		await currentUser();
 		expect(findUnique).toHaveBeenCalledTimes(2);
+	});
+
+	it("asks a customer whose session has not passed a passkey", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: true,
+		});
+	});
+
+	it("does not ask once the session is passkey-verified", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: true },
+		});
+		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: false,
+		});
+	});
+
+	it("treats a null flag as not verified", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: null },
+		});
+		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: true,
+		});
+	});
+
+	it("never asks staff, whatever the session says", async () => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue(row);
+		await expect(currentUser()).resolves.toMatchObject({
+			mustVerifyPasskey: false,
+		});
+	});
+
+	it.each([
+		["a code customer who has not given a name", "CUSTOMER", "", true],
+		["a customer with a name", "CUSTOMER", "Aiman", false],
+		["staff, whatever their name", "ADMIN", "", false],
+	])("mustSetName for %s", async (_label, role, name, expected) => {
+		getSession.mockResolvedValue({
+			user: { id: "u1" },
+			session: { passkeyVerified: false },
+		});
+		findUnique.mockResolvedValue({ ...row, role, name });
+		await expect(currentUser()).resolves.toMatchObject({
+			mustSetName: expected,
+		});
 	});
 });

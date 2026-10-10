@@ -16,7 +16,7 @@ The wardrobe survives only as a seed family (`id: "wardrobe"`) in `lib/planner/c
 
 ## Status
 
-Phase 0 (catalogue + pricing spec with client) not yet complete — see Open questions. The engine, the planner UI, and the admin catalogue surface are built. `/admin/cabinet-designs` is the one catalogue screen: each uploaded design is one cabinet, filed under the rooms that offer it, and `POST /api/admin/cabinet-designs/publish` rebuilds the catalogue from the design rows (`lib/catalogue/buildCatalogue.ts`). Customers can check out: `POST /api/orders` re-validates and re-prices the design and stores an `Order` (manual bank transfer until a gateway is chosen), `/admin/orders` marks it paid, and **Create delivery** opens the logistics form pre-filled from the design (`lib/orders`). Opted-in customers get WhatsApp updates for the order, each admin-advanced production stage and the delivery (`lib/whatsapp`, Meta Cloud API); go-live waits on EzCabinet — see Open questions. Share links are the remaining Phase 3 work.
+Phase 0 (catalogue + pricing spec with client) not yet complete — see Open questions. The engine, the planner UI, and the admin catalogue surface are built. `/admin/cabinet-designs` is the one catalogue screen: each uploaded design is one cabinet, filed under the rooms that offer it, and `POST /api/admin/cabinet-designs/publish` rebuilds the catalogue from the design rows (`lib/catalogue/buildCatalogue.ts`). Customers can check out: `POST /api/orders` re-validates and re-prices the design and stores an `Order` (manual bank transfer until a gateway is chosen), `/admin/orders` marks it paid, and **Create delivery** opens the logistics form pre-filled from the design (`lib/orders`). Customers get updates for the order, each admin-advanced production stage and the delivery: by WhatsApp when they opted in (`lib/whatsapp`, Meta Cloud API; go-live waits on EzCabinet — see Open questions), and by email (`lib/email`, Resend) — receipts always, the rest when WhatsApp is off. Share links are the remaining Phase 3 work.
 
 **Confirmed client requirement (resolved):** EzCabinet designs in SketchUp and asked for "upload SketchUp designs so we can maintain new configurations." It is resolved the literal way: the planner **renders the model they drew** — see [3D](#3d). This reversed an earlier decision to rebuild each cabinet procedurally from extracted numbers; that section carries the measurements that changed it.
 
@@ -202,8 +202,14 @@ src/
   lib/whatsapp/          ← customer WhatsApp updates via Meta's Cloud API
     templates.ts         ← event → template name, variables, payload; pure
     send.ts              ← one API call; retryable or not
-    outbox.ts            ← enqueue in the state change's transaction; flush after
+    outbox.ts            ← enqueue in the state change's transaction; flush after, by channel
     webhook.ts           ← Meta's signature, status order; pure
+  lib/email/             ← every email the app sends
+    layout.ts            ← one look: blocks → { html, text }, escaping included; the only
+                           place mail HTML is written (`oneLook.test.ts` fails any other)
+    copy.ts              ← mail wording, en / ms / zh; server-side, never in the site dictionary
+    templates/           ← one pure function per mail; order.ts holds the eight order mails
+    orderMail.ts         ← an outbox row → its order → a sent mail
   lib/mesh/              ← reads an OBJ export into catalogue data
     archive.ts           ← unzip; the .obj text and the texture filenames
     objRead.ts           ← OBJ parse: named boxes in the file's own units
@@ -269,7 +275,7 @@ published. "Which catalogue is live" is now a value with an owner.
 - **Sizes are validated against the family's ladder.** Reject off-ladder widths server-side.
 - **The catalogue lives in the database.** Cabinets and their prices are `CabinetDesign` rows, rebuilt into a `CatalogueVersion` on every publish — the version table is the price history. The disaster-recovery copy for cabinets is Postgres plus the design files in Blob; `lib/planner/catalogue.ts` seeds only settings. Ship seed changes as their own commit.
 - **Every admin route calls `requireAuth`.** `lib/auth/route.ts`'s `withAuth` wraps every handler under `src/app/api/admin`, with one named exemption in the coverage test's allow-list (`logistics/easyparcel/callback/route.ts` — EasyParcel's own redirect, checked by its `state` cookie instead), and the test fails the build on any other exported method it does not see gated — see [Auth](#auth).
-- **A WhatsApp message is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey` — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. Preview deployments never get `WHATSAPP_TOKEN`.
+- **A customer notification is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey`, one row per channel (`Notification.channel`) — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. `draftsFor` (`lib/whatsapp/templates.ts`) is the one place that decides channels: order placed, payment confirmed and refunded always go by email; stage and delivery mails unless WhatsApp carries them — the customer opted in *and* `whatsappConfigured()`, so before WhatsApp is live a ticked box still gets mail. Preview deployments never get `WHATSAPP_TOKEN` or `RESEND_API_KEY`.
 
 ## 3D
 
@@ -465,16 +471,76 @@ Three screens. Rooms open on an **empty wall**: there is no invented starter run
 
 **An order is priced on the server, never by the client.** `POST /api/orders` (public, guarded by BotID) runs `validateOrder` — the engine forgives an unknown family or an off-ladder width silently, which is fine on a canvas and wrong for a payment — then `priceOrder` against the published catalogue, and stores the design as `{ schemaVersion, layout }` with the catalogue version it was priced against. A paid order's **Create delivery** (`/admin/logistics?fromOrder=`) fills the delivery form with one row per cabinet at its designed size and the design row's weight; the delivery create route refuses an order that is not paid.
 
-**No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
+**An order records the terms it was placed under.** Checkout requires a
+ticked terms box; `POST /api/orders` refuses a body without
+`termsAccepted: true` and stamps `Order.termsVersion` (`TERMS_VERSION`,
+`lib/orders/terms.ts`) and `termsAcceptedAt`. Bump `TERMS_VERSION` by hand
+whenever the wording of `/[lang]/terms` or `/[lang]/refunds` changes in
+meaning. Both pages and the privacy notice are **drafts**, rendered by
+`components/LegalPage.tsx` from `lib/copy`; the refund policy's boundary is
+`Order.productionStage` being set. Staff cancel an order from
+`/admin/orders/[id]` (`lib/orders/cancel.ts`) on that boundary: unpaid any
+time, paid only before production starts and with a reason. Cancelling moves
+no money — a cancelled order that still has a `paidAt` shows **Refund due**
+until the money goes back: through the gateway (below), or by hand, after
+which staff press **Mark refunded**. A customer cannot cancel from their own
+page, and cancelling does not void an open gateway payment or send a WhatsApp
+message; the refund being recorded does send one (`ORDER_REFUNDED`).
+
+**A superadmin can send a refund back through the gateway, and the gateway's
+webhook records it.** On a Refund-due order paid online, **Refund RM x
+through <provider>** (`POST /api/admin/orders/[id]/refund`, `orders:refund`,
+passkey step-up; `lib/orders/refund.ts`) asks the gateway for the whole
+payment back (`PaymentGateway.refund`). The order's `status` stays
+`CANCELLED`; where the refund is comes from `refundState`, never a stored
+status: `refundRequestedAt` alone is an attempt the gateway has not answered,
+`refundRef` without `refundedAt` is one it is processing, and only the signed
+webhook (or a refund that settled at once) sets `refundedAt`, through
+`markRefunded` — the one write path, shared with **Mark refunded**. The claim
+is a conditional write before the gateway call and the idempotency key
+carries `refundRequestedAt`, so two presses cannot refund twice. **An
+ambiguous error is never a refusal:** only `RefundRefused` (the gateway read
+the request and said no) clears the attempt; a timeout, a 5xx or a
+connection error keeps it, and **Ask again** repeats the same key. Stripe
+does not order its events, so the adapter re-reads the refund on every
+`refund.*` event rather than trusting the snapshot. A full refund issued in
+the gateway's dashboard on a cancelled order is recorded the same way; a
+partial one, or one on an order that is not cancelled, is logged and never
+applied. FPX refunds settle in days and can fail, even after succeeding: the
+order is then Refund due again with `refundError` shown. If the webhook never
+arrives, **Check with <provider>** on a pending refund calls the same route,
+which asks the gateway (`PaymentGateway.refundStatus`) and writes exactly
+what the webhook would have; it never starts a second refund. Accepted
+limits: **Mark refunded** stays available while a refund is unacknowledged
+(the panel says to check the dashboard first), and is refused while one is
+pending; Stripe replays a stored 5xx for a reused key, so if **Ask again**
+keeps failing the way out is the dashboard and **Mark refunded**; and
+**Mark refunded** sends the customer the same `ORDER_REFUNDED` message, on
+purpose. Delivery creation re-checks the order is still paid as it inserts;
+a cancel whose write starts inside that few-millisecond transaction can
+still get through, also accepted. The gateway's
+webhook endpoint must be subscribed to `refund.created`, `refund.updated` and
+`refund.failed` as well as the three `payment_intent.*` events.
+
+**No login to configure — but checkout now requires an account.** Browsing, planning and pricing stay anonymous; `POST /api/orders` is the one hard stop — signed out, placing an order bounces to `/[lang]/sign-in?next=…` and back to the same quote, the design intact via the autosaved draft (`lib/plannerDraft.ts`). A customer whose session has not passed a passkey then meets one more step, `/[lang]/verify`, before the order is placed — a first-time customer sets one up, a returning one uses theirs. A separate, earlier email/WhatsApp gate at **"save & share"** — for the customer who has sunk time into a design and will trade a phone number to keep it — is designed but **not yet built**; see Status and Phasing.
 
 **An order is its owner's.** Every order carries the account that placed it
 (`Order.userId`, `NOT NULL`). `/[lang]/orders` lists the signed-in customer's
 own orders; `/[lang]/order/[token]` and — for a delivery that belongs to an
 order — `/[lang]/track/[token]` open only for that account or staff with
 `orders:read` (`lib/orders/access.ts`). The token in the URL is an address,
-not a key: signed out, it bounces through Google sign-in and back; signed in
+not a key: signed out, it bounces through sign-in and back; signed in
 as anyone else, it is the same 404 as a made-up token. A standalone
 admin-booked delivery keeps link access — its recipient has no account.
+
+**A customer corrects their own order details until production starts.**
+`PATCH /api/orders/[token]` (owner only, never staff) rewrites name, phone,
+email, address, access notes and the WhatsApp opt-in — never the design or
+the price. `canEditDetails` (`lib/orders/editDetails.ts`) locks it once
+`productionStage` is set, the order is cancelled, or a delivery exists; the
+same rule rides in the write's `where`. A phone change re-points that
+order's `PENDING` notifications, since `Notification.to` is a snapshot.
+Unticking the opt-in is how a customer stops WhatsApp updates.
 
 **The account area** is the route group `app/[lang]/(account)/` — My orders
 and each order page inside one layout (`SiteHeader` + "Your account" side
@@ -483,7 +549,7 @@ in; access stays in each page (`viewerOf`, `canViewOrder`). `AccountMenu`
 reads the session in the browser so the statically rendered landing page,
 which also shows it, stays static. Profile, WhatsApp number, saved addresses
 and saved designs are later pieces of the Claude Design "Customer Account"
-file; customer sign-in stays Google only.
+file. How a customer signs in is under [Auth](#auth).
 
 **Not yet built.** Save writes the layout to Postgres under a `nanoid` slug, returns a short URL, creates the lead record, and attaches the screenshot. Then a `wa.me` deep link with the design URL prefilled.
 
@@ -519,15 +585,214 @@ PostHog **Cloud EU**, installed from the Vercel Marketplace, so we can see where
 ## Auth
 
 Accounts, with three roles: `SUPERADMIN`, `ADMIN`, `CUSTOMER`. Customers sign
-in with Google. Staff are invited by a superadmin and can use either Google or
-the password that superadmin set. A staff account promoted from an existing
-customer row keeps only the sign-in it already had, so a Google-only staff
+in with Google, or with a six-digit code mailed to any address — never a
+password. Staff are invited by a superadmin and can use either Google or the
+password that superadmin set. A staff account promoted from an existing
+customer row that has a Google sign-in keeps only that, so a Google-only staff
 member has no password fallback — the OAuth-misconfigured escape hatch only
-exists for a row the superadmin created directly. Public sign-up can only ever
+exists for a row that was given a password. A promoted row with no Google
+sign-in is given the invite's password (below). Public sign-up can only ever
 produce a `CUSTOMER`; a role is granted only by a superadmin acting on
 `/admin/users`.
 
-`lib/auth/permissions.ts` is the whole access model: nine permissions and a
+**A customer can sign in with any email.** Better Auth's `emailOTP` plugin:
+the address, then a code typed into the same tab — six digits, ten minutes,
+three wrong tries, single use, stored hashed in `Verification`. A code and
+not a link, because a link opens in the mail app's in-app browser, where the
+saved design is absent and passkeys do not work. The first code sign-in
+creates the row: `CUSTOMER`, `emailVerified: true`, and no name. The passkey
+rules are unchanged and do not know how the customer signed in.
+
+**A code customer gives their name next, once.** `/[lang]/welcome`, one
+required field, posted to `POST /api/account/name` — the only door for a
+name: it writes `name` on the caller's own row, only while it has none, and
+the write itself carries that condition, so two racing requests cannot both
+land. There is no rename. Asked after the code and never on the first screen:
+that screen serves new and returning customers alike, and a name field shown
+only to new ones would say which addresses have accounts. `AuthUser.mustSetName`
+is derived on every read (`owesName`, `lib/auth/customerName.ts`) and enforced
+exactly where the passkey step is, and before it, because the device's passkey
+prompt shows the name: `viewerOf` redirects to the welcome page, the verify
+page does the same, the three order routes answer 401 `name_required` (the
+coverage test requires both checks in every route under `api/orders`), and
+`/api/payments/config` reports `nameRequired` so the quote screen shows a
+card instead of losing the form. The email form always navigates by way of
+the welcome page, which passes a customer who owes nothing straight on — only
+the server knows which is which. A customer who closes the tab there meets
+the step again at their next sign-in. `customerNameSchema` is the whole rule
+for a name: invisible format characters removed, trimmed, 2 to 80
+characters, any script, no control characters, and not one that poses as the
+business — one
+that contains "ezcabinet", or whose first word starts with "admin" or
+"support". Both are tested on a folded copy (compatibility forms unified,
+lower-cased, everything but letters and digits removed) so punctuation and
+zero-width characters do not dress it up; "ezcabinet" is looked for in the
+whole name, the prefix in the first word only, so "Ad Minh" and "Sup Port"
+are names. A word ends at an ordinary space and nothing else (a hair space
+does not end one), and the first word is the first that is anything once
+folded, so "- admin" is refused. Known limits, accepted: "Ad min" typed with
+a space is let through; a single-character name is refused
+(one CJK character alone is asked to add a character), and look-alike
+letters from another script (Cyrillic "а") are not caught. It is not unique,
+not a credential, and never identifies a caller. Until it is given, the name
+is empty: the account menu hides the line and `/admin/users` labels the row
+with its address. Any mail that carries a name escapes it (`esc`,
+`lib/auth/inviteMail.ts`).
+
+**Staff cannot use a code**, because it would be a way round both the
+password and the authenticator. They are treated like any address on the two
+code routes, with two differences: no code is ever mailed to a non-`CUSTOMER`
+row (`sendSignInCode`, `lib/auth/emailCodeMail.ts`), and no session is ever
+created for one. `refuseStaffCodeSession` (`session.create.before`) is the one
+place a staff code sign-in is stopped. There used to be a second refusal at
+request time; it was removed because the plugin never counted a staff
+address's wrong tries, so the fourth guess answered differently and a staff
+address could be told apart by response bytes and by counting attempts. For
+the same reason a code that was not mailed — staff, past the cap, or a send
+the mail provider refused — is left until it expires (stored hashed, three
+tries, ten minutes) and not deleted. Do not "tidy" any of this: deleting the
+unmailed code or re-adding the request-time refusal brings the difference
+back. One narrow guard remains (`refuseUnverifiedStaff`,
+`emailCodeBeforeHook`): a non-customer row whose email is **not** verified is
+refused with the plugin's own wrong-code answer before the plugin runs,
+because given a correct code the plugin would delete every sign-in and
+session on that row. Invite, promotion and the seed all verify staff, so such
+a row should not exist; a verified staff row goes through the plugin like
+anyone's. So **promoting a customer with no Google sign-in sets the invite's
+password** on the row, with `mustChangePassword`, and the form shows it for
+handing over exactly as for a fresh invite.
+
+**The plugin registers nine routes and two are open**:
+`/email-otp/send-verification-otp` (type `sign-in` only) and
+`/sign-in/email-otp` (body `email` and `otp` only — the plugin would copy a
+posted `name` or `image` onto a new account, which is why the name has its
+own route). The other seven are in `disabledPaths` (`CLOSED_PATHS`,
+`lib/auth/emailCodeRules.ts`); two of them would put a password on a customer
+row. `emailCodeBeforeHook` refuses any other request to a path containing
+`email-otp`, so a route a plugin upgrade adds is a 403 until it is
+allow-listed — the passkey hooks' rule. `hooks.before` and
+`session.create.before` each hold two guards now; both are composed in
+`lib/auth.ts` and `__tests__/emailCodeConfig.test.ts` reads that file to
+check it, since `__tests__/emailCodeWiring.test.ts` drives the real plugin on
+an instance of its own. Keep both passing.
+
+**Fifteen unused routes are closed as well**, in the same `disabledPaths`:
+`/update-user`, `/change-email`, `/delete-user`, `/delete-user/callback`,
+`/send-verification-email`, `/verify-email`, `/link-social`,
+`/unlink-account`, `/list-accounts`, `/account-info`, `/get-access-token`,
+`/refresh-token`, `/verify-password` (a password oracle),
+`/two-factor/send-otp` and `/two-factor/verify-otp` (the plugin's emailed
+second factor, not configured). `/update-user` was the live hole: it let any signed-in
+session, passkey step passed or not, set any name and picture, past every
+rule above. Five of the fifteen were already refused by an unset option; they
+are closed anyway, so that switching an option on later does not open a route
+unnoticed (turning one on then takes two edits). The rest hand a session that
+has not passed the passkey step the owner's Google profile and tokens, or
+change who owns an address. `__tests__/emailCodeConfig.test.ts` pins every
+`disabledPaths` entry. Deliberately still open: `/two-factor/get-totp-uri` and
+`/two-factor/generate-backup-codes` (they need the account password and are
+the natural routes for a future staff "show my authenticator / new backup
+codes" screen).
+
+**The answer to a code request never depends on the address.** New,
+customer, staff and over-the-cap addresses all get `{ success: true }` in the
+same time: the plugin awaits its mail callback, so the callback only
+schedules `sendSignInCode` with `after()`, and everything that differs by
+address happens there. Abuse limits: BotID on the send request; three codes
+per address per hour (`takeSendSlot`, silent); thirty send requests per
+network per hour (`SENDS_PER_NETWORK`) and ten code tries per network per
+minute (`SIGN_IN_TRIES_PER_MINUTE`), both Better Auth's limiter and both
+answering 429; and, outside the app, a Vercel firewall rule on the send route
+at ninety an hour, three times the app's own so the app's message is always
+met first (`docs/ops/customer-passkey-runbook.md`). Thirty is the owner's
+starting figure, to be raised with the firewall rule if real customers on a
+shared network are refused. The tries rule replaces the plugin's own three a
+minute, which three typos or two customers behind one carrier address used
+up. A 429 on a try is not an expired code: the form says "Too many tries.
+Wait a minute, then try the same code again." (`verifyFailure`) and must
+never suggest a new code, which would kill the good one and spend a send. Both app counters are rows in
+`RateLimit` — `rateLimit.storage: "database"`, which every Better Auth route
+now uses, so every `/api/auth` request reads and writes that table and the
+migration `20261009000000_rate_limit` must be applied before this code serves
+traffic, or nobody can sign in, staff included. The per-address rows share
+that table and Better Auth prunes it by its longest configured window, so the
+send rule's window must not drop below `SEND_WINDOW_S`. Because the cap is
+silent, the form counts its own sends and shows "too many" itself
+(`maySendAgain`). Accepted limits: anyone who knows an address can burn its
+three codes an hour (a nuisance to that customer, no access); the per-network
+send rule is a rolling count that never resets while requests keep arriving
+under an hour apart, so it is really "thirty, then an hour's refusal" for a
+busy shared network (an office, a mobile carrier's NAT); the tries rule rolls
+the same way, resetting only after a minute with no try at all, so a customer
+with the right code there can be told to wait more than once; and a lost
+mailbox has no recovery.
+
+**A code session is checked twice.** `refuseStaffCodeSession` before the
+session is made, and `dropCodeSessionIfNotCustomer`
+(`session.create.after`, ahead of the `lastLoginAt` stamp) once it exists:
+if the row is no longer a customer's — a promotion committed while the
+sign-in was in flight — the session is deleted. The response may still set a
+cookie for it; the next request is signed out. A staff address never reaches
+the second check, so it tells nothing apart. Its role read is tried twice,
+because the code is already spent when it runs. The matching hole on the
+invite side: a fresh invite whose sign-up was swallowed, because the
+invitee's first code sign-in or another superadmin's invite made the row a
+moment earlier. Better Auth answers a swallowed sign-up with a made-up row,
+so the route compares the id it was given with the row it finds and answers
+409 `signed_in_meanwhile` when they differ, instead of giving a role to a
+row with no password or with someone else's. Pressing Invite again promotes
+it properly, or says it is already staff. The grant itself is a conditional
+write (still `CUSTOMER`, still holding a `credential` account) and the
+row's sessions are deleted after it, as a promotion's are. Known limit: the
+new row is unverified until the grant lands, so a code sign-in in flight
+whose wipe of the row's sign-ins lands after the grant leaves a staff row
+with no password; the way out is Delete and invite again.
+
+**A customer's name needs a letter.** `parseCustomerName` answers
+`name_required` for a name with no letter at all ("..", emoji alone,
+zero-width spaces, Hangul fillers) and `name_refused` for one carrying a
+control character, a line or paragraph separator or a Hangul filler. Format
+characters (direction marks and overrides, zero-width spaces, soft hyphens)
+are removed before anything is judged, not refused: they ride along on a
+paste from a chat app and the customer cannot see them. Two are kept because
+they spell things: the zero-width joiner (emoji) and non-joiner (Persian and
+several Indian scripts). A flag emoji built from tag characters loses its
+tags and is stored as a plain flag.
+
+**Before a deploy**, two queries must answer 0 — unverified staff rows, and
+`SELECT count(*) FROM "user" WHERE email <> lower(email);` (a mixed-case
+staff row would be mailed codes and gain a shadow customer row) — and on the
+preview, not after production, the `rateLimit` keys must start with a real
+address, not `no-trusted-ip`. Migration `20261009000000_rate_limit` sorts
+before the already-applied `20261009010000_notification_channel` and still
+applies with `migrate deploy`. The runbook has the checklist.
+
+**One email is one account.** Google joins an existing row only when Google
+reports the email verified and our row is verified too — Better Auth's
+default, with `trustedProviders: []` written down so no provider is ever
+trusted past it.
+
+**The owner hears when the lock changes.** Before the first passkey the
+mailbox or the Google account is the only lock, and whoever holds it can
+enrol their own. So the account's own address is mailed every time, for
+every role: a passkey added, a passkey removed, passkeys reset by staff
+(`lib/auth/passkeyMail.ts`). What happened, when in Malaysia time, and the
+sales contact as a number — no link, so a forged copy has nothing to phish
+with. `queuePasskeyMail` schedules it with `after()` from `passkeyAfterHook`
+and the reset route, never throws and is never awaited; `pnpm
+auth:reset-passkey` has no request to run after, so it awaits the send
+itself. It cannot stop a change, only make it visible.
+
+**Customer-facing text names a provider only on that provider's own button
+and error.** `copy/__tests__/dictionary.test.ts` fails on any other string
+that says Google. With no `RESEND_API_KEY` (local, preview) the code is
+written to the server log and nothing is mailed; with one it is never logged.
+In production (`VERCEL_ENV === "production"`) it is never logged either way:
+a missing key there logs an error naming neither the code nor the address.
+Mail delivery is now checkout-critical: a customer without Google cannot
+order if their code does not arrive.
+
+`lib/auth/permissions.ts` is the whole access model: ten permissions and a
 `Role → Permission[]` constant, with a table-driven test that is its
 specification. The permission names outlive the roles that motivated them —
 `SALES` and `CATALOGUE` were specified and dropped, and reinstating either is
@@ -540,7 +805,7 @@ next request.
 
 An invited staff row is created with `emailVerified: true`. That is not
 cosmetic: Better Auth refuses to link a Google account to a row whose email is
-unverified, and this app deliberately runs no email vendor, so without it no
+unverified, and this app deliberately sends no verification email, so without it no
 staff member could ever use the Google button. The superadmin typing a
 colleague's work address is the assertion that it is theirs.
 
@@ -559,7 +824,165 @@ Public password sign-up is closed (`disabledPaths: ["/sign-up/email"]` in
 `lib/auth.ts`); invites and the seed call `auth.api.signUpEmail` server-side,
 which the router never sees. Promoting an existing customer row strips any
 password and session it carries before granting the role — a customer row
-with a password was made by someone other than the address's owner.
+with a password was made by someone other than the address's owner. The
+sessions are deleted a second time once the role is committed: a code
+sign-in could land between the first delete and the commit, and from the
+commit on `refuseStaffCodeSession` refuses any new one.
+
+**Staff with a password need a second factor.** Better Auth's `twoFactor`
+plugin (TOTP + backup codes); `AuthUser.mustSetupTwoFactor` is derived on
+every read by `needsTwoFactorSetup` (`lib/auth/twoFactor.ts`) and enforced
+beside `mustChangePassword` — `withAuth` refuses, `requirePage` redirects to
+`/admin/setup-2fa`. Google-only staff are exempt, and the plugin gates
+`/sign-in/email` only, so a staff member with both a password and a linked
+Google account can still enter through Google without a code: accepted.
+`/two-factor/disable` is closed; the only way to remove a second factor is a
+superadmin's **Reset 2FA** on `/admin/users`, or `pnpm auth:reset-2fa <email>`
+when the last superadmin is the one locked out. A superadmin can also press
+**Remove password** on `/admin/users` to make a Google-linked staff account
+Google-only (refused when it has no other sign-in), which the 2FA rule exempts
+— the way out for staff who only use Google and never learned the invite
+password. Both Reset 2FA and Remove password log the actor's and target's ids.
+
+**Actions that move money or access ask twice, and ask for a passkey.**
+Cancel order, mark paid, refund through the gateway, mark refunded, invite or
+promote a staff member, change a role, delete user, reset passkey, reset 2FA
+and remove password open a confirmation dialog
+(`components/admin/ConfirmDialog.tsx`); suspend and restore are one click
+with no dialog. All of their routes pass
+`{ stepUp: true }` to `withAuth`: the session must have passed a passkey
+authentication in the last five minutes (`lib/auth/stepUp.ts`), or the route
+answers 403 `step_up_required` and the browser prompts and repeats the call
+once (`components/admin/stepUp.ts`). `Session.passkeyVerifiedAt` records
+when; `passkeyVerified` cannot, since it lasts the session's week and an
+enrolment sets it with no authentication at all. A coverage test lists the
+guarded routes by path — the order routes `cancel`, `paid`, `refunded` and
+`refund`, and `POST /api/admin/users` and `PATCH /api/admin/users/[id]`
+among them. The two user routes matter most: unguarded, a held superadmin
+session could promote an account it controls and pass every other guard as
+that account. Staff enrol at `/admin/security`; this is separate
+from sign-in, where staff still use a password and code, or Google. A
+superadmin's **Reset passkey** works on staff rows too, and
+`pnpm auth:reset-passkey <email>` covers a sole superadmin who lost their
+device. A passkey authentication replaces the session: `passkeyAfterHook`
+deletes the one the request came in with, so signing out afterwards leaves
+no older password or Google session behind. Five limits: **until a staff
+member has enrolled a passkey, the step-up adds nothing for their account**,
+because a first enrolment is free — whoever holds their session can enrol
+one and pass every guard, so every staff member enrols on the day this
+ships; a staff member's first passkey is enrolled by whoever holds their
+session (logged, as with customers); the window covers any guarded action in those five minutes, not
+one named action; the step-up is skipped with `AUTH_ENABLED=false`, where no
+session exists to pass one; and user verification (biometric or PIN) is
+required at enrolment (`authenticatorSelection`) but the plugin at 1.7.5
+cannot enforce it at authentication.
+
+**Suspend is reversible; Delete is not.** A superadmin's **Delete** on
+`/admin/users` (`lib/auth/deleteUser.ts`) removes the row with its sessions,
+sign-ins and second factor. It is refused on your own row and on any account
+that placed orders — `Order.userId` is `Restrict`, so that account can only
+be suspended. Orders a deleted staff member marked paid keep the name in
+`Order.paidByName`; only `paidByUserId` goes null.
+
+**Forgot password is email, staff only, and only after enrolment.**
+`sendStaffReset` (`lib/auth/passwordReset.ts`) mails a link through Resend
+(`lib/email.ts`, one `fetch`) when `canEmailReset` allows it: staff role, not
+disabled, has a password, 2FA enabled. Better Auth's reset would otherwise
+create a password on a customer row, and a mailbox alone must not be enough
+to enrol an authenticator. The link never touches the second factor.
+`RESEND_API_KEY` and `EMAIL_FROM` are production-only, like `WHATSAPP_TOKEN`.
+
+**Signing in is not enough for a customer; a passkey is.** After sign-in, by
+either route, a `CUSTOMER` session counts only once `session.passkeyVerified` is
+set, which only a passkey ceremony does (`@better-auth/passkey`).
+`AuthUser.mustVerifyPasskey` is derived on every read in
+`lib/auth/session.ts` from `needsPasskeyCheck` (`lib/auth/passkeyRules.ts`)
+and enforced where customer surfaces read the
+viewer: `viewerOf` redirects to `/[lang]/verify`, and `POST /api/orders` and
+the pay route answer 401 `passkey_required`. Staff are exempt. So are the
+order surfaces with `AUTH_ENABLED=false` (`viewerOf` and the two order routes
+check `authEnabled()`); the guard on `/passkey/*` and the verify page still
+enforce.
+
+`/api/payments/config` tells the quote screen when the passkey step is owed
+(`passkeyRequired`), so `QuoteScreen` shows a passkey card in place of the
+form, as it does for sign-in, and nothing typed is lost at the detour. The
+401 `passkey_required` handling there is only the backstop.
+
+**The limit: the first passkey is enrolled by whoever can sign in.** That is
+whoever holds the Google account, or the mailbox a code is sent to. Until an
+account has a passkey, anyone who can sign in to it can
+set one up; that covers every existing customer on launch day and any
+customer just after a reset. A passkey protects the account from then on,
+not before. Operators read `docs/ops/customer-passkey-runbook.md` (reset
+procedure, ring-back, deploy checklist).
+
+Better Auth's session-management routes (`/list-sessions`, `/revoke-session`,
+`/revoke-sessions`, `/revoke-other-sessions`, `/update-session`) are in
+`disabledPaths`: the app calls none of them, and a session that signed in
+with only Google or a code could otherwise list the owner's sessions or sign
+the owner out everywhere.
+
+The plugin's defaults would undo this, so `hooks.before` in `lib/auth.ts`
+runs `passkeyBeforeHook` (`lib/auth/passkeyHooks.ts`), which calls
+`checkPasskeyRequest` on every `/passkey/*` write: a session may register
+the account's first passkey freely, but adding another, renaming or deleting
+one needs a passkey authentication in the last five minutes
+(`recentStepUp` on `Session.passkeyVerifiedAt`) — for every role, and not the
+week-long `passkeyVerified` flag, on which anyone at an unlocked laptop could
+enrol their own authenticator hours later and pass every step-up with it.
+The last passkey is never deleted. `PasskeyList` prompts and repeats the
+action once when the server answers `PASSKEY_VERIFICATION_REQUIRED`. `assertPasskeyOwner` (wired as the
+plugin's `authentication.afterVerification`) refuses a passkey that belongs
+to a different account than the Google session. Do not remove either to make
+a flow easier. The hook bodies are exported functions (`passkeyBeforeHook`,
+`passkeyAfterHook`, `verifiedIfPasskeySession`) wired in `auth.ts`, and
+`__tests__/passkeyWiring.test.ts` drives them through the real plugin on
+Better Auth's in-memory adapter — keep it passing; the unit tests alone
+passed while a real bug shipped.
+
+Three rules in those hooks look like candidates for tidying and are not:
+
+- **A session is marked verified after a registration only on positive
+  evidence** — the result is not an API error by `isAPIError`, *and* the
+  account now has at least one passkey row. An earlier `instanceof APIError`
+  check missed validation errors, so a malformed request could mark a session
+  verified with no passkey at all. Do not simplify it back.
+- **Unknown `/passkey/*` routes are refused** (fail closed). A plugin
+  upgrade that adds a route needs it allow-listed in `passkeyHooks.ts`, or
+  that route is a 403.
+- **`createSession: true` on registration is refused**, because it would mint
+  a second, unverified session and swap the cookie to it. Separately,
+  `Passkey.credentialID` is `@@unique`: one credential belongs to one account,
+  and lookups by credential id are unordered, so a duplicate id registered on
+  another account could break the real owner's passkey step.
+
+Enrolling needs a session under one day old — Better Auth's
+fresh-session rule, kept deliberately so that a stolen old session cannot
+enrol the thief's passkey. The verify screen sends a stale session back
+through sign-in; adding another device from the Passkeys page renews
+the session with a passkey prompt instead.
+
+`safeCustomerNext` (`lib/auth/safeCustomerNext.ts`) decides where the verify
+page sends a customer afterwards: only a same-site path, refusing control
+characters, backslashes, empty path segments, a bare `/`, the verify page
+itself in any spelling, and anything that does not re-parse to itself. It was broken twice in review (tab stripping, then dot
+segments like `/a/..//example.com`), so any change must extend the
+hostile-input tests in `__tests__/safeCustomerNext.test.ts`.
+
+Recovery is a staff action only — **Reset passkey** on a customer's row in
+`/admin/users`, which shows their recent order numbers and phone so staff can
+confirm who is calling. It needs `users:manage`, which only `SUPERADMIN`
+holds: an `ADMIN` cannot reset a customer's passkey or see the phone line.
+There is deliberately no self-service path: anything a customer could do
+with only their sign-in, so could whoever took it. A lost mailbox has no
+recovery at all.
+
+Passkeys are bound to the site's hostname (from `BETTER_AUTH_URL`). Changing
+the production domain invalidates every customer's passkey, and a passkey
+made on one preview URL does not work on another. Passkey dates on the
+account page are pinned to Malaysia time (`passkeyDate.ts`), so the server
+and the browser render the same day.
 
 Design: `docs/superpowers/specs/2026-09-20-rbac-design.md`.
 
@@ -600,6 +1023,22 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 11. **`advance` takes its actor from the session; `book` and `split` still take a client-typed one.** `DeliveryDetail.tsx`'s name field feeds `bookedBy` and `split`'s `actor`, and `split` falls back to the literal `"Admin"` when the field is left blank — so the delivery activity log has mixed provenance, a session user's real name on some rows and whatever an admin typed (or nothing) on others. Narrowed, not closed.
 12. **`prisma.config.ts` sets no `shadowDatabaseUrl`.** That is why `prisma migrate dev` refuses non-interactively and `prisma migrate diff --from-migrations` cannot run — both need a shadow database to diff against. Until it is set, a migration written outside an interactive terminal has to be hand-written and independently verified (`prisma migrate diff --from-config-datasource --to-schema`) rather than generated. The fix is two lines in `prisma.config.ts` pointing at a disposable shadow database URL; not done here.
 13. **FedEx's sandbox cannot check our requests.** It answers only its own canned inputs — any request that differs from a documented example returns `SERVICE.PACKAGECOMBINATION.INVALID`, and its canned Malaysian rates are USD — so `adapters/fedex.ts` is tested against fixtures built from FedEx's documented shapes, not against FedEx. `pnpm fedex:ping` against **production** checks only the token, rate and track calls — it never ships. Ship, pickup, both cancels and the label fetch are first exercised by the first real booking: run it once production credentials exist, watch it with FedEx Ship Manager open, and cancel it there if anything looks wrong. Production also needs label certification with FedEx, which can take weeks.
+14. **Resolved: Better Auth's rate limits are counted in the database.** `rateLimit.storage: "database"` and the `RateLimit` table, added with customer email sign-in, so the per-network limit on `/request-password-reset` (and every other route) holds across serverless instances. What is left is by design: `sendStaffReset` still sends nothing once an account has more than three live reset links, and that count includes requests anyone made, so about four requests an hour for a staff address suppress that staff member's own reset mail while the page still says it was sent. Kept as a numbered entry so references to later issues stay valid.
+15. **In-app browsers cannot do passkeys.** A customer who opens an order or
+    tracking link inside WhatsApp, Facebook or Instagram is told to open it
+    in Chrome or Safari (`passkeySupport.ts`); they cannot order from inside
+    the in-app browser at all. `passkey_enrol_started` against
+    `passkey_enrol_completed` in PostHog is the measure of what this costs.
+16. **A verified customer session is long-lived and only staff can end it.** A
+    verified session slides for seven days, the customer cannot sign other
+    devices out (the session routes are disabled), and the only way to end a
+    stolen verified session is a staff reset. Narrowed since: such a session
+    can no longer add its own passkey or remove the owner's without a fresh
+    passkey ceremony (five minutes), so it cannot make itself permanent. It
+    can still act as the customer for its seven days. That is outside this
+    feature's threat (someone holding only the sign-in), recorded so
+    it is not mistaken for covered.
+17. **Order mail has no bounce handling and no second chance on a dead WhatsApp.** Resend accepting a mail is recorded as sent; a mailbox that then rejects it is never seen. A customer with WhatsApp on gets no stage or delivery mail even when their WhatsApp sends are failing. A mail Resend refuses is retried five times, then shown as failed on the order's Messages card, where staff can resend it; a bad key, a rate limit, a 5xx or a timeout (`deliverEmail` → `unavailable`) uses up no try and holds the channel's rows until it answers, as a dead WhatsApp token does. `flush` reads each channel on its own, so one channel's backlog never takes the other's place. Order mail also needs `BETTER_AUTH_URL`: its links are built from it, and without it mail waits in the queue. `pnpm email:preview <dir>` writes every mail in every language for a read-through.
 
 ## Open questions — resolve before trusting pricing.ts
 
@@ -647,12 +1086,54 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 - Does Prisma Postgres offer an ap-southeast region? If not, quote submission eats a transpacific round trip.
 - Does EzCabinet have an EasyParcel account, and who tops up the wallet? `submit_orders` deducts at booking time and a shipment cannot be booked against an empty wallet.
 - **City-Link: a live host, credentials, and whether a rate API exists.** The guide we hold documents only the test server (`devsvr2019a.citylinkexpress.com:21145`) and its credentials page is blank — ask for the company code, account number and meter number, the live URL, and whether anything prices a shipment. Without a rate call an admin compares City-Link blind on price.
-- **WhatsApp go-live is waiting on EzCabinet.** Meta Business verification, a dedicated number, a system-user token, a payment method, 21 template approvals, the factory's real stage names, the sales number and counsel's privacy sign-off. Checklist and template copy: `docs/ops/whatsapp-ezcabinet-setup.md`.
-- **Which Malaysian payment gateway?** Stripe is wired as the sandbox-test gateway, chosen by the `payment-gateway` Vercel flag (`src/flags.ts`: Stripe on development and preview, manual on production); Fiuu is the likely production one, account in progress. Both are adapters behind `lib/payments` — swap plan in `STRIPE_INTEGRATION_TODO.md`. Only the verified webhook marks an order paid, never the customer's return. With no gateway set, orders fall back to manual bank transfer, and `BANK_TRANSFER` in `lib/orders/payment.ts` is still a placeholder account the confirmation page shows customers.
+- **Mail for sign-in codes needs EzCabinet's sending domain set up.** SPF,
+  DKIM and DMARC on the domain in `EMAIL_FROM`, or Outlook, Yahoo and iCloud
+  will junk the codes — and a junked code is a customer who cannot order.
+  Checkout now depends on mail delivery for every customer without Google.
+  Test with a real Outlook address before launch.
+- **Is "first word starts with admin or support" too wide for a name?** The
+  name step refuses it so nobody labels their account as the business. It
+  was narrowed once already, from the whole name to the first word, for
+  names like "Ad Minh". If a real customer's name is still caught, narrow
+  `posesAsBusiness` (`lib/auth/customerName.ts`).
+- **WhatsApp go-live is waiting on EzCabinet.** Meta Business verification, a dedicated number, a system-user token, a payment method, 24 template approvals, the factory's real stage names, the sales number and counsel's privacy sign-off. Checklist and template copy: `docs/ops/whatsapp-ezcabinet-setup.md`.
+- **Which Malaysian payment gateway?** Stripe is wired as the sandbox-test gateway, chosen by the `payment-gateway` Vercel flag (`src/flags.ts`: Stripe on development and preview, manual on production); Fiuu is the likely production one, account in progress. Both are adapters behind `lib/payments` — swap plan in `STRIPE_INTEGRATION_TODO.md`. Only the verified webhook marks an order paid, never the customer's return. Online payment can go off without any error: when Vercel Flags cannot answer, the flag answers `PAYMENT_GATEWAY_FALLBACK` (unset means `manual`), so every environment that sells through a gateway must set it to that gateway — locally too, where an expired `VERCEL_OIDC_TOKEN` is the usual cause; and when the flag names a gateway whose keys are missing, `activeGateway` logs "Online payment is off" and customers see bank transfer. Going live on a gateway is therefore three things in production: the flag, the gateway's keys, and `PAYMENT_GATEWAY_FALLBACK`. With no gateway set, orders fall back to manual bank transfer, and `BANK_TRANSFER` in `lib/orders/payment.ts` is still a placeholder account the confirmation page shows customers.
 - **The delivery fee.** `RATES.deliveryFlatRm` is `85`, the figure from the client's Order Confirmation design; set the real one in the catalogue settings. It is flat — one fee whatever the load or the distance.
-- **What happens when a paid design changes at re-measure?** The customer pays full price up front; there is no refund or top-up flow, so a re-measure that changes the cabinets is handled outside the app today.
+- **What happens when a paid design changes at re-measure?** The customer pays full price up front; the app refunds a whole cancelled order and nothing else, so there is no partial refund or top-up flow, and a re-measure that changes the cabinets is handled outside the app today.
 - **Weights.** Parcel partners price by the kilogram. A design row's optional weight pre-fills its delivery rows; every design without one leaves the admin typing it per delivery.
-- **The privacy notice at `/[lang]/privacy` is a draft.** EzCabinet is the PDPA data controller: their counsel approves the wording, and the PostHog DPA should be signed in their legal name. Ask too whether behavioural analytics counts as "systematic monitoring" under the DPO guideline.
+- **The privacy notice, terms of sale and refund policy are drafts**
+  (`/[lang]/privacy`, `/terms`, `/refunds`). EzCabinet is the seller and the
+  PDPA data controller: their counsel approves the wording, and the PostHog
+  DPA should be signed in their legal name. Ask too whether behavioural
+  analytics counts as "systematic monitoring" under the DPO guideline, and
+  whether their data volumes require appointing a DPO at all. The refund
+  windows (7 days to report damage, 14 working days to pay) and the delivery
+  estimate (4 to 6 weeks from re-measure) are our defaults; whether the price
+  carries SST, and the company's SSM registration number for the seller
+  block, are theirs to supply.
+  The seller block on the terms page and at checkout reads
+  `WORKSHOP_ADDRESS` and `WORKSHOP_PHONE`, both still placeholders — the
+  Consumer Protection (Electronic Trade Transactions) Regulations 2024 want
+  the registered address there, and the Malay page is the one the law reads. GDPR was checked and does not apply: an
+  EU-hosted processor does not bring a Malaysian seller under it.
+- **JNS Nexion is EzCabinet's data processor, and that needs a contract, not
+  a notice line.** The privacy notice does not have to name or list JNS: the
+  PDPA's "third party" (s.4) excludes a data processor, and the notice (s.7)
+  asks only for classes of third parties. That holds only while JNS handles
+  customer data solely on EzCabinet's behalf — any use for JNS's own purposes
+  makes it a third party the notice must cover. What is needed instead is a
+  signed data processing agreement between the two: security guarantees,
+  access limits, deletion at the end of the contract, and breach reporting to
+  EzCabinet fast enough for its own 72-hour duty to the Commissioner. A
+  processor has been bound by the Security Principle in its own right since
+  1 April 2025. The service accounts (Vercel, Prisma, Resend, Stripe,
+  PostHog) should be in EzCabinet's name with JNS as a member, and
+  `EMAIL_FROM`, today a `jnsnexion.com.my` address, moves to an EzCabinet
+  domain before launch. Not verified against primary text: the
+  written-contract requirement comes from commentary on the 2015 Standards,
+  and the s.4 wording from an unofficial 2010 copy of the Act. Counsel
+  confirms both.
+- **Order emails print placeholders.** `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` and `BANK_TRANSFER` now appear in mail a customer keeps, and "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads. The ms and zh mail wording (`lib/email/copy.ts`) needs a native read, as the WhatsApp templates do. The privacy notice's "Email and WhatsApp updates are optional" is no longer exact — order emails are not optional — and goes to counsel with the new "Order emails" paragraph.
 
 ## Conventions
 

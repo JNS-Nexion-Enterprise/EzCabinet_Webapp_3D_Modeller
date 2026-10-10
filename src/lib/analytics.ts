@@ -32,7 +32,11 @@ export type JourneyEvent =
 	| "tool_used"
 	| "quote_viewed"
 	| "quote_submitted"
-	| "sign_in_nudge";
+	| "sign_in_nudge"
+	| "passkey_enrol_started"
+	| "passkey_enrol_completed"
+	| "passkey_enrol_failed"
+	| "passkey_verify_failed";
 
 type Props = Record<string, string | number | boolean | null>;
 

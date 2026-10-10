@@ -2,21 +2,24 @@ import { checkBotId } from "botid/server";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { demoCustomer } from "@/lib/auth/demoCustomer";
+import { authEnabled } from "@/lib/auth/enabled";
 import { currentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/catalogue/db";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
 import { LOCALES } from "@/lib/copy/locales";
 import { toE164 } from "@/lib/logistics/phone";
+import { customerSchema } from "@/lib/orders/customerSchema";
 import {
 	ORDER_DESIGN_VERSION,
 	roomLayoutSchema,
 } from "@/lib/orders/layoutSchema";
 import { PAYMENT_PROVIDER } from "@/lib/orders/payment";
 import { priceOrder } from "@/lib/orders/price";
+import { TERMS_VERSION } from "@/lib/orders/terms";
 import { validateOrder } from "@/lib/orders/validate";
 import { startPayment } from "@/lib/payments/start";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
-import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
+import { draftsFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 
 export const runtime = "nodejs";
 
@@ -34,15 +37,11 @@ const orderInputSchema = z.object({
 	roomId: z.string().min(1).max(40),
 	finishId: z.string().min(1).max(128),
 	layout: roomLayoutSchema,
-	customer: z.object({
-		name: z.string().trim().min(1).max(200),
-		phone: z.string().trim().min(1).max(40),
-		email: z.email().max(200).nullable().default(null),
-		siteAddress: z.string().trim().min(5).max(500),
-		addressNotes: z.string().trim().max(500).nullable().default(null),
-	}),
+	customer: customerSchema,
 	/** The re-measure notice is a condition of the order, not a preference. */
 	remeasureAccepted: z.literal(true),
+	/** The terms of sale and refund policy, linked beside the box. Required the same way. */
+	termsAccepted: z.literal(true),
 	/** Unticked by default. No opt-in, no WhatsApp message — PDPA and Meta both require it. */
 	whatsappOptIn: z.boolean().default(false),
 	/** The site language, so messages arrive in it. */
@@ -65,6 +64,15 @@ export async function POST(request: Request) {
 	const user = (await currentUser()) ?? (await demoCustomer());
 	if (!user) {
 		return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
+	}
+	// Same boundary as the order pages, in the same order: the name, then the
+	// passkey. `authEnabled()` keeps local checkout working with AUTH_ENABLED
+	// off, where the demo customer has a name and never a passkey.
+	if (authEnabled() && user.mustSetName) {
+		return NextResponse.json({ error: "name_required" }, { status: 401 });
+	}
+	if (authEnabled() && user.mustVerifyPasskey) {
+		return NextResponse.json({ error: "passkey_required" }, { status: 401 });
 	}
 
 	const parsed = orderInputSchema.safeParse(
@@ -123,13 +131,18 @@ export async function POST(request: Request) {
 				userId: user.id,
 				whatsappOptIn,
 				whatsappOptInAt: whatsappOptIn ? new Date() : null,
+				// The schema above already refused anything but `true`. The version
+				// is ours — the body has no field for it.
+				termsVersion: TERMS_VERSION,
+				termsAcceptedAt: new Date(),
 				locale,
 			},
 			select: NOTIFY_ORDER_SELECT,
 		});
-		const notificationIds = await enqueue(tx, [
-			draftFor({ kind: "ORDER_PLACED", order }),
-		]);
+		const notificationIds = await enqueue(
+			tx,
+			draftsFor({ kind: "ORDER_PLACED", order }),
+		);
 		return { order, notificationIds };
 	});
 	flushSoon(notificationIds);

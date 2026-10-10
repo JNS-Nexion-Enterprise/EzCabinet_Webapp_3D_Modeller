@@ -92,16 +92,3 @@ export function PlannerHeader({
 		</div>
 	);
 }
-
-/** The `Admin` link every planner screen carries, so it reads the same on each. */
-export function AdminLink() {
-	const t = useCopy();
-	return (
-		<Link
-			href="/admin/login"
-			className="hidden border-neutral-200 border-l pl-3.5 text-[12px] text-neutral-400 hover:text-neutral-600 sm:block"
-		>
-			{t.planner.admin}
-		</Link>
-	);
-}

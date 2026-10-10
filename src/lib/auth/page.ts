@@ -18,6 +18,10 @@ export async function requirePage(permission: Permission) {
 		// `requirePage` — putting the redirect in the shared boundary would
 		// make that page redirect to itself.
 		if (user.mustChangePassword) redirect("/admin/change-password");
+		// After the password, so a new colleague chooses their own password
+		// before binding an authenticator to it. `/admin/setup-2fa` reads
+		// `currentUser()` directly for the same reason change-password does.
+		if (user.mustSetupTwoFactor) redirect("/admin/setup-2fa");
 		return user;
 	} catch (error) {
 		if (error instanceof AuthError && error.status === 401) {

@@ -27,7 +27,6 @@ export const zh: Dictionary = {
 			tutorials: "教学视频",
 			menu: "菜单",
 			startPlanning: "开始设计",
-			admin: "管理员",
 		},
 		hero: {
 			eyebrow: "免费试用 · 无需注册",
@@ -102,7 +101,8 @@ export const zh: Dictionary = {
 			contactHeading: "联系我们",
 			email: "hello@ezcabinet.com",
 			privacy: "隐私声明",
-			adminSignIn: "管理员登录",
+			terms: "销售条款",
+			refunds: "退款政策",
 			copyright: "© 2026 {brand}。版权所有。",
 		},
 	},
@@ -113,7 +113,6 @@ export const zh: Dictionary = {
 			quote: "报价",
 		},
 		breadcrumbAriaLabel: "面包屑导航",
-		admin: "管理员",
 		changeRoom: "更换房间",
 		diyTutorials: "DIY 教学视频",
 		clear: "清除",
@@ -378,6 +377,11 @@ export const zh: Dictionary = {
 		errorAddressRequired: "请输入送货地址。",
 		errorAddressShort: "这个地址似乎太短了。",
 		errorRemeasure: "请勾选此项以继续。",
+		termsAgree: "我同意销售条款和退款政策。",
+		termsLink: "销售条款",
+		refundsLink: "退款政策",
+		errorTerms: "请勾选此项以提交订单。",
+		soldBy: "卖方：{address}。联系方式：{email} 或 {phone}。",
 		submitting: "正在下单……",
 		descriptionOnline: "设计师会在施工前到现场重新测量。",
 		sectionContact: "联系方式",
@@ -433,6 +437,14 @@ export const zh: Dictionary = {
 		},
 	},
 	order: {
+		bodyCancelledRefundDue: "此订单已取消。我们将按退款政策全额退还您的付款。",
+		bodyCancelledRefunded: "此订单已取消,您的付款已全额退还。",
+		editDetails: "修改资料",
+		saveDetails: "保存更改",
+		savingDetails: "正在保存…",
+		cancelEdit: "取消",
+		detailsLocked: "这些资料已无法在此修改。请联系我们,我们会协助您。",
+		detailsError: "无法保存您的更改,请重试。",
 		headingConfirming: "正在确认您的付款",
 		bodyConfirming:
 			"谢谢——我们正在等待支付服务商确认，通常只需几秒钟，此页面会自动更新。您无需再次付款。",
@@ -550,12 +562,88 @@ export const zh: Dictionary = {
 		whatsappHeading: "WhatsApp 订单通知",
 		whatsapp:
 			"如果您在结账时勾选此选项，我们会通过 WhatsApp 向您的电话号码发送订单进度——付款、生产步骤和送货。WhatsApp 由 Meta Platforms 运营，Meta 会处理您的号码和这些信息，处理地点可能在马来西亚境外。我们不会发送其他内容，您可以屏蔽该号码以停止接收通知。",
+		emailHeading: "订单邮件",
+		email:
+			"您下单后，我们会通过电子邮件向您发送订单确认、收到付款后的收据，以及订单退款时的通知。如果您没有选择 WhatsApp 通知，生产和送货进度也会通过电子邮件发送。这些是与您订单相关的服务信息，并非营销内容，因此无法关闭。邮件通过我们的邮件服务商 Resend 发送，Resend 会处理您的邮箱地址和这些邮件，处理地点可能在马来西亚境外。",
+		accountHeading: "您的账户",
+		account:
+			"当您通过登录服务商登录时，我们会从该服务商收到您的姓名、电子邮箱和头像。当您使用邮件验证码登录时，我们会收到您的电子邮箱，并在首次登录时询问您的姓名。我们将这些信息保存为您的账户。",
+		ordersHeading: "您的订单",
+		orders:
+			"当您下单时，我们会保存您的姓名、电话号码、电子邮箱、送货地址、所订购的设计及价格，作为销售记录。",
+		recipientsHeading: "还有谁会收到您的数据",
+		recipients:
+			"我们的支付服务商会收到您的银行卡和账单信息——这些信息不会到达我们的服务器。负责配送的快递公司会收到您的姓名、电话号码和地址。您选择的登录服务商负责处理您的登录，我们的邮件服务商负责将登录验证码发送到您的邮箱。Mux 负责播放我们的教程视频，因此会看到观看者的 IP 地址。其中部分公司在马来西亚境外处理数据。",
+		obligatoryHeading: "您必须提供的资料",
+		obligatory:
+			"以上资料均由您直接提供，或由您选择的登录服务商提供。浏览和规划无需任何资料。下单时您必须提供姓名、电话号码和送货地址——否则我们无法送货。电子邮箱和 WhatsApp 通知为可选项。",
+		retentionHeading: "保存期限",
+		retention:
+			"订单记录将按税务及会计法律要求的期限保存。没有订单的账户会一直保留，直到您要求我们删除。",
+		rightsHeading: "您的权利",
+		rights:
+			"您可以要求查看我们持有的您的个人数据、更正数据、以可携带的形式获取副本、撤回同意，或要求我们停止将其用于直接营销。请写信至下方的联系地址。",
+		otherLawsHeading: "其他法律",
+		otherLaws:
+			"本声明依据马来西亚《2010 年个人数据保护法》发出。我们的分析服务商依据其自身的数据处理协议在欧盟处理使用数据；EzCabinet 仅在马来西亚销售。",
 		choiceHeading: "您的选择",
 		choice:
 			"若您拒绝，我们只会在不使用 Cookie 或本地存储的情况下统计访问次数，所用标识每天重置，也不会进行任何录像。您可随时在浏览器中清除本网站的数据以更改选择。",
 		contactHeading: "联系我们",
 		contact: "如有疑问，或要求查阅或更正您的数据，请联系：{email}",
 		back: "返回主页",
+	},
+	terms: {
+		title: "销售条款",
+		intro:
+			"当您通过 EzCabinet 规划器订购橱柜时，适用以下条款。付款前请连同退款政策一并阅读。",
+		sellerHeading: "卖方",
+		seller: "{address}。电子邮箱 {email}，电话 {phone}。",
+		goodsHeading: "您购买的商品",
+		goods:
+			"根据您提交的设计定制的橱柜。3D 视图仅为示意；最终尺寸以我们上门复尺为准。",
+		priceHeading: "价格",
+		price:
+			"价格以马来西亚令吉（RM）计，结账时完整显示，已含送货费及任何适用税项。实际收取的价格为下单时由我们系统计算的价格。",
+		paymentHeading: "付款",
+		payment:
+			"您可以通过我们的支付服务商刷卡付款，或在提供时使用银行转账。我们收到全额付款后，订单即告确认。",
+		remeasureHeading: "上门复尺",
+		remeasure:
+			"生产前设计师会上门测量。如设计需要更改，我们会先报价并征得您的同意，然后才开始生产。",
+		deliveryHeading: "送货",
+		delivery:
+			"我们会送货至您结账时填写的地址，通常在上门复尺后 4 至 6 周内送达，并在安排配送后通知您。请确保有人签收。",
+		changesHeading: "更正订单",
+		changes:
+			"付款前，您可随时修改设计和个人资料。如付款后发现错误，请立即写信至 {email}；生产开始前我们均可更正。",
+		rightsHeading: "您作为消费者的权利",
+		rights:
+			"本条款及退款政策中的任何内容，均不限制您依据《1999 年消费者保护法》享有的权利，包括商品质量合格并与描述相符的保障。",
+		complaintsHeading: "投诉",
+		complaints:
+			"请写信至 {email} 并附上订单编号，我们会回复。如未能解决，您可向马来西亚消费者索偿仲裁庭提出申诉。",
+		lawHeading: "适用法律",
+		law: "本条款受马来西亚法律管辖。",
+	},
+	refunds: {
+		title: "退款政策",
+		intro: "我们的橱柜为定制产品，因此订单能否退款取决于是否已开始生产。",
+		beforeHeading: "生产开始前取消",
+		before:
+			"在生产开始前，您可随时取消并获得全额退款。您的订单页面会显示生产是否已开始。",
+		afterHeading: "生产开始后取消",
+		after: "生产开始后，订单不可取消或退款，因为橱柜正按您的设计制作。",
+		damagedHeading: "送达时损坏或有缺陷",
+		damaged:
+			"请在送达后 7 天内告知我们并附上照片。我们会免费维修或更换受影响的橱柜，并承担重新送货的费用。",
+		remeasureHeading: "复尺后设计有变",
+		remeasure:
+			"我们会对更改后的设计重新报价。差额会在生产开始前退还给您或向您收取。",
+		howPaidHeading: "退款方式",
+		howPaid: "退款将在我们同意退款后 14 个工作日内，退回您原来使用的付款方式。",
+		howToAskHeading: "如何申请",
+		howToAsk: "请写信至 {email} 并附上订单编号，格式如 IC-20261007-001。",
 	},
 	whatsapp: {
 		autoReply:
@@ -565,6 +653,8 @@ export const zh: Dictionary = {
 	account: {
 		navHeading: "您的账户",
 		myOrders: "我的订单",
+		admin: "管理后台",
+		passkeys: "通行密钥",
 		signIn: "登录",
 		signOut: "退出登录",
 		menuLabel: "账户菜单",
@@ -586,11 +676,74 @@ export const zh: Dictionary = {
 	},
 	signIn: {
 		heading: "登录",
-		body: "保存您的设计并跟踪您的订单。",
+		body: "保存您的设计并跟踪您的订单。任何电子邮箱都可以使用。",
 		continueWithGoogle: "使用 Google 继续",
-		error: "无法打开 Google 登录，请重试",
+		googleError: "无法打开 Google 登录，请重试",
+		orEmail: "或使用电子邮箱继续",
+		emailLabel: "电子邮箱",
+		continueEmail: "继续",
+		codeLabel: "验证码",
+		submitCode: "确认验证码",
+		resend: "发送新验证码",
+		resendIn: "{seconds} 秒后可发送新验证码",
+		changeEmail: "使用其他电子邮箱",
+		emailInvalid: "请输入有效的电子邮箱。",
+		codeSent: "我们已将 6 位验证码发送至 {email}，10 分钟内有效。",
+		codeHint: "还没收到？请查看垃圾邮件箱，并确认上方的邮箱地址正确。",
+		wrongCode: "验证码不正确。请检查后重试。",
+		codeExpired: "验证码已过期。请发送新的验证码。",
+		tooMany: "请求验证码的次数过多。请一小时后再试。",
+		tooManyTries: "尝试次数过多。请等一分钟，然后再试同一个验证码。",
+		failed: "出了点问题。请重试。",
+		signInOrCreate: "登录或创建账户",
 		nudge: "已保存在此设备上。登录后即可下单。",
 		nudgeDismiss: "稍后再说",
 		back: "返回主页",
+		privacyNote: "继续即表示您同意我们的",
+	},
+	welcome: {
+		heading: "我们该怎么称呼您？",
+		body: "您的姓名会显示在您的账户和订单上。下单时，您可以为送货填写其他姓名。",
+		nameLabel: "您的姓名",
+		submit: "继续",
+		nameRequired: "请输入您的姓名。",
+		nameRefused: "请使用您本人的姓名。",
+		failed: "出了点问题。请重试。",
+		checkoutHeading: "付款前还差一步",
+		checkoutBody: "请告诉我们您的姓名。只需几秒钟，您的设计会保持原样。",
+		checkoutButton: "继续",
+	},
+	passkey: {
+		heading: "还差一步",
+		enrolBody:
+			"设置通行密钥，确保只有您能查看订单。它使用本设备的指纹、面容或屏幕锁。",
+		enrolButton: "设置通行密钥",
+		promptBody: "请使用通行密钥确认是您本人。",
+		promptButton: "使用通行密钥",
+		working: "正在等待您的设备…",
+		failed: "未能完成，请重试",
+		failedHint: "如果一直失败，请在 Chrome 或 Safari 中打开此页面",
+		wrongAccount: "该通行密钥属于另一个账户",
+		sessionStale: "为了您的安全，请重新登录以设置通行密钥",
+		signInAgain: "重新登录",
+		unsupported: "此浏览器不支持通行密钥。请在 Chrome 或 Safari 中打开此页面。",
+		otherDevice:
+			"在另一台设备上设置的？请在浏览器询问时选择该设备，或在那台设备上登录后，在“通行密钥”中添加此设备",
+		lostDevice: "设备丢失？请联系 EzCabinet",
+		checkoutHeading: "付款前还差一步",
+		checkoutBody:
+			"请使用通行密钥确认是您本人。只需几秒钟，您的设计会保持原样。",
+		checkoutButton: "继续",
+		listHeading: "通行密钥",
+		listBody: "可用于确认您身份的设备。",
+		unnamed: "通行密钥",
+		added: "添加于 {date}",
+		add: "添加另一台设备",
+		rename: "重命名",
+		save: "保存",
+		cancel: "取消",
+		remove: "移除",
+		removeLast: "至少需要保留一个通行密钥",
+		nameLabel: "设备名称",
 	},
 };

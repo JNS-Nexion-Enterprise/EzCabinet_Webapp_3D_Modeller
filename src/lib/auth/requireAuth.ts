@@ -19,6 +19,8 @@ export const BYPASS_USER: AuthUser = {
 	role: "SUPERADMIN",
 	disabled: false,
 	mustChangePassword: false,
+	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 };
 
 /**

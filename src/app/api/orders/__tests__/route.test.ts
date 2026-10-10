@@ -55,3 +55,74 @@ describe("POST /api/orders without a signed-in user", () => {
 		expect(upsert).toHaveBeenCalledOnce();
 	});
 });
+
+describe("POST /api/orders for a customer who has not passed a passkey", () => {
+	it("401s passkey_required and writes nothing", async () => {
+		vi.stubEnv("AUTH_ENABLED", "true");
+		currentUser.mockResolvedValue({
+			id: "u1",
+			role: "CUSTOMER",
+			mustVerifyPasskey: true,
+		});
+		const response = await post();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "passkey_required" });
+		expect(upsert).not.toHaveBeenCalled();
+	});
+});
+
+describe("POST /api/orders for a customer who has not given a name", () => {
+	it("401s name_required before the passkey is even asked about", async () => {
+		vi.stubEnv("AUTH_ENABLED", "true");
+		currentUser.mockResolvedValue({
+			id: "u1",
+			role: "CUSTOMER",
+			name: "",
+			mustSetName: true,
+			mustVerifyPasskey: true,
+		});
+		const response = await post();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "name_required" });
+		expect(upsert).not.toHaveBeenCalled();
+	});
+});
+
+describe("POST /api/orders terms acceptance", () => {
+	const postBody = (body: unknown) =>
+		POST(
+			new Request("http://localhost/api/orders", {
+				method: "POST",
+				body: JSON.stringify(body),
+			}),
+		);
+	/** The zod issue paths in a 400, e.g. "termsAccepted", "customer". */
+	const issuePaths = async (response: Response) =>
+		((await response.json()).issues as { path: (string | number)[] }[]).map(
+			(issue) => issue.path.join("."),
+		);
+
+	// Past the session check on the local demo-customer path, so the body is
+	// what is being judged. The body is otherwise incomplete on purpose: the
+	// refusal happens at the schema, before any catalogue or database work.
+	beforeEach(() => vi.stubEnv("AUTH_ENABLED", "false"));
+
+	it("refuses an order that has not accepted the terms", async () => {
+		const response = await postBody({ remeasureAccepted: true });
+		expect(response.status).toBe(400);
+		expect(await issuePaths(response)).toContain("termsAccepted");
+	});
+
+	it("refuses termsAccepted: false — it is a condition, not a preference", async () => {
+		const response = await postBody({ termsAccepted: false });
+		expect(response.status).toBe(400);
+		expect(await issuePaths(response)).toContain("termsAccepted");
+	});
+
+	it("has no complaint about the terms once they are accepted", async () => {
+		const response = await postBody({ termsAccepted: true });
+		// Still 400 — the rest of the body is missing — but not for the terms.
+		expect(response.status).toBe(400);
+		expect(await issuePaths(response)).not.toContain("termsAccepted");
+	});
+});

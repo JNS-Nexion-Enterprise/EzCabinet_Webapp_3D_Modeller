@@ -6,12 +6,14 @@ import {
 	priceLineLabel,
 } from "@/components/planner/priceLineCopy";
 import { WhatsAppHelp } from "@/components/WhatsAppHelp";
+import { authEnabled } from "@/lib/auth/enabled";
 import { prisma } from "@/lib/catalogue/db";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
 import { isLocale } from "@/lib/copy/locales";
 import { canViewOrder, viewerOf } from "@/lib/orders/access";
 import { orderCard, unitCount } from "@/lib/orders/card";
+import { canEditDetails } from "@/lib/orders/editDetails";
 import { paymentInstructions } from "@/lib/orders/payment";
 import { orderRef } from "@/lib/orders/ref";
 import { STAGES, stageReached } from "@/lib/orders/stage";
@@ -19,6 +21,7 @@ import { summaryExtras, summaryLines } from "@/lib/orders/summary";
 import { activeGateway } from "@/lib/payments/registry";
 import { ROOM_TYPES } from "@/lib/planner/catalogue";
 import { PaymentBadge } from "../../PaymentBadge";
+import { EditDetails } from "./EditDetails";
 import { OnlinePayment } from "./OnlinePayment";
 import { RefreshWhileSettling } from "./RefreshWhileSettling";
 
@@ -62,9 +65,17 @@ export default async function OrderPage({
 	const [order, t] = await Promise.all([
 		prisma.order.findUnique({
 			where: { publicToken: token },
-			// Short on purpose: the row also holds the phone number, the email and
-			// who marked it paid, none of which this page shows.
+			// Short on purpose: the row also holds who marked it paid, which this
+			// page never shows. The contact fields reach the browser only inside
+			// the owner's own edit form.
 			select: {
+				customerName: true,
+				customerPhone: true,
+				customerEmail: true,
+				addressNotes: true,
+				whatsappOptIn: true,
+				paidAt: true,
+				refundedAt: true,
 				userId: true,
 				number: true,
 				createdAt: true,
@@ -92,6 +103,16 @@ export default async function OrderPage({
 	const lines = summaryLines(order.breakdown);
 	const extras = summaryExtras(order.breakdown);
 	const delivery = order.deliveries[0] ?? null;
+	// Owner only: staff read an order here, they do not rewrite it. Locally,
+	// signed out, the viewer is the bypass user and the order the demo
+	// customer's — the route resolves that the same way.
+	const canEdit =
+		(viewer.id === order.userId || !authEnabled()) &&
+		canEditDetails({
+			status: order.status,
+			productionStage: order.productionStage,
+			hasDelivery: delivery !== null,
+		});
 	const awaiting = order.status === "AWAITING_PAYMENT";
 	// Paid at the gateway, webhook not landed yet — or the bank still deciding.
 	const confirming = awaiting && returned === "succeeded";
@@ -106,7 +127,15 @@ export default async function OrderPage({
 		order.status === "PAID"
 			? [o.headingPaid, o.bodyPaid]
 			: order.status === "CANCELLED"
-				? [o.headingCancelled, o.bodyCancelled]
+				? [
+						o.headingCancelled,
+						// Cancelled after payment: say what happens to the money.
+						order.paidAt === null
+							? o.bodyCancelled
+							: order.refundedAt === null
+								? o.bodyCancelledRefundDue
+								: o.bodyCancelledRefunded,
+					]
 				: confirming
 					? [o.headingConfirming, o.bodyConfirming]
 					: processing
@@ -333,7 +362,10 @@ export default async function OrderPage({
 							<span className="tabular-nums">{rm(order.deliveryRm)}</span>
 						</div>
 						<div className="mt-1.5 flex justify-between border-[#ecebe7] border-t pt-2.5 font-semibold text-[14px]">
-							<span>{paid ? o.totalPaid : o.totalDue}</span>
+							{/* A cancelled order that was paid shows what was paid, not "due". */}
+							<span>
+								{paid || order.paidAt !== null ? o.totalPaid : o.totalDue}
+							</span>
 							<span className="tabular-nums">{rm(order.totalRm)}</span>
 						</div>
 					</section>
@@ -343,6 +375,34 @@ export default async function OrderPage({
 						<p className="whitespace-pre-line text-[13px] leading-5">
 							{order.siteAddress}
 						</p>
+						{canEdit && (
+							<EditDetails
+								token={token}
+								details={{
+									name: order.customerName,
+									phone: order.customerPhone,
+									email: order.customerEmail,
+									siteAddress: order.siteAddress,
+									addressNotes: order.addressNotes,
+									whatsappOptIn: order.whatsappOptIn,
+								}}
+								labels={{
+									edit: o.editDetails,
+									save: o.saveDetails,
+									saving: o.savingDetails,
+									cancel: o.cancelEdit,
+									name: t.quote.fullName,
+									phone: t.quote.phone,
+									email: t.quote.email,
+									siteAddress: t.quote.siteAddress,
+									addressNotes: t.quote.addressNotes,
+									whatsappOptIn: t.quote.whatsappOptIn,
+									errorPhone: t.quote.errorPhone,
+									errorLocked: o.detailsLocked,
+									errorGeneric: o.detailsError,
+								}}
+							/>
+						)}
 					</section>
 
 					{delivery && (

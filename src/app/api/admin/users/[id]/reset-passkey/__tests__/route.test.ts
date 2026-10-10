@@ -1,0 +1,112 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const requireAuth = vi.hoisted(() => vi.fn());
+const findUnique = vi.hoisted(() => vi.fn());
+const resetPasskeys = vi.hoisted(() => vi.fn());
+const queuePasskeyMail = vi.hoisted(() => vi.fn());
+
+vi.mock("@/lib/auth/requireAuth", async () => {
+	const actual = await vi.importActual<typeof import("@/lib/auth/requireAuth")>(
+		"@/lib/auth/requireAuth",
+	);
+	return { ...actual, requireAuth };
+});
+vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { findUnique } } }));
+vi.mock("@/lib/auth/resetPasskeys", () => ({ resetPasskeys }));
+vi.mock("@/lib/auth/passkeyMail", () => ({ queuePasskeyMail }));
+
+const { POST } = await import("../route");
+const { AuthError } = await import("@/lib/auth/requireAuth");
+
+const superadmin = {
+	id: "boss",
+	email: "boss@x.com",
+	name: "Boss",
+	image: null,
+	role: "SUPERADMIN" as const,
+	disabled: false,
+	mustChangePassword: false,
+	mustSetupTwoFactor: false,
+	// The route is step-up guarded: a passkey ceremony moments ago.
+	passkeyVerifiedAt: new Date(),
+	mustVerifyPasskey: false,
+};
+const call = (id: string) =>
+	POST(new Request("http://x", { method: "POST" }), {
+		params: Promise.resolve({ id }),
+	});
+
+describe("POST /api/admin/users/[id]/reset-passkey", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.spyOn(console, "info").mockImplementation(() => {});
+	});
+
+	it("asks for users:manage", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue({ id: "c1", role: "CUSTOMER" });
+		await call("c1");
+		expect(requireAuth).toHaveBeenCalledWith("users:manage");
+	});
+
+	it("refuses without the permission and resets nothing", async () => {
+		requireAuth.mockRejectedValue(new AuthError(403));
+		expect((await call("c1")).status).toBe(403);
+		expect(resetPasskeys).not.toHaveBeenCalled();
+	});
+
+	it("404s for a user that does not exist", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue(null);
+		expect((await call("ghost")).status).toBe(404);
+		expect(resetPasskeys).not.toHaveBeenCalled();
+	});
+
+	it("resets a staff member's too: they confirm guarded actions with one", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue({ id: "s1" });
+		expect((await call("s1")).status).toBe(200);
+		expect(resetPasskeys).toHaveBeenCalledWith("s1");
+	});
+
+	it("tells the account's own address, after the reset and whatever its role", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue({ id: "c1" });
+		await call("c1");
+		expect(queuePasskeyMail).toHaveBeenCalledWith("c1", "reset");
+		expect(resetPasskeys.mock.invocationCallOrder[0]).toBeLessThan(
+			queuePasskeyMail.mock.invocationCallOrder[0],
+		);
+	});
+
+	it("tells nobody when nothing was reset", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue(null);
+		await call("ghost");
+		requireAuth.mockRejectedValue(new AuthError(403));
+		await call("c1");
+		expect(queuePasskeyMail).not.toHaveBeenCalled();
+	});
+
+	it("403s without a recent passkey ceremony and resets nothing", async () => {
+		requireAuth.mockResolvedValue({ ...superadmin, passkeyVerifiedAt: null });
+		findUnique.mockResolvedValue({ id: "c1" });
+		const response = await call("c1");
+		expect(response.status).toBe(403);
+		await expect(response.json()).resolves.toEqual({
+			error: "step_up_required",
+		});
+		expect(resetPasskeys).not.toHaveBeenCalled();
+	});
+
+	it("resets the named user and records who did it", async () => {
+		requireAuth.mockResolvedValue(superadmin);
+		findUnique.mockResolvedValue({ id: "c1", role: "CUSTOMER" });
+		expect((await call("c1")).status).toBe(200);
+		expect(resetPasskeys).toHaveBeenCalledWith("c1");
+		expect(console.info).toHaveBeenCalledWith("Passkeys reset", {
+			actor: "boss",
+			target: "c1",
+		});
+	});
+});

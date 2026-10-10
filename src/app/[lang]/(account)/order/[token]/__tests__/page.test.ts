@@ -28,6 +28,8 @@ const user = (id: string, role: AuthUser["role"] = "CUSTOMER"): AuthUser => ({
 	role,
 	disabled: false,
 	mustChangePassword: false,
+	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 });
 
 const ORDER = {

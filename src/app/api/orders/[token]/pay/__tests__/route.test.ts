@@ -20,6 +20,8 @@ const customer = (id: string): AuthUser => ({
 	role: "CUSTOMER",
 	disabled: false,
 	mustChangePassword: false,
+	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 });
 
 const pay = () =>
@@ -63,6 +65,29 @@ describe("POST /api/orders/[token]/pay access", () => {
 		currentUser.mockResolvedValue(customer("owner"));
 		findUnique.mockResolvedValue(null);
 		expect((await pay()).status).toBe(404);
+		expect(startPayment).not.toHaveBeenCalled();
+	});
+
+	it("401s name_required for the owner without a name, starting nothing", async () => {
+		currentUser.mockResolvedValue({
+			...customer("owner"),
+			mustSetName: true,
+			mustVerifyPasskey: true,
+		});
+		const response = await pay();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "name_required" });
+		expect(startPayment).not.toHaveBeenCalled();
+	});
+
+	it("401s passkey_required for the owner without a passkey, starting nothing", async () => {
+		currentUser.mockResolvedValue({
+			...customer("owner"),
+			mustVerifyPasskey: true,
+		});
+		const response = await pay();
+		expect(response.status).toBe(401);
+		expect(await response.json()).toEqual({ error: "passkey_required" });
 		expect(startPayment).not.toHaveBeenCalled();
 	});
 });

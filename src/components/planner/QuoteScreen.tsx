@@ -3,12 +3,12 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { GoogleSignInButton } from "@/app/[lang]/sign-in/GoogleSignInButton";
 import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { fill } from "@/lib/copy/fill";
 import { htmlLang } from "@/lib/copy/locales";
+import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 import { malaysianNational, toE164 } from "@/lib/logistics/phone";
 import type { PaymentClient, PaymentStart } from "@/lib/payments/types";
 import type { FinishId, RoomTypeId } from "@/lib/planner/catalogue";
@@ -18,7 +18,7 @@ import type { RoomLayout } from "@/lib/planner/room";
 import { clearDraft } from "@/lib/plannerDraft";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
-import { AdminLink, PlannerHeader } from "./PlannerHeader";
+import { PlannerHeader } from "./PlannerHeader";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
 import { type StripePayApi, StripePayment } from "./StripePayment";
 
@@ -48,7 +48,10 @@ const quoteUrl = () =>
 	`${window.location.pathname}${window.location.search}#quote`;
 
 type FieldErrors = Partial<
-	Record<"name" | "phone" | "email" | "siteAddress" | "remeasure", string>
+	Record<
+		"name" | "phone" | "email" | "siteAddress" | "remeasure" | "terms",
+		string
+	>
 >;
 
 /**
@@ -131,13 +134,28 @@ export function QuoteScreen({
 	// False only on a local run with AUTH_ENABLED off, where a signed-out
 	// order goes to the demo customer and the sign-in card would be a lie.
 	const [signInRequired, setSignInRequired] = useState(true);
+	// True for a customer signed-in customer who still owes the passkey
+	// step. Like the sign-in card, it replaces the form rather than following
+	// a failed Pay, so nothing they typed is thrown away by the detour.
+	const [passkeyRequired, setPasskeyRequired] = useState(false);
+	// The same for a code customer who has not given a name, asked for first.
+	const [nameRequired, setNameRequired] = useState(false);
 	useEffect(() => {
 		fetch("/api/payments/config")
 			.then((res) => res.json())
-			.then((json: { client: PaymentClient | null; signIn?: boolean }) => {
-				setPayClient(json.client);
-				setSignInRequired(json.signIn !== false);
-			})
+			.then(
+				(json: {
+					client: PaymentClient | null;
+					signIn?: boolean;
+					passkeyRequired?: boolean;
+					nameRequired?: boolean;
+				}) => {
+					setPayClient(json.client);
+					setSignInRequired(json.signIn !== false);
+					setPasskeyRequired(json.passkeyRequired === true);
+					setNameRequired(json.nameRequired === true);
+				},
+			)
 			.catch(() => setPayClient(null));
 	}, []);
 	const stripeClient = payClient?.kind === "stripe-elements" ? payClient : null;
@@ -151,7 +169,7 @@ export function QuoteScreen({
 		payment: PaymentStart | null;
 	} | null>(null);
 
-	// The person paying is not always the person whose Google account it is,
+	// The person paying is not always the person whose account it is,
 	// so this only pre-fills the fields — both stay editable.
 	const { data: session, isPending: sessionPending } = authClient.useSession();
 	const [name, setName] = useState("");
@@ -193,6 +211,7 @@ export function QuoteScreen({
 		else if (field("siteAddress").length < 5)
 			errors.siteAddress = t.quote.errorAddressShort;
 		if (field("remeasure") !== "on") errors.remeasure = t.quote.errorRemeasure;
+		if (field("terms") !== "on") errors.terms = t.quote.errorTerms;
 		setFieldErrors(errors);
 		const firstBad = Object.keys(errors)[0];
 		if (firstBad) {
@@ -235,6 +254,8 @@ export function QuoteScreen({
 						addressNotes: field("addressNotes") || null,
 					},
 					remeasureAccepted: true,
+					// Reached only past the validation above, like the line before it.
+					termsAccepted: true,
 					whatsappOptIn: field("whatsappOptIn") === "on",
 					locale,
 				}),
@@ -247,6 +268,21 @@ export function QuoteScreen({
 				router.push(
 					`/${locale}/sign-in?next=${encodeURIComponent(quoteUrl())}`,
 				);
+				return;
+			}
+			if (res?.status === 401 && body?.error === "name_required") {
+				// Backstop only, like the passkey one below.
+				router.push(
+					`/${locale}/welcome?next=${encodeURIComponent(quoteUrl())}`,
+				);
+				return;
+			}
+			if (res?.status === 401 && body?.error === "passkey_required") {
+				// Backstop only: the passkey card normally replaces the form, so
+				// this fires only if it was bypassed (config fetch failed, or the
+				// session changed in another tab). The design is on disk and comes
+				// back, but what was typed in the form is lost.
+				router.push(`/${locale}/verify?next=${encodeURIComponent(quoteUrl())}`);
 				return;
 			}
 			if (!res?.ok || typeof body?.token !== "string") {
@@ -316,6 +352,9 @@ export function QuoteScreen({
 	// Unknown until both the session and the checkout config have answered.
 	const authPending = sessionPending || payClient === undefined;
 	const signedOut = !authPending && signInRequired && !session?.user;
+	const needsName = !authPending && nameRequired;
+	// One card at a time: the name step leads on to the passkey step itself.
+	const needsPasskey = !authPending && passkeyRequired && !nameRequired;
 	const clearError = (key: keyof FieldErrors) =>
 		setFieldErrors((current) =>
 			current[key] ? { ...current, [key]: undefined } : current,
@@ -361,7 +400,6 @@ export function QuoteScreen({
 					</svg>
 					{t.quote.backToEditing}
 				</button>
-				<AdminLink />
 			</PlannerHeader>
 
 			<div className="flex min-h-0 flex-1 justify-center overflow-y-auto px-4 pt-10 pb-14 sm:px-7">
@@ -376,7 +414,7 @@ export function QuoteScreen({
 
 						{signedOut && (
 							// Before the form, not after it: the old stop was a 401 on
-							// Pay, which sent a customer to Google with every field
+							// Pay, which sent a customer off to sign in with every field
 							// they had just typed thrown away.
 							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
 								<div>
@@ -387,16 +425,53 @@ export function QuoteScreen({
 										{t.quote.signInBody}
 									</p>
 								</div>
-								<GoogleSignInButton
-									callbackURL={quoteUrl()}
-									label={t.signIn.continueWithGoogle}
-									errorMessage={t.signIn.error}
-								/>
+								<a
+									href={`/${locale}/sign-in?next=${encodeURIComponent(quoteUrl())}`}
+									className="flex items-center justify-center rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white"
+								>
+									{t.signIn.signInOrCreate}
+								</a>
+							</div>
+						)}
+						{needsName && (
+							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
+								<div>
+									<p className="font-semibold text-[15px]">
+										{t.welcome.checkoutHeading}
+									</p>
+									<p className="mt-1 text-[#5c574e] text-[13px] leading-[18px]">
+										{t.welcome.checkoutBody}
+									</p>
+								</div>
+								<a
+									href={`/${locale}/welcome?next=${encodeURIComponent(quoteUrl())}`}
+									className="flex items-center justify-center rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white"
+								>
+									{t.welcome.checkoutButton}
+								</a>
+							</div>
+						)}
+						{needsPasskey && (
+							<div className="flex max-w-[480px] flex-col gap-3 rounded-[14px] border border-[#e5e5e5] bg-white px-5 py-5">
+								<div>
+									<p className="font-semibold text-[15px]">
+										{t.passkey.checkoutHeading}
+									</p>
+									<p className="mt-1 text-[#5c574e] text-[13px] leading-[18px]">
+										{t.passkey.checkoutBody}
+									</p>
+								</div>
+								<a
+									href={`/${locale}/verify?next=${encodeURIComponent(quoteUrl())}`}
+									className="flex items-center justify-center rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white"
+								>
+									{t.passkey.checkoutButton}
+								</a>
 							</div>
 						)}
 						<form
 							noValidate
-							hidden={authPending || signedOut}
+							hidden={authPending || signedOut || needsName || needsPasskey}
 							className="flex max-w-[480px] flex-col gap-7"
 							aria-describedby={error ? "order-error" : undefined}
 							onChange={(e) =>
@@ -564,6 +639,59 @@ export function QuoteScreen({
 										{fieldErrors.remeasure}
 									</p>
 								)}
+								<label className="flex min-h-9 cursor-pointer items-start gap-[9px]">
+									<input
+										name="terms"
+										type="checkbox"
+										required
+										disabled={busy}
+										aria-invalid={!!fieldErrors.terms}
+										aria-describedby={describedBy("terms")}
+										className="mt-px h-4 w-4 shrink-0 accent-[#171717]"
+									/>
+									{/* New tabs: the typed form and the design must still be
+									    here when the customer comes back from reading. */}
+									<span className="text-[#5c574e] text-[12px] leading-[17px]">
+										{t.quote.termsAgree}{" "}
+										<a
+											href={`/${locale}/terms`}
+											target="_blank"
+											rel="noopener"
+											className="underline"
+										>
+											{t.quote.termsLink}
+										</a>
+										{" · "}
+										<a
+											href={`/${locale}/refunds`}
+											target="_blank"
+											rel="noopener"
+											className="underline"
+										>
+											{t.quote.refundsLink}
+										</a>
+									</span>
+								</label>
+								{fieldErrors.terms && (
+									<p
+										id="err-terms"
+										role="alert"
+										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
+									>
+										{fieldErrors.terms}
+									</p>
+								)}
+								{/* The seller's name, address and contact, before the button
+								    rather than one click away — the Consumer Protection
+								    (Electronic Trade Transactions) Regulations 2024 want them
+								    disclosed before purchase. */}
+								<p className="text-[#5c574e] text-[12px] leading-[17px]">
+									{fill(t.quote.soldBy, {
+										address: WORKSHOP_ADDRESS,
+										email: t.landing.footer.email,
+										phone: WORKSHOP_PHONE,
+									})}
+								</p>
 								{/* Beside the button, not at the top of the form: on a phone that
 								    is where the customer is looking when a payment fails. */}
 								{paymentFailed !== null && (

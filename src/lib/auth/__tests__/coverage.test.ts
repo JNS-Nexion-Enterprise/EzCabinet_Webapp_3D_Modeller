@@ -85,6 +85,33 @@ describe("every admin surface is gated", () => {
 		expect(ungated).toEqual([]);
 	});
 
+	it("asks for a passkey step-up on every action that moves money or access", () => {
+		// Named by path: a new guarded action is added here on purpose, and a
+		// route that quietly drops its `stepUp` fails the build.
+		const guarded: [string, string][] = [
+			["orders/[id]/cancel/route.ts", "POST"],
+			["orders/[id]/paid/route.ts", "POST"],
+			["orders/[id]/refunded/route.ts", "POST"],
+			["orders/[id]/refund/route.ts", "POST"],
+			["users/route.ts", "POST"],
+			["users/[id]/route.ts", "PATCH"],
+			["users/[id]/route.ts", "DELETE"],
+			["users/[id]/reset-passkey/route.ts", "POST"],
+			["users/[id]/reset-2fa/route.ts", "POST"],
+			["users/[id]/remove-password/route.ts", "POST"],
+		];
+		const missing = guarded.filter(([file, method]) => {
+			const source = readFileSync(`src/app/api/admin/${file}`, "utf8");
+			const from = source.indexOf(`export const ${method} = withAuth`);
+			if (from < 0) return true;
+			// The `withAuth(` call ends at the first `);` in column 0, and its
+			// last argument must be the options.
+			const end = source.indexOf("\n);", from);
+			return !source.slice(from, end).endsWith("{ stepUp: true },");
+		});
+		expect(missing).toEqual([]);
+	});
+
 	it("never gates a handler through a re-export", async () => {
 		// This test only understands `export const METHOD = withAuth(...)`.
 		// `const GET = withAuth(...); export { GET };` would gate the handler
@@ -111,13 +138,54 @@ describe("every admin surface is gated", () => {
 
 		const ungated = files.filter((f) => {
 			if (f === "src/app/admin/login/page.tsx") return false; // the sign-in page itself
+			// Signed-out by design: the visitor has no session. Both are
+			// listed in `SIGNED_OUT_ADMIN_PAGES` (`proxy.ts`).
+			if (f === "src/app/admin/forgot-password/page.tsx") return false;
+			if (f === "src/app/admin/reset-password/page.tsx") return false;
 			// Calls `currentUser()` directly instead: `requirePage` now redirects
 			// a user with `mustChangePassword` set straight back to this page,
 			// which would loop forever.
 			if (f === "src/app/admin/change-password/page.tsx") return false;
+			// Same reason: `requirePage` redirects a user who owes 2FA setup
+			// straight back here. It reads `currentUser()` itself.
+			if (f === "src/app/admin/setup-2fa/page.tsx") return false;
 			const source = readFileSync(f, "utf8");
 			return !source.includes("requireAuth") && !source.includes("requirePage");
 		});
 		expect(ungated).toEqual([]);
+	});
+});
+
+describe("every account page goes through viewerOf", () => {
+	it("calls viewerOf in each page under the (account) group", async () => {
+		const pages = (await walk("src/app/[lang]/(account)")).filter((f) =>
+			f.endsWith("page.tsx"),
+		);
+		expect(pages.length).toBeGreaterThan(1);
+		// `viewerOf` is the one place a signed-out visitor is sent to sign in
+		// and an unverified customer to the passkey step. A page that reads
+		// `currentUser()` itself skips both.
+		const ungated = pages.filter(
+			(file) => !/\bviewerOf\(/.test(readFileSync(file, "utf8")),
+		);
+		expect(ungated).toEqual([]);
+	});
+
+	it("checks the name and the passkey in each order route", async () => {
+		const routes = (await walk("src/app/api/orders")).filter((f) =>
+			f.endsWith("route.ts"),
+		);
+		expect(routes.length).toBeGreaterThan(1);
+		// Order routes read the signed-in user themselves, outside `viewerOf`.
+		// A new one that forgets the passkey check would pass every other test
+		// and let a session that has only signed in place or pay for an order;
+		// one that forgets the name check lets a nameless account do it.
+		const unchecked = routes.filter((file) => {
+			const source = readFileSync(file, "utf8");
+			return !["mustVerifyPasskey", "mustSetName"].every((flag) =>
+				source.includes(flag),
+			);
+		});
+		expect(unchecked).toEqual([]);
 	});
 });

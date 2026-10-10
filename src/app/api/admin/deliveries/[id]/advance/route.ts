@@ -11,7 +11,7 @@ import {
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
 import {
 	deliveryKindFor,
-	draftFor,
+	draftsFor,
 	NOTIFY_ORDER_SELECT,
 } from "@/lib/whatsapp/templates";
 
@@ -142,8 +142,9 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 				});
 				const notificationIds =
 					kind && delivery.order
-						? await enqueue(tx, [
-								draftFor({
+						? await enqueue(
+								tx,
+								draftsFor({
 									kind,
 									order: delivery.order,
 									delivery: {
@@ -151,7 +152,7 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 										publicToken: delivery.publicToken,
 									},
 								}),
-							])
+							)
 						: [];
 				return { updated, notificationIds };
 			},

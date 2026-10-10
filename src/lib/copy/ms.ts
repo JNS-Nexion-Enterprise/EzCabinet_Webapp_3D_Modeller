@@ -26,7 +26,6 @@ export const ms: Dictionary = {
 			tutorials: "Tutorial",
 			menu: "Menu",
 			startPlanning: "Mula reka bentuk",
-			admin: "Pentadbir",
 		},
 		hero: {
 			eyebrow: "Percuma untuk cuba · tiada akaun diperlukan",
@@ -106,7 +105,8 @@ export const ms: Dictionary = {
 			contactHeading: "Hubungi kami",
 			email: "hello@ezcabinet.com",
 			privacy: "Privasi",
-			adminSignIn: "Log masuk admin",
+			terms: "Terma jualan",
+			refunds: "Polisi bayaran balik",
 			copyright: "© 2026 {brand}. Hak cipta terpelihara.",
 		},
 	},
@@ -117,7 +117,6 @@ export const ms: Dictionary = {
 			quote: "Sebut harga",
 		},
 		breadcrumbAriaLabel: "Navigasi remah roti",
-		admin: "Pentadbir",
 		changeRoom: "Tukar bilik",
 		diyTutorials: "Tutorial DIY",
 		clear: "Kosongkan",
@@ -400,6 +399,11 @@ export const ms: Dictionary = {
 		errorAddressRequired: "Masukkan alamat penghantaran.",
 		errorAddressShort: "Alamat itu kelihatan terlalu pendek.",
 		errorRemeasure: "Tandakan ini untuk meneruskan.",
+		termsAgree: "Saya bersetuju dengan terma jualan dan polisi bayaran balik.",
+		termsLink: "Terma jualan",
+		refundsLink: "Polisi bayaran balik",
+		errorTerms: "Tandakan ini untuk membuat pesanan.",
+		soldBy: "Dijual oleh {address}. Hubungi {email} atau {phone}.",
 		submitting: "Sedang membuat pesanan…",
 		descriptionOnline:
 			"Pereka akan mengukur semula di tapak sebelum apa-apa dibina.",
@@ -459,6 +463,17 @@ export const ms: Dictionary = {
 		},
 	},
 	order: {
+		bodyCancelledRefundDue:
+			"Pesanan ini telah dibatalkan. Bayaran anda akan dikembalikan sepenuhnya, seperti yang dinyatakan dalam dasar bayaran balik kami.",
+		bodyCancelledRefunded:
+			"Pesanan ini telah dibatalkan dan bayaran anda telah dikembalikan sepenuhnya.",
+		editDetails: "Ubah butiran",
+		saveDetails: "Simpan perubahan",
+		savingDetails: "Menyimpan…",
+		cancelEdit: "Batal",
+		detailsLocked:
+			"Butiran ini tidak lagi boleh diubah di sini. Hubungi kami dan kami akan bantu.",
+		detailsError: "Perubahan anda tidak dapat disimpan. Sila cuba lagi.",
 		headingConfirming: "Mengesahkan pembayaran anda",
 		bodyConfirming:
 			"Terima kasih — kami sedang menunggu pengesahan daripada penyedia pembayaran. Biasanya ini mengambil beberapa saat, dan halaman ini akan dikemas kini sendiri. Anda tidak perlu membayar lagi.",
@@ -586,6 +601,30 @@ export const ms: Dictionary = {
 		whatsappHeading: "Kemas kini pesanan melalui WhatsApp",
 		whatsapp:
 			"Jika anda menanda kotak semasa pembayaran, kami akan menghantar kemas kini tentang pesanan anda — bayaran, langkah pengeluaran dan penghantaran — ke nombor telefon anda melalui WhatsApp. WhatsApp dikendalikan oleh Meta Platforms, yang memproses nombor anda dan mesej ini, mungkin di luar Malaysia. Kami tidak menghantar apa-apa lagi, dan anda boleh menghentikan kemas kini dengan menyekat nombor tersebut.",
+		emailHeading: "E-mel pesanan",
+		email:
+			"Apabila anda membuat pesanan, kami menghantar e-mel pengesahan, resit apabila bayaran anda diterima dan notis jika pesanan dibayar balik. Jika anda tidak memilih kemas kini WhatsApp, kemas kini pengeluaran dan penghantaran juga dihantar melalui e-mel. Ini ialah mesej perkhidmatan tentang pesanan anda, bukan pemasaran, jadi ia tidak boleh dimatikan. E-mel dihantar melalui Resend, pembekal e-mel kami, yang memproses alamat anda dan mesej tersebut, mungkin di luar Malaysia.",
+		accountHeading: "Akaun anda",
+		account:
+			"Apabila anda log masuk melalui penyedia log masuk, kami menerima nama, alamat e-mel dan foto profil anda daripadanya. Apabila anda log masuk dengan kod yang dihantar melalui e-mel, kami menerima alamat e-mel anda, dan kami meminta nama anda pada kali pertama. Kami menyimpannya sebagai akaun anda.",
+		ordersHeading: "Pesanan anda",
+		orders:
+			"Apabila anda membuat pesanan, kami menyimpan nama, nombor telefon, e-mel, alamat penghantaran, reka bentuk yang dipesan dan harganya sebagai rekod jualan.",
+		recipientsHeading: "Siapa lagi yang menerima data anda",
+		recipients:
+			"Pemproses pembayaran kami menerima butiran kad dan bil anda — butiran ini tidak sampai ke pelayan kami. Syarikat kurier yang menghantar pesanan anda menerima nama, nombor telefon dan alamat anda. Penyedia log masuk yang anda pilih mengendalikan log masuk anda, dan perkhidmatan e-mel kami menghantar kod log masuk ke alamat anda. Mux menstrim video tutorial kami dan oleh itu melihat alamat IP penonton. Sebahagian syarikat ini memproses data di luar Malaysia.",
+		obligatoryHeading: "Apa yang anda mesti berikan",
+		obligatory:
+			"Semua ini datang terus daripada anda, atau daripada penyedia log masuk yang anda pilih. Melayari dan merancang tidak memerlukan apa-apa data. Untuk membuat pesanan, anda mesti memberikan nama, nombor telefon dan alamat penghantaran — tanpanya kami tidak dapat menghantar pesanan. E-mel dan kemas kini WhatsApp adalah pilihan.",
+		retentionHeading: "Tempoh simpanan",
+		retention:
+			"Rekod pesanan disimpan selama yang dikehendaki oleh undang-undang cukai dan perakaunan. Akaun tanpa pesanan disimpan sehingga anda meminta kami memadamnya.",
+		rightsHeading: "Hak anda",
+		rights:
+			"Anda boleh meminta untuk melihat data peribadi yang kami simpan tentang anda, membetulkannya, menerima salinan dalam bentuk mudah alih, menarik balik persetujuan, atau meminta kami berhenti menggunakannya untuk pemasaran langsung. Tulis kepada alamat hubungan di bawah.",
+		otherLawsHeading: "Undang-undang lain",
+		otherLaws:
+			"Notis ini diberikan di bawah Akta Perlindungan Data Peribadi 2010 Malaysia. Penyedia analitik kami memproses data penggunaan di Kesatuan Eropah di bawah perjanjian pemprosesan datanya sendiri; EzCabinet menjual di Malaysia sahaja.",
 		choiceHeading: "Pilihan anda",
 		choice:
 			"Jika anda menolak, kami hanya mengira lawatan tanpa kuki atau storan tempatan, dengan pengecam yang ditetapkan semula setiap hari, dan tiada rakaman dibuat. Anda boleh menukar pilihan pada bila-bila masa dengan memadam data laman ini dalam pelayar anda.",
@@ -593,6 +632,62 @@ export const ms: Dictionary = {
 		contact:
 			"Pertanyaan, atau permintaan untuk mengakses atau membetulkan data anda: {email}",
 		back: "Kembali ke laman utama",
+	},
+	terms: {
+		title: "Terma jualan",
+		intro:
+			"Terma ini terpakai apabila anda memesan kabinet melalui perancang EzCabinet. Sila baca bersama polisi bayaran balik sebelum membayar.",
+		sellerHeading: "Penjual",
+		seller: "{address}. E-mel {email}, telefon {phone}.",
+		goodsHeading: "Apa yang anda beli",
+		goods:
+			"Kabinet yang dibuat mengikut tempahan berdasarkan reka bentuk yang anda hantar. Paparan 3D ialah ilustrasi; ukuran akhir disahkan apabila kami mengukur semula tapak anda.",
+		priceHeading: "Harga",
+		price:
+			"Harga adalah dalam Ringgit Malaysia (RM) dan dipaparkan sepenuhnya semasa pembayaran, termasuk caj penghantaran dan sebarang cukai yang dikenakan. Harga yang dikenakan ialah harga yang dikira oleh sistem kami semasa pesanan dibuat.",
+		paymentHeading: "Pembayaran",
+		payment:
+			"Anda boleh membayar dengan kad melalui penyedia pembayaran kami, atau melalui pindahan bank jika ditawarkan. Pesanan anda disahkan setelah kami menerima bayaran penuh.",
+		remeasureHeading: "Ukur semula",
+		remeasure:
+			"Pereka akan mengukur tapak anda sebelum pengeluaran. Jika reka bentuk perlu diubah, kami akan memberi sebut harga perubahan itu dan mendapatkan persetujuan anda sebelum pengeluaran bermula.",
+		deliveryHeading: "Penghantaran",
+		delivery:
+			"Kami menghantar ke alamat yang anda berikan semasa pembayaran, biasanya dalam masa 4 hingga 6 minggu selepas ukur semula, dan memaklumkan anda apabila penghantaran ditempah. Sila pastikan ada orang untuk menerimanya.",
+		changesHeading: "Membetulkan pesanan anda",
+		changes:
+			"Anda boleh mengubah reka bentuk dan butiran anda pada bila-bila masa sebelum membayar. Jika anda menyedari kesilapan selepas itu, tulis kepada {email} dengan segera; kami boleh membetulkannya sehingga pengeluaran bermula.",
+		rightsHeading: "Hak anda sebagai pengguna",
+		rights:
+			"Tiada apa-apa dalam terma ini atau polisi bayaran balik yang mengehadkan hak anda di bawah Akta Perlindungan Pengguna 1999, termasuk jaminan bahawa barangan berkualiti boleh terima dan menepati perihalannya.",
+		complaintsHeading: "Aduan",
+		complaints:
+			"Tulis kepada {email} dengan rujukan pesanan anda dan kami akan membalas. Jika kami tidak dapat menyelesaikannya, anda boleh membawa perkara itu ke Tribunal Tuntutan Pengguna Malaysia.",
+		lawHeading: "Undang-undang yang mentadbir",
+		law: "Terma ini ditadbir oleh undang-undang Malaysia.",
+	},
+	refunds: {
+		title: "Polisi bayaran balik",
+		intro:
+			"Kabinet kami dibuat mengikut tempahan, jadi sama ada pesanan boleh dibayar balik bergantung pada sama ada pengeluaran telah bermula.",
+		beforeHeading: "Membatalkan sebelum pengeluaran bermula",
+		before:
+			"Anda boleh membatalkan dengan bayaran balik penuh pada bila-bila masa sebelum pengeluaran bermula. Halaman pesanan anda menunjukkan bila ia bermula.",
+		afterHeading: "Membatalkan selepas pengeluaran bermula",
+		after:
+			"Setelah pengeluaran bermula, pesanan tidak boleh dibatalkan atau dibayar balik kerana kabinet sedang dibuat mengikut reka bentuk anda.",
+		damagedHeading: "Rosak atau cacat semasa penghantaran",
+		damaged:
+			"Maklumkan kami dalam masa 7 hari selepas penghantaran, bersama gambar. Kami akan membaiki atau menggantikan kabinet yang terjejas tanpa kos kepada anda, termasuk penghantaran semula.",
+		remeasureHeading: "Jika reka bentuk berubah semasa ukur semula",
+		remeasure:
+			"Kami memberi sebut harga baharu untuk reka bentuk yang diubah. Sebarang perbezaan dibayar balik kepada anda atau dicaj sebelum pengeluaran bermula.",
+		howPaidHeading: "Cara bayaran balik dibuat",
+		howPaid:
+			"Bayaran balik dikembalikan ke kaedah pembayaran yang anda gunakan, dalam masa 14 hari bekerja selepas kami bersetuju dengan bayaran balik itu.",
+		howToAskHeading: "Cara memohon",
+		howToAsk:
+			"Tulis kepada {email} dengan rujukan pesanan anda, contohnya IC-20261007-001.",
 	},
 	whatsapp: {
 		autoReply:
@@ -602,6 +697,8 @@ export const ms: Dictionary = {
 	account: {
 		navHeading: "Akaun anda",
 		myOrders: "Pesanan saya",
+		admin: "Portal admin",
+		passkeys: "Kunci laluan",
 		signIn: "Log masuk",
 		signOut: "Log keluar",
 		menuLabel: "Menu akaun",
@@ -624,11 +721,80 @@ export const ms: Dictionary = {
 	},
 	signIn: {
 		heading: "Log masuk",
-		body: "Simpan reka bentuk anda dan jejaki pesanan anda.",
+		body: "Simpan reka bentuk anda dan jejaki pesanan anda. Mana-mana alamat e-mel boleh digunakan.",
 		continueWithGoogle: "Teruskan dengan Google",
-		error: "Tidak dapat membuka log masuk Google. Cuba lagi",
+		googleError: "Tidak dapat membuka log masuk Google. Cuba lagi",
+		orEmail: "atau teruskan dengan e-mel",
+		emailLabel: "Alamat e-mel",
+		continueEmail: "Teruskan",
+		codeLabel: "Kod",
+		submitCode: "Sahkan kod",
+		resend: "Hantar kod baharu",
+		resendIn: "Hantar kod baharu dalam {seconds}s",
+		changeEmail: "Guna e-mel lain",
+		emailInvalid: "Masukkan alamat e-mel yang sah.",
+		codeSent:
+			"Kami telah menghantar kod 6 digit ke {email}. Kod ini sah selama 10 minit.",
+		codeHint:
+			"Belum terima? Semak folder spam anda, dan pastikan alamat di atas betul.",
+		wrongCode: "Kod itu tidak betul. Semak dan cuba lagi.",
+		codeExpired: "Kod itu telah tamat tempoh. Hantar kod baharu.",
+		tooMany: "Terlalu banyak kod diminta. Cuba lagi dalam masa sejam.",
+		tooManyTries:
+			"Terlalu banyak cubaan. Tunggu seminit, kemudian cuba kod yang sama sekali lagi.",
+		failed: "Ada sesuatu yang tidak kena. Cuba lagi.",
+		signInOrCreate: "Log masuk atau cipta akaun",
 		nudge: "Disimpan pada peranti ini. Log masuk untuk membuat pesanan.",
 		nudgeDismiss: "Bukan sekarang",
 		back: "Kembali ke laman utama",
+		privacyNote: "Dengan meneruskan, anda bersetuju dengan",
+	},
+	welcome: {
+		heading: "Apakah nama anda?",
+		body: "Nama anda dipaparkan pada akaun dan pesanan anda. Anda boleh menggunakan nama lain untuk penghantaran semasa membuat pesanan.",
+		nameLabel: "Nama anda",
+		submit: "Teruskan",
+		nameRequired: "Masukkan nama anda.",
+		nameRefused: "Gunakan nama anda sendiri.",
+		failed: "Ada sesuatu yang tidak kena. Cuba lagi.",
+		checkoutHeading: "Satu langkah lagi sebelum membayar",
+		checkoutBody:
+			"Beritahu kami nama anda. Ia hanya mengambil beberapa saat dan reka bentuk anda kekal seperti sedia ada.",
+		checkoutButton: "Teruskan",
+	},
+	passkey: {
+		heading: "Satu langkah lagi",
+		enrolBody:
+			"Sediakan kunci laluan supaya hanya anda boleh membuka pesanan anda. Ia menggunakan cap jari, wajah atau kunci skrin peranti ini.",
+		enrolButton: "Sediakan kunci laluan",
+		promptBody: "Sahkan ini anda dengan kunci laluan anda.",
+		promptButton: "Guna kunci laluan",
+		working: "Menunggu peranti anda…",
+		failed: "Tidak berjaya. Cuba lagi",
+		failedHint: "Jika ini berulang, buka halaman ini dalam Chrome atau Safari",
+		wrongAccount: "Kunci laluan itu milik akaun lain",
+		sessionStale:
+			"Demi keselamatan anda, log masuk semula untuk menyediakan kunci laluan",
+		signInAgain: "Log masuk semula",
+		unsupported:
+			"Pelayar ini tidak menyokong kunci laluan. Buka halaman ini dalam Chrome atau Safari.",
+		otherDevice:
+			"Disediakan pada peranti lain? Pilih peranti itu apabila pelayar bertanya, atau log masuk di sana dan tambah peranti ini di bawah Kunci laluan",
+		lostDevice: "Peranti hilang? Hubungi EzCabinet",
+		checkoutHeading: "Satu langkah lagi sebelum membayar",
+		checkoutBody:
+			"Sahkan ini anda dengan kunci laluan. Ia hanya mengambil beberapa saat dan reka bentuk anda kekal seperti sedia ada.",
+		checkoutButton: "Teruskan",
+		listHeading: "Kunci laluan",
+		listBody: "Peranti yang boleh mengesahkan ini anda.",
+		unnamed: "Kunci laluan",
+		added: "Ditambah {date}",
+		add: "Tambah peranti lain",
+		rename: "Namakan semula",
+		save: "Simpan",
+		cancel: "Batal",
+		remove: "Buang",
+		removeLast: "Anda perlukan sekurang-kurangnya satu kunci laluan",
+		nameLabel: "Nama peranti",
 	},
 };

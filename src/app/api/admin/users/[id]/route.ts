@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { deleteUser } from "@/lib/auth/deleteUser";
 import { roleChangeAllowed, roleChangeSchema } from "@/lib/auth/invite";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
@@ -11,6 +12,10 @@ const patchSchema = z.union([
 	z.object({ disabled: z.boolean() }),
 ]);
 
+/**
+ * Change a role, or suspend and restore. Step-up: each changes who can get
+ * in, and a role change can make a superadmin.
+ */
 export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 	"users:manage",
 	async (request, { params }, actor) => {
@@ -70,4 +75,32 @@ export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 		});
 		return NextResponse.json({ ok: true });
 	},
+	{ stepUp: true },
+);
+
+/**
+ * Delete, for someone who has left. Irreversible, so the table asks twice;
+ * an account with orders is refused and can only be suspended — see
+ * `deleteUser`.
+ */
+export const DELETE = withAuth<{ params: Promise<{ id: string }> }>(
+	"users:manage",
+	async (_request, { params }, actor) => {
+		const { id } = await params;
+		const target = await prisma.user.findUnique({
+			where: { id },
+			select: { id: true },
+		});
+		if (!target) {
+			return NextResponse.json({ error: "not_found" }, { status: 404 });
+		}
+		const result = await deleteUser(target.id, actor.id);
+		if (result !== "ok") {
+			return NextResponse.json({ error: result }, { status: 409 });
+		}
+		// Ids only, no emails.
+		console.info("User deleted", { actor: actor.id, target: target.id });
+		return NextResponse.json({ ok: true });
+	},
+	{ stepUp: true },
 );

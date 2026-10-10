@@ -67,13 +67,6 @@ export default async function TutorialsPage({
 						>
 							{t.landing.nav.startPlanning}
 						</Link>
-						<Link
-							href="/admin/login"
-							target="_blank"
-							className="border-neutral-200 border-l py-2.5 pl-4 text-[#6b6b6b] text-[12px] hover:text-neutral-500"
-						>
-							{t.landing.nav.admin}
-						</Link>
 					</div>
 				</div>
 			</div>

@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/catalogue/db";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
-import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
+import { draftsFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 
 /**
  * AWAITING_PAYMENT → PAID, with its WhatsApp message queued in the same
@@ -14,8 +14,11 @@ import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 export async function markOrderPaid(
 	id: string,
 	data: {
-		paymentRef: string | null;
+		/** Left out, the order keeps the reference its gateway payment has. */
+		paymentRef?: string | null;
 		paidByUserId?: string | null;
+		/** Kept beside the id so the order still says who, once that account is deleted. */
+		paidByName?: string | null;
 		paymentProvider?: string;
 	},
 ): Promise<boolean> {
@@ -29,7 +32,7 @@ export async function markOrderPaid(
 			where: { id },
 			select: NOTIFY_ORDER_SELECT,
 		});
-		return enqueue(tx, [draftFor({ kind: "PAYMENT_CONFIRMED", order })]);
+		return enqueue(tx, draftsFor({ kind: "PAYMENT_CONFIRMED", order }));
 	});
 	if (!notificationIds) return false;
 	flushSoon(notificationIds);

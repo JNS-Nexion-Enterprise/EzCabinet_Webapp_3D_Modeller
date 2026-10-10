@@ -31,7 +31,6 @@ export const en = {
 			tutorials: "Tutorials",
 			menu: "Menu",
 			startPlanning: "Start planning",
-			admin: "Admin",
 		},
 		hero: {
 			eyebrow: "Free to try · no account needed",
@@ -109,7 +108,8 @@ export const en = {
 			contactHeading: "Contact",
 			email: "hello@ezcabinet.com",
 			privacy: "Privacy",
-			adminSignIn: "Admin sign in",
+			terms: "Terms of sale",
+			refunds: "Refund policy",
 			copyright: "© 2026 {brand}. All rights reserved.",
 		},
 	},
@@ -120,7 +120,6 @@ export const en = {
 			quote: "Quote",
 		},
 		breadcrumbAriaLabel: "Breadcrumb",
-		admin: "Admin",
 		changeRoom: "Change room",
 		diyTutorials: "DIY tutorials",
 		clear: "Clear",
@@ -396,6 +395,11 @@ export const en = {
 		errorAddressRequired: "Enter the delivery address.",
 		errorAddressShort: "That address looks too short.",
 		errorRemeasure: "Tick this to continue.",
+		termsAgree: "I agree to the terms of sale and the refund policy.",
+		termsLink: "Terms of sale",
+		refundsLink: "Refund policy",
+		errorTerms: "Tick this to place your order.",
+		soldBy: "Sold by {address}. Contact {email} or {phone}.",
 		submitting: "Placing your order…",
 		descriptionOnline:
 			"A designer re-measures on site before anything is built.",
@@ -455,6 +459,17 @@ export const en = {
 	},
 	/** The page a customer lands on after checkout, reached by its public token. */
 	order: {
+		bodyCancelledRefundDue:
+			"This order was cancelled. Your payment will be refunded in full, as set out in our refund policy.",
+		bodyCancelledRefunded:
+			"This order was cancelled and your payment has been refunded in full.",
+		editDetails: "Edit details",
+		saveDetails: "Save changes",
+		savingDetails: "Saving…",
+		cancelEdit: "Cancel",
+		detailsLocked:
+			"These details can no longer be changed here. Message us and we'll help.",
+		detailsError: "We couldn't save your changes. Please try again.",
 		headingConfirming: "Confirming your payment",
 		bodyConfirming:
 			"Thanks — we're waiting for the payment provider to confirm. This usually takes a few seconds, and this page updates by itself. You don't need to pay again.",
@@ -596,12 +611,94 @@ export const en = {
 		whatsappHeading: "WhatsApp order updates",
 		whatsapp:
 			"If you tick the box at checkout, we send updates about your order — payment, production steps and delivery — to your phone number on WhatsApp. WhatsApp is operated by Meta Platforms, which processes your number and these messages, possibly outside Malaysia. We send nothing else, and you can stop the updates by blocking the number.",
+		emailHeading: "Order emails",
+		email:
+			"When you place an order we email you a confirmation, a receipt when your payment arrives and a notice if the order is refunded. If you did not choose WhatsApp updates, production and delivery updates come by email too. These are service messages about your order, not marketing, so they cannot be switched off. They are sent through Resend, our email provider, which processes your address and the messages, possibly outside Malaysia.",
+		accountHeading: "Your account",
+		account:
+			"When you sign in through a sign-in provider we receive your name, email address and profile photo from it. When you sign in with an emailed code we receive your email address, and we ask for your name the first time. We keep these as your account.",
+		ordersHeading: "Your orders",
+		orders:
+			"When you place an order we keep your name, phone number, email, delivery address, the design you ordered and the price, as the record of the sale.",
+		recipientsHeading: "Who else receives your data",
+		recipients:
+			"Our payment processor receives your card and billing details — these never reach our servers. The courier that delivers your order receives your name, phone number and address. The sign-in provider you choose handles your sign-in, and our email service delivers sign-in codes to your address. Mux streams our tutorial videos and so sees a viewer's IP address. Some of these companies process data outside Malaysia.",
+		obligatoryHeading: "What you must give us",
+		obligatory:
+			"All of this comes from you directly, or from the sign-in provider you choose. Browsing and planning need none of it. To place an order you must give your name, phone number and delivery address — without them we cannot deliver it. Email and WhatsApp updates are optional.",
+		retentionHeading: "How long we keep it",
+		retention:
+			"Order records are kept for as long as tax and accounting law requires. An account with no orders is kept until you ask us to delete it.",
+		rightsHeading: "Your rights",
+		rights:
+			"You may ask to see the personal data we hold about you, correct it, receive a copy in a portable form, withdraw your consent, or tell us to stop using it for direct marketing. Write to the contact address below.",
+		otherLawsHeading: "Other laws",
+		otherLaws:
+			"This notice is given under Malaysia's Personal Data Protection Act 2010. Our analytics provider processes usage data in the European Union under its own data processing agreement; EzCabinet sells in Malaysia only.",
 		choiceHeading: "Your choice",
 		choice:
 			"If you decline, we only count visits without cookies or local storage, with an identifier that resets daily, and no recordings are made. You can change your choice at any time by clearing this site's data in your browser.",
 		contactHeading: "Contact",
 		contact: "Questions, or requests to access or correct your data: {email}",
 		back: "Back to home",
+	},
+	/** Draft wording — EzCabinet's counsel approves it before production. */
+	terms: {
+		title: "Terms of sale",
+		intro:
+			"These terms apply when you order cabinets through the EzCabinet planner. Please read them with the refund policy before you pay.",
+		sellerHeading: "Who you are buying from",
+		seller: "{address}. Email {email}, phone {phone}.",
+		goodsHeading: "What you are buying",
+		goods:
+			"Cabinets made to order from the design you submit. The 3D view is an illustration; final dimensions are confirmed when we re-measure your site.",
+		priceHeading: "Price",
+		price:
+			"Prices are in Ringgit Malaysia (RM) and are shown in full at checkout, including the delivery fee and any applicable taxes. The price you are charged is the one our system calculates when the order is placed.",
+		paymentHeading: "Payment",
+		payment:
+			"You can pay by card through our payment provider, or by bank transfer where offered. Your order is confirmed once we have received payment in full.",
+		remeasureHeading: "Re-measure",
+		remeasure:
+			"A designer measures your site before production. If the design has to change, we quote the change and agree it with you before production starts.",
+		deliveryHeading: "Delivery",
+		delivery:
+			"We deliver to the address you give at checkout, normally within 4 to 6 weeks of the re-measure, and tell you when the delivery is booked. Please make sure someone can receive it.",
+		changesHeading: "Correcting your order",
+		changes:
+			"You can change your design and your details at any time before you pay. If you notice a mistake afterwards, write to {email} straight away; we can correct it until production starts.",
+		rightsHeading: "Your rights as a consumer",
+		rights:
+			"Nothing in these terms or the refund policy limits the rights you have under the Consumer Protection Act 1999, including the guarantees that goods are of acceptable quality and match their description.",
+		complaintsHeading: "Complaints",
+		complaints:
+			"Write to {email} with your order reference and we will respond. If we cannot resolve it, you may bring the matter to the Tribunal for Consumer Claims Malaysia.",
+		lawHeading: "Governing law",
+		law: "These terms are governed by the laws of Malaysia.",
+	},
+	/** Draft wording — the windows are our defaults, not EzCabinet's. */
+	refunds: {
+		title: "Refund policy",
+		intro:
+			"Our cabinets are made to order, so whether an order can be refunded depends on whether production has started.",
+		beforeHeading: "Cancelling before production starts",
+		before:
+			"You may cancel for a full refund at any time before production starts. Your order page shows when it has.",
+		afterHeading: "Cancelling after production starts",
+		after:
+			"Once production has started the order cannot be cancelled or refunded, because the cabinets are being made to your design.",
+		damagedHeading: "Damaged or defective on delivery",
+		damaged:
+			"Tell us within 7 days of delivery, with photos. We will repair or replace the affected cabinet at no cost to you, re-delivery included.",
+		remeasureHeading: "If the design changes at re-measure",
+		remeasure:
+			"We re-quote the changed design. Any difference is refunded to you or charged before production starts.",
+		howPaidHeading: "How refunds are paid",
+		howPaid:
+			"Refunds go back to the payment method you used, within 14 working days of our agreeing the refund.",
+		howToAskHeading: "How to ask",
+		howToAsk:
+			"Write to {email} with your order reference, which looks like IC-20261007-001.",
 	},
 	/** Server-sent WhatsApp text — `lib/whatsapp/outbox.ts`. */
 	whatsapp: {
@@ -612,6 +709,8 @@ export const en = {
 	account: {
 		navHeading: "Your account",
 		myOrders: "My orders",
+		admin: "Admin portal",
+		passkeys: "Passkeys",
 		signIn: "Sign in",
 		signOut: "Sign out",
 		menuLabel: "Account menu",
@@ -635,13 +734,86 @@ export const en = {
 	/** The one hard stop before checkout — see CLAUDE.md's conversion decision. */
 	signIn: {
 		heading: "Sign in",
-		body: "Save your design and follow your order.",
+		body: "Save your design and follow your order. Any email address works.",
+		/** A provider is named on its own button and its own error, nowhere else. */
 		continueWithGoogle: "Continue with Google",
-		error: "Could not open Google sign-in. Try again",
+		googleError: "Could not open Google sign-in. Try again",
+		orEmail: "or continue with email",
+		emailLabel: "Email address",
+		continueEmail: "Continue",
+		codeLabel: "Code",
+		submitCode: "Sign in",
+		resend: "Send a new code",
+		resendIn: "Send a new code in {seconds}s",
+		changeEmail: "Use a different email",
+		/** The email form's own lines carry their full stop; it adds none. */
+		emailInvalid: "Enter a valid email address.",
+		codeSent: "We sent a 6-digit code to {email}. It works for 10 minutes.",
+		codeHint:
+			"Nothing yet? Check your junk folder, and that the address above is right.",
+		wrongCode: "That code is not right. Check it and try again.",
+		codeExpired: "That code has expired. Send a new one.",
+		tooMany: "Too many codes requested. Try again in an hour.",
+		tooManyTries:
+			"Too many tries. Wait a minute, then try the same code again.",
+		failed: "Something went wrong. Try again.",
+		/** No provider named: the page it leads to offers every way in. */
+		signInOrCreate: "Sign in or create an account",
 		/** The nudge beside the quote button, once something is placed. */
 		nudge: "Saved on this device. Sign in to check out.",
 		nudgeDismiss: "Not now",
 		back: "Back to home",
+		privacyNote: "By continuing you agree to our",
+	},
+	/** The name step after a first code sign-in — `/[lang]/welcome`. */
+	welcome: {
+		heading: "What should we call you?",
+		body: "Your name goes on your account and your orders. You can use a different name for a delivery at checkout.",
+		nameLabel: "Your name",
+		submit: "Continue",
+		/** Carry their own full stop, like the email form's lines. */
+		nameRequired: "Enter your name.",
+		nameRefused: "Use your own name.",
+		failed: "Something went wrong. Try again.",
+		checkoutHeading: "One more step before you pay",
+		checkoutBody:
+			"Tell us your name. It takes a few seconds and your design stays as it is.",
+		checkoutButton: "Continue",
+	},
+	/** The second step after sign-in — see docs/superpowers/specs/2026-10-06-customer-passkey-design.md. */
+	passkey: {
+		heading: "One more step",
+		enrolBody:
+			"Set up a passkey so only you can open your orders. It uses this device's fingerprint, face or screen lock.",
+		enrolButton: "Set up passkey",
+		promptBody: "Confirm it's you with your passkey.",
+		promptButton: "Use passkey",
+		working: "Waiting for your device…",
+		failed: "That didn't work. Try again",
+		failedHint: "If this keeps happening, open this page in Chrome or Safari",
+		wrongAccount: "That passkey belongs to a different account",
+		sessionStale: "For your security, sign in again to set up your passkey",
+		signInAgain: "Sign in again",
+		unsupported:
+			"This browser can't use passkeys. Open this page in Chrome or Safari.",
+		otherDevice:
+			"Set it up on another device? Choose that device when your browser asks, or sign in there and add this one under Passkeys",
+		lostDevice: "Lost your device? Contact EzCabinet",
+		checkoutHeading: "One more step before you pay",
+		checkoutBody:
+			"Confirm it's you with a passkey. It takes a few seconds and your design stays as it is.",
+		checkoutButton: "Continue",
+		listHeading: "Passkeys",
+		listBody: "The devices that can confirm it's you.",
+		unnamed: "Passkey",
+		added: "Added {date}",
+		add: "Add another device",
+		rename: "Rename",
+		save: "Save",
+		cancel: "Cancel",
+		remove: "Remove",
+		removeLast: "You need at least one passkey",
+		nameLabel: "Device name",
 	},
 } as const;
 

@@ -23,8 +23,10 @@ export function canViewOrder(
 }
 
 /**
- * The signed-in viewer of a customer page, or a trip through Google sign-in
- * that lands back on `path`. With AUTH_ENABLED off (local only) the viewer is
+ * The signed-in viewer of a customer page, or a trip through sign-in
+ * that lands back on `path`, or to the name step for a customer who has not
+ * given one, or to the passkey step for a customer whose session has not
+ * passed one. With AUTH_ENABLED off (local only) the viewer is
  * the signed-in account if there is one, else the bypass superadmin.
  */
 export async function viewerOf(lang: string, path: string): Promise<AuthUser> {
@@ -34,6 +36,16 @@ export async function viewerOf(lang: string, path: string): Promise<AuthUser> {
 	if (!authEnabled()) return user ?? BYPASS_USER;
 	if (user === null) {
 		redirect(`/${lang}/sign-in?next=${encodeURIComponent(path)}`);
+	}
+	// The name comes first: it is what the device's passkey prompt will show.
+	if (user.mustSetName) {
+		redirect(`/${lang}/welcome?next=${encodeURIComponent(path)}`);
+	}
+	// A session alone is not a signed-in customer: the order's link
+	// travels over WhatsApp, and so, sometimes, does a phone. The verify page
+	// reads `currentUser()` directly, so this cannot loop.
+	if (user.mustVerifyPasskey) {
+		redirect(`/${lang}/verify?next=${encodeURIComponent(path)}`);
 	}
 	return user;
 }

@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LegalPage } from "@/components/LegalPage";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
 import { isLocale } from "@/lib/copy/locales";
@@ -25,35 +25,28 @@ export default async function PrivacyPage({
 		[p.purposeHeading, p.purpose],
 		[p.collectHeading, p.collect],
 		[p.notCollectHeading, p.notCollect],
+		[p.accountHeading, p.account],
+		[p.ordersHeading, p.orders],
 		[p.whereHeading, p.where],
+		[p.recipientsHeading, p.recipients],
 		[p.whatsappHeading, p.whatsapp],
+		[p.emailHeading, p.email],
+		[p.obligatoryHeading, p.obligatory],
+		[p.retentionHeading, p.retention],
+		[p.rightsHeading, p.rights],
 		[p.choiceHeading, p.choice],
+		[p.otherLawsHeading, p.otherLaws],
 		[p.contactHeading, fill(p.contact, { email: t.landing.footer.email })],
 	] as const;
 
 	return (
-		<main className="mx-auto flex w-full max-w-[680px] flex-col gap-6 px-6 py-14 text-neutral-900">
-			<div>
-				<Link
-					href={`/${lang}`}
-					className="text-[13px] text-neutral-500 underline"
-				>
-					{p.back}
-				</Link>
-				<h1 className="mt-4 font-semibold text-[28px]">{p.title}</h1>
-				<p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-					{p.draft}
-				</p>
-				<p className="mt-4 text-[15px] text-neutral-600 leading-6">{p.intro}</p>
-			</div>
-			{sections.map(([heading, body]) => (
-				<section key={heading}>
-					<h2 className="font-semibold text-[16px]">{heading}</h2>
-					<p className="mt-1.5 text-[14px] text-neutral-600 leading-6">
-						{body}
-					</p>
-				</section>
-			))}
-		</main>
+		<LegalPage
+			lang={lang}
+			back={p.back}
+			title={p.title}
+			draft={p.draft}
+			intro={p.intro}
+			sections={sections}
+		/>
 	);
 }

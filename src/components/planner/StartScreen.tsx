@@ -2,7 +2,7 @@ import { fill } from "@/lib/copy/fill";
 import type { RoomTypeId } from "@/lib/planner/catalogue";
 import { useCatalogue } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
-import { AdminLink, PlannerHeader } from "./PlannerHeader";
+import { PlannerHeader } from "./PlannerHeader";
 
 const ROOM_ICON_PATHS: Record<RoomTypeId, React.ReactNode> = {
 	kitchen: (
@@ -162,7 +162,6 @@ export function StartScreen({
 				<span className="hidden text-[13px] sm:inline text-neutral-500">
 					{t.landing.hero.eyebrow}
 				</span>
-				<AdminLink />
 			</PlannerHeader>
 
 			<div className="flex flex-1 flex-col items-center justify-center gap-8 overflow-y-auto px-6 py-10">

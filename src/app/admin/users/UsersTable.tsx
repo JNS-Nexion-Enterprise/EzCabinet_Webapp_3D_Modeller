@@ -2,7 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { fetchGuarded } from "@/components/admin/stepUp";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
+import { initialsOf } from "@/lib/initials";
 import { shortTime } from "../logistics/time";
 
 type UserRow = {
@@ -11,6 +14,10 @@ type UserRow = {
 	name: string;
 	role: Role;
 	disabled: boolean;
+	twoFactorEnabled: boolean | null;
+	hasPassword: boolean;
+	passkeyCount: number;
+	recentOrders: { ref: string; phone: string }[];
 	lastLoginAt: Date | string | null;
 };
 
@@ -27,17 +34,6 @@ const SCOPE_FILTER_LABEL: Record<ScopeFilter, string> = {
 	staff: "Staff",
 	customers: "Customers",
 };
-
-function initialsOf(name: string): string {
-	return name
-		.trim()
-		.split(/\s+/)
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((part) => part[0])
-		.join("")
-		.toUpperCase();
-}
 
 /**
  * Staff by default, so the one colleague on screen isn't a needle in a
@@ -59,6 +55,10 @@ export function UsersTable({
 	const [query, setQuery] = useState("");
 	const [error, setError] = useState<string | null>(null);
 	const [busyId, setBusyId] = useState<string | null>(null);
+	// Every action here changes who can get in, so each is step-up guarded
+	// and may prompt for the admin's passkey. All but suspend and restore ask
+	// in a dialog first.
+	const [confirming, setConfirming] = useState<Confirm | null>(null);
 
 	const reload = useCallback(async (q: string, s: ScopeFilter) => {
 		const params = new URLSearchParams({ staff: s === "staff" ? "1" : "0" });
@@ -73,36 +73,17 @@ export function UsersTable({
 		reload(query, scope);
 	}, [query, scope, reload]);
 
-	async function changeRole(id: string, role: Role) {
-		setError(null);
-		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ role }),
-		});
-		setBusyId(null);
-		if (!res.ok) {
-			setError(
-				res.status === 409
-					? "That change isn't allowed — you can't change your own role, and the last superadmin can't be demoted."
-					: "Could not change the role.",
-			);
-			return;
-		}
-		await reload(query, scope);
-		router.refresh();
-	}
-
+	/** Suspend and restore are one click, but the route still wants a passkey. */
 	async function toggleDisabled(id: string, disabled: boolean) {
 		setError(null);
 		setBusyId(id);
-		const res = await fetch(`/api/admin/users/${id}`, {
+		const res = await fetchGuarded(`/api/admin/users/${id}`, {
 			method: "PATCH",
 			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ disabled }),
 		});
 		setBusyId(null);
+		if (typeof res === "string") return setError(res);
 		if (!res.ok) {
 			setError(
 				res.status === 409
@@ -114,6 +95,76 @@ export function UsersTable({
 		await reload(query, scope);
 		router.refresh();
 	}
+
+	/**
+	 * One guarded call. The dialog shows whatever message comes back; null is
+	 * success. Resetting your own sign-in signs you out, and the refresh then
+	 * lands on the login page.
+	 */
+	async function guarded(
+		path: string,
+		method: "POST" | "DELETE" | "PATCH",
+		failure: (reason: string | undefined) => string,
+		body?: unknown,
+	): Promise<string | null> {
+		const res = await fetchGuarded(`/api/admin/users/${path}`, {
+			method,
+			...(body === undefined
+				? {}
+				: {
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify(body),
+					}),
+		});
+		if (typeof res === "string") return res;
+		if (!res.ok) {
+			return failure((await res.json().catch(() => null))?.error);
+		}
+		await reload(query, scope);
+		router.refresh();
+		return null;
+	}
+
+	const changeRole = (id: string, role: Role) =>
+		guarded(
+			id,
+			"PATCH",
+			(reason) =>
+				reason === "not_allowed"
+					? "That change isn't allowed — you can't change your own role, and the last superadmin can't be demoted."
+					: "Could not change the role.",
+			{ role },
+		);
+
+	const resetTwoFactor = (id: string) =>
+		guarded(
+			`${id}/reset-2fa`,
+			"POST",
+			() => "Could not reset two-step sign-in.",
+		);
+
+	const resetPasskey = (id: string) =>
+		guarded(
+			`${id}/reset-passkey`,
+			"POST",
+			() => "Could not reset the passkey.",
+		);
+
+	const removePassword = (id: string) =>
+		guarded(`${id}/remove-password`, "POST", (reason) =>
+			reason === "no_other_sign_in"
+				? "This account has no other way to sign in. Link Google first."
+				: "Could not remove the password.",
+		);
+
+	const deleteUser = (id: string) =>
+		guarded(id, "DELETE", (reason) =>
+			reason === "has_orders"
+				? "This account has orders, so it can't be deleted. Suspend it instead."
+				: reason === "not_yourself"
+					? "You can't delete yourself."
+					: "Could not delete that account.",
+		);
 
 	// `staff=0` on the GET route means "no role filter", not "customers
 	// only" — there is no server-side customer-only param. So the
@@ -148,6 +199,7 @@ export function UsersTable({
 
 	return (
 		<div className="flex flex-col gap-3">
+			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<div className="flex flex-wrap gap-2">
 					{(["staff", "customers"] as const).map((s) => (
@@ -217,7 +269,10 @@ export function UsersTable({
 					<span />
 				</div>
 				<ul>
-					{shown.map((user) => {
+					{shown.map((row) => {
+						// A code customer who left before the name step has none;
+						// the address labels the row and its dialogs instead.
+						const user = { ...row, name: row.name || row.email };
 						const isSelf = user.id === selfId;
 						return (
 							<li
@@ -233,7 +288,7 @@ export function UsersTable({
 												: "bg-[#171717] text-white"
 										}`}
 									>
-										{initialsOf(user.name)}
+										{initialsOf(row.name, row.email)}
 									</span>
 									<span className="min-w-0">
 										<span className="flex flex-wrap items-center gap-[7px]">
@@ -250,10 +305,25 @@ export function UsersTable({
 													Suspended
 												</span>
 											)}
+											{user.role !== "CUSTOMER" &&
+												user.hasPassword &&
+												!user.twoFactorEnabled && (
+													<span className="shrink-0 rounded-full bg-[#fffbeb] px-2 py-0.5 font-semibold text-[#92400e] text-[10px] tracking-[.04em]">
+														2FA not set up
+													</span>
+												)}
 										</span>
 										<span className="block truncate text-[#737373] text-[12px]">
 											{user.email}
 										</span>
+										{user.role === "CUSTOMER" &&
+											user.recentOrders.length > 0 && (
+												<span className="block truncate text-[#a3a3a3] text-[11px]">
+													{user.recentOrders
+														.map((o) => `${o.ref} · ${o.phone}`)
+														.join(", ")}
+												</span>
+											)}
 									</span>
 								</div>
 								{user.role === "CUSTOMER" ? (
@@ -270,9 +340,18 @@ export function UsersTable({
 											title={
 												isSelf ? "You can't change your own role" : undefined
 											}
-											onChange={(e) =>
-												changeRole(user.id, e.target.value as Role)
-											}
+											// Controlled by the saved role, so backing out of the
+											// dialog leaves the select where it was.
+											onChange={(e) => {
+												const role = e.target.value as Role;
+												setConfirming({
+													title: `Make ${user.name} ${ROLE_LABELS[role]}?`,
+													body: `${user.email} gets what that role can do from their next request.`,
+													confirmLabel: "Change role",
+													stepUp: true,
+													run: () => changeRole(user.id, role),
+												});
+											}}
 											className="select-chevron min-h-9 w-fit rounded-lg border border-[#d4d4d4] bg-white py-[7px] pl-2.5 text-[#404040] text-[12px] disabled:cursor-not-allowed disabled:opacity-50"
 										>
 											{STAFF_ROLES.map((role) => (
@@ -288,7 +367,61 @@ export function UsersTable({
 										? `Last in ${shortTime(new Date(user.lastLoginAt).toISOString())}`
 										: "Never signed in"}
 								</span>
-								<div className="flex w-[172px] justify-end gap-[7px]">
+								<div className="flex w-[172px] flex-col items-end gap-1">
+									{user.twoFactorEnabled && (
+										<button
+											type="button"
+											disabled={busyId === user.id}
+											onClick={() =>
+												setConfirming({
+													title: `Reset two-step sign-in for ${user.name}?`,
+													body: "They are signed out everywhere and set up a new authenticator at next sign-in. Do this only when you are sure who asked.",
+													confirmLabel: "Reset 2FA",
+													stepUp: true,
+													run: () => resetTwoFactor(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Reset 2FA
+										</button>
+									)}
+									{user.passkeyCount > 0 && (
+										<button
+											type="button"
+											disabled={busyId === user.id}
+											onClick={() =>
+												setConfirming({
+													title: `Reset the passkey for ${user.name}?`,
+													body: "Every passkey on this account is removed and it is signed out everywhere. Whoever signs in next can set up a new one, so confirm who is asking first.",
+													confirmLabel: "Reset passkey",
+													stepUp: true,
+													run: () => resetPasskey(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Reset passkey
+										</button>
+									)}
+									{user.role !== "CUSTOMER" && user.hasPassword && (
+										<button
+											type="button"
+											disabled={busyId === user.id}
+											onClick={() =>
+												setConfirming({
+													title: `Remove the password for ${user.name}?`,
+													body: "The account becomes Google-only. A password cannot be set again from here.",
+													confirmLabel: "Remove password",
+													stepUp: true,
+													run: () => removePassword(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Remove password
+										</button>
+									)}
 									{user.role !== "CUSTOMER" && (
 										<button
 											type="button"
@@ -305,6 +438,25 @@ export function UsersTable({
 											className="min-h-9 rounded-lg border border-[#d4d4d4] px-[11px] text-[#404040] text-[12px] hover:bg-[#f4f3f1] disabled:cursor-not-allowed disabled:opacity-50"
 										>
 											{user.disabled ? "Restore" : "Suspend"}
+										</button>
+									)}
+									{!isSelf && (
+										<button
+											type="button"
+											disabled={busyId === user.id}
+											onClick={() =>
+												setConfirming({
+													title: `Delete ${user.name}?`,
+													body: "The account, its sign-ins and its second factor are removed for good. Suspend instead if they might come back.",
+													confirmLabel: "Delete account",
+													danger: true,
+													stepUp: true,
+													run: () => deleteUser(user.id),
+												})
+											}
+											className="text-[#7f1d1d] text-[12px] underline-offset-2 hover:underline disabled:opacity-60"
+										>
+											Delete
 										</button>
 									)}
 								</div>

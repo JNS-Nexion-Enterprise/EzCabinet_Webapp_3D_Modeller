@@ -4,7 +4,7 @@ import { prisma } from "@/lib/catalogue/db";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
 import {
 	deliveryKindFor,
-	draftFor,
+	draftsFor,
 	NOTIFY_ORDER_SELECT,
 } from "@/lib/whatsapp/templates";
 import { isForwardTransition } from "./status";
@@ -137,13 +137,14 @@ export async function applyTrackingUpdate(
 		// message. A repeated reading re-uses the dedupe key and inserts nothing.
 		const notificationIds =
 			kind && current.order
-				? await enqueue(tx, [
-						draftFor({
+				? await enqueue(
+						tx,
+						draftsFor({
 							kind,
 							order: current.order,
 							delivery: { id: deliveryId, publicToken: current.publicToken },
 						}),
-					])
+					)
 				: [];
 		return { row, notificationIds };
 	});

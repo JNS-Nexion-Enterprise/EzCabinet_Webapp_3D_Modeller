@@ -19,7 +19,18 @@ const GATEWAYS: Record<string, () => PaymentGateway | null> = {
 
 /** The gateway new payments start on. Evaluated per request. */
 export async function activeGateway(): Promise<PaymentGateway | null> {
-	return gatewayById(await paymentGatewayFlag());
+	const id = await paymentGatewayFlag();
+	const gateway = gatewayById(id);
+	// A gateway was asked for and there is none: its keys are missing, or
+	// this build does not know it. Customers see bank transfer and nothing on
+	// screen says why, so this line is the only signal.
+	if (!gateway && id !== "manual") {
+		console.error(
+			"Online payment is off: the chosen gateway is not available",
+			{ gateway: id },
+		);
+	}
+	return gateway;
 }
 
 /**

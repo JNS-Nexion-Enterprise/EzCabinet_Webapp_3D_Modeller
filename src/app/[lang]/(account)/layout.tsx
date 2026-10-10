@@ -25,9 +25,17 @@ export default async function AccountLayout({
 	const { lang } = await params;
 	if (!isLocale(lang)) notFound();
 	const [user, t] = await Promise.all([currentUser(), getDictionary(lang)]);
-	const orders = user
-		? await prisma.order.count({ where: { userId: user.id } })
-		: 0;
+	// A customer who still owes the passkey step or a name is about to be
+	// redirected by the page; on a client-side navigation this layout can
+	// stream ahead of that redirect, so it shows them nothing about the
+	// account.
+	const [orders, passkeys] =
+		user && !user.mustVerifyPasskey && !user.mustSetName
+			? await Promise.all([
+					prisma.order.count({ where: { userId: user.id } }),
+					prisma.passkey.count({ where: { userId: user.id } }),
+				])
+			: [0, 0];
 
 	return (
 		<div className="flex min-h-screen flex-col bg-[#f4f3f1] text-[#171717]">
@@ -42,6 +50,12 @@ export default async function AccountLayout({
 								label: t.account.myOrders,
 								count: orders,
 								matches: [`/${lang}/orders`, `/${lang}/order/`],
+							},
+							{
+								href: `/${lang}/passkeys`,
+								label: t.account.passkeys,
+								count: passkeys,
+								matches: [`/${lang}/passkeys`],
 							},
 						]}
 					/>
