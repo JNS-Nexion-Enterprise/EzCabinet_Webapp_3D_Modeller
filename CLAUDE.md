@@ -1116,6 +1116,23 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   Consumer Protection (Electronic Trade Transactions) Regulations 2024 want
   the registered address there, and the Malay page is the one the law reads. GDPR was checked and does not apply: an
   EU-hosted processor does not bring a Malaysian seller under it.
+- **JNS Nexion is EzCabinet's data processor, and that needs a contract, not
+  a notice line.** The privacy notice does not have to name or list JNS: the
+  PDPA's "third party" (s.4) excludes a data processor, and the notice (s.7)
+  asks only for classes of third parties. That holds only while JNS handles
+  customer data solely on EzCabinet's behalf — any use for JNS's own purposes
+  makes it a third party the notice must cover. What is needed instead is a
+  signed data processing agreement between the two: security guarantees,
+  access limits, deletion at the end of the contract, and breach reporting to
+  EzCabinet fast enough for its own 72-hour duty to the Commissioner. A
+  processor has been bound by the Security Principle in its own right since
+  1 April 2025. The service accounts (Vercel, Prisma, Resend, Stripe,
+  PostHog) should be in EzCabinet's name with JNS as a member, and
+  `EMAIL_FROM`, today a `jnsnexion.com.my` address, moves to an EzCabinet
+  domain before launch. Not verified against primary text: the
+  written-contract requirement comes from commentary on the 2015 Standards,
+  and the s.4 wording from an unofficial 2010 copy of the Act. Counsel
+  confirms both.
 - **Order emails print placeholders.** `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` and `BANK_TRANSFER` now appear in mail a customer keeps, and "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads. The ms and zh mail wording (`lib/email/copy.ts`) needs a native read, as the WhatsApp templates do. The privacy notice's "Email and WhatsApp updates are optional" is no longer exact — order emails are not optional — and goes to counsel with the new "Order emails" paragraph.
 
 ## Conventions
