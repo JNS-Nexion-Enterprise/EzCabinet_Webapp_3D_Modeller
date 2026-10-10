@@ -110,17 +110,21 @@ export async function refuseStaffCodeSession(
  * made — so nothing here can tell one apart.
  *
  * Not caught by the caller: if the role cannot be read the sign-in fails,
- * which is the safe way for this to go wrong.
+ * which is the safe way for this to go wrong. The read is tried twice first:
+ * the code is already spent, so a single lost read would cost the customer
+ * the sign-in and one of their three sends an hour.
  */
 export async function dropCodeSessionIfNotCustomer(
 	session: { id: string; userId: string },
 	ctx: { path?: string } | null,
 ): Promise<void> {
 	if (ctx?.path !== SIGN_IN_PATH) return;
-	const row = await prisma.user.findUnique({
-		where: { id: session.userId },
-		select: { role: true },
-	});
+	const read = () =>
+		prisma.user.findUnique({
+			where: { id: session.userId },
+			select: { role: true },
+		});
+	const row = await read().catch(read);
 	if (row?.role === "CUSTOMER") return;
 	await prisma.session.deleteMany({ where: { id: session.id } });
 }

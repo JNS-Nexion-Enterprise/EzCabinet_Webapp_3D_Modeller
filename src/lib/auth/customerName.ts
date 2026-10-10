@@ -9,17 +9,22 @@ const FILLERS = "\u115f\u1160\u3164\uffa0";
 
 /**
  * Characters no name may carry: control characters, line and paragraph
- * separators, the Hangul fillers, and every format character — the direction
+ * separators, and the Hangul fillers.
+ */
+const HIDDEN = new RegExp(`[\\p{Cc}\\p{Zl}\\p{Zp}${FILLERS}]`, "u");
+
+/**
+ * Format characters, removed before anything is judged: the direction marks,
  * overrides and isolates, which can reorder the text around the name on a
- * staff screen or in a mail, and the zero-width ones, which hide. The
- * zero-width joiner (U+200D) is the one format character let through: emoji
- * are built with it. Their variation selectors are marks, not format
+ * staff screen or in a mail, and the zero-width ones, which hide. They ride
+ * along on a paste from a chat app and the customer cannot see them, so
+ * refusing the name would be refusing it for nothing they can fix. Two are
+ * kept, because they spell things: the zero-width joiner (U+200D) builds
+ * emoji, and the non-joiner (U+200C) is ordinary in Persian and several
+ * Indian scripts. Emoji variation selectors are marks, not format
  * characters, so they pass untouched.
  */
-const HIDDEN = new RegExp(
-	`[\\p{Cc}\\p{Zl}\\p{Zp}${FILLERS}]|(?!\u200d)\\p{Cf}`,
-	"u",
-);
+const INVISIBLE = /(?![\u200c\u200d])\p{Cf}/gu;
 
 /**
  * At least one letter that draws something. Without it — "..", "--", emoji
@@ -66,15 +71,20 @@ function posesAsBusiness(name: string): boolean {
  * The name a customer gives after their first code sign-in. It labels the
  * account and pre-fills checkout; it is not unique, not a credential, and
  * never identifies a caller. Any script is fine — it is stored as typed,
- * trimmed.
+ * trimmed, with invisible format characters removed.
  */
 export const customerNameSchema = z
 	.string()
-	.trim()
-	.min(2)
-	.max(80)
-	.refine(hasLetter, { message: NO_LETTER })
-	.refine((name) => !HIDDEN.test(name) && !posesAsBusiness(name));
+	.transform((typed) => typed.replace(INVISIBLE, ""))
+	.pipe(
+		z
+			.string()
+			.trim()
+			.min(2)
+			.max(80)
+			.refine(hasLetter, { message: NO_LETTER })
+			.refine((name) => !HIDDEN.test(name) && !posesAsBusiness(name)),
+	);
 
 /**
  * The schema's verdict as the two answers the customer can be given:

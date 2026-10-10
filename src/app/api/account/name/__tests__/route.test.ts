@@ -116,12 +116,19 @@ describe("POST /api/account/name", () => {
 		["a name that is not a string", { name: 42 }, "name_required"],
 		["the business", { name: "EzCabinet Support" }, "name_refused"],
 		["admin", { name: "admin" }, "name_refused"],
-		["a direction override", { name: "Aiman‮ilA" }, "name_refused"],
+		["a line break inside", { name: "Aiman\nAli" }, "name_refused"],
 		["81 characters", { name: "a".repeat(81) }, "name_refused"],
 	])("400s %s and writes nothing", async (_label, body, error) => {
 		const response = await post(body);
 		expect(response.status).toBe(400);
 		expect(await response.json()).toEqual({ error });
 		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	// Invisible, so removed, and what is stored cannot reorder a staff screen.
+	it("stores a name without the direction override pasted into it", async () => {
+		const response = await post({ name: "Aiman\u202eilA" });
+		expect(response.status).toBe(200);
+		expect(updateMany.mock.calls[0][0].data).toEqual({ name: "AimanilA" });
 	});
 });

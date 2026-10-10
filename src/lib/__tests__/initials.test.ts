@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { initialsOf } from "../initials";
 
@@ -25,5 +26,11 @@ describe("initialsOf", () => {
 		["7 Eleven", "7E"],
 	])("%j", (name, expected) => {
 		expect(initialsOf(name, "zed@x.com")).toBe(expected);
+	});
+	// The staff Users table had a copy of its own that cut an emoji in half.
+	it("is the one the staff Users table uses", () => {
+		const table = readFileSync("src/app/admin/users/UsersTable.tsx", "utf8");
+		expect(table).toContain('from "@/lib/initials"');
+		expect(table).not.toContain("function initialsOf");
 	});
 });

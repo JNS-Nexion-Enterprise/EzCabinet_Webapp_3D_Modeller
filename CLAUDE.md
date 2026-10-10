@@ -619,8 +619,9 @@ card instead of losing the form. The email form always navigates by way of
 the welcome page, which passes a customer who owes nothing straight on — only
 the server knows which is which. A customer who closes the tab there meets
 the step again at their next sign-in. `customerNameSchema` is the whole rule
-for a name: trimmed, 2 to 80 characters, any script, no control or
-direction-override characters, and not one that poses as the business — one
+for a name: invisible format characters removed, trimmed, 2 to 80
+characters, any script, no control characters, and not one that poses as the
+business — one
 that contains "ezcabinet", or whose first word starts with "admin" or
 "support". Both are tested on a folded copy (compatibility forms unified,
 lower-cased, everything but letters and digits removed) so punctuation and
@@ -720,8 +721,10 @@ silent, the form counts its own sends and shows "too many" itself
 three codes an hour (a nuisance to that customer, no access); the per-network
 send rule is a rolling count that never resets while requests keep arriving
 under an hour apart, so it is really "thirty, then an hour's refusal" for a
-busy shared network (an office, a mobile carrier's NAT); and a lost mailbox
-has no recovery.
+busy shared network (an office, a mobile carrier's NAT); the tries rule rolls
+the same way, resetting only after a minute with no try at all, so a customer
+with the right code there can be told to wait more than once; and a lost
+mailbox has no recovery.
 
 **A code session is checked twice.** `refuseStaffCodeSession` before the
 session is made, and `dropCodeSessionIfNotCustomer`
@@ -729,19 +732,31 @@ session is made, and `dropCodeSessionIfNotCustomer`
 if the row is no longer a customer's — a promotion committed while the
 sign-in was in flight — the session is deleted. The response may still set a
 cookie for it; the next request is signed out. A staff address never reaches
-the second check, so it tells nothing apart. The matching hole on the invite
-side: a fresh invite whose sign-up was swallowed because the invitee's first
-code sign-in made the row a moment earlier finds a row with no `credential`
-account, and answers 409 `signed_in_meanwhile` instead of giving a
-passwordless row a role. Pressing Invite again promotes it properly.
+the second check, so it tells nothing apart. Its role read is tried twice,
+because the code is already spent when it runs. The matching hole on the
+invite side: a fresh invite whose sign-up was swallowed, because the
+invitee's first code sign-in or another superadmin's invite made the row a
+moment earlier. Better Auth answers a swallowed sign-up with a made-up row,
+so the route compares the id it was given with the row it finds and answers
+409 `signed_in_meanwhile` when they differ, instead of giving a role to a
+row with no password or with someone else's. Pressing Invite again promotes
+it properly, or says it is already staff. The grant itself is a conditional
+write (still `CUSTOMER`, still holding a `credential` account) and the
+row's sessions are deleted after it, as a promotion's are. Known limit: the
+new row is unverified until the grant lands, so a code sign-in in flight
+whose wipe of the row's sign-ins lands after the grant leaves a staff row
+with no password; the way out is Delete and invite again.
 
 **A customer's name needs a letter.** `parseCustomerName` answers
 `name_required` for a name with no letter at all ("..", emoji alone,
 zero-width spaces, Hangul fillers) and `name_refused` for one carrying a
-format character, a line or paragraph separator or a Hangul filler. The
-zero-width joiner is the one format character allowed, because emoji are
-built with it; that also refuses the zero-width non-joiner some scripts
-(Persian) spell with.
+control character, a line or paragraph separator or a Hangul filler. Format
+characters (direction marks and overrides, zero-width spaces, soft hyphens)
+are removed before anything is judged, not refused: they ride along on a
+paste from a chat app and the customer cannot see them. Two are kept because
+they spell things: the zero-width joiner (emoji) and non-joiner (Persian and
+several Indian scripts). A flag emoji built from tag characters loses its
+tags and is stored as a plain flag.
 
 **Before a deploy**, two queries must answer 0 — unverified staff rows, and
 `SELECT count(*) FROM "user" WHERE email <> lower(email);` (a mixed-case

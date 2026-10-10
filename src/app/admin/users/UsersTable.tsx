@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
+import { initialsOf } from "@/lib/initials";
 import { shortTime } from "../logistics/time";
 
 type UserRow = {
@@ -33,17 +34,6 @@ const SCOPE_FILTER_LABEL: Record<ScopeFilter, string> = {
 	staff: "Staff",
 	customers: "Customers",
 };
-
-function initialsOf(name: string): string {
-	return name
-		.trim()
-		.split(/\s+/)
-		.filter(Boolean)
-		.slice(0, 2)
-		.map((part) => part[0])
-		.join("")
-		.toUpperCase();
-}
 
 /**
  * Staff by default, so the one colleague on screen isn't a needle in a
@@ -298,7 +288,7 @@ export function UsersTable({
 												: "bg-[#171717] text-white"
 										}`}
 									>
-										{initialsOf(user.name)}
+										{initialsOf(row.name, row.email)}
 									</span>
 									<span className="min-w-0">
 										<span className="flex flex-wrap items-center gap-[7px]">

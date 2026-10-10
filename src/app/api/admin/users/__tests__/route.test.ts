@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const requireAuth = vi.hoisted(() => vi.fn());
 const findUnique = vi.hoisted(() => vi.fn());
 const update = vi.hoisted(() => vi.fn());
+const updateMany = vi.hoisted(() => vi.fn());
 const signUpEmail = vi.hoisted(() => vi.fn());
 const hash = vi.hoisted(() => vi.fn(async (_password: string) => "hashed!"));
 const accountFindFirst = vi.hoisted(() => vi.fn());
@@ -29,7 +30,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/auth/inviteMail", () => ({ sendStaffInvite }));
 vi.mock("@/lib/catalogue/db", () => ({
 	prisma: {
-		user: { findUnique, update },
+		user: { findUnique, update, updateMany },
 		account: {
 			findFirst: accountFindFirst,
 			create: accountCreate,
@@ -71,7 +72,14 @@ const invite = (email = "new@x.com") =>
 beforeEach(() => {
 	vi.clearAllMocks();
 	requireAuth.mockResolvedValue(superadmin);
+	updateMany.mockResolvedValue({ count: 1 });
 });
+
+/** What Better Auth answers a sign-up with: the row it made, or a made-up one. */
+const signedUp = (id: string) =>
+	signUpEmail.mockResolvedValueOnce(
+		Response.json({ token: null, user: { id } }),
+	);
 
 describe("POST /api/admin/users", () => {
 	// An invite grants a role. Without the step-up, a held superadmin session
@@ -93,37 +101,76 @@ describe("POST /api/admin/users", () => {
 		findUnique
 			.mockResolvedValueOnce(null)
 			.mockResolvedValueOnce({ id: "u9", role: "CUSTOMER" });
-		// The password sign-in the sign-up made.
-		accountFindFirst.mockResolvedValueOnce({ id: "a9" });
+		signedUp("u9");
 		const response = await invite();
 		expect(response.status).toBe(201);
-		expect(accountFindFirst).toHaveBeenCalledWith({
-			where: { userId: "u9", providerId: "credential" },
-			select: { id: true },
+		// The grant carries its own conditions: still a customer's row, still
+		// holding the password the sign-up gave it.
+		expect(updateMany).toHaveBeenCalledWith({
+			where: {
+				id: "u9",
+				role: "CUSTOMER",
+				accounts: { some: { providerId: "credential" } },
+			},
+			data: {
+				role: "SUPERADMIN",
+				emailVerified: true,
+				mustChangePassword: true,
+				invitedById: "boss",
+			},
 		});
-		expect(update.mock.calls[0][0]).toMatchObject({
-			where: { id: "u9" },
-			data: { role: "SUPERADMIN", invitedById: "boss" },
-		});
-		// A row made a moment ago has no session to end.
-		expect(sessionDeleteMany).not.toHaveBeenCalled();
 		expect(accountDeleteMany).not.toHaveBeenCalled();
 	});
 
-	// The invitee's first code sign-in made the row between the `existing`
-	// check and the sign-up, which was then swallowed as a duplicate. Given
-	// the role, that row would be staff with no password and no way in.
-	it("409s when the row it finds is not the one its sign-up made", async () => {
+	// The invitee's code sign-in can land between the sign-up and the grant,
+	// while the row is still a customer's, and both session hooks let it by.
+	it("ends the new row's sessions once the role is granted", async () => {
 		findUnique
 			.mockResolvedValueOnce(null)
-			.mockResolvedValueOnce({ id: "code-made", role: "CUSTOMER" });
-		accountFindFirst.mockResolvedValueOnce(null);
+			.mockResolvedValueOnce({ id: "u9", role: "CUSTOMER" });
+		signedUp("u9");
+		await invite();
+		expect(sessionDeleteMany).toHaveBeenCalledTimes(1);
+		expect(sessionDeleteMany).toHaveBeenCalledWith({ where: { userId: "u9" } });
+		expect(sessionDeleteMany.mock.invocationCallOrder[0]).toBeGreaterThan(
+			updateMany.mock.invocationCallOrder[0],
+		);
+	});
+
+	// A swallowed duplicate sign-up answers with a made-up row. The row found
+	// by address is then someone else's: the invitee's own first code sign-in,
+	// or a second superadmin's invite, whose password is not the one typed here.
+	it.each([
+		["a code sign-in made", null],
+		["another invite made", { id: "a9" }],
+	])("409s when the row it finds is one %s", async (_label, credential) => {
+		findUnique
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({ id: "theirs", role: "CUSTOMER" });
+		accountFindFirst.mockResolvedValue(credential);
+		signedUp("made-up");
 		const response = await invite();
 		expect(response.status).toBe(409);
 		await expect(response.json()).resolves.toEqual({
 			error: "signed_in_meanwhile",
 		});
-		expect(update).not.toHaveBeenCalled();
+		expect(updateMany).not.toHaveBeenCalled();
+		expect(sendStaffInvite).not.toHaveBeenCalled();
+	});
+
+	// The row changed between the read and the grant: its password was wiped,
+	// or it was given a role elsewhere. Nothing is granted and nothing mailed.
+	it("409s when the grant no longer matches the row", async () => {
+		findUnique
+			.mockResolvedValueOnce(null)
+			.mockResolvedValueOnce({ id: "u9", role: "CUSTOMER" });
+		signedUp("u9");
+		updateMany.mockResolvedValueOnce({ count: 0 });
+		const response = await invite();
+		expect(response.status).toBe(409);
+		await expect(response.json()).resolves.toEqual({
+			error: "signed_in_meanwhile",
+		});
 		expect(sendStaffInvite).not.toHaveBeenCalled();
 	});
 

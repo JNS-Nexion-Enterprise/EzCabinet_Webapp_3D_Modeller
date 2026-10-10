@@ -40,6 +40,11 @@ export const SENDS_PER_NETWORK = 30;
  * own limit is three, which three typos — or two customers behind one carrier
  * address — use up, and the right code is then refused. Guessing is bounded
  * elsewhere: three tries per code, three codes an hour per address.
+ *
+ * Rolling, like the send rule: the count resets only after a minute with no
+ * try at all, so on a busy shared network this is "ten, then refused until
+ * the network is quiet for a minute", and a customer with the right code can
+ * be told to wait more than once. Raise it if that is seen.
  */
 export const SIGN_IN_TRIES_PER_MINUTE = 10;
 

@@ -151,10 +151,13 @@ export const POST = withAuth(
 		// actually stops the superadmin pressing "Invite" from being signed in as
 		// the person they just invited — see that file's comment for why
 		// `asResponse` alone does not.
-		await auth.api.signUpEmail({
+		const signUp = await auth.api.signUpEmail({
 			body: { email, name, password },
 			asResponse: true,
 		});
+		const made: { user?: { id?: string } } | null = await signUp
+			.json()
+			.catch(() => null);
 
 		const created = await prisma.user.findUnique({ where: { email } });
 		if (!created) {
@@ -172,22 +175,19 @@ export const POST = withAuth(
 			return NextResponse.json({ error: "already_staff" }, { status: 409 });
 		}
 
-		// The invitee's own first code sign-in can make the row between the
-		// `existing` check and the sign-up, which is then swallowed the same
-		// way. That row has no password, and staff cannot use a code: given the
-		// role it would have no way in. Refused rather than promoted here —
-		// pressing Invite again finds the row and takes the promotion branch
-		// above, which sets the password and ends the customer's sessions.
-		const credential = await prisma.account.findFirst({
-			where: { userId: created.id, providerId: "credential" },
-			select: { id: true },
-		});
-		if (!credential) {
-			return NextResponse.json(
-				{ error: "signed_in_meanwhile" },
-				{ status: 409 },
-			);
-		}
+		// A sign-up for an address that exists by now is swallowed the same way,
+		// and answers with a made-up row whose id is nobody's. So a row that is
+		// not the one this sign-up made is someone else's: the invitee's own
+		// first code sign-in, which has no password — and staff cannot use a
+		// code, so given the role it would have no way in — or a second
+		// superadmin's invite, whose password is not the one typed here.
+		// Refused rather than promoted: pressing Invite again finds the row and
+		// takes the promotion branch above, or is told it is already staff.
+		const meanwhile = NextResponse.json(
+			{ error: "signed_in_meanwhile" },
+			{ status: 409 },
+		);
+		if (made?.user?.id !== created.id) return meanwhile;
 
 		// The role is set here, never by the sign-up body — `input: false` in the
 		// auth config is what makes that the only possible path. `emailVerified`
@@ -195,8 +195,19 @@ export const POST = withAuth(
 		// to link a Google account to an unverified row; we send no verification
 		// mail, so this is the only way it is ever true. Typing a colleague's work
 		// email here is the assertion that the address is theirs.
-		await prisma.user.update({
-			where: { id: created.id },
+		//
+		// The write carries its own conditions, because the row is unverified
+		// until it lands: a code sign-in in flight can wipe its password (the
+		// plugin does that to an unverified row), and a role must not be granted
+		// to a row that no longer has one. Known limit: a wipe that lands after
+		// this write still leaves staff with no password; the way out is Delete
+		// and invite again.
+		const granted = await prisma.user.updateMany({
+			where: {
+				id: created.id,
+				role: "CUSTOMER",
+				accounts: { some: { providerId: "credential" } },
+			},
 			data: {
 				role,
 				emailVerified: true,
@@ -204,6 +215,11 @@ export const POST = withAuth(
 				invitedById,
 			},
 		});
+		if (granted.count === 0) return meanwhile;
+		// A code sign-in could land between the sign-up and the grant, while the
+		// row was still a customer's, and both session hooks would let it by.
+		// From here `refuseStaffCodeSession` refuses any new one.
+		await prisma.session.deleteMany({ where: { userId: created.id } });
 
 		const emailed = await sendStaffInvite({ ...mail, name, hasPassword: true });
 		return NextResponse.json(

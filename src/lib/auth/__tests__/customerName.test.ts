@@ -36,6 +36,34 @@ describe("parseCustomerName", () => {
 		expect(parseCustomerName(typed)).toEqual({ name: stored });
 	});
 
+	// Invisible characters ride along on a paste from a chat app or a contact
+	// card. The customer cannot see them, so they are removed, not refused.
+	it.each([
+		["a trailing left-to-right mark", "Aiman\u200e", "Aiman"],
+		["a zero-width space inside", "Aiman\u200bAli", "AimanAli"],
+		["a byte-order mark inside", "Aiman\ufeffAli", "AimanAli"],
+		["a right-to-left override", "Aiman\u202eilA", "AimanilA"],
+		["a left-to-right embedding", "\u202aAiman", "Aiman"],
+		["a directional isolate", "Aiman \u2066Ali\u2069", "Aiman Ali"],
+		["a soft hyphen", "Ai\u00adman", "Aiman"],
+	])("removes %s and accepts the rest", (_label, typed, stored) => {
+		expect(parseCustomerName(typed)).toEqual({ name: stored });
+	});
+
+	// The zero-width non-joiner spells words in Persian and several Indian
+	// scripts, so it stays, as the joiner does.
+	it("keeps a zero-width non-joiner", () => {
+		expect(
+			parseCustomerName("\u0639\u0644\u06cc\u200c\u0631\u0636\u0627"),
+		).toEqual({
+			name: "\u0639\u0644\u06cc\u200c\u0631\u0636\u0627",
+		});
+	});
+
+	it("counts the length after removing them", () => {
+		expect(parseCustomerName("A\u200b")).toEqual({ error: "name_required" });
+	});
+
 	it.each([
 		["nothing", ""],
 		["only spaces", "   "],
@@ -66,14 +94,9 @@ describe("parseCustomerName", () => {
 		["a line break inside", "Aiman\nAli"],
 		["a tab inside", "Aiman\tAli"],
 		["a NUL", "Aiman\u0000Ali"],
-		["a right-to-left override", "Aiman‮ilA"],
-		["a left-to-right embedding", "‪Aiman"],
-		["a directional isolate", "Aiman⁦Ali⁩"],
 		["a line separator inside", "Aiman\u2028Ali"],
 		["a paragraph separator inside", "Aiman\u2029Ali"],
 		["a Hangul filler inside", "Kim\u3164Lee"],
-		["a zero-width space inside", "Aiman\u200bAli"],
-		["a byte-order mark inside", "Aiman\ufeffAli"],
 		["the business", "EzCabinet"],
 		["the business, spaced", "Ez Cabinet Sdn Bhd"],
 		["the business, dotted", "ez.cabinet"],
@@ -101,6 +124,7 @@ describe("parseCustomerName", () => {
 		["support in spaced brackets", "( Support )"],
 		// A hair space is all but invisible: it does not end the word.
 		["admin split by a hair space", "ad\u200amin"],
+		["admin split by a zero-width non-joiner", "ad\u200cmin"],
 	])("refuses %s", (_label, typed) => {
 		expect(parseCustomerName(typed)).toEqual({ error: "name_refused" });
 	});

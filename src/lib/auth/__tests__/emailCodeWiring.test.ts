@@ -15,6 +15,7 @@ const store = vi.hoisted(() => ({
 	mailDown: false,
 	/** Run between the session's before-check and its after-check. */
 	betweenChecks: null as null | (() => void),
+	readsToFail: 0,
 }));
 
 vi.mock("botid/server", () => ({
@@ -35,10 +36,14 @@ vi.mock("@/lib/email", () => ({
 vi.mock("@/lib/catalogue/db", () => ({
 	prisma: {
 		user: {
-			findUnique: async ({ where }: { where: Row }) =>
-				store.db.user.find((r) =>
-					"id" in where ? r.id === where.id : r.email === where.email,
-				) ?? null,
+			findUnique: async ({ where }: { where: Row }) => {
+				if (store.readsToFail-- > 0) throw new Error("connection lost");
+				return (
+					store.db.user.find((r) =>
+						"id" in where ? r.id === where.id : r.email === where.email,
+					) ?? null
+				);
+			},
 		},
 		rateLimit: {
 			deleteMany: async ({
@@ -248,6 +253,7 @@ beforeEach(() => {
 	store.bot = false;
 	store.mailDown = false;
 	store.betweenChecks = null;
+	store.readsToFail = 0;
 	process.env.RESEND_API_KEY = "test-key";
 	auth = makeAuth();
 });
@@ -795,6 +801,29 @@ describe("a row whose role changes while a code sign-in is in flight", () => {
 		store.betweenChecks = () => {};
 		expect((await signIn("aiman@outlook.com", lastCode())).status).toBe(200);
 		expect(store.db.session).toHaveLength(1);
+	});
+
+	// The code is spent by the time this runs, so one lost read must not cost
+	// the customer a sign-in and one of their three sends.
+	it("reads the role once more when the first read fails", async () => {
+		plant("aiman@outlook.com", "CUSTOMER");
+		store.db.session.push({ id: "s1", userId: "id-aiman@outlook.com" });
+		store.readsToFail = 1;
+		await dropCodeSessionIfNotCustomer(
+			{ id: "s1", userId: "id-aiman@outlook.com" },
+			{ path: SIGN_IN_PATH },
+		);
+		expect(store.db.session).toHaveLength(1);
+	});
+
+	it("still fails the sign-in when the role cannot be read at all", async () => {
+		store.readsToFail = 2;
+		await expect(
+			dropCodeSessionIfNotCustomer(
+				{ id: "s1", userId: "id-aiman@outlook.com" },
+				{ path: SIGN_IN_PATH },
+			),
+		).rejects.toThrow("connection lost");
 	});
 
 	// The after-check is for code sign-ins only: staff sessions made any other
