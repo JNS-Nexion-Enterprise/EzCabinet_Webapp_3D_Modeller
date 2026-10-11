@@ -1,6 +1,6 @@
 import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Libre_Caslon_Display } from "next/font/google";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -28,6 +28,10 @@ const caslon = Libre_Caslon_Display({
 });
 
 /** All three locales are prerendered — they are the SEO surface. */
+// `cover` is what makes `env(safe-area-inset-*)` non-zero on an iPhone, which
+// the planner's bottom sheet and price footer pad by.
+export const viewport: Viewport = { viewportFit: "cover" };
+
 export function generateStaticParams() {
 	return LOCALES.map((lang) => ({ lang }));
 }
