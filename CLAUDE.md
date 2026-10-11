@@ -207,6 +207,8 @@ src/
   lib/email/             ← every email the app sends
     layout.ts            ← one look: blocks → { html, text }, escaping included; the only
                            place mail HTML is written (`oneLook.test.ts` fails any other)
+                           — the Claude Design "JNS Cabinet Configurator Email v2" look,
+                           with EzCabinet's name in the header: customers buy from EzCabinet
     copy.ts              ← mail wording, en / ms / zh; server-side, never in the site dictionary
     templates/           ← one pure function per mail; order.ts holds the eight order mails
     orderMail.ts         ← an outbox row → its order → a sent mail

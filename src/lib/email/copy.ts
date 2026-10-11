@@ -17,6 +17,8 @@ const en = {
 			"This is a service email about your order, so it can't be unsubscribed from.",
 		serviceAccount:
 			"This is a service email about your account, so it can't be unsubscribed from.",
+		eyebrowOrder: "Your order",
+		eyebrowAccount: "Your account",
 	},
 	signInCode: {
 		subject: "{code} is your EzCabinet sign-in code",
@@ -108,6 +110,8 @@ const ms: EmailCopy = {
 			"Ini ialah e-mel perkhidmatan tentang pesanan anda, jadi ia tidak boleh dihentikan langganannya.",
 		serviceAccount:
 			"Ini ialah e-mel perkhidmatan tentang akaun anda, jadi ia tidak boleh dihentikan langganannya.",
+		eyebrowOrder: "Pesanan anda",
+		eyebrowAccount: "Akaun anda",
 	},
 	signInCode: {
 		subject: "{code} ialah kod log masuk EzCabinet anda",
@@ -191,6 +195,8 @@ const zh: EmailCopy = {
 		questions: "有疑问？请回复此邮件或致电 {phone}。",
 		serviceOrder: "这是与您订单相关的服务邮件，因此无法退订。",
 		serviceAccount: "这是与您账户相关的服务邮件，因此无法退订。",
+		eyebrowOrder: "您的订单",
+		eyebrowAccount: "您的账户",
 	},
 	signInCode: {
 		subject: "{code} 是您的 EzCabinet 登录验证码",
