@@ -47,8 +47,8 @@ import {
 } from "@/lib/planner/room";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
-import { peekDesignMesh } from "./DesignedCabinet";
 import { DimensionField } from "./DimensionField";
+import { peekDesignMesh } from "./designMesh";
 import { PlannerHeader } from "./PlannerHeader";
 import type { PlannerView } from "./PlannerScene";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";

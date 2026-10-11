@@ -1,12 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import dynamic from "next/dynamic";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	CatalogueProvider,
 	useRoomEngine,
 } from "@/components/planner/CatalogueContext";
 import { CopyProvider } from "@/components/planner/CopyContext";
-import { QuoteScreen } from "@/components/planner/QuoteScreen";
 import { StartScreen } from "@/components/planner/StartScreen";
 import { StudioScreen } from "@/components/planner/StudioScreen";
 import { track } from "@/lib/analytics";
@@ -19,7 +19,17 @@ import { computePlannerPrice } from "@/lib/planner/pricing";
 import { emptyRoom, type RoomLayout } from "@/lib/planner/room";
 import { loadDraft, reconcileDraft, saveDraft } from "@/lib/plannerDraft";
 
+// Checkout, Stripe's React bindings and the auth client with it: none of it
+// is needed to pick a room or place a cabinet, so it stays out of first load.
+const loadQuoteScreen = () => import("@/components/planner/QuoteScreen");
+const QuoteScreen = dynamic(() =>
+	loadQuoteScreen().then((mod) => mod.QuoteScreen),
+);
+
 type Screen = "start" | "studio" | "quote";
+
+/** How long edits must pause before the draft is written. */
+const DRAFT_SAVE_MS = 300;
 
 /** Every room opens on its empty wall, and keeps its own work. */
 const initialRooms = (
@@ -125,9 +135,37 @@ function PlannerScreens({
 	// One effect, not a call at each of the dozens of `setLayoutAction` sites:
 	// the draft only has to be correct by the time the page can be navigated
 	// away from, and React has already batched by then.
+	//
+	// Written once the edits pause, not on each one: a wall-slide drag commits
+	// a layout per pointer move, and serialising every room into localStorage
+	// that often is a synchronous write in the middle of the drag.
+	const draft = useRef({
+		version: 1 as const,
+		roomId,
+		finishId: finish,
+		rooms,
+	});
+	draft.current = { version: 1, roomId, finishId: finish, rooms };
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the deps are the triggers; the ref holds the value
 	useEffect(() => {
-		saveDraft({ version: 1, roomId, finishId: finish, rooms });
+		const timer = setTimeout(() => saveDraft(draft.current), DRAFT_SAVE_MS);
+		return () => clearTimeout(timer);
 	}, [roomId, finish, rooms]);
+	// Leaving inside that pause — a sign-in redirect, a closed tab, a route
+	// change — still saves what is on screen.
+	useEffect(() => {
+		const flush = () => saveDraft(draft.current);
+		window.addEventListener("pagehide", flush);
+		return () => {
+			window.removeEventListener("pagehide", flush);
+			flush();
+		};
+	}, []);
+
+	// Fetched while the customer builds, so "Get a quote" does not wait on it.
+	useEffect(() => {
+		if (screen === "studio") void loadQuoteScreen();
+	}, [screen]);
 
 	const layout = rooms[roomId];
 	const setLayout = useCallback(
