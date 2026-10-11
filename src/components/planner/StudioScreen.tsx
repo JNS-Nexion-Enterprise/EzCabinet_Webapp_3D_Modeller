@@ -54,6 +54,7 @@ import type { PlannerView } from "./PlannerScene";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
 import { SignInNudge } from "./SignInNudge";
 import { CabinetMenu } from "./studio/CabinetMenu";
+import { thumb } from "./studio/chrome";
 import { DesignRecap } from "./studio/DesignRecap";
 import { PriceFooter } from "./studio/PriceFooter";
 import { RoomPanel } from "./studio/RoomPanel";
@@ -1320,7 +1321,7 @@ export function StudioScreen({
 										onClick={() => setFinishAction(option.id)}
 										aria-pressed={option.id === finish}
 										title={option.label}
-										className="h-[26px] w-[26px] rounded-md bg-center bg-cover"
+										className={`${thumb} h-[26px] w-[26px] rounded-md bg-center bg-cover`}
 										style={{
 											backgroundColor: option.hex,
 											// The board itself where the client has one. Without it

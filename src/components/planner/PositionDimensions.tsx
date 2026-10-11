@@ -252,7 +252,7 @@ export function EditableFigure({
 				keepFromScene(e);
 				setEditing(true);
 			}}
-			className={`${CHIP} cursor-text underline decoration-dotted underline-offset-2 hover:bg-[#e7efe9]`}
+			className={`${CHIP} relative cursor-text after:absolute after:-inset-x-2 after:-inset-y-[13px] after:content-[''] underline decoration-dotted underline-offset-2 hover:bg-[#e7efe9]`}
 		>
 			{Math.round(valueMm)} mm
 		</button>

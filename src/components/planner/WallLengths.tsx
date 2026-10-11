@@ -112,7 +112,7 @@ export function WallNumbers({
 								onPickAction?.(i);
 							}}
 							onClick={(e) => e.stopPropagation()}
-							className="flex h-6 w-6 items-center justify-center rounded-full font-medium text-[11px] shadow-sm"
+							className="relative flex h-6 w-6 after:absolute after:-inset-[10px] after:content-[''] items-center justify-center rounded-full font-medium text-[11px] shadow-sm"
 							style={{
 								backgroundColor: target ? "#1f5138" : "#ffffff",
 								color: target ? "#ffffff" : "#525252",
