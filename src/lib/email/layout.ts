@@ -48,13 +48,40 @@ const SMALL = `${FONT}font-size:13px;line-height:20px;`;
 const LABEL =
 	"margin:0 0 4px 0;font-size:11px;line-height:16px;font-weight:bold;letter-spacing:1px;text-transform:uppercase;color:#5c574e;";
 
+/** The dark palette, one rule per class. */
+const DARK: [selector: string, declarations: string][] = [
+	[".bg", "background:#1c1c1a !important;"],
+	[".card", "background:#262624 !important;border-color:#3a3a37 !important;"],
+	[".ink", "color:#f0efe9 !important;"],
+	[".muted", "color:#c4c0b6 !important;"],
+	[".rule", "border-color:#3a3a37 !important;"],
+	[".box", "background:#30302d !important;border-color:#4a4a45 !important;"],
+	[".link", "color:#8fc4a6 !important;"],
+	[".logo", "background:#f0efe9 !important;color:#171717 !important;"],
+];
+
+/**
+ * Outlook (outlook.com and the new desktop apps) ignores the media query
+ * and recolours the mail itself, marking what it touched with `data-ogsc`
+ * (text) and `data-ogsb` (background). Without these selectors its guess
+ * wins: one grey for page, card and box alike.
+ */
+const outlookDark = (selector: string) =>
+	["[data-ogsc] ", "[data-ogsb] "]
+		.map((mark) => `${mark}${selector}`)
+		.concat(`${selector}[data-ogsc]`, `${selector}[data-ogsb]`)
+		.join(",");
+
+const DARK_CSS = `@media (prefers-color-scheme:dark){ ${DARK.map(([s, d]) => `${s}{${d}}`).join(" ")} }
+${DARK.map(([s, d]) => `${outlookDark(s)}{${d}}`).join("\n")}`;
+
 function blockHtml(block: Block, linkFallback: string): string {
 	switch (block.type) {
 		case "paragraph":
 			return `<p class="ink" style="${BODY}">${esc(block.text)}</p>`;
 		case "box":
 			return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px 0;"><tr>
-<td class="box" bgcolor="#f7f6f3" style="background:#f7f6f3;border-radius:10px;padding:16px 18px;${FONT}">
+<td class="box" bgcolor="#f7f6f3" style="background:#f7f6f3;border:1px solid #e3e1db;border-radius:10px;padding:16px 18px;${FONT}">
 <p class="muted" style="${LABEL}">${esc(block.label)}</p>
 <p class="ink" style="margin:0;font-size:16px;line-height:22px;font-weight:bold;color:#171717;">${esc(block.value)}</p>${
 				block.note
@@ -64,7 +91,7 @@ function blockHtml(block: Block, linkFallback: string): string {
 </td></tr></table>`;
 		case "code":
 			return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px 0;"><tr>
-<td class="box ink" align="center" bgcolor="#f7f6f3" style="background:#f7f6f3;border-radius:10px;padding:20px 18px;font-family:'Courier New',Courier,monospace;font-size:32px;line-height:40px;font-weight:bold;letter-spacing:8px;color:#171717;">${esc(block.code)}</td></tr></table>`;
+<td class="box ink" align="center" bgcolor="#f7f6f3" style="background:#f7f6f3;border:1px solid #e3e1db;border-radius:10px;padding:20px 18px;font-family:'Courier New',Courier,monospace;font-size:32px;line-height:40px;font-weight:bold;letter-spacing:8px;color:#171717;">${esc(block.code)}</td></tr></table>`;
 		case "rows": {
 			const line = (label: string, amount: string, style: string) =>
 				`<tr><td class="ink" style="padding:6px 0;${FONT}font-size:14px;line-height:20px;color:#262626;${style}">${esc(label)}</td><td class="ink" align="right" style="padding:6px 0 6px 12px;${FONT}font-size:14px;line-height:20px;color:#262626;white-space:nowrap;${style}">${esc(amount)}</td></tr>`;
@@ -145,7 +172,7 @@ export function renderEmail(content: EmailContent): {
 <!--[if mso]><style>table,td,a,p,h1{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
 <style>
 @media (max-width:620px){ .wrap{width:100% !important;} .pad{padding-left:24px !important;padding-right:24px !important;} }
-@media (prefers-color-scheme:dark){ .bg{background:#1c1c1a !important;} .card{background:#262624 !important;border-color:#3a3a37 !important;} .ink{color:#f0efe9 !important;} .muted{color:#c4c0b6 !important;} .rule{border-color:#3a3a37 !important;} .box{background:#30302d !important;} .link{color:#8fc4a6 !important;} .logo{background:#f0efe9 !important;color:#171717 !important;} }
+${DARK_CSS}
 </style>
 </head>
 <body style="margin:0;padding:0;background:#f4f3f1;">

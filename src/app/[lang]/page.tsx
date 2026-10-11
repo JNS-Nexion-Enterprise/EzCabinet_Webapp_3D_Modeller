@@ -362,10 +362,18 @@ export default async function Home({
 					    `[data-cabinet-stage]` in `globals.css`. The
 					    poster and the canvas share this one box so the still and the
 					    sequence land in exactly the same place — otherwise the
-					    cabinet would jump the moment the first frame decoded. */}
+					    cabinet would jump the moment the first frame decoded.
+
+					    From 1800px (`3xl`) the stage stops tracking the viewport and anchors
+					    to the page's centre instead: 1240px wide, its middle 260px
+					    right of centre, which is where 68% of a 1440px screen puts
+					    it. Left at 68% of the viewport, a 3440px monitor drew a
+					    2,300px cabinet running far past the menu bar's right edge,
+					    with the headline shrunk to a footnote beside it. The ground
+					    in `globals.css` follows it at the same breakpoint. */}
 					<div
 						data-cabinet-stage
-						className="-z-20 -right-[18%] absolute bottom-[14%] aspect-[16/9] w-[136%] lg:-translate-y-1/2 lg:top-1/2 lg:right-0 lg:bottom-auto lg:w-[68%]"
+						className="-z-20 -right-[18%] absolute bottom-[14%] aspect-[16/9] w-[136%] lg:-translate-y-1/2 lg:top-1/2 lg:right-0 lg:bottom-auto lg:w-[68%] 3xl:right-[calc(50%-880px)] 3xl:w-[1240px]"
 					>
 						{/* biome-ignore lint/performance/noImgElement: ships in the repo,
 						    and it has to share a box with a canvas next/image can't size */}
