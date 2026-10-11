@@ -18,6 +18,10 @@ import {
  *
  * Which tab is current comes from the route, not a prop: the router already
  * knows, and a prop would be the same fact written twice.
+ *
+ * The bar's background runs edge to edge but its rows stop at 1320px, the
+ * widest admin page (cabinet designs). Left full-bleed, an ultrawide monitor
+ * put the breadcrumb and Sign out 3,000px apart around a 900px page.
  */
 
 const TABS = [
@@ -47,7 +51,7 @@ export function AdminHeader({
 
 	return (
 		<header className="flex shrink-0 flex-col border-neutral-200 border-b bg-white">
-			<div className="flex items-center justify-between gap-6 px-7 pt-3.5">
+			<div className="mx-auto flex w-full max-w-[1320px] items-center justify-between gap-6 px-7 pt-3.5">
 				<div className="flex items-center gap-1.5 text-neutral-400 text-xs">
 					<Link
 						href="/"
@@ -107,7 +111,7 @@ export function AdminHeader({
 				</div>
 			</div>
 
-			<nav className="flex items-center gap-1 px-6 pt-3">
+			<nav className="mx-auto flex w-full max-w-[1320px] items-center gap-1 px-6 pt-3">
 				{tabs.map((tab) => {
 					const active = pathname.startsWith(tab.href);
 					return (
