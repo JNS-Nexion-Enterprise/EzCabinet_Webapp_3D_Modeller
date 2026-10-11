@@ -6,12 +6,14 @@ import {
 	useElements,
 	useStripe,
 } from "@stripe/react-stripe-js";
-import {
-	type Appearance,
-	loadStripe,
-	type Stripe,
-	type StripeElementsOptions,
+import type {
+	Appearance,
+	Stripe,
+	StripeElementsOptions,
 } from "@stripe/stripe-js";
+// `/pure`: the main entry requests js.stripe.com as soon as it is imported,
+// gateway or no gateway. This one waits for `loadStripe`.
+import { loadStripe } from "@stripe/stripe-js/pure";
 import { type RefObject, useEffect } from "react";
 import type { Locale } from "@/lib/copy/locales";
 

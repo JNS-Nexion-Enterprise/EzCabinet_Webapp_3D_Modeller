@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { track } from "@/lib/analytics";
 import { CATEGORIES } from "@/lib/catalogue/cabinetDesignLabels";
 import type { Dictionary } from "@/lib/copy/en";
@@ -47,13 +47,14 @@ import {
 } from "@/lib/planner/room";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
-import { peekDesignMesh } from "./DesignedCabinet";
 import { DimensionField } from "./DimensionField";
+import { peekDesignMesh } from "./designMesh";
 import { PlannerHeader } from "./PlannerHeader";
 import type { PlannerView } from "./PlannerScene";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
 import { SignInNudge } from "./SignInNudge";
 import { CabinetMenu } from "./studio/CabinetMenu";
+import { thumb } from "./studio/chrome";
 import { DesignRecap } from "./studio/DesignRecap";
 import { PriceFooter } from "./studio/PriceFooter";
 import { RoomPanel } from "./studio/RoomPanel";
@@ -264,6 +265,16 @@ export function StudioScreen({
 	} = useRoomEngine();
 	const room = roomTypeIn(catalogue, roomId);
 	const selectedSet = new Set(selectedIds);
+	// The selected cabinet's controls head a scrolling column; a cabinet picked
+	// while that column was scrolled down would otherwise open them off screen.
+	// Two scrollers because the column itself scrolls below `lg` and the list
+	// inside it scrolls at `lg`.
+	const asideScroll = useRef<HTMLDivElement>(null);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: the selection is the trigger
+	useEffect(() => {
+		asideScroll.current?.scrollTo({ top: 0 });
+		asideScroll.current?.firstElementChild?.scrollTo({ top: 0 });
+	}, [selectedIds]);
 
 	// Filled in by the scene: screen-point → run position / cabinet under it.
 	const pickerRef = useRef<
@@ -1065,262 +1076,281 @@ export function StudioScreen({
 
 				{/* Capped below `lg`, where it sits under the canvas: left at its
 				    content height it pushed the total and the quote button off the
-				    bottom of a phone. Its list scrolls; the price footer stays. */}
+				    bottom of a phone. Its list scrolls; the price footer stays.
+
+				    Below `lg` the finish block scrolls with the list rather than
+				    staying pinned: pinned, it and the footer filled the cap and left
+				    a selected cabinet's controls a 20px window on a 360×800 phone.
+				    With nothing selected it comes first, since that is when a
+				    customer is choosing a finish; with a cabinet selected, that
+				    cabinet's controls do. */}
 				<aside className="flex w-full shrink-0 flex-col border-neutral-200 border-t bg-white max-lg:max-h-[50%] lg:h-full lg:w-[312px] lg:border-t-0 lg:border-l">
-					<div className="min-h-0 flex-1 overflow-y-auto">
-						{selection.length === 0 ? (
-							<DesignRecap
-								rows={[
-									{ label: t.planner.design.room, value: room.label },
-									{
-										label: t.planner.design.wall,
-										value: `${(targetView.wallWidthMm / 1000).toFixed(2)} m · ${(
-											layout.ceilingHeightMm / 1000
-										).toFixed(2)} m`,
-									},
-									{
-										label: t.planner.design.run,
-										value: `${runMetres} · ${
-											placed.length
-										} ${placed.length === 1 ? t.planner.unit : t.planner.units}`,
-									},
-									{
-										label: t.planner.design.wallFree,
-										value:
-											freeMm < 0
-												? fill(t.planner.design.overBy, { mm: -freeMm })
-												: `${freeMm} mm`,
-									},
-									// No Finish row: the swatches directly beneath this block
-									// already show it, name it, and let you change it. Two
-									// copies of one fact, forty pixels apart, in a column
-									// where a 900px laptop could only show one of seven
-									// cabinets in the run below.
-								]}
-								onAddAction={() => setTool("add")}
-							/>
-						) : selected ? (
-							<SelectionPanel
-								catalogue={catalogue}
-								layout={layout}
-								// A free cabinet's turn lives on its row, not in the
-								// run-of-one view `allPositions` draws it from.
-								selected={
-									selectedFree
-										? {
-												...selected,
-												placed: {
-													...selected.placed,
-													rotationDeg: selectedFree.rotationDeg,
-												},
-											}
-										: selected
-								}
-								free={selectedFree !== undefined}
-								verb={verb}
-								onVerbAction={setVerb}
-								widthOptions={widthOptionsFor(layout, selected.placed.id)}
-								replaceOptions={replaceOptionsFor(selected)}
-								doorsOpen={openIds.has(selected.placed.id)}
-								hingeOptions={hingeSides(t)}
-								leaves={leavesOn(selected, construction)}
-								priceLabel={formatRm(
-									price.cabinets.find((l) => l.id === selected.placed.id)
-										?.amountRm ?? 0,
-									{ maximumFractionDigits: 0 },
-								)}
-								onWidthAction={(widthMm) => {
-									track("cabinet_resized", {
-										family: selected.family.id,
-										widthMm,
-									});
-									setLayoutAction((prev) =>
-										setWidth(prev, selected.placed.id, widthMm),
-									);
-								}}
-								onReplaceAction={(familyId) => {
-									track("cabinet_replaced", { family: familyId });
-									setLayoutAction((prev) =>
-										replaceFamily(prev, selected.placed.id, familyId),
-									);
-								}}
-								offsets={offsetsOf(layout, selected.placed.id)}
-								onGapAction={(side, mm) =>
-									setLayoutAction((prev) =>
-										setGap(prev, selected.placed.id, side, mm),
-									)
-								}
-								onSwapAction={(direction) =>
-									setLayoutAction((prev) =>
-										swapWithNeighbour(prev, selected.placed.id, direction),
-									)
-								}
-								canSwap={neighboursOf(selected)}
-								onHangAtAction={(mm) =>
-									setLayoutAction((prev) =>
-										setHangAt(prev, selected.placed.id, mm),
-									)
-								}
-								onRotationAction={(deg) =>
-									setLayoutAction((prev) =>
+					<div
+						ref={asideScroll}
+						className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto"
+					>
+						<div className="max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+							{selection.length === 0 ? (
+								<DesignRecap
+									rows={[
+										{ label: t.planner.design.room, value: room.label },
+										{
+											label: t.planner.design.wall,
+											value: `${(targetView.wallWidthMm / 1000).toFixed(2)} m · ${(
+												layout.ceilingHeightMm / 1000
+											).toFixed(2)} m`,
+										},
+										{
+											label: t.planner.design.run,
+											value: `${runMetres} · ${
+												placed.length
+											} ${placed.length === 1 ? t.planner.unit : t.planner.units}`,
+										},
+										{
+											label: t.planner.design.wallFree,
+											value:
+												freeMm < 0
+													? fill(t.planner.design.overBy, { mm: -freeMm })
+													: `${freeMm} mm`,
+										},
+										// No Finish row: the swatches directly beneath this block
+										// already show it, name it, and let you change it. Two
+										// copies of one fact, forty pixels apart, in a column
+										// where a 900px laptop could only show one of seven
+										// cabinets in the run below.
+									]}
+									onAddAction={() => setTool("add")}
+								/>
+							) : selected ? (
+								<SelectionPanel
+									catalogue={catalogue}
+									layout={layout}
+									// A free cabinet's turn lives on its row, not in the
+									// run-of-one view `allPositions` draws it from.
+									selected={
 										selectedFree
-											? rotateFree(prev, selected.placed.id, deg)
-											: setRotation(prev, selected.placed.id, deg),
-									)
-								}
-								onToggleDoorAction={() => {
-									track("doors_toggled", { scope: "one" });
-									setOpenIds((prev) => {
-										const next = new Set(prev);
-										if (!next.delete(selected.placed.id)) {
-											next.add(selected.placed.id);
-										}
-										return next;
-									});
-								}}
-								onHingeAction={(side) =>
-									setLayoutAction((prev) =>
-										setHinge(prev, selected.placed.id, side),
-									)
-								}
-								onDoorStyleAction={(doorStyleId) => {
-									track("door_style_changed", { doorStyle: doorStyleId });
-									setLayoutAction((prev) =>
-										setDoors(prev, [selected.placed.id], doorStyleId),
-									);
-								}}
-								canDuplicate={
-									duplicateModule(layout, selected.placed.id) !== layout
-								}
-								onDuplicateAction={() =>
-									setLayoutAction((prev) =>
-										duplicateModule(prev, selected.placed.id),
-									)
-								}
-								onRemoveAction={removeSelected}
-							/>
-						) : (
-							<div className="p-4">
-								<p className="font-semibold text-[11px] text-[#1f5138] uppercase tracking-[0.06em]">
-									{fill(t.planner.selection.nSelected, { n: selection.length })}
-								</p>
-								<div className="mt-3 flex flex-col gap-2.5">
-									<div>
-										<p className="mb-1.5 font-medium text-[11px] text-neutral-600">
-											{t.planner.selection.front}
-										</p>
-										<div className="flex flex-wrap gap-1.5">
-											{catalogue.doorStyles.map((style) => (
-												<button
-													key={style.id}
-													type="button"
-													onClick={() => {
-														track("door_style_changed", {
-															doorStyle: style.id,
-														});
-														setLayoutAction((prev) =>
-															setDoors(prev, selectedIds, style.id),
-														);
-													}}
-													className="rounded-md bg-white px-2.5 py-1 text-[12px] text-neutral-700 shadow-[inset_0_0_0_1px_#d4d4d4] transition hover:shadow-[inset_0_0_0_1px_#a3a3a3]"
-												>
-													{style.label}
-												</button>
-											))}
+											? {
+													...selected,
+													placed: {
+														...selected.placed,
+														rotationDeg: selectedFree.rotationDeg,
+													},
+												}
+											: selected
+									}
+									free={selectedFree !== undefined}
+									verb={verb}
+									onVerbAction={setVerb}
+									widthOptions={widthOptionsFor(layout, selected.placed.id)}
+									replaceOptions={replaceOptionsFor(selected)}
+									doorsOpen={openIds.has(selected.placed.id)}
+									hingeOptions={hingeSides(t)}
+									leaves={leavesOn(selected, construction)}
+									priceLabel={formatRm(
+										price.cabinets.find((l) => l.id === selected.placed.id)
+											?.amountRm ?? 0,
+										{ maximumFractionDigits: 0 },
+									)}
+									onWidthAction={(widthMm) => {
+										track("cabinet_resized", {
+											family: selected.family.id,
+											widthMm,
+										});
+										setLayoutAction((prev) =>
+											setWidth(prev, selected.placed.id, widthMm),
+										);
+									}}
+									onReplaceAction={(familyId) => {
+										track("cabinet_replaced", { family: familyId });
+										setLayoutAction((prev) =>
+											replaceFamily(prev, selected.placed.id, familyId),
+										);
+									}}
+									offsets={offsetsOf(layout, selected.placed.id)}
+									onGapAction={(side, mm) =>
+										setLayoutAction((prev) =>
+											setGap(prev, selected.placed.id, side, mm),
+										)
+									}
+									onSwapAction={(direction) =>
+										setLayoutAction((prev) =>
+											swapWithNeighbour(prev, selected.placed.id, direction),
+										)
+									}
+									canSwap={neighboursOf(selected)}
+									onHangAtAction={(mm) =>
+										setLayoutAction((prev) =>
+											setHangAt(prev, selected.placed.id, mm),
+										)
+									}
+									onRotationAction={(deg) =>
+										setLayoutAction((prev) =>
+											selectedFree
+												? rotateFree(prev, selected.placed.id, deg)
+												: setRotation(prev, selected.placed.id, deg),
+										)
+									}
+									onToggleDoorAction={() => {
+										track("doors_toggled", { scope: "one" });
+										setOpenIds((prev) => {
+											const next = new Set(prev);
+											if (!next.delete(selected.placed.id)) {
+												next.add(selected.placed.id);
+											}
+											return next;
+										});
+									}}
+									onHingeAction={(side) =>
+										setLayoutAction((prev) =>
+											setHinge(prev, selected.placed.id, side),
+										)
+									}
+									onDoorStyleAction={(doorStyleId) => {
+										track("door_style_changed", { doorStyle: doorStyleId });
+										setLayoutAction((prev) =>
+											setDoors(prev, [selected.placed.id], doorStyleId),
+										);
+									}}
+									canDuplicate={
+										duplicateModule(layout, selected.placed.id) !== layout
+									}
+									onDuplicateAction={() =>
+										setLayoutAction((prev) =>
+											duplicateModule(prev, selected.placed.id),
+										)
+									}
+									onRemoveAction={removeSelected}
+								/>
+							) : (
+								<div className="p-4">
+									<p className="font-semibold text-[11px] text-[#1f5138] uppercase tracking-[0.06em]">
+										{fill(t.planner.selection.nSelected, {
+											n: selection.length,
+										})}
+									</p>
+									<div className="mt-3 flex flex-col gap-2.5">
+										<div>
+											<p className="mb-1.5 font-medium text-[11px] text-neutral-600">
+												{t.planner.selection.front}
+											</p>
+											<div className="flex flex-wrap gap-1.5">
+												{catalogue.doorStyles.map((style) => (
+													<button
+														key={style.id}
+														type="button"
+														onClick={() => {
+															track("door_style_changed", {
+																doorStyle: style.id,
+															});
+															setLayoutAction((prev) =>
+																setDoors(prev, selectedIds, style.id),
+															);
+														}}
+														className="rounded-md bg-white px-2.5 py-1 text-[12px] text-neutral-700 shadow-[inset_0_0_0_1px_#d4d4d4] transition hover:shadow-[inset_0_0_0_1px_#a3a3a3]"
+													>
+														{style.label}
+													</button>
+												))}
+											</div>
+										</div>
+
+										<div className="flex gap-3">
+											<button
+												type="button"
+												onClick={removeSelected}
+												className="rounded-full bg-neutral-900 px-3 py-1 text-[12px] text-white"
+											>
+												{fill(t.planner.selection.removeAll, {
+													n: selection.length,
+												})}
+											</button>
+											<button
+												type="button"
+												onClick={() => setSelectedIdsAction([])}
+												className="text-[12px] text-neutral-500 hover:text-neutral-900"
+											>
+												{t.planner.clear}
+											</button>
 										</div>
 									</div>
-
-									<div className="flex gap-3">
-										<button
-											type="button"
-											onClick={removeSelected}
-											className="rounded-full bg-neutral-900 px-3 py-1 text-[12px] text-white"
-										>
-											{fill(t.planner.selection.removeAll, {
-												n: selection.length,
-											})}
-										</button>
-										<button
-											type="button"
-											onClick={() => setSelectedIdsAction([])}
-											className="text-[12px] text-neutral-500 hover:text-neutral-900"
-										>
-											{t.planner.clear}
-										</button>
-									</div>
 								</div>
-							</div>
-						)}
-
-						<RunList
-							placed={placed}
-							selectedIds={selectedSet}
-							gapCount={gapCount}
-							priceLabels={Object.fromEntries(
-								price.cabinets.map((line) => [
-									line.id,
-									formatRm(line.amountRm, { maximumFractionDigits: 0 }),
-								]),
 							)}
-							onSelectAction={select}
-							onCloseGapsAction={() =>
-								setLayoutAction((prev) => closeGaps(prev))
-							}
-							onResetAction={() => {
-								// There is no undo, and this takes the room's shape and
-								// paint with the cabinets — so an empty room resets
-								// freely and a furnished one asks first.
-								if (
-									placed.length > 0 &&
-									!window.confirm(t.planner.run.resetConfirm)
-								)
-									return;
-								setLayoutAction(emptyRoom(room.defaultWallWidthMm));
-								setSelectedIdsAction([]);
-							}}
-						/>
-					</div>
 
-					<div className="border-neutral-200 border-b p-3.5">
-						<p className="mb-2 font-semibold text-[11px] text-neutral-600 uppercase tracking-wide">
-							{t.planner.finish.heading}
-						</p>
-						<div className="flex gap-1.5">
-							{catalogue.finishes.map((option) => (
-								<button
-									key={option.id}
-									type="button"
-									onClick={() => setFinishAction(option.id)}
-									aria-pressed={option.id === finish}
-									title={option.label}
-									className="h-[26px] w-[26px] rounded-md bg-center bg-cover"
-									style={{
-										backgroundColor: option.hex,
-										// The board itself where the client has one. Without it
-										// the chip showed the catalogue hex while the door beside
-										// it rendered the real scan — and a finish added from a
-										// supplier sheet keeps the picker's #cccccc default until
-										// somebody remembers to correct it, so the chip was
-										// grey for a walnut.
-										...(finishTextures[option.id] && {
-											backgroundImage: `url(${finishTextures[option.id]})`,
-										}),
-										boxShadow:
-											option.id === finish
-												? "0 0 0 2px #171717, 0 0 0 3px #fff"
-												: option.hex === "#ffffff"
-													? "inset 0 0 0 1px #d4d4d4"
-													: "none",
-									}}
-								/>
-							))}
+							<RunList
+								placed={placed}
+								selectedIds={selectedSet}
+								gapCount={gapCount}
+								priceLabels={Object.fromEntries(
+									price.cabinets.map((line) => [
+										line.id,
+										formatRm(line.amountRm, { maximumFractionDigits: 0 }),
+									]),
+								)}
+								onSelectAction={select}
+								onCloseGapsAction={() =>
+									setLayoutAction((prev) => closeGaps(prev))
+								}
+								onResetAction={() => {
+									// There is no undo, and this takes the room's shape and
+									// paint with the cabinets — so an empty room resets
+									// freely and a furnished one asks first.
+									if (
+										placed.length > 0 &&
+										!window.confirm(t.planner.run.resetConfirm)
+									)
+										return;
+									setLayoutAction(emptyRoom(room.defaultWallWidthMm));
+									setSelectedIdsAction([]);
+								}}
+							/>
 						</div>
-						<p className="mt-2 text-[12px] text-neutral-500">
-							{fill(t.planner.finish.currentLabel, {
-								label:
-									catalogue.finishes.find((f) => f.id === finish)?.label ?? "",
-							})}
-						</p>
+
+						<div
+							className={`shrink-0 border-neutral-200 border-b p-3.5 ${
+								selection.length === 0 ? "max-lg:order-first" : ""
+							}`}
+						>
+							<p className="mb-2 font-semibold text-[11px] text-neutral-600 uppercase tracking-wide">
+								{t.planner.finish.heading}
+							</p>
+							<div className="flex gap-1.5">
+								{catalogue.finishes.map((option) => (
+									<button
+										key={option.id}
+										type="button"
+										onClick={() => setFinishAction(option.id)}
+										aria-pressed={option.id === finish}
+										title={option.label}
+										className={`${thumb} h-[26px] w-[26px] rounded-md bg-center bg-cover`}
+										style={{
+											backgroundColor: option.hex,
+											// The board itself where the client has one. Without it
+											// the chip showed the catalogue hex while the door beside
+											// it rendered the real scan — and a finish added from a
+											// supplier sheet keeps the picker's #cccccc default until
+											// somebody remembers to correct it, so the chip was
+											// grey for a walnut.
+											...(finishTextures[option.id] && {
+												backgroundImage: `url(${finishTextures[option.id]})`,
+											}),
+											boxShadow:
+												option.id === finish
+													? "0 0 0 2px #171717, 0 0 0 3px #fff"
+													: option.hex === "#ffffff"
+														? "inset 0 0 0 1px #d4d4d4"
+														: "none",
+										}}
+									/>
+								))}
+							</div>
+							<p className="mt-2 text-[12px] text-neutral-500">
+								{fill(t.planner.finish.currentLabel, {
+									label:
+										catalogue.finishes.find((f) => f.id === finish)?.label ??
+										"",
+								})}
+							</p>
+						</div>
 					</div>
 
 					<PriceFooter
@@ -1341,7 +1371,13 @@ export function StudioScreen({
 						}
 						totalLabel={formatRm(price.totalRm, { maximumFractionDigits: 0 })}
 						ctaDisabled={placed.length === 0}
-						notice={<SignInNudge cabinetCount={placed.length} />}
+						notice={
+							// Not while a cabinet is selected on a phone: its controls
+							// need the height more than the reminder does.
+							<div className={selection.length > 0 ? "max-lg:hidden" : ""}>
+								<SignInNudge cabinetCount={placed.length} />
+							</div>
+						}
 						onQuoteAction={onGoToQuoteAction}
 					/>
 				</aside>

@@ -88,7 +88,8 @@ import {
 import { Cabinet } from "./Cabinet";
 import { useCatalogue, useEngine, useRoomEngine } from "./CatalogueContext";
 import { useCopy } from "./CopyContext";
-import { designPartBoxes, peekDesignMesh } from "./DesignedCabinet";
+import { designPartBoxes } from "./DesignedCabinet";
+import { peekDesignMesh } from "./designMesh";
 import { useFrontSurface, useGrain } from "./grain";
 import {
 	HANDLE_HEAD_R,
@@ -115,6 +116,49 @@ const m = (mm: number) => mm / 1000;
 
 /** How far a worktop stands proud of the carcass fronts under it. */
 const WORKTOP_OVERHANG_MM = 20;
+
+/** How long after the last input the scene keeps drawing every frame. */
+const IDLE_MS = 4000;
+
+/**
+ * Whether the scene should draw every frame, or only when asked.
+ *
+ * A customer reading the price is not moving anything, and drawing the room
+ * sixty times a second for them is heat and battery on a phone for a picture
+ * that does not change. So the loop runs while there is input and for
+ * `IDLE_MS` after it, then drops to on-demand frames: a React change still
+ * draws one, orbiting draws its own, and the door, drawer, pan and shadow
+ * animations each ask for the next frame while they are still moving.
+ *
+ * Not plain `frameloop="demand"`: the drags move objects imperatively from
+ * window listeners, and `PerformanceMonitor` measures frame rate from the
+ * frames it sees, so it needs a stretch of continuous ones to choose a tier.
+ *
+ * ponytail: the first sample after waking spans the sleep and reads as slow.
+ * One in ten cannot flip a tier (it takes eight); if tiers ever look sticky
+ * on `low`, replace the monitor with one that drops that sample.
+ */
+function useAwake(): boolean {
+	const [awake, setAwake] = useState(true);
+	useEffect(() => {
+		let timer: ReturnType<typeof setTimeout>;
+		const wake = () => {
+			setAwake(true);
+			clearTimeout(timer);
+			timer = setTimeout(() => setAwake(false), IDLE_MS);
+		};
+		wake();
+		const events = ["pointerdown", "pointermove", "wheel", "keydown"] as const;
+		for (const event of events) {
+			window.addEventListener(event, wake, { passive: true });
+		}
+		return () => {
+			clearTimeout(timer);
+			for (const event of events) window.removeEventListener(event, wake);
+		};
+	}, []);
+	return awake;
+}
 
 /**
  * The three ways to look at a run. `3d` is the selling angle; the other two
@@ -533,11 +577,12 @@ function PanGizmo({
 		glide.current = null;
 	}, [view, refitKey]);
 
-	useFrame((_, delta) => {
+	useFrame(({ invalidate }, delta) => {
 		if (!controls) return;
 
 		const goal = glide.current;
 		if (goal) {
+			invalidate();
 			// Exponential ease, framerate-independent. The camera moves by
 			// whatever the target actually moved, so the viewing angle and the
 			// distance come through the journey untouched.
@@ -2538,6 +2583,7 @@ export default function PlannerScene({
 	);
 	const [measured, setMeasured] = useState<Quality>("low");
 	const quality = forced ?? measured;
+	const awake = useAwake();
 	const t = useCopy();
 	// The GPU dropped the context: the canvas is blank and says nothing. The
 	// Canvas comes down rather than staying mounted under a message — the
@@ -2568,6 +2614,9 @@ export default function PlannerScene({
 	return (
 		<Canvas
 			dpr={[1, 2]}
+			// Asleep, a frame is drawn only when something asks for one — see
+			// `useAwake`.
+			frameloop={awake ? "always" : "demand"}
 			// Required to read the canvas back as an image for the quote screenshot.
 			gl={{ preserveDrawingBuffer: true }}
 			camera={{ fov: 45 }}

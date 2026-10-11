@@ -7,6 +7,14 @@
  * sites cannot drift apart.
  */
 
+/**
+ * Widens what a thumb can hit without changing what is drawn — the swatches
+ * and badges stay their size, the transparent pseudo-element around them takes
+ * the tap. Sideways only as far as the gaps between neighbours allow.
+ */
+export const thumb =
+	"relative after:absolute after:-inset-x-[3px] after:-inset-y-[9px] after:content-['']";
+
 /** A small pill — room types, widths, on/off pairs. */
 export const chip = (active: boolean) =>
 	`min-h-9 rounded-lg px-3 py-2 text-[12px] transition ${

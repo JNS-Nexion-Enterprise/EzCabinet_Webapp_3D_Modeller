@@ -91,10 +91,12 @@ export function Hinge({
 			? spec.maxRad * (spec.side === "left" ? -1 : 1)
 			: 0;
 
-	useFrame((_, delta) => {
+	useFrame(({ invalidate }, delta) => {
 		const group = pivot.current;
 		if (!group) return;
 		const current = group.rotation.y;
+		// Still moving: ask for the next frame, which a sleeping loop would not draw.
+		if (current !== target) invalidate();
 		if (Math.abs(current - target) < SETTLED_RAD) {
 			// Land exactly on the target once rather than easing at it forever.
 			if (current !== target) {
