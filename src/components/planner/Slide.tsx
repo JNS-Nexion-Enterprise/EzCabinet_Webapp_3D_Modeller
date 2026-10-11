@@ -37,10 +37,12 @@ export function Slide({
 	const runner = useRef<Group>(null);
 	const target = open ? travel : 0;
 
-	useFrame((_, delta) => {
+	useFrame(({ invalidate }, delta) => {
 		const group = runner.current;
 		if (!group) return;
 		const current = group.position.z;
+		// Still moving: ask for the next frame, which a sleeping loop would not draw.
+		if (current !== target) invalidate();
 		if (Math.abs(current - target) < SETTLED_M) {
 			// Land exactly on the target once rather than easing at it forever.
 			if (current !== target) {

@@ -38,7 +38,7 @@ export function PriceFooter({
 	const [open, setOpen] = useState(false);
 
 	return (
-		<div className="flex shrink-0 flex-col gap-2.5 border-neutral-200 border-t px-4 py-3.5">
+		<div className="flex shrink-0 flex-col gap-2.5 border-neutral-200 border-t px-4 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))]">
 			<button
 				type="button"
 				onClick={() => setOpen(true)}

@@ -22,7 +22,7 @@ import {
 import type { RoomLayout } from "@/lib/planner/room";
 import { useCopy } from "../CopyContext";
 import { DimensionField } from "../DimensionField";
-import { chip } from "./chrome";
+import { chip, thumb } from "./chrome";
 
 /** A wall's number, in a matching badge wherever it shows up: the map, the
  * field list and the 3D floor. One target colour (`#1f5138`, the brand
@@ -191,7 +191,7 @@ function PaintDot({
 			aria-label={label}
 			title={label}
 			onClick={onPressAction}
-			className="h-5 w-5 shrink-0 rounded-full border border-neutral-300"
+			className={`${thumb} h-5 w-5 shrink-0 rounded-full border border-neutral-300`}
 			style={
 				hex
 					? { backgroundColor: hex }
@@ -228,7 +228,7 @@ function PaintStrip({
 				aria-pressed={current === null}
 				title={t.planner.room.paintNone}
 				onClick={() => onPickAction(null)}
-				className="h-[26px] w-[26px] rounded-md bg-white"
+				className={`${thumb} h-[26px] w-[26px] rounded-md bg-white`}
 				style={{
 					boxShadow: ring(current === null),
 					backgroundImage:
@@ -242,7 +242,7 @@ function PaintStrip({
 					aria-pressed={colour.id === current}
 					title={colour.label}
 					onClick={() => onPickAction(colour.id)}
-					className="h-[26px] w-[26px] rounded-md"
+					className={`${thumb} h-[26px] w-[26px] rounded-md`}
 					style={{
 						backgroundColor: colour.hex,
 						boxShadow: ring(colour.id === current),

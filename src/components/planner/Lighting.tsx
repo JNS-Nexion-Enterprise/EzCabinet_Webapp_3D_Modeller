@@ -99,10 +99,13 @@ export function StudioLighting({
 	// The only per-frame work, and on almost every frame it is one comparison.
 	// Orbiting never lands here: the light is fixed in the world, so a camera
 	// move changes nothing the shadow map holds.
-	useFrame(({ scene }) => {
+	useFrame(({ scene, invalidate }) => {
 		if (!takeShadowFrame()) return;
 		syncShadowFlags(scene);
 		gl.shadowMap.needsUpdate = true;
+		// A redraw is usually two frames; with the loop asleep nothing else
+		// would draw the second.
+		invalidate();
 	});
 
 	return (

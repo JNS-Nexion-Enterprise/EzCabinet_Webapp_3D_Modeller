@@ -207,6 +207,8 @@ src/
   lib/email/             ← every email the app sends
     layout.ts            ← one look: blocks → { html, text }, escaping included; the only
                            place mail HTML is written (`oneLook.test.ts` fails any other)
+                           — the Claude Design "JNS Cabinet Configurator Email v2" look,
+                           with EzCabinet's name in the header: customers buy from EzCabinet
     copy.ts              ← mail wording, en / ms / zh; server-side, never in the site dictionary
     templates/           ← one pure function per mail; order.ts holds the eight order mails
     orderMail.ts         ← an outbox row → its order → a sent mail
@@ -427,6 +429,10 @@ it, price it, publish it. That is what lets one person maintain the catalogue.
 Mid-range Android is the target device.
 
 - Lazy-load the 3D bundle behind `Suspense` so it never blocks LCP on the landing page
+- **Nothing in the planner's first load may import three.** `StudioScreen`, `StartScreen` and `PlannerApp` are in it; the scene is not. One static import of a file that imports three (it was `peekDesignMesh` from `DesignedCabinet.tsx`) put 238 KB gzipped of three and R3F on the room picker. The mesh cache lives in `designMesh.ts`, which is three-free, for that reason. Check with `.next/diagnostics/route-bundle-stats.json` after a build: `/[lang]/planner` was 295 KB gzipped once fixed.
+- **The quote screen is a lazy chunk** (`PlannerApp.tsx`), fetched while the customer is in the studio, and Stripe is imported from `@stripe/stripe-js/pure` — the main entry requests js.stripe.com the moment it is imported.
+- **The render loop sleeps.** `useAwake` (`PlannerScene.tsx`) runs the loop while there is input and for four seconds after, then switches the Canvas to `frameloop="demand"`. Anything that animates without input must call `invalidate()` while it is still moving (`Hinge`, `Slide`, the pan glide and the shadow redraw do), or it freezes mid-way on an idle scene.
+- **The draft is written when edits pause** (300 ms), and on `pagehide` and unmount — never per pointer move.
 - `dpr={[1, 2]}`
 - **Lighting is `components/planner/Lighting.tsx`, and nothing else adds a light.** One shadow-casting key light, off to one side of the room (see `KEY_OFFSET_M` in `lightingRig.ts` for why), plus one non-shadow fill from the opposite side (`FILL_INTENSITY`/`FILL_OFFSET_M`) that brightens cabinet fronts on the key's own wall without a second shadow to reconcile; an environment from drei `Lightformer`s rendered once (`frames={1}`) — never an HDR file; Khronos PBR Neutral tone mapping, so a finish renders as the colour the admin typed. UI and overlay materials set `toneMapped={false}`.
 - **The shadow map is redrawn on change, never per frame.** `SHADOW_MAP` has `autoUpdate: false`; anything that moves a caster calls `markShadowsDirty()` (`lightingRig.ts`) — layout edits, a drag, a door animating, a drafted mesh arriving. Orbiting needs nothing, since the light is fixed in the world. Set shadow-map options through the Canvas `shadows` prop only: R3F re-applies it on every Canvas render.

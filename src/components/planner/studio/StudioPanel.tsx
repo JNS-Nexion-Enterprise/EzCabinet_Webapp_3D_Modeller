@@ -57,7 +57,7 @@ export function StudioPanel({
 	}[kind];
 
 	return (
-		<div className="z-10 flex flex-col overflow-hidden border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(0,0,0,.10)] max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[45dvh] max-lg:rounded-t-xl lg:absolute lg:top-3 lg:left-3 lg:max-h-[calc(100%-1.5rem)] lg:w-[300px] lg:rounded-xl">
+		<div className="z-10 flex flex-col overflow-hidden border border-neutral-200 bg-white shadow-[0_8px_28px_rgba(0,0,0,.10)] max-lg:fixed max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[45dvh] max-lg:rounded-t-xl max-lg:pb-[env(safe-area-inset-bottom)] lg:absolute lg:top-3 lg:left-3 lg:max-h-[calc(100%-1.5rem)] lg:w-[300px] lg:rounded-xl">
 			<div className="flex items-start justify-between gap-2.5 border-[#eeece8] border-b px-4 pt-3.5 pb-3">
 				<div>
 					<p className="font-semibold text-[14px]">{title}</p>
