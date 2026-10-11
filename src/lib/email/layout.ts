@@ -65,13 +65,44 @@ const BODY = `margin:0 0 16px 0;${FONT}font-size:15px;line-height:24px;mso-line-
 const SMALL = `${FONT}font-size:13px;line-height:20px;`;
 const LABEL = `margin:0 0 4px 0;font-size:12px;line-height:16px;font-weight:bold;letter-spacing:2px;text-transform:uppercase;color:${C.muted};`;
 
+/**
+ * The dark palette, one rule per class. The text classes carry a border
+ * colour as well: the rows' dividers are borders on those cells.
+ */
+const DARK_RULE = "border-color:#2A3348 !important;";
+const DARK: [selector: string, declarations: string][] = [
+	[".bg", "background-color:#05080F !important;"],
+	[".card", "background-color:#121929 !important;"],
+	[".ink", `color:#F3F5FA !important;${DARK_RULE}`],
+	[".txt", `color:#D5DBE6 !important;${DARK_RULE}`],
+	[".muted", `color:#A3ACBF !important;${DARK_RULE}`],
+	[".box", `background-color:#1A2236 !important;${DARK_RULE}`],
+	[".link", "color:#8FB0FF !important;"],
+	[".logo", `background-color:#F3F5FA !important;color:${C.ink} !important;`],
+];
+
+/**
+ * Outlook (outlook.com and the new desktop apps) ignores the media query
+ * and recolours the mail itself, marking what it touched with `data-ogsc`
+ * (text) and `data-ogsb` (background). Without these selectors its guess
+ * wins: one grey for page, card and box alike.
+ */
+const outlookDark = (selector: string) =>
+	["[data-ogsc] ", "[data-ogsb] "]
+		.map((mark) => `${mark}${selector}`)
+		.concat(`${selector}[data-ogsc]`, `${selector}[data-ogsb]`)
+		.join(",");
+
+const DARK_CSS = `@media (prefers-color-scheme:dark){ ${DARK.map(([s, d]) => `${s}{${d}}`).join(" ")} }
+${DARK.map(([s, d]) => `${outlookDark(s)}{${d}}`).join("\n")}`;
+
 function blockHtml(block: Block, linkFallback: string): string {
 	switch (block.type) {
 		case "paragraph":
 			return `<p class="txt" style="${BODY}">${esc(block.text)}</p>`;
 		case "box":
 			return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px 0;"><tr>
-<td class="box" bgcolor="${C.box}" style="background-color:${C.box};border-radius:6px;padding:16px 20px;${FONT}">
+<td class="box" bgcolor="${C.box}" style="background-color:${C.box};border:1px solid ${C.rule};border-radius:6px;padding:16px 20px;${FONT}">
 <p class="muted" style="${LABEL}">${esc(block.label)}</p>
 <p class="ink" style="margin:0;font-size:16px;line-height:22px;font-weight:bold;color:${C.ink};">${esc(block.value)}</p>${
 				block.note
@@ -81,7 +112,7 @@ function blockHtml(block: Block, linkFallback: string): string {
 </td></tr></table>`;
 		case "code":
 			return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:4px 0 20px 0;"><tr>
-<td class="box ink" align="center" bgcolor="${C.box}" style="background-color:${C.box};border-radius:6px;padding:20px;font-family:'Courier New',Courier,monospace;font-size:32px;line-height:40px;font-weight:bold;letter-spacing:8px;color:${C.ink};">${esc(block.code)}</td></tr></table>`;
+<td class="box ink" align="center" bgcolor="${C.box}" style="background-color:${C.box};border:1px solid ${C.rule};border-radius:6px;padding:20px;font-family:'Courier New',Courier,monospace;font-size:32px;line-height:40px;font-weight:bold;letter-spacing:8px;color:${C.ink};">${esc(block.code)}</td></tr></table>`;
 		case "rows": {
 			const line = (label: string, amount: string, style: string) =>
 				`<tr><td class="txt" style="padding:12px 0;border-bottom:1px solid ${C.rule};${FONT}font-size:15px;line-height:22px;color:${C.text};${style}">${esc(label)}</td><td class="txt" align="right" style="padding:12px 0 12px 12px;border-bottom:1px solid ${C.rule};${FONT}font-size:15px;line-height:22px;color:${C.text};white-space:nowrap;${style}">${esc(amount)}</td></tr>`;
@@ -164,8 +195,8 @@ export function renderEmail(content: EmailContent): {
 <!--[if mso]><style>table,td,a,p,h1{font-family:Arial,Helvetica,sans-serif !important;}</style><![endif]-->
 <style>
 a{color:${C.accent}}
-@media screen and (max-width:620px){ .wrap{width:100% !important;} .pad{padding-left:24px !important;padding-right:24px !important;} .h1{font-size:28px !important;line-height:34px !important;} }
-@media (prefers-color-scheme:dark){ .bg{background-color:#05080F !important;} .card{background-color:#121929 !important;} .ink{color:#F3F5FA !important;} .txt{color:#D5DBE6 !important;} .muted{color:#A3ACBF !important;} .txt,.ink,.muted{border-color:#2A3348 !important;} .box{background-color:#1A2236 !important;} .link{color:#8FB0FF !important;} .logo{background-color:#F3F5FA !important;color:${C.ink} !important;} }
+@media (max-width:620px){ .wrap{width:100% !important;} .pad{padding-left:24px !important;padding-right:24px !important;} .h1{font-size:28px !important;line-height:34px !important;} }
+${DARK_CSS}
 </style>
 </head>
 <body style="margin:0;padding:0;background-color:${C.page};">
