@@ -35,3 +35,20 @@ jobs:
       - run: pnpm typecheck
 
       - run: pnpm test
+
+  # No secrets and no backend: this only proves the config is well-formed and
+  # every tenant file fits the schema the module declares.
+  infra:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: opentofu/setup-opentofu@v1
+
+      - run: tofu -chdir=infra fmt -check -recursive
+
+      - run: tofu -chdir=infra init -backend=false -input=false
+
+      - run: tofu -chdir=infra validate
+        env:
+          TF_VAR_state_passphrase: validate-only-000000
