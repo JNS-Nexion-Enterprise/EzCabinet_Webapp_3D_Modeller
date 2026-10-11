@@ -1,3 +1,4 @@
+import { withPostHogConfig } from "@posthog/nextjs-config";
 import { withBotId } from "botid/next/config";
 import type { NextConfig } from "next";
 
@@ -85,4 +86,18 @@ const nextConfig: NextConfig = {
 };
 
 // BotID guards checkout (`/api/orders`) — see `src/instrumentation-client.ts`.
-export default withBotId(nextConfig);
+const config = withBotId(nextConfig);
+
+// Source maps go to PostHog so error tracking shows our code, not the minified
+// bundle. Only where both names are set; a build without them is
+// unchanged. The key is a personal API key with write access: never
+// `NEXT_PUBLIC_`.
+const { POSTHOG_PERSONAL_API_KEY, POSTHOG_ENV_ID } = process.env;
+
+export default POSTHOG_PERSONAL_API_KEY && POSTHOG_ENV_ID
+	? withPostHogConfig(config, {
+			personalApiKey: POSTHOG_PERSONAL_API_KEY,
+			envId: POSTHOG_ENV_ID,
+			host: "https://eu.i.posthog.com",
+		})
+	: config;

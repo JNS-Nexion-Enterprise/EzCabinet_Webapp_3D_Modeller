@@ -1,6 +1,6 @@
 allowBuilds:
-  '@pnpm/exe': set this to true or false
-  '@posthog/cli': set this to true or false
+  '@pnpm/exe': false
+  '@posthog/cli': true
   '@prisma/engines': true
   # An optional peer of better-auth's kysely adapter. We never use it — the
   # Prisma adapter is what's configured — but a frozen-lockfile install still
