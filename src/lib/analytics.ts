@@ -61,9 +61,6 @@ function load(): Promise<PostHog | null> {
 				api_host: "/api/ph",
 				ui_host: "https://eu.posthog.com",
 				defaults: "2026-05-30",
-				// A 3D canvas turns every pointer move into a click candidate;
-				// explicit journey events make cleaner funnels.
-				autocapture: false,
 				capture_pageview: "history_change",
 				capture_exceptions: true,
 				person_profiles: "identified_only",

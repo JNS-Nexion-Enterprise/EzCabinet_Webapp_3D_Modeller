@@ -56,7 +56,6 @@ describe("analytics", () => {
 			api_host: "/api/ph",
 			cookieless_mode: "on_reject",
 			opt_out_capturing_by_default: true,
-			autocapture: false,
 		});
 		expect(posthog.capture).toHaveBeenNthCalledWith(1, "planner_started", {
 			room: "kitchen",
