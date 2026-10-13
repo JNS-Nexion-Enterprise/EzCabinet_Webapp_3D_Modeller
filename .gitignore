@@ -46,6 +46,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# OpenTofu — the state and the tfvars hold every company's secrets.
+/infra/.terraform/
+/infra/*.tfstate*
+/infra/*.tfvars
+/infra/backend.hcl
+/infra/*.tfplan
+
 # typescript
 *.tsbuildinfo
 

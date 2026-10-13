@@ -1,0 +1,8 @@
+{
+	"brand": "Demo Cabinets",
+	"domain": "planner-demo.jnsnexion.com.my",
+	"emailFrom": "Demo Cabinets <no-reply@planner-demo.jnsnexion.com.my>",
+	"paymentGatewayFallback": "stripe",
+	"signInRateLimitAction": "log",
+	"dnsRecords": []
+}

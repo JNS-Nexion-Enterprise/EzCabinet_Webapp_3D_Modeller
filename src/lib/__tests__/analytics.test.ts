@@ -21,7 +21,7 @@ afterEach(() => {
 
 describe("analytics", () => {
 	it("stays inert on the server, where the planner is also rendered", async () => {
-		vi.stubEnv("NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN", "phc_test");
+		vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test");
 		const { captureError, consentStatus, track } = await fresh();
 
 		track("planner_started", { room: "kitchen" });
@@ -42,7 +42,7 @@ describe("analytics", () => {
 	});
 
 	it("initialises once, cookieless until consent, and forwards events in order", async () => {
-		vi.stubEnv("NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN", "phc_test");
+		vi.stubEnv("POSTHOG_PROJECT_TOKEN", "phc_test");
 		vi.stubGlobal("window", {});
 		const { track } = await fresh();
 
@@ -56,7 +56,6 @@ describe("analytics", () => {
 			api_host: "/api/ph",
 			cookieless_mode: "on_reject",
 			opt_out_capturing_by_default: true,
-			autocapture: false,
 		});
 		expect(posthog.capture).toHaveBeenNthCalledWith(1, "planner_started", {
 			room: "kitchen",

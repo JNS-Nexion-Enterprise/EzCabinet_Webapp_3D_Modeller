@@ -43,7 +43,7 @@ type Props = Record<string, string | number | boolean | null>;
 let client: Promise<PostHog | null> | undefined;
 
 function load(): Promise<PostHog | null> {
-	const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
+	const token = process.env.POSTHOG_PROJECT_TOKEN;
 	if (typeof window === "undefined" || !token) return Promise.resolve(null);
 	client ??= new Promise<void>((resolve) => {
 		if ("requestIdleCallback" in window) {
@@ -57,13 +57,10 @@ function load(): Promise<PostHog | null> {
 			posthog.init(token, {
 				// The rewrites in next.config.ts point at the EU region. A project
 				// created in US would need both changed — the region is fixed at
-				// install, so this is not read from NEXT_PUBLIC_POSTHOG_HOST.
+				// install, so this is not read from POSTHOG_HOST (next.config.ts reads that).
 				api_host: "/api/ph",
 				ui_host: "https://eu.posthog.com",
 				defaults: "2026-05-30",
-				// A 3D canvas turns every pointer move into a click candidate;
-				// explicit journey events make cleaner funnels.
-				autocapture: false,
 				capture_pageview: "history_change",
 				capture_exceptions: true,
 				person_profiles: "identified_only",

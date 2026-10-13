@@ -1,3 +1,4 @@
+import { withPostHogConfig } from "@posthog/nextjs-config";
 import { withBotId } from "botid/next/config";
 import type { NextConfig } from "next";
 
@@ -53,8 +54,19 @@ const securityHeaders = [
 	{ key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+// The names the Vercel PostHog integration sets. The host defaults to Cloud
+// EU; its asset host is the same name with `-assets`.
+const posthogHost = process.env.POSTHOG_HOST || "https://eu.i.posthog.com";
+const posthogAssets = posthogHost.replace(
+	".i.posthog.com",
+	"-assets.i.posthog.com",
+);
+
 const nextConfig: NextConfig = {
 	poweredByHeader: false,
+	// The project token is public by design, and the browser needs it: this
+	// inlines it without the `NEXT_PUBLIC_` prefix the integration does not use.
+	env: { POSTHOG_PROJECT_TOKEN: process.env.POSTHOG_PROJECT_TOKEN ?? "" },
 	async headers() {
 		return [{ source: "/:path*", headers: securityHeaders }];
 	},
@@ -68,15 +80,15 @@ const nextConfig: NextConfig = {
 		return [
 			{
 				source: "/api/ph/static/:path*",
-				destination: "https://eu-assets.i.posthog.com/static/:path*",
+				destination: `${posthogAssets}/static/:path*`,
 			},
 			{
 				source: "/api/ph/array/:path*",
-				destination: "https://eu-assets.i.posthog.com/array/:path*",
+				destination: `${posthogAssets}/array/:path*`,
 			},
 			{
 				source: "/api/ph/:path*",
-				destination: "https://eu.i.posthog.com/:path*",
+				destination: `${posthogHost}/:path*`,
 			},
 		];
 	},
@@ -85,4 +97,18 @@ const nextConfig: NextConfig = {
 };
 
 // BotID guards checkout (`/api/orders`) — see `src/instrumentation-client.ts`.
-export default withBotId(nextConfig);
+const config = withBotId(nextConfig);
+
+// Source maps go to PostHog so error tracking shows our code, not the minified
+// bundle. Only where both names are set; a build without them is
+// unchanged. The key is a personal API key with write access: never
+// `NEXT_PUBLIC_`.
+const { POSTHOG_PERSONAL_API_KEY, POSTHOG_ENV_ID } = process.env;
+
+export default POSTHOG_PERSONAL_API_KEY && POSTHOG_ENV_ID
+	? withPostHogConfig(config, {
+			personalApiKey: POSTHOG_PERSONAL_API_KEY,
+			envId: POSTHOG_ENV_ID,
+			host: posthogHost,
+		})
+	: config;
