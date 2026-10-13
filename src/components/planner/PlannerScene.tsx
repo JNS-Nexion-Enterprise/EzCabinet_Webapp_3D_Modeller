@@ -2590,6 +2590,16 @@ export default function PlannerScene({
 	// postprocessing composer throws on a lost context the moment anything
 	// re-renders — and the reload button mounts a fresh one.
 	const [contextLost, setContextLost] = useState(false);
+	// R3F forces a context loss on its own renderer after the Canvas unmounts,
+	// so a loss that arrives once the scene is leaving is ours, not the GPU's.
+	// Reported, it would be one false error per quote view.
+	const unmounting = useRef(false);
+	useEffect(() => {
+		unmounting.current = false;
+		return () => {
+			unmounting.current = true;
+		};
+	}, []);
 
 	if (contextLost) {
 		return (
@@ -2627,6 +2637,7 @@ export default function PlannerScene({
 			// scene goes blank without throwing, so nothing else would report it.
 			onCreated={({ gl }) => {
 				gl.domElement.addEventListener("webglcontextlost", () => {
+					if (unmounting.current) return;
 					captureError(new Error("webgl context lost"));
 					setContextLost(true);
 				});
