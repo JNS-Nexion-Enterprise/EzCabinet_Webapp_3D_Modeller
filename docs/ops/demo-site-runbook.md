@@ -141,12 +141,15 @@ vercel deploy --prebuilt --prod
 
 ### 4. Seed and fill
 
-Until it is seeded, the landing page and planner show an error.
+The catalogue settings seed themselves: `scripts/vercel-build.sh` runs
+`prisma/seed.ts` on every build of a project with `TENANT` set. It only
+creates what is missing, and the landing page cannot be built without it.
 
-1. Seed, with the demo database's URL in the environment. A value already in
-   the environment wins over `.env.local`.
+1. Create the first admin, with the demo database's URL in the environment.
+   Vercel will not hand out a sensitive variable, so copy the URL from the
+   database's page in the Storage tab. A value already in the environment
+   wins over `.env.local`.
    ```bash
-   DATABASE_URL=... pnpm db:seed
    DATABASE_URL=... SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... pnpm seed:superadmin
    ```
 2. Sign in at `/admin/login`, enrol the authenticator and a passkey.
