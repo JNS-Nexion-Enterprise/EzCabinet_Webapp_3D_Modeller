@@ -1,4 +1,5 @@
 import type { Locale } from "@/lib/copy/locales";
+import { tenant } from "@/lib/tenant";
 
 /**
  * The wording of every customer email, in the three languages the site serves.
@@ -6,7 +7,7 @@ import type { Locale } from "@/lib/copy/locales";
  * Not in `lib/copy`: that dictionary is handed whole to the planner's client
  * tree, and nothing in a browser needs the text of a mail.
  */
-export const BRAND = "EzCabinet";
+export const BRAND = tenant.brand;
 
 const en = {
 	shared: {

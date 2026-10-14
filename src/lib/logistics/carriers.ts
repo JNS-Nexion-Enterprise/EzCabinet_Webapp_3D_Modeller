@@ -56,8 +56,9 @@ export const KIND: Record<string, CarrierKind> = Object.fromEntries(
  * a settings row because there is one workshop, and a Settings table for a
  * single string nobody has asked to change twice is a table nobody maintains.
  */
-export const WORKSHOP_ADDRESS = "EzCabinet Sdn Bhd, Klang Valley, Selangor";
+export const WORKSHOP_ADDRESS = tenant.workshopAddress;
 
+import { tenant } from "@/lib/tenant";
 /**
  * The workshop's pin, as a constant rather than something we look up.
  *
@@ -147,7 +148,7 @@ export function pickupPlace(address: string, stored: Place): Place | null {
  * to Lalamove as the pickup contact, so a wrong number here is a driver who
  * cannot reach anyone — see the open question in CLAUDE.md.
  */
-export const WORKSHOP_PHONE = "03-1234 5678";
+export const WORKSHOP_PHONE = tenant.workshopPhone;
 
 /**
  * When the workshop stops handing parcels over, as FedEx's pickup request

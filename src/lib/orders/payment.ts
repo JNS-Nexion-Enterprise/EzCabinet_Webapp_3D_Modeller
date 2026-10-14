@@ -1,3 +1,4 @@
+import { tenant } from "@/lib/tenant";
 import { orderRef } from "./ref";
 
 /**
@@ -16,7 +17,7 @@ export const PAYMENT_PROVIDER = "manual";
 /** PLACEHOLDER — EzCabinet's real account. See CLAUDE.md Open questions. */
 export const BANK_TRANSFER = {
 	bank: "Bank to be confirmed",
-	accountName: "EzCabinet Sdn Bhd",
+	accountName: tenant.legalName,
 	accountNumber: "To be confirmed",
 };
 

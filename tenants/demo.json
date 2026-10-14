@@ -1,5 +1,10 @@
 {
 	"brand": "Demo Cabinets",
+	"legalName": "Demo Cabinets Sdn Bhd",
+	"contactEmail": "hello@planner-demo.jnsnexion.com.my",
+	"workshopAddress": "Demo Cabinets Sdn Bhd, Kuala Lumpur",
+	"workshopPhone": "03-0000 0000",
+	"heroFrames": false,
 	"domain": "planner-demo.jnsnexion.com.my",
 	"emailFrom": "Demo Cabinets <no-reply@planner-demo.jnsnexion.com.my>",
 	"paymentGatewayFallback": "stripe",

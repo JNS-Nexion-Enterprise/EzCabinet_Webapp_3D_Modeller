@@ -4,9 +4,9 @@ import type { Dictionary } from "./en";
  * a missing key is a compile error rather than a blank on a customer's screen. */
 export const zh: Dictionary = {
 	meta: {
-		title: "EzCabinet · 三维设计您的厨房",
+		title: "{brand} · 三维设计您的厨房",
 		description:
-			"将真实的 EzCabinet 橱柜放入您自己房间的模型中，从各个角度查看，并即时获得报价。无需前往展厅。",
+			"将真实的 {brand} 橱柜放入您自己房间的模型中，从各个角度查看，并即时获得报价。无需前往展厅。",
 	},
 	common: {
 		whatsappHelp: "通过 WhatsApp 联系我们",
@@ -33,10 +33,10 @@ export const zh: Dictionary = {
 			titleBeforeAccent: "设计您的厨房，尽在",
 			titleAccent: "3D",
 			subtitle:
-				"将真实的 EzCabinet 橱柜放入您自己的房间，边搭配边看价格变化，完成后直接把方案发给我们。",
+				"将真实的 {brand} 橱柜放入您自己的房间，边搭配边看价格变化，完成后直接把方案发给我们。",
 			cta: "开始设计",
 			howItWorks: "运作方式",
-			alt: "一间已完工的 EzCabinet 厨房",
+			alt: "一间已完工的 {brand} 厨房",
 		},
 		facts: {
 			cabinetsFromLabel: "橱柜起价",
@@ -53,17 +53,17 @@ export const zh: Dictionary = {
 			step1Detail: "选择厨房、客厅、卧室或玄关，输入您墙面的实际尺寸。",
 			step2Title: "按比例放入橱柜",
 			step2Detail:
-				"在 3D 场景中排列真实的 EzCabinet 橱柜，随意切换板材，直到满意为止。",
+				"在 3D 场景中排列真实的 {brand} 橱柜，随意切换板材，直到满意为止。",
 			step3Title: "即时获取报价",
 			step3Detail:
 				"搭配的同时即可看到实时价格，完成后直接把方案发给我们的团队。",
 		},
 		gallery: {
 			heading: "按房间浏览",
-			subtitle: "每个房间都以真实的 EzCabinet 尺寸和现成的布局开始设计。",
+			subtitle: "每个房间都以真实的 {brand} 尺寸和现成的布局开始设计。",
 			roomAlt: "{room}橱柜",
 			roomSubtitle: {
-				kitchen: "真实的 EzCabinet 尺寸",
+				kitchen: "真实的 {brand} 尺寸",
 				living: "电视柜与展示柜",
 				bedroom: "衣柜",
 				foyer: "鞋柜与长凳",
@@ -153,10 +153,10 @@ export const zh: Dictionary = {
 		start: {
 			heading: "您想设计哪个房间？",
 			subtitle:
-				"选择一个房间，即可在空白墙面上使用真实的 EzCabinet 尺寸开始设计。",
+				"选择一个房间，即可在空白墙面上使用真实的 {brand} 尺寸开始设计。",
 			roomIconAlt: "{room}图标",
 			roomSubtitle: {
-				kitchen: "真实的 EzCabinet 尺寸",
+				kitchen: "真实的 {brand} 尺寸",
 				living: "电视柜与展示柜",
 				bedroom: "衣柜",
 				foyer: "鞋柜与长凳",
@@ -329,7 +329,7 @@ export const zh: Dictionary = {
 			includedAbovePlural: "均已计入以上价格。",
 			estimatedTotal: "预估总价",
 			estimateBadge: "预估",
-			placeholderNote: "暂定价格——须经 EzCabinet 确认后方为正式报价。",
+			placeholderNote: "暂定价格——须经 {brand} 确认后方为正式报价。",
 			cta: "为此设计索取报价",
 			lines: {
 				carcasses: "柜体",
@@ -358,7 +358,7 @@ export const zh: Dictionary = {
 		backToEditing: "返回编辑",
 		savedHeading: "已保存——仅供演示",
 		savedBody:
-			"潜在客户功能尚未与 EzCabinet 系统对接（属于本项目后续阶段）。此次操作未发送任何内容。",
+			"潜在客户功能尚未与 {brand} 系统对接（属于本项目后续阶段）。此次操作未发送任何内容。",
 		heading: "订购这间{room}",
 		description: "下单后以银行转账付款。设计师会在制作前到场核实您的尺寸。",
 		fullName: "姓名",
@@ -545,9 +545,8 @@ export const zh: Dictionary = {
 	},
 	privacy: {
 		title: "隐私声明",
-		draft: "草稿——须经 EzCabinet Sdn Bhd 审核后方可生效。",
-		intro:
-			"本声明说明您使用 EzCabinet 设计工具时我们会记录哪些信息，以及原因。",
+		draft: "草稿——须经 {brand} Sdn Bhd 审核后方可生效。",
+		intro: "本声明说明您使用 {brand} 设计工具时我们会记录哪些信息，以及原因。",
 		purposeHeading: "目的",
 		purpose: "找出设计工具中令人困惑或出错的地方，并加以修复。",
 		collectHeading: "我们记录的内容",
@@ -585,7 +584,7 @@ export const zh: Dictionary = {
 			"您可以要求查看我们持有的您的个人数据、更正数据、以可携带的形式获取副本、撤回同意，或要求我们停止将其用于直接营销。请写信至下方的联系地址。",
 		otherLawsHeading: "其他法律",
 		otherLaws:
-			"本声明依据马来西亚《2010 年个人数据保护法》发出。我们的分析服务商依据其自身的数据处理协议在欧盟处理使用数据；EzCabinet 仅在马来西亚销售。",
+			"本声明依据马来西亚《2010 年个人数据保护法》发出。我们的分析服务商依据其自身的数据处理协议在欧盟处理使用数据；{brand} 仅在马来西亚销售。",
 		choiceHeading: "您的选择",
 		choice:
 			"若您拒绝，我们只会在不使用 Cookie 或本地存储的情况下统计访问次数，所用标识每天重置，也不会进行任何录像。您可随时在浏览器中清除本网站的数据以更改选择。",
@@ -596,7 +595,7 @@ export const zh: Dictionary = {
 	terms: {
 		title: "销售条款",
 		intro:
-			"当您通过 EzCabinet 规划器订购橱柜时，适用以下条款。付款前请连同退款政策一并阅读。",
+			"当您通过 {brand} 规划器订购橱柜时，适用以下条款。付款前请连同退款政策一并阅读。",
 		sellerHeading: "卖方",
 		seller: "{address}。电子邮箱 {email}，电话 {phone}。",
 		goodsHeading: "您购买的商品",
@@ -647,7 +646,7 @@ export const zh: Dictionary = {
 	},
 	whatsapp: {
 		autoReply:
-			"此号码仅用于发送 EzCabinet 订单通知。如需与我们的团队联系，请发送信息至 {number}",
+			"此号码仅用于发送 {brand} 订单通知。如需与我们的团队联系，请发送信息至 {number}",
 	},
 	/** The shared header's account menu and the account side nav. */
 	account: {
@@ -729,7 +728,7 @@ export const zh: Dictionary = {
 		unsupported: "此浏览器不支持通行密钥。请在 Chrome 或 Safari 中打开此页面。",
 		otherDevice:
 			"在另一台设备上设置的？请在浏览器询问时选择该设备，或在那台设备上登录后，在“通行密钥”中添加此设备",
-		lostDevice: "设备丢失？请联系 EzCabinet",
+		lostDevice: "设备丢失？请联系 {brand}",
 		checkoutHeading: "付款前还差一步",
 		checkoutBody:
 			"请使用通行密钥确认是您本人。只需几秒钟，您的设计会保持原样。",

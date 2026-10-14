@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect } from "react";
 import { captureError } from "@/lib/analytics";
 import { isLocale, type Locale } from "@/lib/copy/locales";
+import { tenant } from "@/lib/tenant";
 
 /**
  * Inline rather than from the dictionary: an error boundary takes no props, and
@@ -60,7 +61,7 @@ export default function LocaleError({
 					href={`/${locale}`}
 					className="rounded-lg border border-neutral-300 px-4 py-2 text-[13px]"
 				>
-					EzCabinet
+					{tenant.brand}
 				</Link>
 			</div>
 		</main>
