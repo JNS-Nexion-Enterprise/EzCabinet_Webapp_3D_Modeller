@@ -24,9 +24,9 @@ is deployed yet.
 
 1. `TENANT` is set in exactly one place: the `planner-demo` Vercel project.
    Never in `.env.local`, never on the EzCabinet project.
-2. The demo is deployed only with `pnpm deploy:demo`. This checkout is linked
-   to EzCabinet's Vercel project, so a bare `vercel deploy --prod` would aim
-   at EzCabinet.
+2. The demo deploys from `feature/demo-tenant` only: a push to that branch,
+   or `pnpm deploy:demo`. Never a bare `vercel deploy --prod`: this checkout
+   is linked to EzCabinet's Vercel project, so that would aim at EzCabinet.
 3. Whatever differs for the demo goes in `tenants/demo.json` or the demo
    database. No `if (demo)` in feature code.
 
@@ -40,16 +40,19 @@ is deployed yet.
 | Literals outside the dictionary | carriers, payment, email, auth, Stripe, error page, admin | Each reads the tenant: workshop address and phone, bank account name, mail header, sign-in code subject, passkey and 2FA names, Stripe description, admin title and header. |
 | Hero | `src/app/[lang]/page.tsx`, `src/app/admin/login/page.tsx` | The frames are a render of EzCabinet's own cabinet, so they show only when `tenant.heroFrames`. |
 | Browser | `next.config.ts` | `TENANT` is inlined, because the quote screen is a client component and prints the seller. |
-| Builds | `vercel.json` | A production build runs when `TENANT` is set. A project without it is skipped, as before. |
-| Deploy | `scripts/deploy-demo.sh` | Needs `DEMO_VERCEL_PROJECT_ID`; refuses to run without it or with EzCabinet's id. |
+| Builds | `vercel.json`, `scripts/vercel-ignore.sh` | EzCabinet's project: previews of every branch, production skipped, as before. The demo project: production from `feature/demo-tenant` only, no previews. |
+| Deploy by hand | `scripts/deploy-demo.sh` | Needs `DEMO_VERCEL_PROJECT_ID`; refuses to run without it or with EzCabinet's id. For a redeploy without a push. |
 | Guard | `src/lib/copy/__tests__/brand.test.ts` | Fails if the name is typed into a dictionary string or the demo tenant file. |
 
 ## Status
 
 Done:
 
-- The code above, committed and pushed on `feature/demo-tenant` (two commits,
-  no pull request).
+- The code above, committed and pushed on `feature/demo-tenant`, no pull
+  request.
+- 2026-10-14: Vercel project `planner-demo` created in the JNS team
+  (`prj_8gUcwfOlkYjKv1iI5uxaHwcHnHwl`), linked to this repository. Its first
+  build, from `main`, was skipped, so nothing EzCabinet-branded went live.
 - `pnpm tsx scripts/generate-corner-mock.ts <dir>` also writes six plain
   cabinets (three base, two wall, one tall) for a demo catalogue.
 
@@ -62,20 +65,24 @@ Checked:
   visible text as the development preview on `/en`, `/zh/terms` and
   `/ms/planner`.
 - `pnpm deploy:demo` refuses with no project id and with EzCabinet's id.
+- `scripts/vercel-ignore.sh` gives the expected build or skip for both
+  projects on `main`, `feature/development` and `feature/demo-tenant`.
 
 Not checked:
 
 - How the app looks as "Demo Cabinets" against a real database, including
   the landing page without its hero image.
-- Whether Vercel builds a CLI production deploy with the `vercel.json`
-  change. The fallback is in step 3 below.
+- The demo project's first real production build. The fallback is in step 3
+  below.
 
 ## Setup
 
 ### 1. Accounts and project (by hand)
 
-1. Vercel, JNS team: create project `planner-demo`. Do **not** link it to
-   git, so no push ever changes what a prospect sees.
+1. Vercel, JNS team: project `planner-demo`, imported from this repository
+   (done). Set its **production branch to `feature/demo-tenant`** (Settings,
+   Environments, Production, Branch Tracking). Pushes to any other branch
+   then never change the demo.
 2. Create a new database and a new Blob store, each connected to
    `planner-demo` only. Connecting the Blob store adds its own variables.
 3. Add the domain `planner-demo.jnsnexion.com.my` to the project. Passkeys
@@ -89,6 +96,12 @@ Not checked:
    origin and redirect.
 
 ### 2. Production env vars on `planner-demo`
+
+Set every one for **Production only**, not Preview or Development. Until
+this branch is merged, other branches still carry the old build rule, so a
+push to `feature/development` builds a preview on the demo project too.
+Without a `DATABASE_URL` in Preview that build fails at once, harmlessly,
+instead of running development's migrations against the demo database.
 
 | Name | Value |
 | --- | --- |
@@ -105,21 +118,22 @@ mail and no messages, and sign-in is by Google.
 
 ### 3. Deploy
 
-From a checkout of `feature/demo-tenant`:
+Push `feature/demo-tenant`, or press Redeploy on the project's latest
+production deployment. The build applies the migrations to the demo
+database.
+
+To deploy from a laptop without a push:
 
 ```bash
-DEMO_VERCEL_PROJECT_ID=prj_... pnpm deploy:demo
+DEMO_VERCEL_PROJECT_ID=prj_8gUcwfOlkYjKv1iI5uxaHwcHnHwl pnpm deploy:demo
 ```
-
-The id is under the project's Settings, General. The build applies the
-migrations to the demo database.
 
 If Vercel skips the build, run the same thing prebuilt, with the two names
 the script would have set:
 
 ```bash
 export VERCEL_ORG_ID=team_e99YHIFwOVbqUGDqr0OXOWiY
-export VERCEL_PROJECT_ID=prj_...   # planner-demo, never EzCabinet's
+export VERCEL_PROJECT_ID=prj_8gUcwfOlkYjKv1iI5uxaHwcHnHwl   # planner-demo
 vercel pull --environment=production
 vercel build --prod
 vercel deploy --prebuilt --prod
