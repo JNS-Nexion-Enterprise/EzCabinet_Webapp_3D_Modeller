@@ -16,6 +16,9 @@ importers:
 
   .:
     dependencies:
+      '@better-auth/infra':
+        specifier: ^0.4.18
+        version: 0.4.18(c442c5f3d55ec3a744cf5887759ca827)
       '@better-auth/passkey':
         specifier: 1.7.5
         version: 1.7.5(9fdef6c2ac57006d466c79acbb3723ef)
@@ -292,6 +295,29 @@ packages:
       drizzle-orm: ^0.45.2 || >=1.0.0-rc.1 <2.0.0
     peerDependenciesMeta:
       drizzle-orm:
+        optional: true
+
+  '@better-auth/infra@0.4.18':
+    resolution: {integrity: sha512-PW4b28QuXZRuBPENeWutnZ+KCp87t8a5g/7eXwPeYFsMv1B09M+NHlUUv5X9+3gHXUWqcfeRapdkg4gsxnItCw==}
+    peerDependencies:
+      '@better-auth/core': '>=1.4.0'
+      '@react-native-async-storage/async-storage': '>=1.21.0'
+      better-auth: '>=1.4.0'
+      expo-constants: '>=16.0.0'
+      expo-crypto: '>=13.0.0'
+      expo-device: '>=6.0.0'
+      react-native: '>=0.74.0'
+      zod: '>=4.1.12'
+    peerDependenciesMeta:
+      '@react-native-async-storage/async-storage':
+        optional: true
+      expo-constants:
+        optional: true
+      expo-crypto:
+        optional: true
+      expo-device:
+        optional: true
+      react-native:
         optional: true
 
   '@better-auth/kysely-adapter@1.7.5':
@@ -1854,6 +1880,10 @@ packages:
   '@webassemblyjs/wast-printer@1.14.1':
     resolution: {integrity: sha512-kPSSXE6De1XOR820C90RIo2ogvZG+c3KiHzqUoO/F34Y2shGzesfqv7o57xrxovZJH/MetF5UjroJ/R/3isoiw==}
 
+  '@xmldom/xmldom@0.9.12':
+    resolution: {integrity: sha512-5AXjrcMClTryPe9LgZrygpB1lj7s0S9E0+W+AHaVKAVyHanafK86iPSvG5xHVSp/jC+VH1UXu0TAEmY279xH7A==}
+    engines: {node: '>=14.6'}
+
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
 
@@ -2415,6 +2445,9 @@ packages:
   kysely@0.29.6:
     resolution: {integrity: sha512-hHaB8C/rfzDDtr/t8YZwxAuPJTT0zHyaPoVzcXwDYhYNAgH/4sIfVhi/XLLIY+bL/FqaIJnjATDbi8ObSELmxg==}
     engines: {node: '>=22.0.0'}
+
+  libphonenumber-js@1.13.15:
+    resolution: {integrity: sha512-AHdhEQeDFEJ4GKDAQ9AwxChy+v2kUILUB3TGQRpkXMkWePjXTU/WQEzWVQoIx/Gz8fE73Wr5SEuZCy2vk8jrMQ==}
 
   lie@3.3.0:
     resolution: {integrity: sha512-UaiMJzeWRlEujzAuw5LokY1L5ecNQYZKfmyZ9L7wDHb/p5etKaxXhohBcrw0EYby+G/NA52vRSN4N39dxHAIwQ==}
@@ -3386,9 +3419,6 @@ packages:
   zod@4.1.11:
     resolution: {integrity: sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg==}
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
-
   zod@4.6.6:
     resolution: {integrity: sha512-4UmzQUF5fxvfcYHlbjBmejU+w+hbDnWFx4aS8kBx7nPBHcO2SqPbpAG8snbdg+Xse4pRefR98hgjFgIMCI/UhA==}
 
@@ -3614,7 +3644,7 @@ snapshots:
       jose: 6.2.12
       kysely: 0.29.6
       nanostores: 1.5.5
-      zod: 4.6.5
+      zod: 4.6.6
     optionalDependencies:
       '@opentelemetry/api': 1.9.1
 
@@ -3622,6 +3652,19 @@ snapshots:
     dependencies:
       '@better-auth/core': 1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.6))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
       '@better-auth/utils': 0.4.2
+
+  '@better-auth/infra@0.4.18(c442c5f3d55ec3a744cf5887759ca827)':
+    dependencies:
+      '@better-auth/core': 1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.6))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5)
+      '@better-auth/utils': 0.4.2
+      '@better-fetch/fetch': 1.3.2
+      '@noble/hashes': 2.4.0
+      '@xmldom/xmldom': 0.9.12
+      better-auth: 1.7.5(@opentelemetry/api@1.9.1)(@prisma/client@7.10.0(prisma@7.10.0(@types/node@20.19.43)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3))(typescript@5.9.3))(mysql2@3.24.5(@types/node@20.19.43))(next@16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(pg@8.23.1)(prisma@7.10.0(@types/node@20.19.43)(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(magicast@0.5.5)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vitest@4.1.11(@opentelemetry/api@1.9.1)(@types/node@20.19.43)(vite@8.2.0(@types/node@20.19.43)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.51.2)(tsx@4.23.15)(yaml@2.9.1)))
+      better-call: 1.4.0(zod@4.6.6)
+      jose: 6.2.12
+      libphonenumber-js: 1.13.15
+      zod: 4.6.6
 
   '@better-auth/kysely-adapter@1.7.5(@better-auth/core@1.7.5(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.2)(@opentelemetry/api@1.9.1)(better-call@1.4.0(zod@4.6.6))(jose@6.2.12)(kysely@0.29.6)(nanostores@1.5.5))(@better-auth/utils@0.4.2)(kysely@0.29.6)':
     dependencies:
@@ -5060,6 +5103,8 @@ snapshots:
       '@webassemblyjs/ast': 1.14.1
       '@xtuc/long': 4.2.2
 
+  '@xmldom/xmldom@0.9.12': {}
+
   '@xtuc/ieee754@1.2.0': {}
 
   '@xtuc/long@4.2.2': {}
@@ -5530,6 +5575,8 @@ snapshots:
     optional: true
 
   kysely@0.29.6: {}
+
+  libphonenumber-js@1.13.15: {}
 
   lie@3.3.0:
     dependencies:
@@ -6347,8 +6394,6 @@ snapshots:
       graphmatch: 1.1.1
 
   zod@4.1.11: {}
-
-  zod@4.6.5: {}
 
   zod@4.6.6: {}
 

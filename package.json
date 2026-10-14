@@ -27,6 +27,7 @@
 		"db:studio": "prisma studio"
 	},
 	"dependencies": {
+		"@better-auth/infra": "^0.4.18",
 		"@better-auth/passkey": "1.7.5",
 		"@flags-sdk/vercel": "^1.5.1",
 		"@mux/mux-player-react": "^3.14.0",
