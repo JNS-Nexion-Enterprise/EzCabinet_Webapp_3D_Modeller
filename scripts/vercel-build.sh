@@ -10,6 +10,9 @@ pnpm exec prisma migrate deploy
 # every build. EzCabinet's project has no TENANT and is seeded by hand, as
 # before.
 if [ -n "${TENANT:-}" ]; then
+	# A cached install skips postinstall, so the client the seed imports is
+	# not there yet; `pnpm build` generates it too late.
+	pnpm exec prisma generate
 	pnpm exec tsx prisma/seed.ts
 fi
 
