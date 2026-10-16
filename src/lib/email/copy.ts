@@ -22,7 +22,7 @@ const en = {
 		eyebrowAccount: "Your account",
 	},
 	signInCode: {
-		subject: "{code} is your EzCabinet sign-in code",
+		subject: `{code} is your ${BRAND} sign-in code`,
 		heading: "Your sign-in code",
 		body: "Type this code into the page where you asked for it:",
 		after: "It works once, for {minutes} minutes.",
@@ -84,7 +84,7 @@ const en = {
 	delivered: {
 		subject: "Order {ref} has been delivered",
 		heading: "Delivered",
-		body: "Your order {ref} has been delivered. Thank you for choosing EzCabinet.",
+		body: `Your order {ref} has been delivered. Thank you for choosing ${BRAND}.`,
 		footnote:
 			"If anything arrived damaged, tell us within 7 days, with photos.",
 		button: "View delivery",
@@ -115,7 +115,7 @@ const ms: EmailCopy = {
 		eyebrowAccount: "Akaun anda",
 	},
 	signInCode: {
-		subject: "{code} ialah kod log masuk EzCabinet anda",
+		subject: `{code} ialah kod log masuk ${BRAND} anda`,
 		heading: "Kod log masuk anda",
 		body: "Taip kod ini pada halaman tempat anda memintanya:",
 		after: "Kod ini sah untuk satu kali guna, selama {minutes} minit.",
@@ -177,7 +177,7 @@ const ms: EmailCopy = {
 	delivered: {
 		subject: "Pesanan {ref} telah dihantar",
 		heading: "Telah dihantar",
-		body: "Pesanan anda {ref} telah dihantar. Terima kasih kerana memilih EzCabinet.",
+		body: `Pesanan anda {ref} telah dihantar. Terima kasih kerana memilih ${BRAND}.`,
 		footnote:
 			"Jika ada yang rosak semasa tiba, maklumkan kami dalam masa 7 hari, bersama gambar.",
 		button: "Lihat penghantaran",
@@ -200,7 +200,7 @@ const zh: EmailCopy = {
 		eyebrowAccount: "您的账户",
 	},
 	signInCode: {
-		subject: "{code} 是您的 EzCabinet 登录验证码",
+		subject: `{code} 是您的 ${BRAND} 登录验证码`,
 		heading: "您的登录验证码",
 		body: "请在您申请验证码的页面输入：",
 		after: "验证码仅可使用一次，{minutes} 分钟内有效。",
@@ -261,7 +261,7 @@ const zh: EmailCopy = {
 	delivered: {
 		subject: "订单 {ref} 已送达",
 		heading: "已送达",
-		body: "您的订单 {ref} 已送达。感谢您选择 EzCabinet。",
+		body: `您的订单 {ref} 已送达。感谢您选择 ${BRAND}。`,
 		footnote: "如有任何损坏，请在 7 天内附上照片告知我们。",
 		button: "查看送货详情",
 	},

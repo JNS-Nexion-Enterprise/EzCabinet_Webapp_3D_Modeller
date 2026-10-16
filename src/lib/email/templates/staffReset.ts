@@ -1,8 +1,9 @@
+import { BRAND } from "../copy";
 import { renderEmail } from "../layout";
 
 /** Staff only, English only: `sendStaffReset` decides who is ever sent one. */
 export function staffReset(input: { name: string; link: string }) {
-	const subject = "Reset your EzCabinet admin password";
+	const subject = `Reset your ${BRAND} admin password`;
 	return {
 		subject,
 		...renderEmail({
@@ -15,7 +16,7 @@ export function staffReset(input: { name: string; link: string }) {
 				{ type: "paragraph", text: `Hi ${input.name},` },
 				{
 					type: "paragraph",
-					text: "Someone asked to reset the password on your EzCabinet admin account. Choose a new one with the button below.",
+					text: `Someone asked to reset the password on your ${BRAND} admin account. Choose a new one with the button below.`,
 				},
 				{ type: "button", label: "Choose a new password", href: input.link },
 			],

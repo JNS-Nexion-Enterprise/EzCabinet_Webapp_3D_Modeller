@@ -77,7 +77,7 @@ import { tenant } from "@/lib/tenant";
  */
 import { pinFor } from "./coords";
 
-export const WORKSHOP_PIN = { lat: 2.9848868, lng: 101.861807 };
+export const WORKSHOP_PIN = tenant.workshopPin;
 
 /**
  * The pin to send as the pickup override, in precedence order: what the admin
@@ -112,9 +112,9 @@ export function pickupPin(
  * the same open question `WORKSHOP_ADDRESS` and `WORKSHOP_PHONE` carry. A wrong
  * postcode here is a quote for the wrong origin zone on every parcel job.
  */
-export const WORKSHOP_POSTCODE = "43800";
-export const WORKSHOP_CITY = "Dengkil";
-export const WORKSHOP_STATE = "MY-10";
+export const WORKSHOP_POSTCODE = tenant.workshopPostcode;
+export const WORKSHOP_CITY = tenant.workshopCity;
+export const WORKSHOP_STATE = tenant.workshopState;
 
 export type Place = {
 	postcode: string | null;

@@ -687,7 +687,7 @@ export const ms: Dictionary = {
 			"Bayaran balik dikembalikan ke kaedah pembayaran yang anda gunakan, dalam masa 14 hari bekerja selepas kami bersetuju dengan bayaran balik itu.",
 		howToAskHeading: "Cara memohon",
 		howToAsk:
-			"Tulis kepada {email} dengan rujukan pesanan anda, contohnya IC-20261007-001.",
+			"Tulis kepada {email} dengan rujukan pesanan anda, contohnya {orderPrefix}-20261007-001.",
 	},
 	whatsapp: {
 		autoReply:

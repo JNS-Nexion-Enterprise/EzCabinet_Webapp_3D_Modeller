@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { Role } from "@/lib/auth/permissions";
+import { tenant } from "@/lib/tenant";
 
 /**
  * The Hangul fillers. Unicode files them as letters and they draw nothing,
@@ -49,7 +50,7 @@ const fold = (text: string): string =>
 
 /**
  * A name that would read as the business on a staff screen or in a mail:
- * anything containing "ezcabinet", or whose first word starts with "admin"
+ * anything containing "ezcabinet" or this deployment's brand, or whose first word starts with "admin"
  * or "support".
  *
  * Both are tested folded; only this check folds, and what is stored is the
@@ -62,9 +63,16 @@ const fold = (text: string): string =>
  * dash. Look-alike letters from another script (Cyrillic "а", Greek "ο")
  * are not unified: out of scope.
  */
+/** This deployment's company, and EzCabinet's, folded like the name. */
+const BUSINESS_NAMES = [...new Set(["ezcabinet", fold(tenant.brand)])];
+
 function posesAsBusiness(name: string): boolean {
 	const first = name.split(" ").map(fold).find(Boolean) ?? "";
-	return fold(name).includes("ezcabinet") || /^(admin|support)/.test(first);
+	const folded = fold(name);
+	return (
+		BUSINESS_NAMES.some((business) => folded.includes(business)) ||
+		/^(admin|support)/.test(first)
+	);
 }
 
 /**

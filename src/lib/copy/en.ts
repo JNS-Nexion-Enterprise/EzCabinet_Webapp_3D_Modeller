@@ -697,7 +697,7 @@ export const en = {
 			"Refunds go back to the payment method you used, within 14 working days of our agreeing the refund.",
 		howToAskHeading: "How to ask",
 		howToAsk:
-			"Write to {email} with your order reference, which looks like IC-20261007-001.",
+			"Write to {email} with your order reference, which looks like {orderPrefix}-20261007-001.",
 	},
 	/** Server-sent WhatsApp text — `lib/whatsapp/outbox.ts`. */
 	whatsapp: {

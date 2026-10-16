@@ -14,6 +14,17 @@ if [ -n "${TENANT:-}" ]; then
 	# not there yet; `pnpm build` generates it too late.
 	pnpm exec prisma generate
 	pnpm exec tsx prisma/seed.ts
+
+	# EzCabinet's own images are served from `public` to anyone who knows the
+	# path, so hiding them on the page is not enough: a company whose tenant
+	# file turns them off is built without them. Its own favicon, if it has
+	# one, replaces EzCabinet's.
+	flag() { node -p "require('./tenants/${TENANT}.json').$1 !== false"; }
+	if [ "$(flag heroFrames)" = false ]; then rm -rf public/hero-frames; fi
+	if [ "$(flag finishPhotos)" = false ]; then rm -rf public/finishes; fi
+	if [ -f "tenants/${TENANT}.ico" ]; then
+		cp "tenants/${TENANT}.ico" src/app/favicon.ico
+	fi
 fi
 
 pnpm build

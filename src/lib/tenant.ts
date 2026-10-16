@@ -21,6 +21,16 @@ const ezcabinet = {
 	workshopPhone: "03-1234 5678",
 	/** The landing hero's frames are a render of EzCabinet's own cabinet. */
 	heroFrames: true,
+	/** Bundled decor scans (`public/finishes`), used with a supplier's leave. */
+	finishPhotos: true,
+	/** Starts every order and delivery number: `IC-20260826-014`, `IC-00042`. */
+	orderPrefix: "IC",
+	/** Where couriers collect from. Taken off the client's own Maps link. */
+	workshopPin: { lat: 2.9848868, lng: 101.861807 },
+	workshopPostcode: "43800",
+	workshopCity: "Dengkil",
+	/** ISO 3166-2:MY — `MY-10` is Selangor. */
+	workshopState: "MY-10",
 };
 
 export type Tenant = typeof ezcabinet;

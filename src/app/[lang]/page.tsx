@@ -13,11 +13,9 @@ import { getDictionary } from "@/lib/copy/dictionary";
 import type { Dictionary } from "@/lib/copy/en";
 import { fill } from "@/lib/copy/fill";
 import { isLocale } from "@/lib/copy/locales";
+import { BUNDLED_FINISH_TEXTURES } from "@/lib/finishPhotos";
 import type { RoomTypeId } from "@/lib/planner/catalogue";
-import {
-	DEFAULT_FINISH_TEXTURES,
-	SWATCH_ZOOM,
-} from "@/lib/planner/finishTextures";
+import { SWATCH_ZOOM } from "@/lib/planner/finishTextures";
 import { HERO_POSTER_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
 import { tenant } from "@/lib/tenant";
 
@@ -569,7 +567,7 @@ export default async function Home({
 						// nobody has photographed is a colour, not a timber.
 						const board =
 							photo.get(finishSlot(finish.id)) ??
-							DEFAULT_FINISH_TEXTURES[finish.id];
+							BUNDLED_FINISH_TEXTURES[finish.id];
 						return (
 							<div key={finish.id}>
 								<div

@@ -10,7 +10,7 @@ is deployed yet.
   edits were made in it, and every later fix would then be done twice. A
   separate repo is a branch that can no longer be merged back.
 - **The demo is the same code with one setting.** `TENANT=demo` makes the app
-  "Demo Cabinets". With no `TENANT` it is EzCabinet, exactly as before.
+  "JNS Nexion Enterprise". With no `TENANT` it is EzCabinet, exactly as before.
 - **The demo stays off `feature/development` for now.** Development is for
   EzCabinet and must not be disturbed. The demo code lives on its own branch
   until after the demo; merging is a later, separate decision.
@@ -70,7 +70,7 @@ Checked:
 
 Not checked:
 
-- How the app looks as "Demo Cabinets" against a real database, including
+- How the app looks as "JNS Nexion Enterprise" against a real database, including
   the landing page without its hero image.
 - The demo project's first real production build. The fallback is in step 3
   below.
@@ -174,13 +174,17 @@ creates what is missing, and the landing page cannot be built without it.
 
 ## Still EzCabinet
 
-Do not show these until they are done:
+Brand, emails, order and delivery numbers (`PO-`), favicon (the JNS logo,
+`tenants/demo.ico`), courier sender names, the workshop pin (a generic spot in
+Subang Jaya's industrial area) and the bundled images now all come from
+`tenants/demo.json`. The build deletes `public/hero-frames` and
+`public/finishes` when the tenant file turns them off, so they cannot be
+fetched by path either. What is left:
 
-- The passkey-change, staff-invite and staff-reset mails.
-- The `IC-` order and delivery reference prefix.
-- The favicon.
-- Carrier sender names, and the name check that stops a customer calling
-  themselves the business.
+- The six seeded finish names and the kitchen dimensions in `CONSTRUCTION`.
+  Rename the finishes by hand in step 4.
+- The browser keys `ezcabinet.planner.*` (draft, sign-in nudge). Only visible
+  in developer tools; renaming them would lose EzCabinet customers' drafts.
 
 The green accent colour is unchanged, on purpose: it is not their name.
 
