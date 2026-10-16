@@ -12,6 +12,7 @@ import {
 	Suspense,
 	useCallback,
 	useEffect,
+	useLayoutEffect,
 	useMemo,
 	useRef,
 	useState,
@@ -2592,9 +2593,12 @@ export default function PlannerScene({
 	const [contextLost, setContextLost] = useState(false);
 	// R3F forces a context loss on its own renderer after the Canvas unmounts,
 	// so a loss that arrives once the scene is leaving is ours, not the GPU's.
-	// Reported, it would be one false error per quote view.
+	// Reported, it would be one false error per quote view. A layout effect,
+	// not a passive one: R3F starts that teardown from an insertion-effect
+	// cleanup inside the commit, before any passive cleanup has run, and a
+	// parent's layout cleanup is the one that runs ahead of it.
 	const unmounting = useRef(false);
-	useEffect(() => {
+	useLayoutEffect(() => {
 		unmounting.current = false;
 		return () => {
 			unmounting.current = true;
