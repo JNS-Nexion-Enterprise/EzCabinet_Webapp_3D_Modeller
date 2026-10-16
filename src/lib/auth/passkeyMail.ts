@@ -2,6 +2,7 @@ import "server-only";
 import { after } from "next/server";
 import { prisma } from "@/lib/catalogue/db";
 import { sendEmail } from "@/lib/email";
+import { BRAND } from "@/lib/email/copy";
 import {
 	type PasskeyChange,
 	passkeyChange,
@@ -28,8 +29,8 @@ function when(at: Date): string {
 function contact(): string {
 	const sales = (process.env.WHATSAPP_SALES_NUMBER ?? "").replace(/\D/g, "");
 	return sales
-		? `message EzCabinet on WhatsApp at +${sales}`
-		: `call EzCabinet on ${WORKSHOP_PHONE}`;
+		? `message ${BRAND} on WhatsApp at +${sales}`
+		: `call ${BRAND} on ${WORKSHOP_PHONE}`;
 }
 
 /**

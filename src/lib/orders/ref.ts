@@ -1,3 +1,5 @@
+import { tenant } from "@/lib/tenant";
+
 /**
  * The order number as a customer reads it: `IC-20260826-014`, the format in the
  * client's own Order Confirmation design.
@@ -14,4 +16,4 @@ const DAY = new Intl.DateTimeFormat("en-CA", {
 });
 
 export const orderRef = (number: number, createdAt: Date | string): string =>
-	`IC-${DAY.format(new Date(createdAt)).replaceAll("-", "")}-${String(number).padStart(3, "0")}`;
+	`${tenant.orderPrefix}-${DAY.format(new Date(createdAt)).replaceAll("-", "")}-${String(number).padStart(3, "0")}`;

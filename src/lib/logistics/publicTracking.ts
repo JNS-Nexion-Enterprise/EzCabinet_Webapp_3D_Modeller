@@ -1,3 +1,4 @@
+import { tenant } from "@/lib/tenant";
 import type { DeliveryItem, DeliveryStatusName } from "./types";
 import { deliveryItemSchema } from "./types";
 
@@ -40,7 +41,7 @@ export function trackingTone(status: DeliveryStatusName): TrackingTone {
 
 /** The job number as the customer reads it back over the phone. */
 export const orderRef = (number: number): string =>
-	`IC-${String(number).padStart(5, "0")}`;
+	`${tenant.orderPrefix}-${String(number).padStart(5, "0")}`;
 
 export type PublicEvent = { at: string; status: DeliveryStatusName };
 

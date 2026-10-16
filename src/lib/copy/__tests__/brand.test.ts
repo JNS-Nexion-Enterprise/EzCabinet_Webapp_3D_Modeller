@@ -38,6 +38,10 @@ describe("the company's name", () => {
 		const demo = tenantFor("demo");
 		expect(named(demo)).toEqual([]);
 		expect(demo.heroFrames).toBe(false);
+		expect(demo.finishPhotos).toBe(false);
+		expect(demo.orderPrefix).not.toBe("IC");
+		expect(demo.workshopPin).not.toEqual(tenantFor(undefined).workshopPin);
 		expect(tenantFor(undefined).brand).toBe("EzCabinet");
+		expect(tenantFor(undefined).orderPrefix).toBe("IC");
 	});
 });

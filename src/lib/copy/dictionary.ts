@@ -19,9 +19,13 @@ const dictionaries: Record<Locale, () => Promise<Dictionary>> = {
 	ms: () => import("./ms").then((m) => m.ms),
 };
 
-/** `{brand}` filled in every string, however deep; other tokens left alone. */
+/** `{brand}` and `{orderPrefix}` filled in every string, however deep; other tokens left alone. */
 function branded<T>(node: T): T {
-	if (typeof node === "string") return fill(node, { brand: tenant.brand }) as T;
+	if (typeof node === "string")
+		return fill(node, {
+			brand: tenant.brand,
+			orderPrefix: tenant.orderPrefix,
+		}) as T;
 	if (Array.isArray(node)) return node.map(branded) as T;
 	if (node && typeof node === "object")
 		return Object.fromEntries(

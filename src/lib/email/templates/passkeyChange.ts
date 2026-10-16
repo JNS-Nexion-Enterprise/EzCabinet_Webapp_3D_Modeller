@@ -1,3 +1,4 @@
+import { BRAND } from "../copy";
 import { renderEmail } from "../layout";
 
 export type PasskeyChange = "added" | "removed" | "reset";
@@ -7,19 +8,19 @@ const WHAT: Record<
 	{ subject: string; heading: string; line: string }
 > = {
 	added: {
-		subject: "A passkey was added to your EzCabinet account",
+		subject: `A passkey was added to your ${BRAND} account`,
 		heading: "Passkey added",
-		line: "A passkey was added to your EzCabinet account",
+		line: `A passkey was added to your ${BRAND} account`,
 	},
 	removed: {
-		subject: "A passkey was removed from your EzCabinet account",
+		subject: `A passkey was removed from your ${BRAND} account`,
 		heading: "Passkey removed",
-		line: "A passkey was removed from your EzCabinet account",
+		line: `A passkey was removed from your ${BRAND} account`,
 	},
 	reset: {
-		subject: "Your EzCabinet passkeys were reset",
+		subject: `Your ${BRAND} passkeys were reset`,
 		heading: "Passkeys reset",
-		line: "EzCabinet staff removed every passkey from your EzCabinet account, and signed it out everywhere",
+		line: `${BRAND} staff removed every passkey from your ${BRAND} account, and signed it out everywhere`,
 	},
 };
 
@@ -32,7 +33,7 @@ export function passkeyChange(input: {
 	name: string;
 	/** When it happened, already worded for the reader. */
 	when: string;
-	/** How to reach us, as the middle of a sentence: "call EzCabinet on …". */
+	/** How to reach us, as the middle of a sentence: "call the company on …". */
 	contact: string;
 }) {
 	const { subject, heading, line } = WHAT[input.change];

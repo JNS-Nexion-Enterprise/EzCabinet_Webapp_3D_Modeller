@@ -642,7 +642,8 @@ export const zh: Dictionary = {
 		howPaidHeading: "退款方式",
 		howPaid: "退款将在我们同意退款后 14 个工作日内，退回您原来使用的付款方式。",
 		howToAskHeading: "如何申请",
-		howToAsk: "请写信至 {email} 并附上订单编号，格式如 IC-20261007-001。",
+		howToAsk:
+			"请写信至 {email} 并附上订单编号，格式如 {orderPrefix}-20261007-001。",
 	},
 	whatsapp: {
 		autoReply:
