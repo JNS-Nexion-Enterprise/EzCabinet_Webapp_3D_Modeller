@@ -9,6 +9,7 @@ import {
 import { prisma } from "@/lib/catalogue/db";
 import { sendEmail } from "@/lib/email";
 import { signInCode } from "@/lib/email/templates/signInCode";
+import { tenant } from "@/lib/tenant";
 
 /**
  * Counts this send against the address and says whether it is within the
@@ -100,7 +101,7 @@ export async function sendSignInCode(
 	await sendEmail({
 		to: email,
 		// Not the template's subject: that one carries the code.
-		subject: "Your EzCabinet sign-in code",
+		subject: `Your ${tenant.brand} sign-in code`,
 		text: mail.text,
 		html: mail.html,
 	});

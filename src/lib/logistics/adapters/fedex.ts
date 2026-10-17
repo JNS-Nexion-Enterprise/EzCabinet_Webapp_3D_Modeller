@@ -2,6 +2,7 @@ import "server-only";
 import { put } from "@vercel/blob";
 import { z } from "zod";
 import { prisma } from "@/lib/catalogue/db";
+import { tenant } from "@/lib/tenant";
 import { pickupPlace, WORKSHOP_CLOSE_TIME, WORKSHOP_PHONE } from "../carriers";
 import { CarrierHttpError, carrierFetch } from "../http";
 import { labelPathname } from "../label";
@@ -404,7 +405,7 @@ export async function fedexQuote(job: DeliveryJob): Promise<CarrierQuote> {
 }
 
 /** The shipper and pickup contact FedEx prints on the label. */
-const SHIPPER_NAME = "EzCabinet Sdn Bhd";
+const SHIPPER_NAME = tenant.legalName;
 
 /** FedEx reads at most three street lines of 35 characters each. */
 const LINE_CHARS = 35;

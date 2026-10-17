@@ -7,6 +7,7 @@ import {
 	useAdminUserName,
 	useAdminUserRole,
 } from "@/app/admin/AdminUserContext";
+import { tenant } from "@/lib/tenant";
 
 /**
  * The admin chrome: a breadcrumb row over a tab bar.
@@ -58,7 +59,7 @@ export function AdminHeader({
 						target="_blank"
 						className="px-1 py-1.5 text-neutral-400 hover:text-neutral-600"
 					>
-						EzCabinet
+						{tenant.brand}
 					</Link>
 					{trail.map((crumb, i) => (
 						<span key={crumb.label} className="flex items-center gap-1.5">

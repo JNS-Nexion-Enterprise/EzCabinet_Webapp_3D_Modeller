@@ -5,6 +5,7 @@ import { authEnabled } from "@/lib/auth/enabled";
 import { BYPASS_USER } from "@/lib/auth/requireAuth";
 import { currentUser } from "@/lib/auth/session";
 import "../globals.css";
+import { tenant } from "@/lib/tenant";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -21,7 +22,7 @@ const geistMono = Geist_Mono({
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-	title: "EzCabinet · Admin",
+	title: `${tenant.brand} · Admin`,
 	description: "Internal catalogue, design and site-content admin.",
 };
 

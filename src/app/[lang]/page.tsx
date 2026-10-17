@@ -13,12 +13,11 @@ import { getDictionary } from "@/lib/copy/dictionary";
 import type { Dictionary } from "@/lib/copy/en";
 import { fill } from "@/lib/copy/fill";
 import { isLocale } from "@/lib/copy/locales";
+import { BUNDLED_FINISH_TEXTURES } from "@/lib/finishPhotos";
 import type { RoomTypeId } from "@/lib/planner/catalogue";
-import {
-	DEFAULT_FINISH_TEXTURES,
-	SWATCH_ZOOM,
-} from "@/lib/planner/finishTextures";
+import { SWATCH_ZOOM } from "@/lib/planner/finishTextures";
 import { HERO_POSTER_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
+import { tenant } from "@/lib/tenant";
 
 /**
  * Design tokens for this page, stated once.
@@ -371,19 +370,21 @@ export default async function Home({
 					    2,300px cabinet running far past the menu bar's right edge,
 					    with the headline shrunk to a footnote beside it. The ground
 					    in `globals.css` follows it at the same breakpoint. */}
-					<div
-						data-cabinet-stage
-						className="-z-20 -right-[18%] absolute bottom-[14%] aspect-[16/9] w-[136%] lg:-translate-y-1/2 lg:top-1/2 lg:right-0 lg:bottom-auto lg:w-[68%] 3xl:right-[calc(50%-880px)] 3xl:w-[1240px]"
-					>
-						{/* biome-ignore lint/performance/noImgElement: ships in the repo,
-						    and it has to share a box with a canvas next/image can't size */}
-						<img
-							src={heroFrameSrc(HERO_POSTER_FRAME)}
-							alt={t.landing.hero.alt}
-							className="h-full w-full object-contain"
-						/>
-						<ScrollSequence />
-					</div>
+					{tenant.heroFrames && (
+						<div
+							data-cabinet-stage
+							className="-z-20 -right-[18%] absolute bottom-[14%] aspect-[16/9] w-[136%] lg:-translate-y-1/2 lg:top-1/2 lg:right-0 lg:bottom-auto lg:w-[68%] 3xl:right-[calc(50%-880px)] 3xl:w-[1240px]"
+						>
+							{/* biome-ignore lint/performance/noImgElement: ships in the repo,
+							    and it has to share a box with a canvas next/image can't size */}
+							<img
+								src={heroFrameSrc(HERO_POSTER_FRAME)}
+								alt={t.landing.hero.alt}
+								className="h-full w-full object-contain"
+							/>
+							<ScrollSequence />
+						</div>
+					)}
 
 					{/* The right padding reserves the lane the render occupies, rather
 					    than leaving it to each string's own max-width to stay clear of
@@ -566,7 +567,7 @@ export default async function Home({
 						// nobody has photographed is a colour, not a timber.
 						const board =
 							photo.get(finishSlot(finish.id)) ??
-							DEFAULT_FINISH_TEXTURES[finish.id];
+							BUNDLED_FINISH_TEXTURES[finish.id];
 						return (
 							<div key={finish.id}>
 								<div
@@ -698,7 +699,7 @@ export default async function Home({
 						</p>
 						<div className="flex flex-col gap-2.5">
 							<a
-								href="mailto:hello@ezcabinet.com"
+								href={`mailto:${t.landing.footer.email}`}
 								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
 							>
 								{t.landing.footer.email}

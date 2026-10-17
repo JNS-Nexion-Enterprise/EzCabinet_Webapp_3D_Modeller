@@ -8,6 +8,7 @@ import { twoFactorMessage } from "@/app/admin/login/twoFactorMessage";
 import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 import { HERO_EXPLODED_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
+import { tenant } from "@/lib/tenant";
 
 export default function AdminLoginPage() {
 	const router = useRouter();
@@ -132,7 +133,7 @@ export default function AdminLoginPage() {
 							</svg>
 						</span>
 						<h1 className="mt-2 font-semibold text-[19px]">
-							EzCabinet · Admin
+							{tenant.brand} · Admin
 						</h1>
 						<p className="text-neutral-500 text-sm">
 							Staff sign-in. Accounts are created by a superadmin.
@@ -165,7 +166,7 @@ export default function AdminLoginPage() {
 									type="email"
 									value={email}
 									onChange={(e) => setEmail(e.target.value)}
-									placeholder="you@ezcabinet.com"
+									placeholder="you@company.com"
 									autoComplete="username"
 									className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
 								/>
@@ -302,7 +303,7 @@ export default function AdminLoginPage() {
 					</Link>
 
 					<p className="text-center text-neutral-400 text-xs">
-						Internal tool · EzCabinet staff only
+						Internal tool · {tenant.brand} staff only
 					</p>
 				</form>
 			</div>
@@ -319,19 +320,21 @@ export default function AdminLoginPage() {
 				data-cabinet-ground="panel"
 				className="relative hidden flex-1 items-center justify-center overflow-hidden md:flex"
 			>
-				<div
-					data-cabinet-stage
-					className="-translate-x-1/2 -translate-y-1/2 pointer-events-none absolute top-1/2 left-1/2 aspect-[16/9] w-[128%] max-w-none"
-				>
-					{/* biome-ignore lint/performance/noImgElement: ships in the repo,
-					    and next/image would only re-encode a JPEG that is already
-					    sized for exactly this box */}
-					<img
-						src={heroFrameSrc(HERO_EXPLODED_FRAME)}
-						alt=""
-						className="h-full w-full object-contain"
-					/>
-				</div>
+				{tenant.heroFrames && (
+					<div
+						data-cabinet-stage
+						className="-translate-x-1/2 -translate-y-1/2 pointer-events-none absolute top-1/2 left-1/2 aspect-[16/9] w-[128%] max-w-none"
+					>
+						{/* biome-ignore lint/performance/noImgElement: ships in the repo,
+						    and next/image would only re-encode a JPEG that is already
+						    sized for exactly this box */}
+						<img
+							src={heroFrameSrc(HERO_EXPLODED_FRAME)}
+							alt=""
+							className="h-full w-full object-contain"
+						/>
+					</div>
+				)}
 
 				<div className="absolute bottom-8 left-8 max-w-[320px] rounded-[10px] bg-white/90 px-4 py-3.5">
 					<p className="font-semibold text-sm">One catalogue, every planner</p>

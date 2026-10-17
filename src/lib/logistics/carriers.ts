@@ -56,8 +56,9 @@ export const KIND: Record<string, CarrierKind> = Object.fromEntries(
  * a settings row because there is one workshop, and a Settings table for a
  * single string nobody has asked to change twice is a table nobody maintains.
  */
-export const WORKSHOP_ADDRESS = "EzCabinet Sdn Bhd, Klang Valley, Selangor";
+export const WORKSHOP_ADDRESS = tenant.workshopAddress;
 
+import { tenant } from "@/lib/tenant";
 /**
  * The workshop's pin, as a constant rather than something we look up.
  *
@@ -76,7 +77,7 @@ export const WORKSHOP_ADDRESS = "EzCabinet Sdn Bhd, Klang Valley, Selangor";
  */
 import { pinFor } from "./coords";
 
-export const WORKSHOP_PIN = { lat: 2.9848868, lng: 101.861807 };
+export const WORKSHOP_PIN = tenant.workshopPin;
 
 /**
  * The pin to send as the pickup override, in precedence order: what the admin
@@ -111,9 +112,9 @@ export function pickupPin(
  * the same open question `WORKSHOP_ADDRESS` and `WORKSHOP_PHONE` carry. A wrong
  * postcode here is a quote for the wrong origin zone on every parcel job.
  */
-export const WORKSHOP_POSTCODE = "43800";
-export const WORKSHOP_CITY = "Dengkil";
-export const WORKSHOP_STATE = "MY-10";
+export const WORKSHOP_POSTCODE = tenant.workshopPostcode;
+export const WORKSHOP_CITY = tenant.workshopCity;
+export const WORKSHOP_STATE = tenant.workshopState;
 
 export type Place = {
 	postcode: string | null;
@@ -147,7 +148,7 @@ export function pickupPlace(address: string, stored: Place): Place | null {
  * to Lalamove as the pickup contact, so a wrong number here is a driver who
  * cannot reach anyone — see the open question in CLAUDE.md.
  */
-export const WORKSHOP_PHONE = "03-1234 5678";
+export const WORKSHOP_PHONE = tenant.workshopPhone;
 
 /**
  * When the workshop stops handing parcels over, as FedEx's pickup request

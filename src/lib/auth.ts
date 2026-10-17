@@ -34,6 +34,7 @@ import {
 	sendStaffReset,
 } from "@/lib/auth/passwordReset";
 import { prisma } from "@/lib/catalogue/db";
+import { tenant } from "@/lib/tenant";
 
 /**
  * One door, gated by who created the row — not by which provider they used.
@@ -287,9 +288,9 @@ export const auth = betterAuth({
 	},
 	// `nextCookies()` stays last: it must see the cookies every other plugin sets.
 	plugins: [
-		twoFactor({ issuer: "EzCabinet Admin" }),
+		twoFactor({ issuer: `${tenant.brand} Admin` }),
 		passkey({
-			rpName: "EzCabinet",
+			rpName: tenant.brand,
 			// A passkey here is proof the owner is present, so the device must
 			// check them (biometric or PIN), not just that it is plugged in. This
 			// asks for it at enrolment; the plugin (1.7.5) cannot enforce it at

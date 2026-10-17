@@ -4,8 +4,8 @@ import { finishSlot, siteImageSrc } from "@/lib/catalogue/siteImages";
 import { getPublishedPlannerCatalogue } from "@/lib/catalogue/store";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { isLocale } from "@/lib/copy/locales";
+import { BUNDLED_FINISH_TEXTURES } from "@/lib/finishPhotos";
 import type { RoomTypeId } from "@/lib/planner/catalogue";
-import { DEFAULT_FINISH_TEXTURES } from "@/lib/planner/finishTextures";
 import { PlannerApp } from "./PlannerApp";
 
 export default async function PlannerPage({
@@ -49,7 +49,7 @@ export default async function PlannerPage({
 	const finishTextures: Record<string, string> = {};
 	for (const finish of catalogue.finishes) {
 		const url =
-			uploaded.get(finishSlot(finish.id)) ?? DEFAULT_FINISH_TEXTURES[finish.id];
+			uploaded.get(finishSlot(finish.id)) ?? BUNDLED_FINISH_TEXTURES[finish.id];
 		if (url) finishTextures[finish.id] = url;
 	}
 

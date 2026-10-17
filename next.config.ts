@@ -66,7 +66,12 @@ const nextConfig: NextConfig = {
 	poweredByHeader: false,
 	// The project token is public by design, and the browser needs it: this
 	// inlines it without the `NEXT_PUBLIC_` prefix the integration does not use.
-	env: { POSTHOG_PROJECT_TOKEN: process.env.POSTHOG_PROJECT_TOKEN ?? "" },
+	env: {
+		POSTHOG_PROJECT_TOKEN: process.env.POSTHOG_PROJECT_TOKEN ?? "",
+		// Which company this deployment is — `src/lib/tenant.ts`. Client
+		// components read it too.
+		TENANT: process.env.TENANT ?? "",
+	},
 	async headers() {
 		return [{ source: "/:path*", headers: securityHeaders }];
 	},
