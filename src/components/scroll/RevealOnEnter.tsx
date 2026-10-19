@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { beatsEnabled } from "@/lib/scroll/beats";
 
 /**
  * Arms the page's `[data-reveal]` elements and reveals each one once.
@@ -12,24 +11,19 @@ import { beatsEnabled } from "@/lib/scroll/beats";
  * With no JavaScript the attribute never appears and every section is simply
  * visible.
  *
- * Reduced motion is handled in CSS rather than here: the elements still reveal,
- * they just do it without travel. Skipping the observer entirely would leave
- * them armed and hidden.
+ * It runs on phones too: an opacity-and-transform entrance is cheap, unlike the
+ * 3D hero, which stays wide-screen only. Under reduced motion the page is never
+ * armed, and the CSS shows everything without travel besides.
  *
  * Elements already inside the viewport when this mounts are revealed before the
  * page is armed at all, so nothing the visitor can already see ever animates.
  */
 export default function RevealOnEnter() {
 	useEffect(() => {
-		// Same gate as ScrollTrack, read once. A reveal is a one-shot entrance —
-		// unlike ScrollTrack there is no `change` listener here, because re-arming
-		// mid-session would animate sections the visitor has already read, which
-		// is worse than leaving them plainly visible.
-		const enabled = beatsEnabled({
-			reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
-			wideEnough: matchMedia("(min-width: 900px)").matches,
-		});
-		if (!enabled) return;
+		// Read once. A reveal is a one-shot entrance, so there is no `change`
+		// listener: re-arming mid-session would animate sections the visitor has
+		// already read, which is worse than leaving them plainly visible.
+		if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
 		const targets = Array.from(
 			document.querySelectorAll<HTMLElement>("[data-reveal]"),

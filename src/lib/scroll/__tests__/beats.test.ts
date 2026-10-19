@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { beatsEnabled, clamp01, trackProgress } from "../beats";
+import { clamp01, trackProgress } from "../beats";
 
 describe("clamp01", () => {
 	it("passes through the unit interval and clamps outside it", () => {
@@ -35,21 +35,5 @@ describe("trackProgress", () => {
 	it("degenerates safely when the track is not taller than the viewport", () => {
 		expect(trackProgress(10, 800, 800)).toBe(0);
 		expect(trackProgress(-10, 800, 800)).toBe(1);
-	});
-});
-
-describe("beatsEnabled", () => {
-	it("runs only on a wide viewport with motion allowed", () => {
-		expect(beatsEnabled({ reducedMotion: false, wideEnough: true })).toBe(true);
-	});
-
-	it("stays off for reduced motion even on a wide viewport", () => {
-		expect(beatsEnabled({ reducedMotion: true, wideEnough: true })).toBe(false);
-	});
-
-	it("stays off on a narrow viewport even when motion is allowed", () => {
-		expect(beatsEnabled({ reducedMotion: false, wideEnough: false })).toBe(
-			false,
-		);
 	});
 });

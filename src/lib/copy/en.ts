@@ -24,6 +24,7 @@ export const en = {
 	},
 	landing: {
 		nav: {
+			material: "Material",
 			howItWorks: "How it works",
 			gallery: "Gallery",
 			finishes: "Finishes",
@@ -33,26 +34,35 @@ export const en = {
 			startPlanning: "Start planning",
 		},
 		hero: {
+			/** Also the planner's start screen. */
 			eyebrow: "Free to try · no account needed",
-			titleBeforeAccent: "Design your kitchen",
-			titleAccent: "in 3D",
+			tagline: "Real sizes. Real prices.",
+			title: "Design your kitchen in 3D. See the price as you build.",
 			subtitle:
-				"Drop real {brand} units into your own room, see the price move as you build, and send us the plan.",
+				"Drop real {brand} units into a model of your room, then send us the plan when it looks right.",
+			fromLabel: "Cabinets from",
 			cta: "Start planning",
 			howItWorks: "How it works",
 			alt: "A finished {brand} kitchen",
 		},
-		facts: {
-			cabinetsFromLabel: "Cabinets from",
-			typicalDeliveryValue: "4-6 weeks",
-			typicalDeliveryLabel: "Typical delivery",
-			warrantyValue: "5 years",
-			warrantyLabel: "Warranty on hardware and build",
-			noAccountValue: "No account",
-			noAccountLabel: "Needed to plan and price",
+		build: {
+			hint: "Scroll to build",
+			step1: "Cabinets along your wall",
+			step2: "Worktop, doors and drawers",
+			step3: "Tall units, wall units and an island",
+			step4: "Your finish on every front",
+			finalTitle: "Plan yours the same way.",
+			finalSubtitle:
+				"Set your wall lengths, drop in units and watch the price update as you build.",
+		},
+		materials: {
+			eyebrow: "The material",
+			heading: "Choose the board, then see it on every door",
 		},
 		how: {
 			heading: "Three steps from an empty wall to a quote",
+			railCaption:
+				"Every step uses real {brand} cabinet sizes, so what you plan is what we build.",
 			step1Title: "Pick your room",
 			step1Detail:
 				"Choose kitchen, living room, bedroom or foyer, and set your real wall dimensions.",
@@ -64,20 +74,28 @@ export const en = {
 				"See a live price as you build, then send your plan straight to our team.",
 		},
 		gallery: {
-			heading: "Explore by room",
-			subtitle:
-				"Every room starts from real {brand} sizes and a layout already on your wall.",
+			eyebrow: "By room",
+			heading: "Every room starts from real {brand} sizes",
 			roomAlt: "{room} cabinets",
-			roomSubtitle: {
-				kitchen: "Real {brand} sizes",
-				living: "TV ledge & display units",
-				bedroom: "Wardrobes",
-				foyer: "Shoe cabinets & bench",
+			roomDetail: {
+				kitchen:
+					"Base and wall cabinets, drawer runs and islands, laid out against your actual wall lengths.",
+				living:
+					"TV ledges and display units, planned against the wall you already have.",
+				bedroom: "Wardrobes, planned against your real ceiling height.",
+				foyer:
+					"Shoe cabinets and benches that fit the entry, not the other way round.",
+			},
+			planLink: {
+				kitchen: "Plan a kitchen",
+				living: "Plan a living room",
+				bedroom: "Plan a bedroom",
+				foyer: "Plan a foyer",
 			},
 		},
 		finishes: {
-			heading: "Finishes & materials",
-			subtitle: "Swap finishes on any cabinet right inside the planner.",
+			eyebrow: "Finishes & materials",
+			heading: "Swap finishes on any cabinet right inside the planner",
 		},
 		faq: {
 			heading: "Frequently asked questions",
@@ -91,11 +109,6 @@ export const en = {
 			a4: "Changes are free before production starts. Our team will confirm your plan with you first.",
 			q5: "Do you offer a warranty?",
 			a5: "Every cabinet comes with a 5-year warranty on hardware and construction.",
-		},
-		closing: {
-			heading: "Your wall, your sizes, your price. In about five minutes.",
-			subtitle: "Nothing to install and nothing to sign up for.",
-			cta: "Start planning",
 		},
 		footer: {
 			tagline:

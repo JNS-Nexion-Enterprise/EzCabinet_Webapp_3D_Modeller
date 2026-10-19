@@ -19,6 +19,7 @@ export const ms: Dictionary = {
 	},
 	landing: {
 		nav: {
+			material: "Bahan",
 			howItWorks: "Cara ia berfungsi",
 			gallery: "Galeri",
 			finishes: "Kemasan",
@@ -28,26 +29,35 @@ export const ms: Dictionary = {
 			startPlanning: "Mula reka bentuk",
 		},
 		hero: {
+			/** Also the planner's start screen. */
 			eyebrow: "Percuma untuk cuba · tiada akaun diperlukan",
-			titleBeforeAccent: "Reka dapur anda",
-			titleAccent: "dalam 3D",
+			tagline: "Saiz sebenar. Harga sebenar.",
+			title: "Reka dapur anda dalam 3D. Lihat harga semasa anda reka.",
 			subtitle:
-				"Letakkan unit {brand} sebenar ke dalam bilik anda sendiri, lihat harga berubah semasa anda reka, dan hantarkan pelan itu terus kepada kami.",
+				"Letakkan unit {brand} sebenar ke dalam model bilik anda, kemudian hantarkan pelan kepada kami apabila ia kelihatan tepat.",
+			fromLabel: "Kabinet dari",
 			cta: "Mula reka bentuk",
 			howItWorks: "Cara ia berfungsi",
 			alt: "Dapur {brand} yang telah siap",
 		},
-		facts: {
-			cabinetsFromLabel: "Kabinet dari",
-			typicalDeliveryValue: "4-6 minggu",
-			typicalDeliveryLabel: "Tempoh penghantaran biasa",
-			warrantyValue: "5 tahun",
-			warrantyLabel: "Waranti perkakasan dan binaan",
-			noAccountValue: "Tiada akaun",
-			noAccountLabel: "Diperlukan untuk reka bentuk dan harga",
+		build: {
+			hint: "Tatal untuk membina",
+			step1: "Kabinet di sepanjang dinding anda",
+			step2: "Permukaan meja, pintu dan laci",
+			step3: "Unit tinggi, unit dinding dan pulau",
+			step4: "Kemasan pilihan anda pada setiap muka",
+			finalTitle: "Reka bilik anda dengan cara yang sama.",
+			finalSubtitle:
+				"Tetapkan panjang dinding, letakkan unit dan lihat harga dikemas kini semasa anda reka.",
+		},
+		materials: {
+			eyebrow: "Bahan",
+			heading: "Pilih papan, kemudian lihat pada setiap pintu",
 		},
 		how: {
 			heading: "Tiga langkah dari dinding kosong ke sebut harga",
+			railCaption:
+				"Setiap langkah menggunakan saiz kabinet {brand} sebenar, jadi apa yang anda reka ialah apa yang kami bina.",
 			step1Title: "Pilih bilik anda",
 			step1Detail:
 				"Pilih dapur, ruang tamu, bilik tidur atau anjung, dan tetapkan dimensi dinding sebenar anda.",
@@ -59,21 +69,29 @@ export const ms: Dictionary = {
 				"Lihat harga secara langsung semasa anda menyusun, kemudian hantar pelan anda terus kepada pasukan kami.",
 		},
 		gallery: {
-			heading: "Terokai mengikut bilik",
-			subtitle:
-				"Setiap bilik bermula daripada saiz kabinet {brand} sebenar dan susun atur yang sedia ada pada dinding anda.",
+			eyebrow: "Mengikut bilik",
+			heading: "Setiap bilik bermula daripada saiz {brand} sebenar",
 			roomAlt: "kabinet {room}",
-			roomSubtitle: {
-				kitchen: "Saiz kabinet {brand} sebenar",
-				living: "Rak TV & unit paparan",
-				bedroom: "Almari pakaian",
-				foyer: "Kabinet kasut & bangku",
+			roomDetail: {
+				kitchen:
+					"Kabinet dasar dan dinding, laci dan pulau, disusun mengikut panjang dinding sebenar anda.",
+				living:
+					"Rak TV dan unit paparan, dirancang mengikut dinding yang sedia ada.",
+				bedroom:
+					"Almari pakaian, dirancang mengikut ketinggian siling sebenar anda.",
+				foyer: "Kabinet kasut dan bangku yang dirancang untuk anjung anda.",
+			},
+			planLink: {
+				kitchen: "Reka dapur",
+				living: "Reka ruang tamu",
+				bedroom: "Reka bilik tidur",
+				foyer: "Reka anjung",
 			},
 		},
 		finishes: {
-			heading: "Kemasan & bahan",
-			subtitle:
-				"Tukar kemasan pada mana-mana kabinet terus dalam alat reka bentuk.",
+			eyebrow: "Kemasan & bahan",
+			heading:
+				"Tukar kemasan pada mana-mana kabinet terus dalam alat reka bentuk",
 		},
 		faq: {
 			heading: "Soalan lazim",
@@ -87,12 +105,6 @@ export const ms: Dictionary = {
 			a4: "Perubahan adalah percuma sebelum pengeluaran bermula. Pasukan kami akan sahkan pelan anda terlebih dahulu.",
 			q5: "Adakah anda menawarkan waranti?",
 			a5: "Setiap kabinet disertakan waranti 5 tahun untuk perkakasan dan binaan.",
-		},
-		closing: {
-			heading:
-				"Dinding anda, saiz anda, harga anda. Dalam lebih kurang lima minit.",
-			subtitle: "Tiada apa untuk dipasang dan tiada apa untuk didaftar.",
-			cta: "Mula reka bentuk",
 		},
 		footer: {
 			tagline:

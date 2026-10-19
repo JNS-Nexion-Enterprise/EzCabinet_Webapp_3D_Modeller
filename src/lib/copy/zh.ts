@@ -20,6 +20,7 @@ export const zh: Dictionary = {
 	},
 	landing: {
 		nav: {
+			material: "材质",
 			howItWorks: "运作方式",
 			gallery: "作品集",
 			finishes: "板材选择",
@@ -29,26 +30,34 @@ export const zh: Dictionary = {
 			startPlanning: "开始设计",
 		},
 		hero: {
+			/** Also the planner's start screen. */
 			eyebrow: "免费试用 · 无需注册",
-			titleBeforeAccent: "设计您的厨房，尽在",
-			titleAccent: "3D",
+			tagline: "真实尺寸，真实价格。",
+			title: "以 3D 设计您的厨房，边搭配边看价格。",
 			subtitle:
-				"将真实的 {brand} 橱柜放入您自己的房间，边搭配边看价格变化，完成后直接把方案发给我们。",
+				"将真实的 {brand} 橱柜放入您房间的模型中，满意后再把方案发给我们。",
+			fromLabel: "橱柜起价",
 			cta: "开始设计",
 			howItWorks: "运作方式",
 			alt: "一间已完工的 {brand} 厨房",
 		},
-		facts: {
-			cabinetsFromLabel: "橱柜起价",
-			typicalDeliveryValue: "4 至 6 周",
-			typicalDeliveryLabel: "平均交货时间",
-			warrantyValue: "5 年",
-			warrantyLabel: "五金与结构保修",
-			noAccountValue: "无需注册",
-			noAccountLabel: "即可设计与报价",
+		build: {
+			hint: "向下滚动开始搭建",
+			step1: "沿着墙面摆放柜体",
+			step2: "台面、柜门与抽屉",
+			step3: "高柜、吊柜与岛台",
+			step4: "每一扇门板都换上您选的板材",
+			finalTitle: "用同样的方式设计您的空间。",
+			finalSubtitle: "设定墙面长度，放入橱柜，边搭配边看价格更新。",
+		},
+		materials: {
+			eyebrow: "材质",
+			heading: "先选板材，再看它出现在每一扇门上",
 		},
 		how: {
 			heading: "从空白墙面到报价，只需三步",
+			railCaption:
+				"每一步都使用真实的 {brand} 橱柜尺寸，您设计的就是我们制作的。",
 			step1Title: "选择您的房间",
 			step1Detail: "选择厨房、客厅、卧室或玄关，输入您墙面的实际尺寸。",
 			step2Title: "按比例放入橱柜",
@@ -59,19 +68,25 @@ export const zh: Dictionary = {
 				"搭配的同时即可看到实时价格，完成后直接把方案发给我们的团队。",
 		},
 		gallery: {
-			heading: "按房间浏览",
-			subtitle: "每个房间都以真实的 {brand} 尺寸和现成的布局开始设计。",
+			eyebrow: "按房间",
+			heading: "每个房间都从真实的 {brand} 尺寸开始",
 			roomAlt: "{room}橱柜",
-			roomSubtitle: {
-				kitchen: "真实的 {brand} 尺寸",
-				living: "电视柜与展示柜",
-				bedroom: "衣柜",
-				foyer: "鞋柜与长凳",
+			roomDetail: {
+				kitchen: "地柜、吊柜、抽屉组与岛台，按您墙面的实际长度排列。",
+				living: "电视柜与展示柜，按您现有的墙面来规划。",
+				bedroom: "衣柜，按您房间的实际天花板高度来规划。",
+				foyer: "鞋柜与长凳，为您的玄关量身规划。",
+			},
+			planLink: {
+				kitchen: "设计厨房",
+				living: "设计客厅",
+				bedroom: "设计卧室",
+				foyer: "设计玄关",
 			},
 		},
 		finishes: {
-			heading: "板材与颜色",
-			subtitle: "在设计工具中即可为任何橱柜更换板材。",
+			eyebrow: "板材与颜色",
+			heading: "在设计工具中即可为任何橱柜更换板材",
 		},
 		faq: {
 			heading: "常见问题",
@@ -85,11 +100,6 @@ export const zh: Dictionary = {
 			a4: "只要还没开始生产，修改都是免费的。我们的团队会先与您确认方案。",
 			q5: "有提供保修吗？",
 			a5: "每个橱柜均享有 5 年五金与结构保修。",
-		},
-		closing: {
-			heading: "您的墙面，您的尺寸，您的价格。只需大约五分钟。",
-			subtitle: "无需安装任何软件，也无需注册账号。",
-			cta: "开始设计",
 		},
 		footer: {
 			tagline: "量身定制的橱柜，以 3D 设计，并按您房间的实际尺寸打造。",
