@@ -13,6 +13,19 @@
 		"Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
 	--font-mono: var(--font-geist-mono);
 	--font-serif: var(--font-caslon), Georgia, "Times New Roman", serif;
+	/* A spring, approximated: overshoots a little and settles. `ease-spring`. */
+	--ease-spring: linear(
+		0,
+		0.22 6%,
+		0.58 14%,
+		0.86 24%,
+		1.03 36%,
+		1.06 44%,
+		1.03 56%,
+		1 70%,
+		0.995 82%,
+		1
+	);
 	/* Ultrawide. A named breakpoint, not `min-[1800px]:`: Tailwind sorts
 	   arbitrary breakpoints before the named ones, so `lg:` would win. */
 	--breakpoint-3xl: 112.5rem;
@@ -33,8 +46,7 @@ body {
 /*
  * A cabinet frame standing on the page.
  *
- * Two rules, used by the landing hero and by the admin sign-in panel. Both are
- * showing the same render, so both need the same two fixes.
+ * Two rules, used by the admin sign-in panel.
  *
  * `[data-cabinet-stage]` dissolves the frame's edge. The render carries a
  * studio vignette — its own grey runs from #b9bab4 at the corners to #d5d6d0
@@ -68,88 +80,21 @@ body {
 	--ground: #d6d7d1 0%, #c8c9c3 66%, #d8d9d3 86%, #e9e7e3 100%;
 }
 
-/* The hero, where the cabinet sits under the copy on a phone... */
-[data-cabinet-ground="hero"] {
-	background: radial-gradient(ellipse 92% 30% at 50% 74%, var(--ground));
-}
-
-/* ...and beside it once there is room, so the wash moves with the stage. */
-@media (min-width: 1024px) {
-	[data-cabinet-ground="hero"] {
-		background: radial-gradient(ellipse 52% 72% at 66% 50%, var(--ground));
-	}
-}
-
-/* ...and on an ultrawide, where the stage is anchored to the page's centre
- * rather than the viewport (see the hero in `app/[lang]/page.tsx`), the wash
- * is anchored with it: centred 260px right of the middle, and sized in pixels
- * at the proportion to the 1240px stage that the 1440×900 wash has to its
- * 979px one. A percentage height would follow a tall monitor's viewport and
- * draw the wash's dark ring straight through the headline. */
-@media (min-width: 1800px) {
-	[data-cabinet-ground="hero"] {
-		background: radial-gradient(
-			ellipse 950px 820px at calc(50% + 260px) 50%,
-			var(--ground)
-		);
-	}
-}
-
 /* The sign-in panel, where the frame is centred and nothing sits over it. */
 [data-cabinet-ground="panel"] {
 	background: radial-gradient(ellipse 98% 52% at 50% 50%, var(--ground));
 }
 
-/*
- * Scroll choreography.
- *
- * Every rule here is scoped under `[data-beats="on"]`, which only a mounted
- * `ScrollTrack` island sets. The unscoped rendering — no JavaScript, before
- * hydration, reduced motion, or a viewport under 900px — is the finished page.
- * Nothing below may introduce a state the page cannot be read in.
- *
- * `--p` is the track's progress, 0..1, inherited by everything inside it.
- * A beat is a slice of it: `clamp(0, (var(--p) - start) / (end - start), 1)`.
- */
-
-[data-track] {
-	height: 100svh;
+/* The landing page's one focus ring: dark ink, never the browser's blue. */
+[data-landing] :is(a, button, summary):focus-visible {
+	outline: 2px solid #3b2a1f;
+	outline-offset: 2px;
+	border-radius: 4px;
 }
 
-@media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
-	[data-track] {
-		height: calc(var(--track-viewports, 1) * 100svh);
-	}
-}
-
-[data-beats="on"] {
-	/* Each fallback is chosen so that an unknown `--p` renders the READABLE
-	   state — not a fixed number. It defends the instant before the first
-	   `write()`, and any future path that sets `data-beats` without a paired
-	   write.
-	   the copy's is a departure (0 = still here, fully legible). */
-	--beat-exit: clamp(0, calc((var(--p, 0) - 0.55) / 0.45), 1);
-}
-
-/* The hero copy does NOT arrive on scroll — it is the LCP element and must be
-   legible the instant the page paints. It leaves instead, drifting up and out
-   over the back half of the track, which is what the reference product pages
-   actually do. Fading it in would reproduce, one frame later, exactly the
-   blank-headline failure the no-JavaScript contract exists to prevent. */
-[data-beats="on"] [data-beat="hero-copy"] {
-	opacity: calc(1 - var(--beat-exit));
-	transform: translate3d(0, calc(var(--beat-exit) * -32px), 0);
-	will-change: transform, opacity;
-}
-
-/* There is no `hero-photo` beat any more. The hero's motion IS the frame
-   sequence now, and scaling the canvas it draws into would resample every
-   frame — a slow blur over the one element the section exists to show. */
-
-/* Arrive-on-entry, for the sections below the pinned hero. Same contract: the
-   revealed state is the default, and only a mounted observer can take it away
-   and give it back. */
-[data-reveal-armed] [data-reveal] {
+/* Arrive-on-entry, for the sections below the hero. The revealed state is the
+   default, and only a mounted observer can take it away and give it back. */
+[data-reveal-armed] [data-reveal]:not([data-reveal="stagger"]) {
 	opacity: 0;
 	transform: translate3d(0, 18px, 0);
 	transition:
@@ -162,10 +107,50 @@ body {
 	transform: none;
 }
 
+/* A section that holds a list brings its items in one after another instead
+   of sliding as a block, which would double the travel. `--i` is the item's
+   index, set inline; past the seventh they all arrive together. */
+[data-reveal-armed] [data-reveal] [data-stagger] {
+	opacity: 0;
+	transform: translate3d(0, 14px, 0);
+	transition:
+		opacity 560ms cubic-bezier(0.22, 0.61, 0.36, 1),
+		transform 560ms cubic-bezier(0.22, 0.61, 0.36, 1);
+	transition-delay: calc(min(var(--i, 0), 6) * 70ms);
+}
+
+[data-reveal-armed] [data-reveal][data-revealed] [data-stagger] {
+	opacity: 1;
+	transform: none;
+}
+
+/* The FAQ opens instead of jumping. Native `<details>` throughout; a browser
+   without `::details-content` opens instantly, as it always did. */
+[data-landing] {
+	interpolate-size: allow-keywords;
+}
+
+[data-landing] details::details-content {
+	block-size: 0;
+	overflow-y: clip;
+	transition:
+		block-size 280ms cubic-bezier(0.22, 0.61, 0.36, 1),
+		content-visibility 280ms allow-discrete;
+}
+
+[data-landing] details[open]::details-content {
+	block-size: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
-	[data-reveal-armed] [data-reveal] {
+	[data-reveal-armed] [data-reveal],
+	[data-reveal-armed] [data-reveal] [data-stagger] {
 		opacity: 1;
 		transform: none;
+		transition: none;
+	}
+
+	[data-landing] details::details-content {
 		transition: none;
 	}
 }

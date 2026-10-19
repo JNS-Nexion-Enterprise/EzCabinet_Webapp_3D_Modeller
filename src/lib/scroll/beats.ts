@@ -36,16 +36,11 @@ export function trackProgress(
 }
 
 /**
- * Whether scroll choreography may run at all.
- *
- * Two gates, both refusals rather than degradations. Reduced motion means the
- * page stays where it is; a narrow viewport means the same, because the target
- * device is a mid-range Android phone in Klang Valley and it gets the
- * composition rather than the choreography.
+ * Where the landing hero's 3D build runs. Two gates, both refusals rather than
+ * degradations: reduced motion gets a still, and a narrow viewport — the
+ * mid-range Android phone in Klang Valley this app is built for — gets the
+ * photo rather than a WebGL scene. One media query, so CSS (which hero is
+ * shown) and the island (whether to download three) can never disagree.
  */
-export function beatsEnabled(env: {
-	reducedMotion: boolean;
-	wideEnough: boolean;
-}): boolean {
-	return !env.reducedMotion && env.wideEnough;
-}
+export const BUILD_QUERY =
+	"(min-width: 900px) and (prefers-reduced-motion: no-preference)";
