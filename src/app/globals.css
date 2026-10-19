@@ -85,6 +85,17 @@ body {
 	background: radial-gradient(ellipse 98% 52% at 50% 50%, var(--ground));
 }
 
+/* When the landing hero's WebGL fails, `HeroBuild` marks the page and the
+   photo hero takes the build's place: a 500-viewport track with nothing
+   drawing in it would be a long scroll past a grey wall. */
+[data-landing][data-build-failed] [data-build-track] {
+	display: none;
+}
+
+[data-landing][data-build-failed] [data-photo-hero] {
+	display: flex;
+}
+
 /* The landing page's one focus ring: dark ink, never the browser's blue. */
 [data-landing] :is(a, button, summary):focus-visible {
 	outline: 2px solid #3b2a1f;

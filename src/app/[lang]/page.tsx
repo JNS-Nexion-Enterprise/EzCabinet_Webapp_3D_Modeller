@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import HeroBuild from "@/components/landing/HeroBuild";
+import LandingMenu from "@/components/landing/LandingMenu";
 import RevealOnEnter from "@/components/scroll/RevealOnEnter";
 import { prisma } from "@/lib/catalogue/db";
 import {
@@ -220,7 +221,7 @@ export default async function Home({
 							{t.landing.nav.tutorials}
 						</Link>
 					</nav>
-					<div className="flex shrink-0 items-center gap-4">
+					<div className="flex shrink-0 items-center gap-2 sm:gap-4">
 						<div className="hidden lg:block">
 							<Suspense fallback={null}>
 								<LanguageSwitcher
@@ -246,47 +247,39 @@ export default async function Home({
 						</div>
 						<Link
 							href={`/${lang}/planner`}
-							className="inline-flex min-h-9 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-4.5 font-semibold text-[13px] text-white transition-[background-color,transform] duration-300 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:bg-(--accent-active)"
+							className="inline-flex min-h-11 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-3.5 font-semibold text-[13px] sm:px-4.5 lg:min-h-9 text-white transition-[background-color,transform] duration-300 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:bg-(--accent-active)"
 						>
 							{t.landing.nav.startPlanning}
 						</Link>
-						{/* The small-screen menu. `<details>` rather than a client
-						    component: a disclosure is the one interaction HTML already
-						    ships — Esc, focus and the toggle come free. */}
-						<details className="relative lg:hidden">
-							<summary
-								aria-label={t.landing.nav.menu}
-								className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-lg px-2 text-(--body) transition-colors marker:content-none hover:bg-(--oat) hover:text-(--ink) [&::-webkit-details-marker]:hidden"
+						<div className="flex lg:hidden">
+							<LandingMenu
+								openLabel={t.landing.nav.menu}
+								closeLabel={t.common.close}
 							>
-								<svg
-									width="18"
-									height="18"
-									viewBox="0 0 18 18"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="1.5"
-									strokeLinecap="round"
-									aria-hidden="true"
-								>
-									<path d="M2 5h14M2 9h14M2 13h14" />
-								</svg>
-							</summary>
-							<div className="absolute top-[calc(100%+20px)] right-0 flex w-56 flex-col rounded-[10px] border border-(--rule) bg-(--paper) p-2 shadow-lg">
 								{sections.map(([label, href]) => (
-									<a key={href} href={href} className={navLink}>
+									<a
+										key={href}
+										href={href}
+										className="flex min-h-12 items-center border-[#eee6d9] border-b text-(--ink) text-[15px] active:bg-(--oat)"
+									>
 										{label}
 									</a>
 								))}
-								<Link href={`/${lang}/tutorials`} className={navLink}>
+								<Link
+									href={`/${lang}/tutorials`}
+									className="flex min-h-12 items-center border-[#eee6d9] border-b text-(--ink) text-[15px] active:bg-(--oat)"
+								>
 									{t.landing.nav.tutorials}
 								</Link>
+								{/* Below sm the account menu is not in the bar, so My orders
+								    is here instead; signed out, it bounces through sign-in. */}
 								<Link
 									href={`/${lang}/orders`}
-									className={`${navLink} sm:hidden`}
+									className="flex min-h-12 items-center border-[#eee6d9] border-b text-(--ink) text-[15px] active:bg-(--oat) sm:hidden"
 								>
 									{t.account.myOrders}
 								</Link>
-								<div className="mt-1 border-(--rule) border-t px-2.5 pt-2 pb-1">
+								<div className="pt-3">
 									<Suspense fallback={null}>
 										<LanguageSwitcher
 											current={lang}
@@ -295,42 +288,49 @@ export default async function Home({
 										/>
 									</Suspense>
 								</div>
-							</div>
-						</details>
+							</LandingMenu>
+						</div>
 					</div>
 				</div>
 			</header>
 
-			{/* Hero A — the scroll build, wide screens with motion only. An empty
+			{/* Hero A — the scroll build, wherever motion is allowed. An empty
 			    room fills with a kitchen over five viewports of scroll, with a
-			    caption per stage. The intro copy is server-rendered and readable
-			    before three arrives; every other overlay starts hidden and only
-			    `HeroBuild` shows it. If WebGL fails, the island collapses the
-			    track to one screen and the intro is the whole hero. It starts
-			    under the translucent header, as the design's does, which is what
-			    the overlays' 68px top padding is for. */}
+			    caption per stage and an example kitchen's total counting up. The
+			    intro copy is server-rendered and readable before three arrives;
+			    every other overlay starts hidden and only `HeroBuild` shows it.
+			    If WebGL fails, the island swaps this for the photo hero (see
+			    `[data-build-failed]` in `globals.css`). It starts under the
+			    translucent header, as the design's does, which is what the
+			    overlays' top padding is for. Under 760px the copy and captions
+			    move to the top and the total to the bottom, so the room shows
+			    between them. */}
 			<div
 				data-build-track
-				className="relative -mt-[68px] hidden h-[500vh] bg-(--stage) data-build-failed:h-svh min-[900px]:motion-safe:block"
+				className="relative -mt-[68px] hidden h-[500vh] bg-(--stage) motion-safe:block"
 			>
-				<div className="sticky top-0 h-svh min-h-[560px] overflow-hidden bg-(--stage)">
+				<div className="sticky top-0 h-svh min-h-[480px] overflow-hidden bg-(--stage)">
 					<HeroBuild labelFont={karla.style.fontFamily} />
 					<div
 						aria-hidden
-						className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(234,230,224,.94)_0%,rgba(234,230,224,.72)_26%,rgba(234,230,224,0)_50%)]"
+						className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(234,230,224,.94)_0%,rgba(234,230,224,.72)_26%,rgba(234,230,224,0)_50%)] min-[760px]:block"
+					/>
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(234,230,224,.96)_0%,rgba(234,230,224,.8)_34%,rgba(234,230,224,0)_56%)] min-[760px]:hidden"
 					/>
 
 					<div
 						data-ov="intro"
-						className="pointer-events-none absolute inset-0 flex items-center"
+						className="pointer-events-none absolute inset-0 flex items-start min-[760px]:items-center"
 					>
-						<div className="mx-auto w-full max-w-[1220px] px-8 pt-[68px]">
+						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 min-[760px]:pt-[68px]">
 							<div className="pointer-events-auto max-w-[520px]">
 								<p className={eyebrow}>{t.landing.hero.tagline}</p>
-								<h1 className="mb-5 text-balance font-serif text-[52px] leading-[1.08]">
+								<h1 className="mb-5 text-balance font-serif text-[clamp(34px,9vw,52px)] leading-[1.08]">
 									{t.landing.hero.title}
 								</h1>
-								<p className="mb-8 max-w-[440px] text-(--body) text-[16px] leading-[26px]">
+								<p className="mb-7 max-w-[440px] text-(--body) text-[16px] leading-[26px]">
 									{t.landing.hero.subtitle}
 								</p>
 								<div className="flex flex-wrap items-center gap-5">
@@ -345,8 +345,8 @@ export default async function Home({
 						</div>
 					</div>
 
-					<div className="pointer-events-none absolute right-0 bottom-16 left-0">
-						<div className="mx-auto max-w-[1220px] px-8">
+					<div className="pointer-events-none absolute inset-x-0 top-[88px] min-[760px]:top-auto min-[760px]:bottom-16">
+						<div className="mx-auto max-w-[1220px] px-5 min-[760px]:px-8">
 							<div className="relative h-24">
 								{captions.map((caption, i) => (
 									<div
@@ -358,7 +358,7 @@ export default async function Home({
 											{String(i + 1).padStart(2, "0")} /{" "}
 											{String(captions.length).padStart(2, "0")}
 										</span>
-										<span className="font-serif text-[30px] leading-[1.15]">
+										<span className="font-serif text-[clamp(22px,6vw,30px)] leading-[1.15]">
 											{caption}
 										</span>
 									</div>
@@ -369,11 +369,11 @@ export default async function Home({
 
 					<div
 						data-ov="final"
-						className="pointer-events-none invisible absolute inset-0 flex items-center opacity-0"
+						className="pointer-events-none invisible absolute inset-0 flex items-start opacity-0 min-[760px]:items-center"
 					>
-						<div className="mx-auto w-full max-w-[1220px] px-8 pt-[68px]">
+						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 min-[760px]:pt-[68px]">
 							<div className="pointer-events-auto max-w-[440px]">
-								<h2 className="mb-4 text-balance font-serif text-[44px] leading-[1.1]">
+								<h2 className="mb-4 text-balance font-serif text-[clamp(30px,8vw,44px)] leading-[1.1]">
 									{t.landing.build.finalTitle}
 								</h2>
 								<p className="mb-7 text-(--body) text-[16px] leading-[26px]">
@@ -395,6 +395,31 @@ export default async function Home({
 								{price && (
 									<p className="mt-5 text-(--body) text-[13px]">{price}</p>
 								)}
+							</div>
+						</div>
+					</div>
+
+					{/* An example kitchen's total, counting up as each part lands.
+					    The scene is not built from catalogue cabinets, so the figures
+					    are illustrative, and the card says so. */}
+					<div className="pointer-events-none absolute inset-x-0 bottom-5 min-[760px]:top-[92px] min-[760px]:bottom-auto">
+						<div className="mx-auto flex max-w-[1220px] justify-center px-5 min-[760px]:justify-end min-[760px]:px-8">
+							<div
+								data-ov="price"
+								className="invisible flex min-w-[190px] flex-col gap-1 rounded-xl border border-(--rule) bg-[rgba(251,248,244,.92)] px-5 py-3.5 opacity-0 backdrop-blur-[6px]"
+							>
+								<span className="font-bold text-(--eyebrow) text-[11px] uppercase tracking-[0.14em]">
+									{t.landing.build.totalLabel}
+								</span>
+								<span
+									data-price
+									className="whitespace-nowrap font-serif text-[30px] tabular-nums leading-[1.1]"
+								>
+									RM 0
+								</span>
+								<span className="text-(--soft) text-[11px]">
+									{t.landing.build.totalNote}
+								</span>
 							</div>
 						</div>
 					</div>
@@ -422,12 +447,15 @@ export default async function Home({
 				</div>
 			</div>
 
-			{/* Hero B — the photo, everywhere the build does not run: phones and
-			    reduced motion. The admin's hero photo when there is one, walnut
-			    when there is not; the copy reads on either. The `<source>` hands a
-			    desktop that runs the build a 1×1 instead, so it never downloads a
-			    photo it will not show. */}
-			<section className="relative flex min-h-[92svh] items-center overflow-hidden bg-(--walnut) min-[900px]:motion-safe:hidden">
+			{/* Hero B — the photo, wherever the build does not run: reduced
+			    motion, and a device whose WebGL fails. The admin's hero photo when
+			    there is one, walnut when there is not; the copy reads on either.
+			    The `<source>` hands a browser that runs the build a 1×1 instead,
+			    so it never downloads a photo it will not show. */}
+			<section
+				data-photo-hero
+				className="relative flex min-h-[92svh] items-center overflow-hidden bg-(--walnut) motion-safe:hidden"
+			>
 				{heroPhoto && (
 					<picture>
 						<source media={BUILD_QUERY} srcSet={BLANK} />
@@ -487,7 +515,7 @@ export default async function Home({
 								{t.landing.materials.heading}
 							</h2>
 						</div>
-						<div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-1">
+						<div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
 							{catalogue.finishes.slice(0, 4).map((finish, i) => (
 								<div key={finish.id} data-stagger style={stagger(i)}>
 									<div
@@ -505,14 +533,14 @@ export default async function Home({
 				</section>
 			)}
 
-			{/* How it works — a sticky photo beside the steps on wide screens. */}
+			{/* How it works — a sticky photo beside the steps on wide screens, above them on phones. */}
 			<section id="how" data-reveal="stagger" className="px-4 py-24 sm:px-8">
-				<div className="mx-auto grid max-w-[1220px] grid-cols-1 items-start gap-16 lg:grid-cols-[minmax(260px,360px)_1fr]">
-					<div className="sticky top-24 hidden flex-col gap-4 lg:flex">
+				<div className="mx-auto grid max-w-[1220px] grid-cols-1 items-start gap-10 lg:gap-16 lg:grid-cols-[minmax(260px,360px)_1fr]">
+					<div className="flex flex-col gap-4 lg:sticky lg:top-24">
 						<Photo
 							url={photo.get(HOW_SLOT) ?? null}
 							alt=""
-							className="h-[560px] w-full rounded-[14px]"
+							className="h-[clamp(260px,60vw,560px)] w-full rounded-[14px]"
 							fallbackStyle={{ backgroundColor: "#e2d7c5" }}
 						/>
 						<p className="max-w-[320px] text-(--soft) text-[13px] leading-5">

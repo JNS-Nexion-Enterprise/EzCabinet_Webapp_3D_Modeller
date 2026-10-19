@@ -49,6 +49,8 @@ export const ms: Dictionary = {
 			finalTitle: "Reka bilik anda dengan cara yang sama.",
 			finalSubtitle:
 				"Tetapkan panjang dinding, letakkan unit dan lihat harga dikemas kini semasa anda reka.",
+			totalLabel: "Contoh dapur",
+			totalNote: "Harga sekadar ilustrasi",
 		},
 		materials: {
 			eyebrow: "Bahan",

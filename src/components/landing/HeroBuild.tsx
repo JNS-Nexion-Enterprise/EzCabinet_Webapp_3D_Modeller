@@ -20,9 +20,10 @@ const BUILD_END = 0.88;
  * or before three arrives, the overlays' own inline styles are the hero: the
  * intro copy, readable, and nothing else.
  *
- * Outside `BUILD_QUERY` the page shows the photo hero instead and this island
- * never downloads three: a phone on mobile data should not pay for a scene it
- * would struggle to draw, and reduced motion gets a still.
+ * It runs on phones too, framed for portrait and drawn lighter there (a 1.5×
+ * pixel ratio cap, a 1024² shadow map). Outside `BUILD_QUERY` — reduced
+ * motion — the page shows the photo hero instead and this island never
+ * downloads three. So does a device whose WebGL fails.
  *
  * Its own small scene, not the planner's: nothing here is a catalogue cabinet,
  * and the planner's lighting rule (`Lighting.tsx`) is about the studio.
@@ -41,9 +42,12 @@ export default function HeroBuild({ labelFont }: { labelFont: string }) {
 		let gone = false;
 
 		const fail = (error: unknown) => {
-			// A track 500 viewports tall with nothing drawing in it is a long
-			// scroll past a grey wall, so collapse it to one screen of intro.
-			track.dataset.buildFailed = "";
+			// Hands the hero to the photo (`[data-build-failed]` in globals.css).
+			(
+				track.closest<HTMLElement>("[data-landing]") ?? track
+			).dataset.buildFailed = "";
+			stop?.();
+			stop = null;
 			captureError(error, { where: "landing-hero" });
 		};
 
@@ -102,8 +106,11 @@ function build(
 	};
 	const C = (hex: string) => new T.Color(hex);
 
+	// A phone: fewer pixels and a smaller shadow map, which is most of the
+	// cost on a mid-range Android, for a difference nobody sees at that size.
+	const small = Math.min(innerWidth, innerHeight) < 760;
 	const renderer = new T.WebGLRenderer({ antialias: true });
-	renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
+	renderer.setPixelRatio(Math.min(devicePixelRatio || 1, small ? 1.5 : 2));
 	renderer.shadowMap.enabled = true;
 	renderer.shadowMap.type = T.PCFShadowMap;
 	renderer.toneMapping = T.ACESFilmicToneMapping;
@@ -856,7 +863,7 @@ function build(
 	sun.target = target;
 	sun.position.set(-2.3, 7.5, 5.4);
 	sun.castShadow = true;
-	sun.shadow.mapSize.set(2048, 2048);
+	sun.shadow.mapSize.setScalar(small ? 1024 : 2048);
 	Object.assign(sun.shadow.camera, {
 		left: -6,
 		right: 6,
@@ -919,9 +926,11 @@ function build(
 		renderer.setSize(w, h, false);
 		camera.aspect = a;
 		// Pull back on narrow stages so the whole run stays in frame.
-		distance = a >= 1.35 ? 1 : Math.min(2.3, 1 + (1.35 - a) * 1.25);
-		// Shift the room right of centre on wide stages, clear of the copy.
+		distance = a >= 1.35 ? 1 : Math.min(2.6, 1 + (1.35 - a) * 1.6);
+		// Shift the room right of centre on wide stages, clear of the copy; on
+		// a portrait phone, down, clear of the copy at the top.
 		if (w > 900) camera.setViewOffset(w, h, -w * 0.13, 0, w, h);
+		else if (a < 0.85) camera.setViewOffset(w, h, 0, -h * 0.2, w, h);
 		else camera.clearViewOffset();
 		camera.updateProjectionMatrix();
 		width = w;
@@ -945,7 +954,32 @@ function build(
 		[0.5, 0.8],
 		[0.8, 0.915],
 	];
+	// The example kitchen's total: [progress at which a part lands, RM it
+	// adds]. Illustrative figures — the scene is not catalogue cabinets, and
+	// the card on the page says so. Each step eases in as its part arrives.
+	const PRICES: [number, number][] = [
+		[0.16, 460],
+		[0.21, 520],
+		[0.26, 410],
+		[0.31, 610],
+		[0.36, 450],
+		[0.415, 780],
+		[0.43, 320],
+		[0.47, 690],
+		[0.57, 980],
+		[0.6, 980],
+		[0.69, 1650],
+		[0.79, 1840],
+		[0.86, 540],
+		[0.9, 180],
+	];
+	const total = overlay.price?.querySelector<HTMLElement>("[data-price]");
+	const priceAt = (p: number) =>
+		PRICES.reduce((sum, [t, rm]) => sum + rm * eo(seg(p, t - 0.012, t)), 0);
 	const overlays = (p: number) => {
+		setOverlay(overlay.price, seg(p, 0.1, 0.12), 0);
+		if (total)
+			total.textContent = `RM ${Math.round(priceAt(p)).toLocaleString("en-MY")}`;
 		const intro = 1 - seg(p, 0.025, 0.085);
 		setOverlay(overlay.intro, intro, -28 * (1 - intro));
 		setOverlay(overlay.hint, 1 - seg(p, 0, 0.025), 0);

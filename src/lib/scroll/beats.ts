@@ -36,11 +36,10 @@ export function trackProgress(
 }
 
 /**
- * Where the landing hero's 3D build runs. Two gates, both refusals rather than
- * degradations: reduced motion gets a still, and a narrow viewport — the
- * mid-range Android phone in Klang Valley this app is built for — gets the
- * photo rather than a WebGL scene. One media query, so CSS (which hero is
- * shown) and the island (whether to download three) can never disagree.
+ * Where the landing hero's 3D build runs: anywhere motion is allowed, phones
+ * included, at the owner's call — the design has a phone layout for it, and
+ * the scene is light on a phone (see `HeroBuild`). Reduced motion gets the
+ * photo hero. One media query, so CSS (which hero is shown) and the island
+ * (whether to download three) can never disagree.
  */
-export const BUILD_QUERY =
-	"(min-width: 900px) and (prefers-reduced-motion: no-preference)";
+export const BUILD_QUERY = "(prefers-reduced-motion: no-preference)";

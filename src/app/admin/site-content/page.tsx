@@ -16,8 +16,8 @@ import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
  * The photos on the public homepage. No publish step — a dropped photo is
  * live immediately, so the write endpoint purges `/` on the way out.
  *
- * The hero slot is the photo hero, shown where the 3D build is not: on phones
- * and under reduced motion. The build itself is code, not content.
+ * The hero slot is the photo hero, shown where the 3D build is not: under
+ * reduced motion, or where WebGL fails. The build itself is code, not content.
  *
  * Room and finish slots come from the published catalogue rather than a
  * fixed list: the design mocks six finish slots with invented names, but
@@ -55,9 +55,9 @@ export default async function SiteContentPage() {
 						Homepage photos
 					</p>
 					<p className="mb-3 text-[12px] text-neutral-500">
-						The hero photo is what phones see in place of the 3D build: a
-						finished kitchen, wide. The tall photo sits beside the how-it-works
-						steps on larger screens.
+						The hero photo stands in for the 3D build for visitors who turn
+						animation off, or whose device cannot draw it: a finished kitchen,
+						wide. The tall photo goes with the how-it-works steps.
 					</p>
 					<div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
 						<div className="col-span-2 sm:col-span-3">
