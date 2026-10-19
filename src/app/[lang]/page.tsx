@@ -126,7 +126,7 @@ const eyebrow =
 /** One list item's place in its section's staggered arrival (`globals.css`). */
 const stagger = (i: number) => ({ "--i": i }) as React.CSSProperties;
 const primary =
-	"inline-flex min-h-12 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-7 font-semibold text-[14px] text-white transition-[background-color,transform] duration-300 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:bg-(--accent-active)";
+	"inline-flex min-h-12 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-7 font-semibold text-[14px] text-white transition-[background-color,translate,scale] duration-500 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:scale-[0.97] active:bg-(--accent-active)";
 const navLink =
 	"inline-flex min-h-9 items-center rounded-lg px-2.5 text-(--body) text-[13px] transition-colors hover:bg-(--oat) hover:text-(--ink)";
 const footerLink =
@@ -246,7 +246,7 @@ export default async function Home({
 						</div>
 						<Link
 							href={`/${lang}/planner`}
-							className="inline-flex min-h-9 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-4.5 font-semibold text-[13px] text-white transition-[background-color,transform] duration-300 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:bg-(--accent-active)"
+							className="inline-flex min-h-9 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-4.5 font-semibold text-[13px] text-white transition-[background-color,translate,scale] duration-500 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:scale-[0.97] active:bg-(--accent-active)"
 						>
 							{t.landing.nav.startPlanning}
 						</Link>
@@ -387,7 +387,7 @@ export default async function Home({
 									    is the planner. */}
 									<a
 										href="#how"
-										className="inline-flex min-h-12 items-center whitespace-nowrap rounded-[9px] border border-[#cdbfa8] bg-[rgba(251,248,244,.7)] px-5 font-semibold text-[14px] transition-[background-color,border-color,transform] duration-300 ease-spring hover:border-[#a8977f] hover:bg-(--paper) active:translate-y-px active:bg-(--oat)"
+										className="inline-flex min-h-12 items-center whitespace-nowrap rounded-[9px] border border-[#cdbfa8] bg-[rgba(251,248,244,.7)] px-5 font-semibold text-[14px] transition-[background-color,border-color,translate,scale] duration-500 ease-spring hover:border-[#a8977f] hover:bg-(--paper) active:translate-y-px active:scale-[0.97] active:bg-(--oat)"
 									>
 										{t.landing.hero.howItWorks}
 									</a>
