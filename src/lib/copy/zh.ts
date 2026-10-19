@@ -49,6 +49,8 @@ export const zh: Dictionary = {
 			step4: "每一扇门板都换上您选的板材",
 			finalTitle: "用同样的方式设计您的空间。",
 			finalSubtitle: "设定墙面长度，放入橱柜，边搭配边看价格更新。",
+			totalLabel: "示例厨房",
+			totalNote: "价格仅供参考",
 		},
 		materials: {
 			eyebrow: "材质",

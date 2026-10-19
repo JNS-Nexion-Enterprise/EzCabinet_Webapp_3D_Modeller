@@ -54,6 +54,8 @@ export const en = {
 			finalTitle: "Plan yours the same way.",
 			finalSubtitle:
 				"Set your wall lengths, drop in units and watch the price update as you build.",
+			totalLabel: "Example kitchen",
+			totalNote: "Illustrative prices",
 		},
 		materials: {
 			eyebrow: "The material",
