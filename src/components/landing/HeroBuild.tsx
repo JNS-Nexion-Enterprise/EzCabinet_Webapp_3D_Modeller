@@ -20,8 +20,9 @@ const BUILD_END = 0.88;
  * or before three arrives, the overlays' own inline styles are the hero: the
  * intro copy, readable, and nothing else.
  *
- * It runs on phones too, framed for portrait and drawn lighter there (a 1.5×
- * pixel ratio cap, a 1024² shadow map). Outside `BUILD_QUERY` — reduced
+ * It runs on phones too, with a camera that follows each part in close on a
+ * portrait screen, drawn lighter there (a 1.5× pixel ratio cap, a 1024²
+ * shadow map). Outside `BUILD_QUERY` — reduced
  * motion — the page shows the photo hero instead and this island never
  * downloads three. So does a device whose WebGL fails.
  *
@@ -904,7 +905,59 @@ function build(
 	const TB = new T.Vector3(2.5, 1.0, 1.55);
 	const aim = new T.Vector3();
 	let distance = 1;
+	// On a portrait phone the room is too small to watch whole, so the camera
+	// follows the build instead: in close on each part as it lands, back out
+	// for the finished kitchen. Each key is [progress, aim x, y, z, azimuth,
+	// elevation, distance at 390×844].
+	const PHONE_KEYS = [
+		[0, 2.4, 0.9, 1.9, 0.35, 0.5, 26],
+		[0.1, 1.2, 0.6, 0.6, 0.3, 0.42, 14],
+		[0.37, 3.6, 0.6, 0.6, 0.42, 0.42, 14],
+		[0.5, 2.4, 0.8, 0.6, 0.35, 0.35, 17],
+		[0.66, 2.4, 1.45, 0.6, 0.3, 0.25, 19],
+		[0.8, 2.4, 0.8, 1.9, 0.5, 0.38, 18],
+		[0.92, 2.4, 1.0, 1.5, 0.45, 0.28, 22],
+		[1, 2.4, 1.0, 1.4, 0.42, 0.24, 22],
+	];
+	// How far the room sits below centre on a phone, as a fraction of the
+	// stage's height: clear of the intro copy and the final card, which sit at
+	// the top, less so while only a caption is there.
+	const PHONE_SHIFT = [
+		[0, -0.2],
+		[0.12, -0.04],
+		[0.92, -0.04],
+		[0.97, -0.17],
+		[1, -0.17],
+	];
+	const keyed = (keys: number[][], p: number) => {
+		let i = 0;
+		while (i < keys.length - 2 && p > keys[i + 1][0]) i++;
+		const a = keys[i];
+		const b = keys[i + 1];
+		const e = eio(seg(p, a[0], b[0]));
+		return a.map((v, j) => v + (b[j] - v) * e);
+	};
+	let phone = false;
+	let shift: number | null = null;
 	const placeCamera = (p: number) => {
+		if (phone) {
+			const [, x, y, z, az, el, r0] = keyed(PHONE_KEYS, p);
+			// A wider phone needs less distance; never under three quarters.
+			const r = r0 * Math.max(0.75, 0.462 / (width / height));
+			aim.set(x, y, z);
+			camera.position.set(
+				x + r * Math.cos(el) * Math.sin(az),
+				y + r * Math.sin(el),
+				z + r * Math.cos(el) * Math.cos(az),
+			);
+			camera.lookAt(aim);
+			const oy = keyed(PHONE_SHIFT, p)[1] * height;
+			if (shift === null || Math.abs(oy - shift) > 0.5) {
+				camera.setViewOffset(width, height, 0, oy, width, height);
+				shift = oy;
+			}
+			return;
+		}
 		const e = eio(clamp01(p / 0.96));
 		const az = CA.az + (CB.az - CA.az) * e;
 		const el = CA.el + (CB.el - CA.el) * e;
@@ -927,11 +980,12 @@ function build(
 		camera.aspect = a;
 		// Pull back on narrow stages so the whole run stays in frame.
 		distance = a >= 1.35 ? 1 : Math.min(2.6, 1 + (1.35 - a) * 1.6);
-		// Shift the room right of centre on wide stages, clear of the copy; on
-		// a portrait phone, down, clear of the copy at the top.
+		// Shift the room right of centre on wide stages, clear of the copy. A
+		// portrait phone takes its own path and shift in `placeCamera`.
 		if (w > 900) camera.setViewOffset(w, h, -w * 0.13, 0, w, h);
-		else if (a < 0.85) camera.setViewOffset(w, h, 0, -h * 0.2, w, h);
 		else camera.clearViewOffset();
+		phone = w <= 900 && a < 0.85;
+		shift = null;
 		camera.updateProjectionMatrix();
 		width = w;
 		height = h;
