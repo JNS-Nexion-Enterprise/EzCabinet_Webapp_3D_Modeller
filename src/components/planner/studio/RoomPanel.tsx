@@ -317,7 +317,9 @@ export function RoomPanel({
 	onPaintAllAction: (colour: string) => void;
 	onTargetWallAction: (wall: number) => void;
 	onCeilingAction: (mm: number) => void;
-	onOpenDefaultsAction: () => void;
+	/** The "more settings" link. Left out where the defaults already show
+	 * right below the room (the phone's Room tab). */
+	onOpenDefaultsAction?: () => void;
 	/** On to the cabinet menu. Passed only while the room is still empty —
 	 * the first visit, when setting the room up is the step before it. */
 	onNextAction?: () => void;
@@ -467,20 +469,24 @@ export function RoomPanel({
 					</p>
 				)}
 
-				<button
-					type="button"
-					onClick={onOpenDefaultsAction}
-					className="min-h-9 self-start rounded-lg border border-neutral-300 bg-white px-3 py-2 text-[12px] text-neutral-700 hover:bg-[#faf9f7] hover:text-neutral-900"
-				>
-					{t.planner.room.moreSettings}
-				</button>
+				{onOpenDefaultsAction && (
+					<button
+						type="button"
+						onClick={onOpenDefaultsAction}
+						className="min-h-9 self-start rounded-lg border border-neutral-300 bg-white px-3 py-2 text-[12px] text-neutral-700 hover:bg-[#faf9f7] hover:text-neutral-900"
+					>
+						{t.planner.room.moreSettings}
+					</button>
+				)}
 			</div>
 
 			{onNextAction && (
+				// On a phone the page scrolls under a fixed 77px bar (`phoneBar`),
+				// so the button sticks above it rather than behind it.
 				<button
 					type="button"
 					onClick={onNextAction}
-					className="sticky bottom-0 min-h-11 rounded-[10px] bg-[#1f5138] px-3 py-2.5 font-semibold text-[14px] text-white shadow-[0_-8px_12px_white,0_16px_0_white] hover:bg-[#17402c]"
+					className="sticky bottom-0 min-h-11 rounded-[10px] bg-[#1f5138] px-3 py-2.5 font-semibold text-[14px] text-white shadow-[0_-8px_12px_white,0_16px_0_white] hover:bg-[#17402c] max-[759px]:bottom-[calc(77px+env(safe-area-inset-bottom))]"
 				>
 					{t.planner.room.next}
 				</button>

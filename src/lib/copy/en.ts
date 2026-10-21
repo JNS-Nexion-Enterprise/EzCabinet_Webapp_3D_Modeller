@@ -153,6 +153,8 @@ export const en = {
 				run: "Run",
 			},
 			doorsAria: "Doors: {mode}. Tap to change.",
+			/** `price.cta` cut to fit beside the total in the bar. */
+			quoteCta: "Get a quote",
 		},
 		tools: {
 			ariaLabel: "Tools",

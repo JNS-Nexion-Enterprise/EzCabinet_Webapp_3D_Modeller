@@ -143,6 +143,7 @@ export const zh: Dictionary = {
 				run: "布局",
 			},
 			doorsAria: "门板：{mode}。点击切换。",
+			quoteCta: "索取报价",
 		},
 		tools: {
 			ariaLabel: "工具",

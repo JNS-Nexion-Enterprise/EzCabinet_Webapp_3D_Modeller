@@ -149,6 +149,7 @@ export const ms: Dictionary = {
 				run: "Susunan",
 			},
 			doorsAria: "Pintu: {mode}. Ketik untuk tukar.",
+			quoteCta: "Dapatkan sebut harga",
 		},
 		tools: {
 			ariaLabel: "Alat",
