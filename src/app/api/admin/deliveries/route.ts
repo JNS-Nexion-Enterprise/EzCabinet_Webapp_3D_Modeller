@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { pickupPin, WORKSHOP_ADDRESS } from "@/lib/logistics/carriers";
 import { pinFor } from "@/lib/logistics/coords";
 import {
@@ -109,6 +110,7 @@ export const POST = withAuth("logistics:book", async (request) => {
 	// starts inside this short transaction can still get through; that
 	// window is a few milliseconds and is accepted.
 	const orderId = rest.orderId;
+	const { orderPrefix } = await getCompany();
 	const delivery = await prisma.$transaction(async (tx) => {
 		if (orderId !== null) {
 			const { count } = await tx.order.updateMany({
@@ -120,6 +122,7 @@ export const POST = withAuth("logistics:book", async (request) => {
 		return tx.delivery.create({
 			data: {
 				...rest,
+				refPrefix: orderPrefix,
 				items,
 				siteLat: site.lat,
 				siteLng: site.lng,

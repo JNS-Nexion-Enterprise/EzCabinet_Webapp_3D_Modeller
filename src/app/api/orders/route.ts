@@ -6,6 +6,7 @@ import { authEnabled } from "@/lib/auth/enabled";
 import { currentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/catalogue/db";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
+import { getCompany } from "@/lib/company/store";
 import { LOCALES } from "@/lib/copy/locales";
 import { toE164 } from "@/lib/logistics/phone";
 import { customerSchema } from "@/lib/orders/customerSchema";
@@ -111,9 +112,13 @@ export async function POST(request: Request) {
 	}
 
 	const price = priceOrder(layout, finishId, published.data);
+	const { orderPrefix } = await getCompany();
 	const { order, notificationIds } = await prisma.$transaction(async (tx) => {
 		const order = await tx.order.create({
 			data: {
+				// Fixed now: the company can change its prefix later, this order
+				// keeps the one it was placed under.
+				refPrefix: orderPrefix,
 				customerName: customer.name,
 				customerPhone: phone,
 				customerEmail: customer.email,

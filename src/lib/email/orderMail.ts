@@ -30,6 +30,7 @@ export async function sendOrderEmail(
 	const order = await prisma.order.findUnique({
 		where: { id: row.orderId },
 		select: {
+			refPrefix: true,
 			number: true,
 			createdAt: true,
 			publicToken: true,

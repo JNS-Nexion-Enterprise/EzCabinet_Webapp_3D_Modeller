@@ -17,6 +17,7 @@ export type OrderMailInput = {
 	/** Site origin, no trailing slash. */
 	base: string;
 	order: {
+		refPrefix: string | null;
 		number: number;
 		createdAt: Date;
 		publicToken: string;
@@ -70,7 +71,7 @@ export function orderEmail(input: OrderMailInput): {
 } {
 	const { order, locale } = input;
 	const copy = EMAIL_COPY[locale];
-	const ref = orderRef(order.number, order.createdAt);
+	const ref = orderRef(order);
 	const total = money(order.totalRm);
 	const orderUrl = `${input.base}/${locale}/order/${order.publicToken}`;
 	// A split consumes the delivery row; the order page still shows where it is.

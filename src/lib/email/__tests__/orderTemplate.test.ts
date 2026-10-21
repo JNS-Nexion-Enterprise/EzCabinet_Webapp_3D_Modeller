@@ -3,6 +3,7 @@ import type { NotificationKind } from "@/generated/prisma/enums";
 import { type OrderMailInput, orderEmail } from "../templates/order";
 
 const order: OrderMailInput["order"] = {
+	refPrefix: "IC",
 	number: 14,
 	createdAt: new Date("2026-08-26T04:00:00Z"),
 	publicToken: "tok_order",

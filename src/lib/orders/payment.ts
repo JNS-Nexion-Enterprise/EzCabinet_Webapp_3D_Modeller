@@ -32,6 +32,7 @@ export type PaymentInstructions = {
 };
 
 export function paymentInstructions(order: {
+	refPrefix: string | null;
 	number: number;
 	createdAt: Date | string;
 	totalRm: number;
@@ -39,7 +40,7 @@ export function paymentInstructions(order: {
 	return {
 		kind: "bank-transfer",
 		...BANK_TRANSFER,
-		reference: orderRef(order.number, order.createdAt),
+		reference: orderRef(order),
 		amountRm: order.totalRm,
 	};
 }

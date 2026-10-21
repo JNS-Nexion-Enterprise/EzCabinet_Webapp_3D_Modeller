@@ -9,7 +9,7 @@ import { htmlLang, isLocale, type Locale } from "@/lib/copy/locales";
 import { LABEL as CARRIER_LABEL } from "@/lib/logistics/carriers";
 import {
 	customerEvents,
-	orderRef,
+	deliveryRef,
 	readItems,
 	shipmentBooked,
 	trackingTone,
@@ -89,6 +89,7 @@ export default async function TrackPage({
 			// to be shown, and a `select` is the only place that stays true when
 			// the model grows a column.
 			select: {
+				refPrefix: true,
 				number: true,
 				siteAddress: true,
 				scheduledAt: true,
@@ -205,10 +206,10 @@ export default async function TrackPage({
 								{t.track.orderId}
 							</span>
 							<span className="font-semibold text-[13px] tracking-[.02em]">
-								{orderRef(delivery.number)}
+								{deliveryRef(delivery)}
 							</span>
 							<CopyOrderId
-								value={orderRef(delivery.number)}
+								value={deliveryRef(delivery)}
 								label={t.track.copyOrderId}
 								copiedLabel={t.track.copied}
 							/>
@@ -439,7 +440,7 @@ export default async function TrackPage({
 						</Link>
 						<WhatsAppHelp
 							label={t.common.whatsappHelp}
-							message={orderRef(delivery.number)}
+							message={deliveryRef(delivery)}
 						/>
 					</div>
 				</div>

@@ -77,6 +77,7 @@ export default async function OrderPage({
 				paidAt: true,
 				refundedAt: true,
 				userId: true,
+				refPrefix: true,
 				number: true,
 				createdAt: true,
 				status: true,
@@ -99,7 +100,7 @@ export default async function OrderPage({
 	if (order === null || !canViewOrder(viewer, order)) notFound();
 
 	const o = t.order;
-	const ref = orderRef(order.number, order.createdAt);
+	const ref = orderRef(order);
 	const lines = summaryLines(order.breakdown);
 	const extras = summaryExtras(order.breakdown);
 	const delivery = order.deliveries[0] ?? null;

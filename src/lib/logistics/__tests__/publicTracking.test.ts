@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
 	customerEvents,
-	orderRef,
+	deliveryRef,
 	readItems,
 	shipmentBooked,
 	trackingTone,
@@ -25,10 +25,10 @@ describe("trackingTone", () => {
 	});
 });
 
-describe("orderRef", () => {
-	it("pads the job number so every order reads the same width", () => {
-		expect(orderRef(41)).toBe("IC-00041");
-		expect(orderRef(120_000)).toBe("IC-120000");
+describe("deliveryRef", () => {
+	it("pads the job number under the prefix it was made with", () => {
+		expect(deliveryRef({ refPrefix: "PO", number: 41 })).toBe("PO-00041");
+		expect(deliveryRef({ refPrefix: null, number: 120_000 })).toBe("IC-120000");
 	});
 });
 

@@ -51,6 +51,7 @@ export default async function OrdersPage({
 			orderBy: { createdAt: "desc" },
 			select: {
 				publicToken: true,
+				refPrefix: true,
 				number: true,
 				createdAt: true,
 				status: true,
@@ -125,9 +126,7 @@ export default async function OrdersPage({
 								<div className="min-w-0">
 									<h2 className="font-semibold text-[15px]">{title}</h2>
 									<p className="mt-0.5 text-[#5c574e] text-[12px]">
-										<span className="font-mono">
-											{orderRef(order.number, order.createdAt)}
-										</span>
+										<span className="font-mono">{orderRef(order)}</span>
 										{" · "}
 										{fill(s.orderedOn, {
 											date: order.createdAt.toLocaleDateString(lang, {

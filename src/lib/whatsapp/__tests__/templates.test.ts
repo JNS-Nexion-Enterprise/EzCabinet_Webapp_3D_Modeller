@@ -12,6 +12,7 @@ import {
 
 const order: NotifyOrder = {
 	id: "ord1",
+	refPrefix: "IC",
 	number: 14,
 	createdAt: new Date("2026-08-26T04:00:00Z"),
 	publicToken: "tok_order",

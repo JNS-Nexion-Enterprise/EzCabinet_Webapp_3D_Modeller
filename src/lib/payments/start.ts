@@ -36,6 +36,7 @@ export async function startPayment(
 		where: { publicToken: token },
 		select: {
 			id: true,
+			refPrefix: true,
 			number: true,
 			createdAt: true,
 			status: true,
@@ -58,7 +59,7 @@ export async function startPayment(
 		start = await gateway.start(
 			{
 				...order,
-				ref: orderRef(order.number, order.createdAt),
+				ref: orderRef(order),
 				previousRef:
 					order.paymentProvider === gateway.id ? order.paymentRef : null,
 			},

@@ -21,6 +21,12 @@ vi.mock("@/lib/catalogue/db", () => {
 		},
 	};
 });
+vi.mock("@/lib/company/store", async () => {
+	const { testCompany } = await import(
+		"@/lib/company/__tests__/company.fixture"
+	);
+	return { getCompany: async () => testCompany({ orderPrefix: "PO" }) };
+});
 vi.mock("@/lib/logistics/geocode", () => ({
 	resolveCoordinates,
 	refreshGeocoderHealth: vi.fn(),
@@ -62,6 +68,11 @@ beforeEach(() => {
 });
 
 describe("POST /api/admin/deliveries", () => {
+	it("stamps the delivery with the prefix live when it is made", async () => {
+		await call();
+		expect(create.mock.calls[0][0].data.refPrefix).toBe("PO");
+	});
+
 	it("creates a paid order's delivery, re-checking the order as it writes", async () => {
 		const response = await call();
 		expect(response.status).toBe(201);
