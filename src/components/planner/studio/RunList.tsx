@@ -49,7 +49,7 @@ export function RunList({
 					type="button"
 					onClick={onCloseGapsAction}
 					disabled={gapCount === 0}
-					className="text-[12px] text-neutral-500 hover:text-neutral-900 disabled:opacity-40"
+					className="text-[12px] text-neutral-500 hover:text-neutral-900 disabled:opacity-40 max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center"
 				>
 					{gapCount > 0
 						? fill(t.planner.run.closeGapsCount, { n: gapCount })
@@ -70,14 +70,17 @@ export function RunList({
 								selectedIds.has(position.placed.id) ? "bg-[#f2f7f4]" : ""
 							}`}
 						>
-							<input
-								type="checkbox"
-								checked={selectedIds.has(position.placed.id)}
-								aria-label={fill(t.planner.run.selectAria, {
-									name: position.family.label,
-								})}
-								onChange={() => onSelectAction(position.placed.id, true)}
-							/>
+							<label className="flex items-center justify-center max-[760px]:min-h-12 max-[760px]:min-w-11">
+								<input
+									type="checkbox"
+									className="max-[760px]:size-5"
+									checked={selectedIds.has(position.placed.id)}
+									aria-label={fill(t.planner.run.selectAria, {
+										name: position.family.label,
+									})}
+									onChange={() => onSelectAction(position.placed.id, true)}
+								/>
+							</label>
 							<button
 								type="button"
 								onClick={(e) =>
@@ -114,7 +117,7 @@ export function RunList({
 			<button
 				type="button"
 				onClick={onResetAction}
-				className="mt-3 text-[12px] text-neutral-500 underline hover:text-neutral-900"
+				className="mt-3 text-[12px] text-neutral-500 underline hover:text-neutral-900 max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center"
 			>
 				{t.planner.run.reset}
 			</button>

@@ -769,7 +769,7 @@ export function StudioScreen({
 				type="button"
 				onClick={() => setLayoutAction((prev) => flushWallToTallTops(prev))}
 				disabled={!canFlush}
-				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
+				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center"
 			>
 				{canFlush
 					? t.planner.room.flushWallUnitTops
@@ -780,7 +780,7 @@ export function StudioScreen({
 				type="button"
 				onClick={() => setLayoutAction((prev) => closeGaps(prev))}
 				disabled={gapCount === 0}
-				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
+				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center"
 			>
 				{gapCount > 0
 					? fill(t.planner.run.closeGapsCount, { n: gapCount })
@@ -1100,7 +1100,7 @@ export function StudioScreen({
 			<p className="mb-2 font-semibold text-[11px] text-neutral-600 uppercase tracking-wide">
 				{t.planner.finish.heading}
 			</p>
-			<div className="flex gap-1.5">
+			<div className="flex gap-1.5 max-[760px]:flex-wrap max-[760px]:gap-3 max-[760px]:p-1">
 				{catalogue.finishes.map((option) => (
 					<button
 						key={option.id}

@@ -45,7 +45,7 @@ export function DesignRecap({
 			<button
 				type="button"
 				onClick={onAddAction}
-				className="mt-4 min-h-10 w-full rounded-[9px] border border-neutral-900 bg-white px-3.5 py-2.5 font-semibold text-[13px] hover:bg-[#f4f3f1]"
+				className="mt-4 min-h-10 max-[760px]:min-h-11 w-full rounded-[9px] border border-neutral-900 bg-white px-3.5 py-2.5 font-semibold text-[13px] hover:bg-[#f4f3f1]"
 			>
 				{t.planner.design.addCabinet}
 			</button>

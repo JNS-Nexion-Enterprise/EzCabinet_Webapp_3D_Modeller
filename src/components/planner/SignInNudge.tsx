@@ -70,7 +70,7 @@ export function SignInNudge({ cabinetCount }: { cabinetCount: number }) {
 							`/${locale}/sign-in?next=${encodeURIComponent(here)}`,
 						);
 					}}
-					className="whitespace-nowrap rounded-[8px] bg-neutral-900 px-3 py-1.5 font-medium text-[12px] text-white"
+					className="whitespace-nowrap rounded-[8px] bg-neutral-900 px-3 py-1.5 font-medium text-[12px] text-white max-[760px]:min-h-11 max-[760px]:px-4"
 				>
 					{t.signIn.signInOrCreate}
 				</button>
@@ -83,7 +83,7 @@ export function SignInNudge({ cabinetCount }: { cabinetCount: number }) {
 							localStorage.setItem(DISMISSED, "1");
 						} catch {}
 					}}
-					className="whitespace-nowrap text-[12px] text-neutral-500 hover:text-neutral-900"
+					className="whitespace-nowrap text-[12px] text-neutral-500 hover:text-neutral-900 max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center max-[760px]:px-2"
 				>
 					{t.signIn.nudgeDismiss}
 				</button>

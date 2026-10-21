@@ -82,7 +82,7 @@ function WallMap({
 		<svg
 			viewBox={`${minX - margin} ${minZ - margin} ${width + margin * 2} ${height + margin * 2}`}
 			preserveAspectRatio="xMidYMid meet"
-			className="h-[140px] w-full"
+			className="h-[140px] w-full max-[760px]:h-[220px]"
 		>
 			<polygon
 				points={outline.map((p) => `${p.xMm},${p.zMm}`).join(" ")}
@@ -120,6 +120,14 @@ function WallMap({
 						}}
 						style={{ cursor: "pointer" }}
 					>
+						{/* Phone only: a transparent disc that lifts the 44 px tap target. */}
+						<circle
+							className="hidden max-[760px]:block"
+							cx={xMm}
+							cy={zMm}
+							r={insetMm * 1.8}
+							fill="transparent"
+						/>
 						<circle
 							cx={xMm}
 							cy={zMm}
@@ -191,7 +199,7 @@ function PaintDot({
 			aria-label={label}
 			title={label}
 			onClick={onPressAction}
-			className={`${thumb} h-5 w-5 shrink-0 rounded-full border border-neutral-300`}
+			className={`${thumb} h-5 w-5 shrink-0 rounded-full border border-neutral-300 max-[760px]:after:-inset-[13px]`}
 			style={
 				hex
 					? { backgroundColor: hex }
@@ -222,13 +230,13 @@ function PaintStrip({
 	const ring = (on: boolean) =>
 		on ? "0 0 0 2px #171717, 0 0 0 3px #fff" : "inset 0 0 0 1px #d4d4d4";
 	return (
-		<div className="flex flex-wrap items-center gap-1">
+		<div className="flex flex-wrap items-center gap-1 max-[760px]:gap-3 max-[760px]:p-1">
 			<button
 				type="button"
 				aria-pressed={current === null}
 				title={t.planner.room.paintNone}
 				onClick={() => onPickAction(null)}
-				className={`${thumb} h-[26px] w-[26px] rounded-md bg-white`}
+				className={`${thumb} h-[26px] w-[26px] max-[760px]:size-11 max-[760px]:rounded-[10px] rounded-md bg-white`}
 				style={{
 					boxShadow: ring(current === null),
 					backgroundImage:
@@ -242,7 +250,7 @@ function PaintStrip({
 					aria-pressed={colour.id === current}
 					title={colour.label}
 					onClick={() => onPickAction(colour.id)}
-					className={`${thumb} h-[26px] w-[26px] rounded-md`}
+					className={`${thumb} h-[26px] w-[26px] max-[760px]:size-11 max-[760px]:rounded-[10px] rounded-md`}
 					style={{
 						backgroundColor: colour.hex,
 						boxShadow: ring(colour.id === current),
@@ -255,7 +263,7 @@ function PaintStrip({
 			 * pixel. */}
 			<label
 				title={t.planner.room.paintCustom}
-				className="relative h-[26px] w-[26px] cursor-pointer overflow-hidden rounded-md"
+				className="relative h-[26px] w-[26px] max-[760px]:size-11 max-[760px]:rounded-[10px] cursor-pointer overflow-hidden rounded-md"
 				style={{
 					backgroundColor: custom ?? "#ffffff",
 					boxShadow: ring(custom !== null),
@@ -428,7 +436,7 @@ export function RoomPanel({
 								<button
 									type="button"
 									onClick={() => onPaintAllAction(targetPaint)}
-									className="text-[11px] text-[#1f5138] leading-4 underline underline-offset-2 hover:text-[#163d2a]"
+									className="text-[11px] text-[#1f5138] leading-4 underline underline-offset-2 hover:text-[#163d2a] max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center max-[760px]:text-[13px]"
 								>
 									{t.planner.room.paintAll}
 								</button>
