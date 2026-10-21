@@ -1,8 +1,7 @@
 import "server-only";
 import { z } from "zod";
+import { getCompany } from "@/lib/company/store";
 import { secretsMatch } from "@/lib/secretsMatch";
-import { tenant } from "@/lib/tenant";
-import { pickupPlace, WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "../carriers";
 import { geocoderFault } from "../geocode";
 import { carrierFetch } from "../http";
 import { longestEdgeMm } from "../measure";
@@ -230,13 +229,11 @@ function endpoint(
  * compared partners, picked a courier, and clicked book. Refuse here instead,
  * before the call goes out.
  *
- * Used for both ends. `pickupPlace` supplies `city` together with `postcode`
- * and `state` whenever it returns the workshop's own place, so a workshop
- * pickup never reaches this function's failure path — the only address this
- * can actually refuse is a real, non-workshop pickup whose city Google's
- * `readPlace` dropped. There is no workshop fallback for that case any more
- * than there is one for the receiver: guessing a city on a real address would
- * label a courier's collection point with somewhere it is not.
+ * Used for both ends. The job carries its own pickup place, stored with the
+ * address, so the only thing this can refuse is an address whose city Google's
+ * `readPlace` dropped. There is no fallback for that case, for the pickup or
+ * the receiver: guessing a city on a real address would label a courier's
+ * collection point with somewhere it is not.
  */
 function cityOf(city: string | null, which: string): string {
 	if (city === null || city.trim() === "") {
@@ -248,15 +245,13 @@ function cityOf(city: string | null, which: string): string {
 	return city;
 }
 
-/** The workshop's own place when the job leaves from the workshop. */
+/** The pickup place stored on the job. */
 function senderPlace(job: DeliveryJob) {
-	return (
-		pickupPlace(job.pickupAddress, {
-			postcode: job.pickupPostcode,
-			city: job.pickupCity,
-			state: job.pickupState,
-		}) ?? { postcode: null, city: null, state: null }
-	);
+	return {
+		postcode: job.pickupPostcode,
+		city: job.pickupCity,
+		state: job.pickupState,
+	};
 }
 
 export function quotationBody(job: DeliveryJob) {
@@ -342,15 +337,12 @@ export function submitBody(job: DeliveryJob, serviceId: string) {
 					value: 1,
 				})),
 				sender: {
-					name: tenant.brand,
-					company: tenant.legalName,
+					name: job.sender.brand,
+					company: job.sender.legalName,
 					// The workshop's own number, emphatically not the customer's:
 					// this is who a courier rings from the loading bay.
-					...phoneParts(WORKSHOP_PHONE, "workshop's"),
-					address_1:
-						job.pickupAddress.trim() === WORKSHOP_ADDRESS
-							? WORKSHOP_ADDRESS
-							: job.pickupAddress,
+					...phoneParts(job.sender.phone, "workshop's"),
+					address_1: job.pickupAddress,
 					postcode: senderEnd.postcode,
 					city: cityOf(sender.city, "pickup"),
 					subdivision_code: senderEnd.subdivision_code,
@@ -767,7 +759,7 @@ export const easyparcelAdapter: CarrierAdapter = {
 				cancel_list: [
 					{
 						shipment_number: carrierOrderId,
-						remark: `Cancelled by ${tenant.brand}`,
+						remark: `Cancelled by ${(await getCompany()).brand}`,
 					},
 				],
 			}),

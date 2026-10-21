@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { CARRIERS } from "@/lib/logistics/carriers";
 import { refreshGeocoderHealth } from "@/lib/logistics/geocode";
 import { findAdapter } from "@/lib/logistics/registry";
@@ -43,7 +44,7 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 		// probe every five minutes to have it be true.
 		await refreshGeocoderHealth();
 
-		const job = toJob(delivery);
+		const job = toJob(delivery, await getCompany());
 		const adapters = CARRIERS.map((carrier) => ({
 			id: carrier.id,
 			adapter: findAdapter(carrier.id),

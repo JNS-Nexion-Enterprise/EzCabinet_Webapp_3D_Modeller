@@ -1,12 +1,14 @@
 import "server-only";
 import type { Delivery } from "@/generated/prisma/client";
 import { prisma } from "@/lib/catalogue/db";
+import type { CompanyDetails } from "@/lib/company/details";
 import { enqueue, flushSoon } from "@/lib/whatsapp/outbox";
 import {
 	deliveryKindFor,
 	draftsFor,
 	NOTIFY_ORDER_SELECT,
 } from "@/lib/whatsapp/templates";
+import { deliveryRef } from "./publicTracking";
 import { isForwardTransition } from "./status";
 import type {
 	DeliveryItem,
@@ -36,10 +38,17 @@ export function readItems(value: unknown): DeliveryItem[] {
 }
 
 /** The narrow view an adapter is handed. */
-export function toJob(row: Delivery): DeliveryJob {
+export function toJob(row: Delivery, company: CompanyDetails): DeliveryJob {
 	return {
 		id: row.id,
 		number: row.number,
+		ref: deliveryRef(row),
+		sender: {
+			brand: company.brand,
+			legalName: company.legalName,
+			phone: company.phone,
+			closeTime: company.closeTime,
+		},
 		customerName: row.customerName,
 		customerPhone: row.customerPhone,
 		siteAddress: row.siteAddress,

@@ -9,6 +9,7 @@ import {
 	consignmentBody,
 	GdexNotDeliverable,
 	gdexAdapter,
+	gdexSenderPostcode,
 	pickupConfirmation,
 	pickupDays,
 	pickupInfo,
@@ -55,6 +56,13 @@ const carton: DeliveryItem = {
 const job = (over: Partial<DeliveryJob> = {}): DeliveryJob => ({
 	id: "dlv_1",
 	number: 7,
+	ref: "IC-00007",
+	sender: {
+		brand: "EzCabinet",
+		legalName: "EzCabinet Sdn Bhd",
+		phone: "03-1234 5678",
+		closeTime: "18:00",
+	},
 	customerName: "Chan Kin Kong",
 	customerPhone: "012-345 6789",
 	siteAddress: "No. 45, Persiaran Mahsuri 1/3, 11950 Bayan Baru, Pulau Pinang",
@@ -219,7 +227,10 @@ describe("consignmentBody", () => {
 		expect(body.Consignments).toHaveLength(1);
 
 		const [consignment] = body.Consignments;
-		expect(consignment.OrderId).toBe("ICB-7");
+		expect(consignment.OrderId).toBe("IC-00007");
+		expect(
+			consignmentBody(job({ ref: "PO-00007" }), sender).Consignments[0].OrderId,
+		).toBe("PO-00007");
 		expect(consignment.Mobile).toBe("60123456789");
 		expect(consignment.Postcode).toBe("11950");
 		expect(consignment.Country).toBe("MYS");
@@ -710,6 +721,33 @@ describe("the pickup window", () => {
 		const far = job({ scheduledAt: new Date("2026-09-30T02:00:00.000Z") });
 		expect(() => rateBody(far, "46050")).toThrow(/5 days/);
 		expect(() => pickupInfo(far)).toThrow(/5 days/);
+	});
+});
+
+describe("gdexSenderPostcode", () => {
+	beforeEach(() => {
+		vi.stubEnv("GDEX_USER_TOKEN", "utok_test_abc");
+		vi.stubEnv("GDEX_PRIMARY_API_KEY", "sub_test_xyz");
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.unstubAllEnvs();
+	});
+
+	it("is the profile's postcode", async () => {
+		stubResponses(userDetailsResponse);
+		expect(await gdexSenderPostcode()).toBe("46050");
+	});
+
+	it("is null when GDEX does not answer", async () => {
+		vi.stubGlobal(
+			"fetch",
+			vi.fn(async () => {
+				throw new Error("network down");
+			}),
+		);
+		expect(await gdexSenderPostcode()).toBeNull();
 	});
 });
 

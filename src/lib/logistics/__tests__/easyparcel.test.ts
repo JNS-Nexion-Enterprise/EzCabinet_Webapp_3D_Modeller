@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
 import {
 	cheapest,
 	collectionDate,
@@ -10,8 +11,12 @@ import {
 	quotationBody,
 	submitBody,
 } from "../adapters/easyparcel";
-import { WORKSHOP_ADDRESS } from "../carriers";
 import type { DeliveryItem, DeliveryJob } from "../types";
+
+vi.mock("@/lib/company/store", () => ({
+	getCompany: vi.fn(async () => testCompany({ brand: "Kabinet Baru" })),
+}));
+
 import { CarrierNotConfigured } from "../types";
 import {
 	cancelRefusal,
@@ -37,11 +42,18 @@ const door: DeliveryItem = {
 const job = (over: Partial<DeliveryJob> = {}): DeliveryJob => ({
 	id: "cl_abc",
 	number: 41,
+	ref: "IC-00007",
+	sender: {
+		brand: "EzCabinet",
+		legalName: "EzCabinet Sdn Bhd",
+		phone: "03-1234 5678",
+		closeTime: "18:00",
+	},
 	customerName: "Siti",
 	customerPhone: "012-345 6789",
 	siteAddress: "Jalan PJU 5/20, Kota Damansara",
 	addressNotes: "Gate code 1234",
-	pickupAddress: WORKSHOP_ADDRESS,
+	pickupAddress: "Lot 1, Jalan Kilang, 43800 Dengkil, Selangor",
 	siteLat: 3.1509,
 	siteLng: 101.5931,
 	pickupLat: 2.9848868,
@@ -49,9 +61,9 @@ const job = (over: Partial<DeliveryJob> = {}): DeliveryJob => ({
 	sitePostcode: "47810",
 	siteCity: "Petaling Jaya",
 	siteState: "MY-10",
-	pickupPostcode: null,
-	pickupCity: null,
-	pickupState: null,
+	pickupPostcode: "43800",
+	pickupCity: "Dengkil",
+	pickupState: "MY-10",
 	items: [door],
 	totalWeightKg: 7,
 	totalVolumeM3: 0.012,
@@ -143,7 +155,7 @@ describe("quotationBody", () => {
 			subdivision_code: "MY-10",
 			country: "MY",
 		});
-		// The pickup row stored nothing, so the workshop's own place is used.
+		// The pickup place is the one stored on the job.
 		expect(body.shipment[0].sender.subdivision_code).toBe("MY-10");
 		expect(body.shipment[0].sender.postcode).toBe("43800");
 	});
@@ -154,9 +166,16 @@ describe("quotationBody", () => {
 		).toThrow(EasyParcelNotDeliverable);
 	});
 
-	it("refuses a pickup that is neither the workshop nor placed", () => {
+	it("refuses a pickup that was never placed, even at the old workshop string", () => {
+		// There is no workshop fallback any more: the job carries its own place.
 		expect(() =>
-			quotationBody(job({ pickupAddress: "Somewhere else entirely" })),
+			quotationBody(
+				job({
+					pickupAddress: "EzCabinet Sdn Bhd, Klang Valley, Selangor",
+					pickupPostcode: null,
+					pickupState: null,
+				}),
+			),
 		).toThrow(EasyParcelNotDeliverable);
 	});
 });
@@ -413,10 +432,27 @@ describe("submitBody", () => {
 		);
 	});
 
-	it("refuses a non-workshop pickup with no city, rather than guessing the workshop's", () => {
+	it("takes the sender's names, phone and address from the job", () => {
+		const s = submitBody(
+			job({
+				sender: {
+					brand: "Kabinet Baru",
+					legalName: "Kabinet Baru Sdn Bhd",
+					phone: "03-5555 1234",
+					closeTime: "18:00",
+				},
+			}),
+			"EP-CS096",
+		).shipment[0].sender;
+		expect(s.name).toBe("Kabinet Baru");
+		expect(s.company).toBe("Kabinet Baru Sdn Bhd");
+		expect(s.phone_number).toBe("355551234");
+		expect(s.address_1).toBe("Lot 1, Jalan Kilang, 43800 Dengkil, Selangor");
+	});
+
+	it("refuses a pickup with no city, rather than guessing one", () => {
 		// A real collection address whose city Google's geocode dropped must not
-		// be sent to EasyParcel labelled "Dengkil" — that is the workshop's town,
-		// not this pickup's.
+		// be sent to EasyParcel labelled with somewhere it is not.
 		expect(() =>
 			submitBody(
 				job({
@@ -578,7 +614,7 @@ describe("easyparcelAdapter.cancel", () => {
 		const sent = JSON.parse(init.body as string);
 		expect(sent.cancel_list[0].shipment_number).toBe("ES-2602-VC4KV");
 		// `remark` is required by their API, not optional as it reads.
-		expect(sent.cancel_list[0].remark).toBeTruthy();
+		expect(sent.cancel_list[0].remark).toBe("Cancelled by Kabinet Baru");
 	});
 
 	it("rejects when EasyParcel refuses to cancel an already-collected shipment", async () => {

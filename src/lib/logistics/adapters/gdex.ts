@@ -29,10 +29,8 @@ import {
  * The account's own profile is the sender. `GetUserDetails` returns Name,
  * Mobile, Email, Address1, PostalCode, City, State, Location and — the field
  * that matters — `LocationId`, which `CreateConsignment` requires and which
- * cannot be derived from an address without a second lookup. WORKSHOP_ADDRESS
- * is a placeholder too vague to geocode (see the open question in CLAUDE.md);
- * the GDEX profile is a real registered address, so GDEX sidesteps that
- * problem entirely rather than inheriting it.
+ * cannot be derived from an address without a second lookup. The GDEX profile
+ * is a real registered address, so GDEX never depends on the company's own.
  */
 
 /**
@@ -379,7 +377,7 @@ export function consignmentBody(job: DeliveryJob, sender: GdexUserDetails) {
 			{
 				// Ours, printed on the consignment note — the fastest way to tie a
 				// note in GDEX's portal to a job number staff say aloud.
-				OrderId: `ICB-${job.number}`,
+				OrderId: job.ref,
 				ShipmentContent: job.items
 					.map((i) => i.label)
 					.join(", ")
@@ -579,6 +577,19 @@ export async function pickupDays(): Promise<string[]> {
 		"pickup day listing",
 	);
 	return reply.data.map((day) => day.slice(0, 10)).sort();
+}
+
+/**
+ * The GDEX profile's postcode, for comparing with the saved company's. Null
+ * when GDEX does not answer: a check that cannot run must not break the screen
+ * that asks.
+ */
+export async function gdexSenderPostcode(): Promise<string | null> {
+	try {
+		return (await senderDetails()).PostalCode;
+	} catch {
+		return null;
+	}
 }
 
 async function senderDetails(): Promise<GdexUserDetails> {
