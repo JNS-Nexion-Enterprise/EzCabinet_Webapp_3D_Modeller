@@ -8,7 +8,6 @@ import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
 import { fill } from "@/lib/copy/fill";
 import { htmlLang } from "@/lib/copy/locales";
-import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 import { malaysianNational, toE164 } from "@/lib/logistics/phone";
 import type { PaymentClient, PaymentStart } from "@/lib/payments/types";
 import type { FinishId, RoomTypeId } from "@/lib/planner/catalogue";
@@ -686,11 +685,7 @@ export function QuoteScreen({
 								    (Electronic Trade Transactions) Regulations 2024 want them
 								    disclosed before purchase. */}
 								<p className="text-[#5c574e] text-[12px] leading-[17px]">
-									{fill(t.quote.soldBy, {
-										address: WORKSHOP_ADDRESS,
-										email: t.landing.footer.email,
-										phone: WORKSHOP_PHONE,
-									})}
+									{t.quote.soldBy}
 								</p>
 								{/* Beside the button, not at the top of the form: on a phone that
 								    is where the customer is looking when a payment fails. */}

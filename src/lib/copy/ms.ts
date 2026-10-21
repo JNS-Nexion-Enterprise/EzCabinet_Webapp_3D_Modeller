@@ -417,7 +417,7 @@ export const ms: Dictionary = {
 		termsLink: "Terma jualan",
 		refundsLink: "Polisi bayaran balik",
 		errorTerms: "Tandakan ini untuk membuat pesanan.",
-		soldBy: "Dijual oleh {address}. Hubungi {email} atau {phone}.",
+		soldBy: "Dijual oleh {seller}. Hubungi {email} atau {phone}.",
 		submitting: "Sedang membuat pesanan…",
 		descriptionOnline:
 			"Pereka akan mengukur semula di tapak sebelum apa-apa dibina.",
@@ -597,7 +597,7 @@ export const ms: Dictionary = {
 	},
 	privacy: {
 		title: "Notis privasi",
-		draft: "Draf — menunggu semakan {brand} Sdn Bhd sebelum berkuat kuasa.",
+		draft: "Draf — menunggu semakan {legalName} sebelum berkuat kuasa.",
 		intro:
 			"Notis ini menerangkan apa yang direkod oleh perancang {brand} apabila anda menggunakannya, dan sebabnya.",
 		purposeHeading: "Tujuan",
@@ -652,7 +652,7 @@ export const ms: Dictionary = {
 		intro:
 			"Terma ini terpakai apabila anda memesan kabinet melalui perancang {brand}. Sila baca bersama polisi bayaran balik sebelum membayar.",
 		sellerHeading: "Penjual",
-		seller: "{address}. E-mel {email}, telefon {phone}.",
+		seller: "{seller}. E-mel {email}, telefon {phone}.",
 		goodsHeading: "Apa yang anda beli",
 		goods:
 			"Kabinet yang dibuat mengikut tempahan berdasarkan reka bentuk yang anda hantar. Paparan 3D ialah ilustrasi; ukuran akhir disahkan apabila kami mengukur semula tapak anda.",
