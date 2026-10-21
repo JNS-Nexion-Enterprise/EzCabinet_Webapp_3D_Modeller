@@ -70,7 +70,7 @@ export function LanguageSwitcher({
 					? "flex shrink-0 items-center gap-2 text-[12px]"
 					: // The planner's phone layout carries its own language row.
 						`flex h-9 shrink-0 items-center justify-end gap-4 border-neutral-200 border-b bg-white px-5 text-[12px] ${
-							tail.startsWith("planner") ? "max-[759px]:hidden" : ""
+							tail.startsWith("planner") ? "max-[760px]:hidden" : ""
 						}`
 			}
 		>

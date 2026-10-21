@@ -8,19 +8,19 @@ import Link from "next/link";
  */
 
 /**
- * The fixed bottom bar. Every class carries `max-[759px]:` so a caller can put
+ * The fixed bottom bar. Every class carries `max-[760px]:` so a caller can put
  * it on an element that also has desktop classes (Start's CTA wrapper, the
  * quote submit) and it only applies on a phone.
  */
 export const phoneBar =
-	"max-[759px]:fixed max-[759px]:inset-x-0 max-[759px]:bottom-0 max-[759px]:z-10 max-[759px]:border-[#ececec] max-[759px]:border-t max-[759px]:bg-white/95 max-[759px]:px-4 max-[759px]:pt-3 max-[759px]:pb-[calc(12px+env(safe-area-inset-bottom))] max-[759px]:backdrop-blur-[8px]";
+	"max-[760px]:fixed max-[760px]:inset-x-0 max-[760px]:bottom-0 max-[760px]:z-10 max-[760px]:border-[#ececec] max-[760px]:border-t max-[760px]:bg-white/95 max-[760px]:px-4 max-[760px]:pt-3 max-[760px]:pb-[calc(12px+env(safe-area-inset-bottom))] max-[760px]:backdrop-blur-[8px]";
 
 /**
  * The bar's green 52 px button. Carries no width: callers add
- * `max-[759px]:w-full` (one button) or `max-[759px]:px-[22px]` (beside a total).
+ * `max-[760px]:w-full` (one button) or `max-[760px]:px-[22px]` (beside a total).
  */
 export const phonePrimary =
-	"max-[759px]:flex max-[759px]:min-h-[52px] max-[759px]:items-center max-[759px]:justify-center max-[759px]:rounded-xl max-[759px]:bg-[#1f5138] max-[759px]:font-semibold max-[759px]:text-[16px] max-[759px]:text-white max-[759px]:hover:bg-[#17402c] max-[759px]:active:bg-[#123322] max-[759px]:disabled:opacity-40";
+	"max-[760px]:flex max-[760px]:min-h-[52px] max-[760px]:items-center max-[760px]:justify-center max-[760px]:rounded-xl max-[760px]:bg-[#1f5138] max-[760px]:font-semibold max-[760px]:text-[16px] max-[760px]:text-white max-[760px]:hover:bg-[#17402c] max-[760px]:active:bg-[#123322] max-[760px]:disabled:opacity-40";
 
 export function PhoneBar({ children }: { children: React.ReactNode }) {
 	return <div className={phoneBar}>{children}</div>;

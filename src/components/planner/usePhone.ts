@@ -1,6 +1,8 @@
 import { useSyncExternalStore } from "react";
 
-export const PHONE_QUERY = "(max-width: 759px)";
+/** The same line Tailwind v4 draws for `max-[760px]:` (`width < 760px`), so a
+ *  759.5px window is a phone to both the hook and the CSS. */
+export const PHONE_QUERY = "(width < 760px)";
 
 function subscribe(onChange: () => void) {
 	const query = window.matchMedia(PHONE_QUERY);

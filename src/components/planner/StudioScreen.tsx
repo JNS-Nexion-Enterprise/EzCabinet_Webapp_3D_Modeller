@@ -1221,7 +1221,10 @@ export function StudioScreen({
 				doors={{
 					view: doorView,
 					onCycleAction: () => applyDoorView(nextDoorView(doorView)),
-					disabled: withDoors.length === 0,
+					// Measuring shut every door (`pressTool`); opening one now would
+					// put a wrong number on screen, as the desktop's shared `tool`
+					// already prevents.
+					disabled: withDoors.length === 0 || measureMode,
 				}}
 				measuring={measureMode}
 				onMeasureAction={() => pressTool("measure")}

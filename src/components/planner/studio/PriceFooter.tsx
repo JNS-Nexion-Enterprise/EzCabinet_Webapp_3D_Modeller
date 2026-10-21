@@ -130,7 +130,7 @@ export function PriceFooter({
 					type="button"
 					onClick={onQuoteAction}
 					disabled={ctaDisabled}
-					className={`${phonePrimary} min-w-0 max-[759px]:px-[22px]`}
+					className={`${phonePrimary} min-w-0 max-[760px]:px-[22px]`}
 				>
 					{t.planner.phone.quoteCta}
 				</button>
