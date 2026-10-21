@@ -139,6 +139,21 @@ export const en = {
 		diyTutorials: "DIY tutorials",
 		clear: "Clear",
 		dimensionAriaSuffix: "{label} in millimetres",
+		phone: {
+			backHome: "Home",
+			backRooms: "Rooms",
+			backEdit: "Edit",
+			wallSubtitle: "{m} m wall",
+			tapHint: "Tap a cabinet to edit it",
+			tabsLabel: "Studio panels",
+			tabs: {
+				selected: "Selected",
+				add: "Add",
+				room: "Room",
+				run: "Run",
+			},
+			doorsAria: "Doors: {mode}. Tap to change.",
+		},
 		tools: {
 			ariaLabel: "Tools",
 			select: "Select",

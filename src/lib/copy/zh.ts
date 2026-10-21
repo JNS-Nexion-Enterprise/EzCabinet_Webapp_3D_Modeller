@@ -129,6 +129,21 @@ export const zh: Dictionary = {
 		diyTutorials: "DIY 教学视频",
 		clear: "清除",
 		dimensionAriaSuffix: "{label}（单位：毫米）",
+		phone: {
+			backHome: "首页",
+			backRooms: "房间",
+			backEdit: "编辑",
+			wallSubtitle: "{m} 米墙面",
+			tapHint: "点击柜子即可编辑",
+			tabsLabel: "工作室面板",
+			tabs: {
+				selected: "已选",
+				add: "添加",
+				room: "房间",
+				run: "布局",
+			},
+			doorsAria: "门板：{mode}。点击切换。",
+		},
 		tools: {
 			ariaLabel: "工具",
 			select: "选择",

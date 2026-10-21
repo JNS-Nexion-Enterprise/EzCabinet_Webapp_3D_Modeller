@@ -135,6 +135,21 @@ export const ms: Dictionary = {
 		diyTutorials: "Tutorial DIY",
 		clear: "Kosongkan",
 		dimensionAriaSuffix: "{label} dalam milimeter",
+		phone: {
+			backHome: "Utama",
+			backRooms: "Bilik",
+			backEdit: "Sunting",
+			wallSubtitle: "Dinding {m} m",
+			tapHint: "Ketik kabinet untuk menyuntingnya",
+			tabsLabel: "Panel studio",
+			tabs: {
+				selected: "Dipilih",
+				add: "Tambah",
+				room: "Bilik",
+				run: "Susunan",
+			},
+			doorsAria: "Pintu: {mode}. Ketik untuk tukar.",
+		},
 		tools: {
 			ariaLabel: "Alat",
 			select: "Pilih",
