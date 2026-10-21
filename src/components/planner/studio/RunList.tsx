@@ -66,7 +66,7 @@ export function RunList({
 					{placed.map((position) => (
 						<div
 							key={position.placed.id}
-							className={`flex items-center gap-2.5 border-[#eeece8] border-t py-2.5 ${
+							className={`flex items-center gap-2.5 border-[#eeece8] border-t py-2.5 max-[760px]:min-h-12 max-[760px]:text-[15px] ${
 								selectedIds.has(position.placed.id) ? "bg-[#f2f7f4]" : ""
 							}`}
 						>
@@ -86,7 +86,7 @@ export function RunList({
 										e.shiftKey || e.metaKey || e.ctrlKey,
 									)
 								}
-								className="min-w-0 flex-1 truncate text-left text-[13px]"
+								className="min-w-0 flex-1 truncate text-left text-[13px] max-[760px]:min-h-12 max-[760px]:text-[15px]"
 							>
 								{/* The row used to read "Base cabinet 900 shaker 1026" — a
 								    width and a price side by side, neither labelled, in two

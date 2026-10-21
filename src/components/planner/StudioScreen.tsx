@@ -833,7 +833,7 @@ export function StudioScreen({
 						type="button"
 						onClick={() => setMeasureAxis(axis)}
 						aria-pressed={measureAxis === axis}
-						className={`rounded px-1.5 py-0.5 text-[11px] transition ${
+						className={`rounded px-1.5 py-0.5 text-[11px] transition max-[760px]:min-h-11 max-[760px]:min-w-11 max-[760px]:px-3 max-[760px]:text-[14px] ${
 							measureAxis === axis
 								? "bg-neutral-900 text-white"
 								: "text-neutral-500 hover:bg-neutral-100"
@@ -875,7 +875,7 @@ export function StudioScreen({
 					<button
 						type="button"
 						onClick={() => setMeasurePoints([])}
-						className="text-[12px] text-[#1f5138] hover:underline"
+						className="text-[12px] text-[#1f5138] hover:underline max-[760px]:min-h-11 max-[760px]:px-3 max-[760px]:text-[14px]"
 					>
 						{t.planner.clear}
 					</button>
@@ -1040,7 +1040,7 @@ export function StudioScreen({
 											setDoors(prev, selectedIds, style.id),
 										);
 									}}
-									className="rounded-md bg-white px-2.5 py-1 text-[12px] text-neutral-700 shadow-[inset_0_0_0_1px_#d4d4d4] transition hover:shadow-[inset_0_0_0_1px_#a3a3a3]"
+									className="rounded-md bg-white px-2.5 py-1 text-[12px] max-[760px]:min-h-11 max-[760px]:px-4 max-[760px]:text-[14px] text-neutral-700 shadow-[inset_0_0_0_1px_#d4d4d4] transition hover:shadow-[inset_0_0_0_1px_#a3a3a3]"
 								>
 									{style.label}
 								</button>
@@ -1052,7 +1052,7 @@ export function StudioScreen({
 						<button
 							type="button"
 							onClick={removeSelected}
-							className="rounded-full bg-neutral-900 px-3 py-1 text-[12px] text-white"
+							className="rounded-full bg-neutral-900 px-3 py-1 text-[12px] text-white max-[760px]:min-h-11 max-[760px]:px-4 max-[760px]:text-[14px]"
 						>
 							{fill(t.planner.selection.removeAll, {
 								n: selection.length,
@@ -1061,7 +1061,7 @@ export function StudioScreen({
 						<button
 							type="button"
 							onClick={() => setSelectedIdsAction([])}
-							className="text-[12px] text-neutral-500 hover:text-neutral-900"
+							className="text-[12px] text-neutral-500 hover:text-neutral-900 max-[760px]:min-h-11 max-[760px]:px-3 max-[760px]:text-[14px]"
 						>
 							{t.planner.clear}
 						</button>
@@ -1108,7 +1108,7 @@ export function StudioScreen({
 						onClick={() => setFinishAction(option.id)}
 						aria-pressed={option.id === finish}
 						title={option.label}
-						className={`${thumb} h-[26px] w-[26px] rounded-md bg-center bg-cover`}
+						className={`${thumb} h-[26px] w-[26px] max-[760px]:size-11 max-[760px]:rounded-[10px] rounded-md bg-center bg-cover`}
 						style={{
 							backgroundColor: option.hex,
 							// The board itself where the client has one. Without it
