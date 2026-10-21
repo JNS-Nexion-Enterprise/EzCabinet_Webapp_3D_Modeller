@@ -11,9 +11,13 @@ import Link from "next/link";
  * The fixed bottom bar. Every class carries `max-[760px]:` so a caller can put
  * it on an element that also has desktop classes (Start's CTA wrapper, the
  * quote submit) and it only applies on a phone.
+ *
+ * Its height is `--phone-bar-h` (globals.css) plus the safe area: one 52px
+ * row, so its contents must never wrap. RoomPanel's sticky "Next" button
+ * reads the same variable to sit above it.
  */
 export const phoneBar =
-	"max-[760px]:fixed max-[760px]:inset-x-0 max-[760px]:bottom-0 max-[760px]:z-10 max-[760px]:border-[#ececec] max-[760px]:border-t max-[760px]:bg-white/95 max-[760px]:px-4 max-[760px]:pt-3 max-[760px]:pb-[calc(12px+env(safe-area-inset-bottom))] max-[760px]:backdrop-blur-[8px]";
+	"max-[760px]:fixed max-[760px]:inset-x-0 max-[760px]:bottom-0 max-[760px]:z-10 max-[760px]:h-[calc(var(--phone-bar-h)+env(safe-area-inset-bottom))] max-[760px]:border-[#ececec] max-[760px]:border-t max-[760px]:bg-white/95 max-[760px]:px-4 max-[760px]:pt-3 max-[760px]:pb-[calc(12px+env(safe-area-inset-bottom))] max-[760px]:backdrop-blur-[8px]";
 
 /**
  * The bar's green 52 px button. Carries no width: callers add

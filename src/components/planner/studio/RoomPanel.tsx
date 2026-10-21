@@ -481,12 +481,12 @@ export function RoomPanel({
 			</div>
 
 			{onNextAction && (
-				// On a phone the page scrolls under a fixed 77px bar (`phoneBar`),
-				// so the button sticks above it rather than behind it.
+				// On a phone the page scrolls under the fixed bar (`phoneBar`), so
+				// the button sticks above it, by the bar's own height variable.
 				<button
 					type="button"
 					onClick={onNextAction}
-					className="sticky bottom-0 min-h-11 rounded-[10px] bg-[#1f5138] px-3 py-2.5 font-semibold text-[14px] text-white shadow-[0_-8px_12px_white,0_16px_0_white] hover:bg-[#17402c] max-[760px]:bottom-[calc(77px+env(safe-area-inset-bottom))]"
+					className="sticky bottom-0 min-h-11 rounded-[10px] bg-[#1f5138] px-3 py-2.5 font-semibold text-[14px] text-white shadow-[0_-8px_12px_white,0_16px_0_white] hover:bg-[#17402c] max-[760px]:bottom-[calc(var(--phone-bar-h)+env(safe-area-inset-bottom))]"
 				>
 					{t.planner.room.next}
 				</button>

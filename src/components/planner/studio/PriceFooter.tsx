@@ -109,20 +109,27 @@ export function PriceFooter({
 
 	if (variant === "bar") {
 		return (
+			// One 52px row, always: the bar's height is fixed (`phoneBar`), so
+			// neither the button nor the total wraps, and the label gives way.
 			<div className="flex items-center justify-between gap-3">
-				{/* The total is the way into the breakdown, as the panel's is. */}
+				{/* The total is the way into the breakdown, as the panel's is.
+				    The column never gets narrower than the total: the label's
+				    `w-0` keeps it out of the column's minimum width, so it is
+				    the label that truncates. */}
 				<button
 					type="button"
 					onClick={() => setOpen(true)}
-					className="flex min-h-11 shrink-0 flex-col items-start text-left"
+					className="flex min-h-11 flex-1 flex-col items-start text-left"
 				>
-					<span className="flex items-center gap-1.5 whitespace-nowrap text-[#5c5c5c] text-[12px] leading-4">
-						{t.planner.price.estimatedTotal}
-						<span className="rounded border border-[#b45309] px-1 font-semibold text-[#9a4a07] text-[10px] leading-[14px]">
+					<span className="flex w-full items-center gap-1.5 text-[#5c5c5c] text-[12px] leading-4">
+						<span className="w-0 flex-1 truncate">
+							{t.planner.price.estimatedTotal}
+						</span>
+						<span className="shrink-0 rounded border border-[#b45309] px-1 font-semibold text-[#9a4a07] text-[10px] leading-[14px]">
 							{t.planner.price.estimateBadge}
 						</span>
 					</span>
-					<span className="font-semibold text-[22px] tabular-nums leading-7">
+					<span className="whitespace-nowrap font-semibold text-[22px] tabular-nums leading-7">
 						{totalLabel}
 					</span>
 				</button>
@@ -130,7 +137,7 @@ export function PriceFooter({
 					type="button"
 					onClick={onQuoteAction}
 					disabled={ctaDisabled}
-					className={`${phonePrimary} min-w-0 max-[760px]:px-[22px]`}
+					className={`${phonePrimary} shrink-0 whitespace-nowrap max-[760px]:px-[22px]`}
 				>
 					{t.planner.phone.quoteCta}
 				</button>
