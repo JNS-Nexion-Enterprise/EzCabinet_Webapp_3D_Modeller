@@ -57,6 +57,7 @@ import { CabinetMenu } from "./studio/CabinetMenu";
 import { thumb } from "./studio/chrome";
 import { DesignRecap } from "./studio/DesignRecap";
 import { PriceFooter } from "./studio/PriceFooter";
+import type { DoorView } from "./studio/phoneStudio";
 import { RoomPanel } from "./studio/RoomPanel";
 import { RunList } from "./studio/RunList";
 import { SelectionPanel, type SelectionVerb } from "./studio/SelectionPanel";
@@ -105,20 +106,6 @@ const baseModes = (t: Dictionary): { skirted: boolean; label: string }[] => [
 	{ skirted: true, label: t.planner.room.skirted },
 	{ skirted: false, label: t.planner.room.legsShown },
 ];
-
-/** Doors shut, or swung open so the customer can see the inside they are
- *  buying. View state, never on the layout — see `openIds`. */
-/**
- * How the run shows its fronts.
- *
- * `hidden` exists because `open` cannot answer "show me every interior". Two
- * cabinets whose doors hinge on the same shared stile cannot both be open —
- * not here and not in a real kitchen — so swinging them all at once stacks
- * two leaves into the same space whatever angle they stop at. Taking the
- * fronts away is the honest way to show the whole run at once, and it is what
- * this toggle was specified as from the start.
- */
-type DoorView = "closed" | "open" | "hidden";
 
 const doorModes = (t: Dictionary): { id: DoorView; label: string }[] => [
 	{ id: "closed", label: t.planner.room.doorsClosed },
