@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useId, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
 import {
@@ -12,14 +12,22 @@ import {
 import type { MoveJob, MovePlan } from "@/lib/company/save";
 import type { GeocodeResult } from "@/lib/logistics/geocode";
 import { MALAYSIAN_STATES } from "@/lib/logistics/malaysia";
-import { fieldErrors, gdexNotice, readPin } from "./form";
+import { fieldErrors, gdexNotice, placeFields, readPin } from "./form";
 
 const INPUT = "min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px]";
+const MAP_DOWN =
+	"Could not reach the map lookup. Type the pin, or paste a Google Maps link.";
 const MAP_MISS =
 	"Google could not place that address. Type the pin, or paste a Google Maps link.";
 
 type Errors = ReturnType<typeof fieldErrors>;
 
+type Control = { id: string; "aria-describedby"?: string };
+
+/**
+ * A labelled control. The label is tied by `htmlFor` rather than wrapping, so
+ * the control's name is the label alone; hint and error are its description.
+ */
 function Field({
 	label,
 	hint,
@@ -29,20 +37,34 @@ function Field({
 	label: string;
 	hint?: ReactNode;
 	error?: string;
-	children: ReactNode;
+	children: (control: Control) => ReactNode;
 }) {
+	const id = useId();
+	const describedBy =
+		[hint ? `${id}-hint` : "", error ? `${id}-error` : ""]
+			.filter(Boolean)
+			.join(" ") || undefined;
 	return (
-		// biome-ignore lint/a11y/noLabelWithoutControl: `children` is always the field's control
-		<label className="flex min-w-[220px] flex-1 flex-col gap-1 text-[13px]">
-			<span className="font-medium">{label}</span>
-			{children}
-			{hint && <span className="text-[#5c574e] text-[12px]">{hint}</span>}
+		<div className="flex min-w-[220px] flex-1 flex-col gap-1 text-[13px]">
+			<label htmlFor={id} className="font-medium">
+				{label}
+			</label>
+			{children({ id, "aria-describedby": describedBy })}
+			{hint && (
+				<span id={`${id}-hint`} className="text-[#5c574e] text-[12px]">
+					{hint}
+				</span>
+			)}
 			{error && (
-				<span role="alert" className="text-[#b3261e] text-[12px]">
+				<span
+					id={`${id}-error`}
+					role="alert"
+					className="text-[#b3261e] text-[12px]"
+				>
 					{error}
 				</span>
 			)}
-		</label>
+		</div>
 	);
 }
 
@@ -91,8 +113,12 @@ export function CompanyForm({
 	const [message, setMessage] = useState<string | null>(null);
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 
-	const set = (k: keyof typeof v) => (e: { target: { value: string } }) =>
+	const set = (k: keyof typeof v) => (e: { target: { value: string } }) => {
 		setV((s) => ({ ...s, [k]: e.target.value }));
+		setErrors((er) => ({ ...er, [k]: undefined }));
+	};
+	const clearPinErrors = () =>
+		setErrors((er) => ({ ...er, lat: undefined, lng: undefined }));
 	const pin = readPin(pinText);
 	const notice = gdexNotice(gdexConfigured, gdexPostcode, v.postcode.trim());
 
@@ -107,18 +133,25 @@ export function CompanyForm({
 		const data: { found: GeocodeResult | null; fault: string | null } | null =
 			res?.ok ? await res.json().catch(() => null) : null;
 		setFinding(false);
-		if (!data?.found) {
-			setMapNote(data?.fault ?? MAP_MISS);
+		if (!data) {
+			setMapNote(MAP_DOWN);
+			return;
+		}
+		if (!data.found) {
+			setMapNote(data.fault ?? MAP_MISS);
 			return;
 		}
 		const f = data.found;
-		setV((s) => ({
-			...s,
-			postcode: f.postcode ?? s.postcode,
-			city: f.city ?? s.city,
-			state: f.state ?? s.state,
-		}));
+		setV((s) => ({ ...s, ...placeFields(f) }));
 		setPinText(`${f.lat}, ${f.lng}`);
+		setErrors((er) => ({
+			...er,
+			postcode: undefined,
+			city: undefined,
+			state: undefined,
+			lat: undefined,
+			lng: undefined,
+		}));
 	}
 
 	/** Posts the details; the string is a message to show, null means saved. */
@@ -140,10 +173,12 @@ export function CompanyForm({
 		return { repointed: Number(data?.repointed ?? 0) };
 	}
 
-	function saved(repointed: number) {
+	function saved(details: CompanyDetails, repointed: number) {
+		// Show what was stored: "po" reads "PO", an account number loses its spaces.
+		setV({ ...details, ssmNumber: details.ssmNumber ?? "" });
 		setMessage(
 			repointed > 0
-				? `Saved. ${repointed} deliveries now leave from the new address.`
+				? `Saved. ${repointed} ${repointed === 1 ? "delivery now leaves" : "deliveries now leave"} from the new address.`
 				: "Saved.",
 		);
 		router.refresh();
@@ -168,7 +203,7 @@ export function CompanyForm({
 		const out = await post(details, false);
 		setSaving(false);
 		if ("message" in out) return setMessage(out.message);
-		if ("repointed" in out) return saved(out.repointed);
+		if ("repointed" in out) return saved(details, out.repointed);
 
 		const { repoint, booked } = out.move;
 		setConfirming({
@@ -197,7 +232,7 @@ export function CompanyForm({
 				const again = await post(details, true);
 				if ("message" in again) return again.message;
 				if ("move" in again) return "The open deliveries changed. Try again.";
-				saved(again.repointed);
+				saved(details, again.repointed);
 				return null;
 			},
 		});
@@ -205,7 +240,7 @@ export function CompanyForm({
 
 	const text = (k: keyof typeof v, label: string, hint?: ReactNode) => (
 		<Field label={label} hint={hint} error={errors[k]}>
-			<input value={v[k]} onChange={set(k)} className={INPUT} />
+			{(c) => <input {...c} value={v[k]} onChange={set(k)} className={INPUT} />}
 		</Field>
 	);
 
@@ -231,41 +266,48 @@ export function CompanyForm({
 
 			<Section title="Workshop">
 				<Field label="Address" error={errors.address}>
-					<div className="flex gap-2">
-						<input
-							value={v.address}
-							onChange={set("address")}
-							className={`${INPUT} min-w-0 flex-1`}
-						/>
-						<button
-							type="button"
-							onClick={findOnMap}
-							disabled={finding || v.address.trim() === ""}
-							className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 text-[13px] hover:bg-neutral-50 disabled:opacity-50"
-						>
-							{finding ? "Finding…" : "Find on map"}
-						</button>
-					</div>
-					{(mapNote ?? geocoderFault) && (
-						<span className="text-[#5c574e] text-[12px]">
-							{mapNote ?? geocoderFault}
-						</span>
+					{(c) => (
+						<div className="flex gap-2">
+							<input
+								{...c}
+								value={v.address}
+								onChange={set("address")}
+								className={`${INPUT} min-w-0 flex-1`}
+							/>
+							<button
+								type="button"
+								onClick={findOnMap}
+								disabled={finding || v.address.trim() === ""}
+								className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 text-[13px] hover:bg-neutral-50 disabled:opacity-50"
+							>
+								{finding ? "Finding…" : "Find on map"}
+							</button>
+						</div>
 					)}
 				</Field>
+				{(mapNote ?? geocoderFault) && (
+					<p role="status" className="basis-full text-[#5c574e] text-[12px]">
+						{mapNote ?? geocoderFault}
+					</p>
+				)}
 				{text("postcode", "Postcode")}
 				{text("city", "City")}
 				<Field label="State" error={errors.state}>
-					<select
-						value={v.state}
-						onChange={set("state")}
-						className={`select-chevron ${INPUT} bg-white pl-3`}
-					>
-						{MALAYSIAN_STATES.map((s) => (
-							<option key={s.code} value={s.code}>
-								{s.name}
-							</option>
-						))}
-					</select>
+					{(c) => (
+						<select
+							{...c}
+							value={v.state}
+							onChange={set("state")}
+							className={`select-chevron ${INPUT} bg-white pl-3`}
+						>
+							<option value="">Choose a state</option>
+							{MALAYSIAN_STATES.map((s) => (
+								<option key={s.code} value={s.code}>
+									{s.name}
+								</option>
+							))}
+						</select>
+					)}
 				</Field>
 				<Field
 					label="Map pin"
@@ -283,19 +325,28 @@ export function CompanyForm({
 						)
 					}
 				>
-					<input
-						value={pinText}
-						onChange={(e) => setPinText(e.target.value)}
-						className={INPUT}
-					/>
+					{(c) => (
+						<input
+							{...c}
+							value={pinText}
+							onChange={(e) => {
+								setPinText(e.target.value);
+								clearPinErrors();
+							}}
+							className={INPUT}
+						/>
+					)}
 				</Field>
 				<Field label="Courier close time" error={errors.closeTime}>
-					<input
-						type="time"
-						value={v.closeTime}
-						onChange={set("closeTime")}
-						className={INPUT}
-					/>
+					{(c) => (
+						<input
+							{...c}
+							type="time"
+							value={v.closeTime}
+							onChange={set("closeTime")}
+							className={INPUT}
+						/>
+					)}
 				</Field>
 				{notice && (
 					<p

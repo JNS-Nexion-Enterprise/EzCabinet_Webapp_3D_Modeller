@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { testCompany } from "@/lib/company/__tests__/company.fixture";
 import { companyDetailsSchema } from "@/lib/company/details";
-import { fieldErrors, gdexNotice, readPin } from "../form";
+import { fieldErrors, gdexNotice, placeFields, readPin } from "../form";
 
 describe("readPin", () => {
 	it("reads latitude, longitude", () =>
@@ -51,6 +51,13 @@ describe("fieldErrors", () => {
 				lat: "The pin must be inside Malaysia.",
 			});
 	});
+});
+
+describe("placeFields", () => {
+	it("empties a part Google did not give rather than keeping the old one", () =>
+		expect(
+			placeFields({ postcode: null, city: "Subang Jaya", state: "MY-10" }),
+		).toEqual({ postcode: "", city: "Subang Jaya", state: "MY-10" }));
 });
 
 describe("gdexNotice", () => {

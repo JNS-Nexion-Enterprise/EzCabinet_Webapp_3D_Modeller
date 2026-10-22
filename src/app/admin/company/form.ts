@@ -68,6 +68,24 @@ export function readPin(text: string): PinReading {
 	};
 }
 
+/**
+ * The address fields a geocoded place fills in. Google gives no postcode for a
+ * street-level result, and the old workshop's would then be saved against the
+ * new address and price every parcel's pickup zone, so a missing part is
+ * emptied and validation makes the admin type it.
+ */
+export function placeFields(found: {
+	postcode: string | null;
+	city: string | null;
+	state: string | null;
+}) {
+	return {
+		postcode: found.postcode ?? "",
+		city: found.city ?? "",
+		state: found.state ?? "",
+	};
+}
+
 export type GdexNotice =
 	| null
 	| { kind: "reminder" }
