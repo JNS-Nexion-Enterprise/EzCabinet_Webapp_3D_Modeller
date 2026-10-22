@@ -7,7 +7,17 @@
 	},
 	"files": {
 		"ignoreUnknown": false,
-		"includes": ["**", "!public"]
+		"includes": [
+			"**",
+			"!public",
+			// pnpm writes it; anything else formatting it is undone on install.
+			"!pnpm-lock.yaml",
+			// Biome 2.6.2's Markdown formatter re-pads these tables differently on
+			// every pass, so they never settle. Drop these lines once it does.
+			"!docs/superpowers/plans/2026-09-06-easyparcel-integration.md",
+			"!docs/superpowers/plans/2026-09-20-rbac.md",
+			"!docs/superpowers/plans/2026-09-28-customer-account-shell.md"
+		]
 	},
 	"formatter": {
 		"enabled": true,

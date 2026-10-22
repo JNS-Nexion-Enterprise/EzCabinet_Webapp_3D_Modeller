@@ -18,20 +18,20 @@
 - **Everything still leaves through the existing gate:** `POST /api/admin/catalogue/versions` → `POST /api/admin/catalogue/versions/[id]/publish`.
 - **`lib/planner` stays framework-free.** New helpers go in `lib/catalogue/`, which may import from `lib/planner` but not the reverse.
 - Test command: `pnpm test` (vitest run). Lint: `pnpm lint` (biome). Types: `pnpm typecheck`.
-- Commit catalogue *data* changes separately from code changes. Every task here is code.
+- Commit catalogue _data_ changes separately from code changes. Every task here is code.
 
 ---
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/catalogue/health.ts` | **Create.** Pure derivations over a `PlannerCatalogue`: which rungs block a publish, which families no room offers. |
-| `src/lib/catalogue/__tests__/health.test.ts` | **Create.** Tests for the above. |
-| `src/lib/catalogue/versions.ts` | **Modify.** Add `latestDraftVersion`, beside `createDraftVersion`. |
-| `src/lib/catalogue/__tests__/versions.test.ts` | **Create.** Tests `latestDraftVersion` against a mocked Prisma. |
-| `src/lib/catalogue/publishDesigns.ts` | **Modify (`:274-300`).** Merge onto the newest draft when one exists. |
-| `src/app/admin/catalogue/page.tsx` | **Modify.** Version resolution, state header, review panel, room grouping, geometry line. |
+| File                                           | Responsibility                                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/catalogue/health.ts`                  | **Create.** Pure derivations over a `PlannerCatalogue`: which rungs block a publish, which families no room offers. |
+| `src/lib/catalogue/__tests__/health.test.ts`   | **Create.** Tests for the above.                                                                                    |
+| `src/lib/catalogue/versions.ts`                | **Modify.** Add `latestDraftVersion`, beside `createDraftVersion`.                                                  |
+| `src/lib/catalogue/__tests__/versions.test.ts` | **Create.** Tests `latestDraftVersion` against a mocked Prisma.                                                     |
+| `src/lib/catalogue/publishDesigns.ts`          | **Modify (`:274-300`).** Merge onto the newest draft when one exists.                                               |
+| `src/app/admin/catalogue/page.tsx`             | **Modify.** Version resolution, state header, review panel, room grouping, geometry line.                           |
 
 Tasks 1 and 2 are independent of each other. Task 3 precedes 4. Tasks 5 and 6 are independent of everything after task 1.
 
@@ -40,12 +40,10 @@ Tasks 1 and 2 are independent of each other. Task 3 precedes 4. Tasks 5 and 6 ar
 ### Task 1: Catalogue health derivations
 
 **Files:**
-
 - Create: `src/lib/catalogue/health.ts`
 - Test: `src/lib/catalogue/__tests__/health.test.ts`
 
 **Interfaces:**
-
 - Consumes: `PlannerCatalogue` from `@/lib/planner/catalogueSchema`; `PLANNER_CATALOGUE` from `@/lib/planner/catalogue` (tests only).
 - Produces:
   - `type PriceBlocker = { familyId: string; familyLabel: string; widthMm: number; meshDesignId?: string }`
@@ -64,72 +62,72 @@ import { blockersOf, strandedFamilyIds } from "../health";
 
 /** Deep clone so a test can mutate without touching the live constant. */
 const clone = (c: PlannerCatalogue): PlannerCatalogue =>
- JSON.parse(JSON.stringify(c));
+	JSON.parse(JSON.stringify(c));
 
 describe("blockersOf", () => {
- it("finds nothing in a catalogue where every rung is priced", () => {
-  expect(blockersOf(PLANNER_CATALOGUE)).toEqual([]);
- });
+	it("finds nothing in a catalogue where every rung is priced", () => {
+		expect(blockersOf(PLANNER_CATALOGUE)).toEqual([]);
+	});
 
- it("reports a rung priced at zero", () => {
-  const next = clone(PLANNER_CATALOGUE);
-  next.families[0].sizes[0].priceRm = 0;
+	it("reports a rung priced at zero", () => {
+		const next = clone(PLANNER_CATALOGUE);
+		next.families[0].sizes[0].priceRm = 0;
 
-  expect(blockersOf(next)).toEqual([
-   {
-    familyId: next.families[0].id,
-    familyLabel: next.families[0].label,
-    widthMm: next.families[0].sizes[0].widthMm,
-    meshDesignId: next.families[0].sizes[0].meshDesignId,
-   },
-  ]);
- });
+		expect(blockersOf(next)).toEqual([
+			{
+				familyId: next.families[0].id,
+				familyLabel: next.families[0].label,
+				widthMm: next.families[0].sizes[0].widthMm,
+				meshDesignId: next.families[0].sizes[0].meshDesignId,
+			},
+		]);
+	});
 
- it("reports every unpriced rung, in family then ladder order", () => {
-  const next = clone(PLANNER_CATALOGUE);
-  next.families[1].sizes[0].priceRm = 0;
-  next.families[0].sizes[1].priceRm = 0;
+	it("reports every unpriced rung, in family then ladder order", () => {
+		const next = clone(PLANNER_CATALOGUE);
+		next.families[1].sizes[0].priceRm = 0;
+		next.families[0].sizes[1].priceRm = 0;
 
-  expect(blockersOf(next).map((b) => b.widthMm)).toEqual([
-   next.families[0].sizes[1].widthMm,
-   next.families[1].sizes[0].widthMm,
-  ]);
- });
+		expect(blockersOf(next).map((b) => b.widthMm)).toEqual([
+			next.families[0].sizes[1].widthMm,
+			next.families[1].sizes[0].widthMm,
+		]);
+	});
 
- it("treats a negative price as unpriced too", () => {
-  const next = clone(PLANNER_CATALOGUE);
-  next.families[0].sizes[0].priceRm = -10;
+	it("treats a negative price as unpriced too", () => {
+		const next = clone(PLANNER_CATALOGUE);
+		next.families[0].sizes[0].priceRm = -10;
 
-  expect(blockersOf(next)).toHaveLength(1);
- });
+		expect(blockersOf(next)).toHaveLength(1);
+	});
 });
 
 describe("strandedFamilyIds", () => {
- it("finds nothing when every family is offered by a room", () => {
-  expect(strandedFamilyIds(PLANNER_CATALOGUE)).toEqual([]);
- });
+	it("finds nothing when every family is offered by a room", () => {
+		expect(strandedFamilyIds(PLANNER_CATALOGUE)).toEqual([]);
+	});
 
- it("names a family no room offers", () => {
-  const next = clone(PLANNER_CATALOGUE);
-  next.families.push({
-   ...PLANNER_CATALOGUE.families[0],
-   id: "test-orphan",
-   label: "Testing123",
-  });
+	it("names a family no room offers", () => {
+		const next = clone(PLANNER_CATALOGUE);
+		next.families.push({
+			...PLANNER_CATALOGUE.families[0],
+			id: "test-orphan",
+			label: "Testing123",
+		});
 
-  expect(strandedFamilyIds(next)).toEqual(["test-orphan"]);
- });
+		expect(strandedFamilyIds(next)).toEqual(["test-orphan"]);
+	});
 
- it("does not report a family offered by only one room", () => {
-  const next = clone(PLANNER_CATALOGUE);
-  const id = next.families[0].id;
-  for (const room of next.roomTypes) {
-   room.familyIds = room.familyIds.filter((f) => f !== id);
-  }
-  next.roomTypes[0].familyIds.push(id);
+	it("does not report a family offered by only one room", () => {
+		const next = clone(PLANNER_CATALOGUE);
+		const id = next.families[0].id;
+		for (const room of next.roomTypes) {
+			room.familyIds = room.familyIds.filter((f) => f !== id);
+		}
+		next.roomTypes[0].familyIds.push(id);
 
-  expect(strandedFamilyIds(next)).toEqual([]);
- });
+		expect(strandedFamilyIds(next)).toEqual([]);
+	});
 });
 ```
 
@@ -137,7 +135,6 @@ describe("strandedFamilyIds", () => {
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/health.test.ts`
 Expected: FAIL — `Failed to resolve import "../health"`.
-
 - [ ] **Step 3: Write the implementation**
 
 Create `src/lib/catalogue/health.ts`:
@@ -161,29 +158,29 @@ import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
  */
 
 export type PriceBlocker = {
- familyId: string;
- familyLabel: string;
- widthMm: number;
- /** The design drawing this rung, if any — lets the review row say where
-  * the unpriced size came from. */
- meshDesignId?: string;
+	familyId: string;
+	familyLabel: string;
+	widthMm: number;
+	/** The design drawing this rung, if any — lets the review row say where
+	 * the unpriced size came from. */
+	meshDesignId?: string;
 };
 
 /** Every rung that must not reach a customer at the price it carries. */
 export function blockersOf(catalogue: PlannerCatalogue): PriceBlocker[] {
- const blockers: PriceBlocker[] = [];
- for (const family of catalogue.families) {
-  for (const size of family.sizes) {
-   if (size.priceRm > 0) continue;
-   blockers.push({
-    familyId: family.id,
-    familyLabel: family.label,
-    widthMm: size.widthMm,
-    meshDesignId: size.meshDesignId,
-   });
-  }
- }
- return blockers;
+	const blockers: PriceBlocker[] = [];
+	for (const family of catalogue.families) {
+		for (const size of family.sizes) {
+			if (size.priceRm > 0) continue;
+			blockers.push({
+				familyId: family.id,
+				familyLabel: family.label,
+				widthMm: size.widthMm,
+				meshDesignId: size.meshDesignId,
+			});
+		}
+	}
+	return blockers;
 }
 
 /**
@@ -195,12 +192,12 @@ export function blockersOf(catalogue: PlannerCatalogue): PriceBlocker[] {
  * truth — and makes "untick every room" a working retire path.
  */
 export function strandedFamilyIds(catalogue: PlannerCatalogue): string[] {
- const offered = new Set(
-  catalogue.roomTypes.flatMap((room) => room.familyIds),
- );
- return catalogue.families
-  .filter((family) => !offered.has(family.id))
-  .map((family) => family.id);
+	const offered = new Set(
+		catalogue.roomTypes.flatMap((room) => room.familyIds),
+	);
+	return catalogue.families
+		.filter((family) => !offered.has(family.id))
+		.map((family) => family.id);
 }
 ```
 
@@ -210,7 +207,6 @@ Run: `pnpm vitest run src/lib/catalogue/__tests__/health.test.ts`
 Expected: PASS, 7 tests.
 
 If "finds nothing in a catalogue where every rung is priced" fails, the seed catalogue has a rung at 0 — that is a real finding, not a test bug. Report it rather than weakening the assertion.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -227,28 +223,25 @@ editor. Both are now values the review screen can render."
 ### Task 2: Design pushes stack instead of forking
 
 **Files:**
-
 - Modify: `src/lib/catalogue/versions.ts` (append after `createDraftVersion`)
 - Modify: `src/lib/catalogue/publishDesigns.ts:274-300`
 - Test: `src/lib/catalogue/__tests__/versions.test.ts` (create)
 
 **Interfaces:**
-
 - Consumes: `prisma` from `./db`; `Product` from `@/generated/prisma/enums`.
 - Produces: `latestDraftVersion(product: Product): Promise<{ id: string; version: number; data: unknown } | null>`
 
 **Background.** `publishDesigns.ts:274-279` currently reads:
 
 ```ts
- const {
-  id: baseId,
-  version,
-  data: base,
- } = await getPublishedPlannerCatalogue();
+const {
+	id: baseId,
+	version,
+	data: base,
+} = await getPublishedPlannerCatalogue();
 ```
 
 Because the base is always the published version, publishing design A then design B produces two drafts, the second built without A. Publishing the second silently discards A.
-
 - [ ] **Step 1: Write the failing test**
 
 Create `src/lib/catalogue/__tests__/versions.test.ts`:
@@ -259,54 +252,52 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const findFirst = vi.fn();
 
 vi.mock("../db", () => ({
- prisma: { catalogueVersion: { findFirst } },
+	prisma: { catalogueVersion: { findFirst } },
 }));
 
 // Imported after the mock so `versions.ts` closes over the fake prisma.
 const { latestDraftVersion } = await import("../versions");
 
 describe("latestDraftVersion", () => {
- beforeEach(() => {
-  findFirst.mockReset();
- });
+	beforeEach(() => {
+		findFirst.mockReset();
+	});
 
- it("asks for the highest-numbered DRAFT of that product", async () => {
-  findFirst.mockResolvedValue({ id: "v13", version: 13, data: {} });
+	it("asks for the highest-numbered DRAFT of that product", async () => {
+		findFirst.mockResolvedValue({ id: "v13", version: 13, data: {} });
 
-  await latestDraftVersion("PLANNER");
+		await latestDraftVersion("PLANNER");
 
-  expect(findFirst).toHaveBeenCalledWith({
-   where: { product: "PLANNER", status: "DRAFT" },
-   orderBy: { version: "desc" },
-   select: { id: true, version: true, data: true },
-  });
- });
+		expect(findFirst).toHaveBeenCalledWith({
+			where: { product: "PLANNER", status: "DRAFT" },
+			orderBy: { version: "desc" },
+			select: { id: true, version: true, data: true },
+		});
+	});
 
- it("returns the row when a draft exists", async () => {
-  findFirst.mockResolvedValue({ id: "v13", version: 13, data: { a: 1 } });
+	it("returns the row when a draft exists", async () => {
+		findFirst.mockResolvedValue({ id: "v13", version: 13, data: { a: 1 } });
 
-  expect(await latestDraftVersion("PLANNER")).toEqual({
-   id: "v13",
-   version: 13,
-   data: { a: 1 },
-  });
- });
+		expect(await latestDraftVersion("PLANNER")).toEqual({
+			id: "v13",
+			version: 13,
+			data: { a: 1 },
+		});
+	});
 
- it("returns null when there is no draft", async () => {
-  findFirst.mockResolvedValue(null);
+	it("returns null when there is no draft", async () => {
+		findFirst.mockResolvedValue(null);
 
-  expect(await latestDraftVersion("PLANNER")).toBeNull();
- });
+		expect(await latestDraftVersion("PLANNER")).toBeNull();
+	});
 });
 ```
 
 The `orderBy` assertion is the point of this test. A draft picked in insertion order rather than by version is the same data-loss bug wearing a different hat.
-
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/versions.test.ts`
 Expected: FAIL — `latestDraftVersion is not a function`.
-
 - [ ] **Step 3: Add `latestDraftVersion`**
 
 Append to `src/lib/catalogue/versions.ts`, after `createDraftVersion`:
@@ -324,11 +315,11 @@ Append to `src/lib/catalogue/versions.ts`, after `createDraftVersion`:
  * on screen and the one `createDraftVersion` guarantees is monotonic.
  */
 export async function latestDraftVersion(product: Product) {
- return prisma.catalogueVersion.findFirst({
-  where: { product, status: "DRAFT" },
-  orderBy: { version: "desc" },
-  select: { id: true, version: true, data: true },
- });
+	return prisma.catalogueVersion.findFirst({
+		where: { product, status: "DRAFT" },
+		orderBy: { version: "desc" },
+		select: { id: true, version: true, data: true },
+	});
 }
 ```
 
@@ -336,7 +327,6 @@ export async function latestDraftVersion(product: Product) {
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/versions.test.ts`
 Expected: PASS, 3 tests.
-
 - [ ] **Step 5: Merge onto the draft in `publishDesigns.ts`**
 
 Add to the imports at the top of `src/lib/catalogue/publishDesigns.ts` — the file already imports `createDraftVersion` from `./versions` at line 30, so extend that import:
@@ -348,18 +338,18 @@ import { createDraftVersion, latestDraftVersion } from "./versions";
 Then replace lines 274-279 — the block shown under **Background** above — with:
 
 ```ts
- // The published version is what a change is *measured* against, and what a
- // push falls back to. It is not always what a push builds on: an open draft
- // already carries work this merge must not drop.
- const published = await getPublishedPlannerCatalogue();
- const openDraft = await latestDraftVersion("PLANNER");
- const { id: baseId, data: base } = openDraft
-  ? {
-    id: openDraft.id,
-    data: plannerCatalogueSchema.parse(openDraft.data),
-   }
-  : published;
- const version = published.version;
+// The published version is what a change is *measured* against, and what a
+// push falls back to. It is not always what a push builds on: an open draft
+// already carries work this merge must not drop.
+const published = await getPublishedPlannerCatalogue();
+const openDraft = await latestDraftVersion("PLANNER");
+const { id: baseId, data: base } = openDraft
+	? {
+			id: openDraft.id,
+			data: plannerCatalogueSchema.parse(openDraft.data),
+		}
+	: published;
+const version = published.version;
 ```
 
 `plannerCatalogueSchema` must be imported if it is not already — check the file's import block and add if missing:
@@ -369,28 +359,26 @@ import { plannerCatalogueSchema } from "@/lib/planner/catalogueSchema";
 ```
 
 Nothing else in the function changes. `base.construction` at `:281-296` reads the same field either way; `publishedVersion: version` at `:352` and `:376` keeps reporting the published version, which is what the UI means by it.
-
 - [ ] **Step 6: Name both sources in the draft's note**
 
 Replace the `createDraftVersion` call at `publishDesigns.ts:364-368` with:
 
 ```ts
- const draft = await createDraftVersion({
-  product: "PLANNER",
-  data: catalogue,
-  // Say what this draft was built on when it stacked. Without it the note
-  // reads as though the draft holds one design when it may hold five.
-  note: openDraft
-   ? `${label} added from the design library, on top of draft v${openDraft.version}`
-   : `${label} added from the design library`,
- });
+const draft = await createDraftVersion({
+	product: "PLANNER",
+	data: catalogue,
+	// Say what this draft was built on when it stacked. Without it the note
+	// reads as though the draft holds one design when it may hold five.
+	note: openDraft
+		? `${label} added from the design library, on top of draft v${openDraft.version}`
+		: `${label} added from the design library`,
+});
 ```
 
 - [ ] **Step 7: Verify the whole suite and types**
 
 Run: `pnpm test && pnpm typecheck`
 Expected: all tests pass; no type errors.
-
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -408,55 +396,50 @@ A push now merges onto the newest open draft when there is one."
 ### Task 3: The page opens on the draft, and says which version it is on
 
 **Files:**
-
 - Modify: `src/app/admin/catalogue/page.tsx:377` (state), `:436-470` (load effect), `:550-556` (header)
 
 **Interfaces:**
-
 - Consumes: nothing from tasks 1-2.
 - Produces: component state `openedVersion: OpenedVersion | null`, where
 
 ```ts
 type OpenedVersion = {
- id: string;
- version: number;
- status: "DRAFT" | "PUBLISHED";
- note: string | null;
- publishedAt: string | null;
- /** The published version, for the "open the live catalogue" link. Both
-  * fields, because the link needs the id and the label needs the number. */
- publishedVersion: number | null;
- publishedVersionId: string | null;
+	id: string;
+	version: number;
+	status: "DRAFT" | "PUBLISHED";
+	note: string | null;
+	publishedAt: string | null;
+	/** The published version, for the "open the live catalogue" link. Both
+	 * fields, because the link needs the id and the label needs the number. */
+	publishedVersion: number | null;
+	publishedVersionId: string | null;
 };
 ```
 
-  Task 4 reads `openedVersion` and calls `publish(openedVersion.id)`.
+Task 4 reads `openedVersion` and calls `publish(openedVersion.id)`.
 
 The versions endpoint already returns `id, version, status, note, createdAt, publishedAt` ordered `version: "desc"` (`api/admin/catalogue/versions/route.ts:22-36`), so nothing server-side changes.
-
 - [ ] **Step 1: Add the state**
 
 After line 377 (`const [draft, setDraft] = useState<PlannerCatalogue | null>(null);`) add:
 
 ```ts
- /** Which version the editor is looking at — a DRAFT waiting to be reviewed,
-  * or the live one. Drives the header and the review panel's copy. */
- const [openedVersion, setOpenedVersion] = useState<OpenedVersion | null>(
-  null,
- );
+/** Which version the editor is looking at — a DRAFT waiting to be reviewed,
+ * or the live one. Drives the header and the review panel's copy. */
+const [openedVersion, setOpenedVersion] = useState<OpenedVersion | null>(null);
 ```
 
 And declare the type next to `SaveState` (near line 57):
 
 ```ts
 type OpenedVersion = {
- id: string;
- version: number;
- status: "DRAFT" | "PUBLISHED";
- note: string | null;
- publishedAt: string | null;
- publishedVersion: number | null;
- publishedVersionId: string | null;
+	id: string;
+	version: number;
+	status: "DRAFT" | "PUBLISHED";
+	note: string | null;
+	publishedAt: string | null;
+	publishedVersion: number | null;
+	publishedVersionId: string | null;
 };
 ```
 
@@ -517,63 +500,59 @@ Replace the body of the load effect from `const published = body.versions?.find(
 Replace lines 551-556 — the `<h1>Catalogue</h1>` block and its paragraph — with:
 
 ```tsx
-    <div className="mb-5">
-     {openedVersion?.status === "DRAFT" ? (
-      <>
-       <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 font-semibold text-[11px] text-amber-900 uppercase tracking-wide">
-        <span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
-        Draft v{openedVersion.version} · not live
-       </span>
-       <h1 className="mt-2 font-semibold text-lg">
-        Review this draft before customers see it
-       </h1>
-       <p className="text-neutral-500 text-sm">
-        {openedVersion.note ??
-         "Nothing on this draft reaches the planner until you publish it."}
-       </p>
-       {openedVersion.publishedVersionId && (
-        <a
-         href={`/admin/catalogue?version=${openedVersion.publishedVersionId}`}
-         className="mt-1 inline-block text-[12px] text-neutral-500 underline"
-        >
-         Open the live catalogue (v{openedVersion.publishedVersion})
-         instead
-        </a>
-       )}
-      </>
-     ) : (
-      <>
-       <span className="inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-green-50 px-2.5 py-1 font-semibold text-[11px] text-green-900 uppercase tracking-wide">
-        <span className="h-1.5 w-1.5 rounded-full bg-green-600" />
-        Live{openedVersion ? ` · v${openedVersion.version}` : ""}
-       </span>
-       <h1 className="mt-2 font-semibold text-lg">Catalogue</h1>
-       <p className="text-neutral-500 text-sm">
-        What the planner offers and what it charges. Changes are saved
-        as a draft first — nothing reaches customers until you publish.
-       </p>
-      </>
-     )}
-    </div>
+<div className="mb-5">
+	{openedVersion?.status === "DRAFT" ? (
+		<>
+			<span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 font-semibold text-[11px] text-amber-900 uppercase tracking-wide">
+				<span className="h-1.5 w-1.5 rounded-full bg-amber-600" />
+				Draft v{openedVersion.version} · not live
+			</span>
+			<h1 className="mt-2 font-semibold text-lg">
+				Review this draft before customers see it
+			</h1>
+			<p className="text-neutral-500 text-sm">
+				{openedVersion.note ??
+					"Nothing on this draft reaches the planner until you publish it."}
+			</p>
+			{openedVersion.publishedVersionId && (
+				<a
+					href={`/admin/catalogue?version=${openedVersion.publishedVersionId}`}
+					className="mt-1 inline-block text-[12px] text-neutral-500 underline"
+				>
+					Open the live catalogue (v{openedVersion.publishedVersion}) instead
+				</a>
+			)}
+		</>
+	) : (
+		<>
+			<span className="inline-flex items-center gap-1.5 rounded-full border border-green-300 bg-green-50 px-2.5 py-1 font-semibold text-[11px] text-green-900 uppercase tracking-wide">
+				<span className="h-1.5 w-1.5 rounded-full bg-green-600" />
+				Live{openedVersion ? ` · v${openedVersion.version}` : ""}
+			</span>
+			<h1 className="mt-2 font-semibold text-lg">Catalogue</h1>
+			<p className="text-neutral-500 text-sm">
+				What the planner offers and what it charges. Changes are saved as a
+				draft first — nothing reaches customers until you publish.
+			</p>
+		</>
+	)}
+</div>;
 ```
 
 The link carries the published version's **id**, not an empty `?version=`. An
 empty value comes back from `useSearchParams().get("version")` as `""`, which
 is falsy, so the resolution in step 2 would fall straight back to the draft and
 the link would appear to do nothing.
-
 - [ ] **Step 4: Verify types and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: no errors. Biome will flag an unused `published` binding if step 2 was applied partially — that is a real signal, re-read the hunk.
-
 - [ ] **Step 5: Verify in the running app**
 
 Run: `pnpm dev`, sign in at `/admin/login`, open `/admin/catalogue`.
 Expected: with a DRAFT in the database, the page opens on it and the header reads `Draft vN · not live`. Follow the "open the live catalogue" link: the header flips to `Live · vN`. With no draft in the database, the page opens live as before.
 
 If there is no DRAFT to test against, create one: `/admin/cabinet-designs` → any design → "Add to planner".
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -592,11 +571,9 @@ and the header says which version is on screen and whether it is live."
 ### Task 4: Review panel above the tabs, gated on unpriced rungs
 
 **Files:**
-
 - Modify: `src/app/admin/catalogue/page.tsx` — imports, a `blockers` memo beside `issues` (`:477-484`), a new panel above the tab bar (`:567`), and the publish button's `disabled` (`:1330`)
 
 **Interfaces:**
-
 - Consumes: `blockersOf`, `PriceBlocker` from `@/lib/catalogue/health` (Task 1); `openedVersion` (Task 3).
 - Produces: nothing later tasks read.
 
@@ -611,10 +588,10 @@ import { blockersOf } from "@/lib/catalogue/health";
 After the `issues` memo (`:477-484`) add:
 
 ```ts
- // A rung priced at nothing is schema-valid, so `issues` never sees it. It is
- // the one thing a design file structurally cannot supply, which makes it the
- // blocker that actually occurs.
- const blockers = useMemo(() => (draft ? blockersOf(draft) : []), [draft]);
+// A rung priced at nothing is schema-valid, so `issues` never sees it. It is
+// the one thing a design file structurally cannot supply, which makes it the
+// blocker that actually occurs.
+const blockers = useMemo(() => (draft ? blockersOf(draft) : []), [draft]);
 ```
 
 - [ ] **Step 2: Render the panel above the tab bar**
@@ -622,78 +599,73 @@ After the `issues` memo (`:477-484`) add:
 Insert immediately before `<div className="flex flex-wrap gap-1.5">` (the tab row, `:567`), inside `{draft && (`:
 
 ```tsx
-      {changes.length > 0 && (
-       <div className="rounded-lg border border-neutral-200 bg-white">
-        <div className="flex flex-wrap items-baseline gap-2.5 border-neutral-100 border-b px-4 py-3">
-         <p className="text-[11px] text-neutral-500 uppercase tracking-wide">
-          Needs you
-         </p>
-         <span className="text-[12px] text-neutral-400">
-          {blockers.length === 0
-           ? "nothing blocking · ready to publish"
-           : `${blockers.length} rung${
-             blockers.length === 1 ? "" : "s"
-            } still need${blockers.length === 1 ? "s" : ""} a price`}
-         </span>
-        </div>
+{
+	changes.length > 0 && (
+		<div className="rounded-lg border border-neutral-200 bg-white">
+			<div className="flex flex-wrap items-baseline gap-2.5 border-neutral-100 border-b px-4 py-3">
+				<p className="text-[11px] text-neutral-500 uppercase tracking-wide">
+					Needs you
+				</p>
+				<span className="text-[12px] text-neutral-400">
+					{blockers.length === 0
+						? "nothing blocking · ready to publish"
+						: `${blockers.length} rung${
+								blockers.length === 1 ? "" : "s"
+							} still need${blockers.length === 1 ? "s" : ""} a price`}
+				</span>
+			</div>
 
-        <ul className="flex flex-wrap gap-x-5 gap-y-1.5 border-neutral-100 border-b px-4 py-3">
-         {changes.map((line) => (
-          <li key={line} className="text-[13px] text-neutral-700">
-           · {line}
-          </li>
-         ))}
-        </ul>
+			<ul className="flex flex-wrap gap-x-5 gap-y-1.5 border-neutral-100 border-b px-4 py-3">
+				{changes.map((line) => (
+					<li key={line} className="text-[13px] text-neutral-700">
+						· {line}
+					</li>
+				))}
+			</ul>
 
-        {blockers.map((blocker) => {
-         const fi = draft.families.findIndex(
-          (f) => f.id === blocker.familyId,
-         );
-         const si = draft.families[fi]?.sizes.findIndex(
-          (s) => s.widthMm === blocker.widthMm,
-         );
-         if (fi < 0 || si === undefined || si < 0) return null;
-         return (
-          <div
-           key={`${blocker.familyId}-${blocker.widthMm}`}
-           className="flex flex-wrap items-center justify-between gap-3 border-neutral-100 border-b px-4 py-3 last:border-b-0"
-          >
-           <div className="min-w-0">
-            <p className="text-sm">
-             <span className="font-medium">
-              {blocker.familyLabel}
-             </span>{" "}
-             · <span className="tabular-nums">
-              {blocker.widthMm} mm
-             </span>
-            </p>
-            <p className="text-[12px] text-neutral-500">
-             {blocker.meshDesignId
-              ? "Drawn from a design, but carries no price"
-              : "No price set"}
-            </p>
-           </div>
-           <div className="flex items-center gap-2">
-            <span className="text-[12px] text-neutral-400">RM</span>
-            <Num
-             value={draft.families[fi].sizes[si].priceRm}
-             width="w-24"
-             onChange={(v) =>
-              edit((n) => {
-               n.families[fi].sizes[si].priceRm = v;
-              })
-             }
-            />
-           </div>
-          </div>
-         );
-        })}
-       </div>
-      )}
+			{blockers.map((blocker) => {
+				const fi = draft.families.findIndex((f) => f.id === blocker.familyId);
+				const si = draft.families[fi]?.sizes.findIndex(
+					(s) => s.widthMm === blocker.widthMm,
+				);
+				if (fi < 0 || si === undefined || si < 0) return null;
+				return (
+					<div
+						key={`${blocker.familyId}-${blocker.widthMm}`}
+						className="flex flex-wrap items-center justify-between gap-3 border-neutral-100 border-b px-4 py-3 last:border-b-0"
+					>
+						<div className="min-w-0">
+							<p className="text-sm">
+								<span className="font-medium">{blocker.familyLabel}</span> ·{" "}
+								<span className="tabular-nums">{blocker.widthMm} mm</span>
+							</p>
+							<p className="text-[12px] text-neutral-500">
+								{blocker.meshDesignId
+									? "Drawn from a design, but carries no price"
+									: "No price set"}
+							</p>
+						</div>
+						<div className="flex items-center gap-2">
+							<span className="text-[12px] text-neutral-400">RM</span>
+							<Num
+								value={draft.families[fi].sizes[si].priceRm}
+								width="w-24"
+								onChange={(v) =>
+									edit((n) => {
+										n.families[fi].sizes[si].priceRm = v;
+									})
+								}
+							/>
+						</div>
+					</div>
+				);
+			})}
+		</div>
+	);
+}
 ```
 
 The price field writes `draft.families[fi].sizes[si].priceRm` — the same path the Cabinets tab edits, through the same `edit` helper. One state object, two views.
-
 - [ ] **Step 3: Gate publishing on the blockers**
 
 The publish button at `:1330` currently reads:
@@ -717,26 +689,25 @@ Replace with:
 In the existing review block, immediately after the `{issues.length > 0 && (` red box closes (`:1321`), add:
 
 ```tsx
-         {blockers.length > 0 && (
-          <p className="mt-3 text-[12px] text-amber-800">
-           {blockers.length} rung
-           {blockers.length === 1 ? "" : "s"} still need
-           {blockers.length === 1 ? "s" : ""} a price before this can
-           go live.
-          </p>
-         )}
+{
+	blockers.length > 0 && (
+		<p className="mt-3 text-[12px] text-amber-800">
+			{blockers.length} rung
+			{blockers.length === 1 ? "" : "s"} still need
+			{blockers.length === 1 ? "s" : ""} a price before this can go live.
+		</p>
+	);
+}
 ```
 
 - [ ] **Step 5: Verify types, lint and the suite**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: clean.
-
 - [ ] **Step 6: Verify in the running app**
 
 Run: `pnpm dev`, open `/admin/catalogue` on a draft, set any rung's price to 0 on the Cabinets tab.
 Expected: the rung appears in the "Needs you" panel within a render; the publish button greys out; typing a price into the panel's field clears the row and re-enables the button. Confirm the Cabinets tab shows the same number — one state, two views.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -754,16 +725,13 @@ they are gone."
 ### Task 5: Room-first Cabinets tab
 
 **Files:**
-
 - Modify: `src/app/admin/catalogue/page.tsx:584-901` — the `{tab === "families" && (` block
 
 **Interfaces:**
-
 - Consumes: `strandedFamilyIds` from `@/lib/catalogue/health` (Task 1).
 - Produces: nothing later tasks read.
 
 The family card body (name/type/depth/height/sizes) is **unchanged** — only the wrapper around it changes: families are grouped by room, and each card gains a room-membership row.
-
 - [ ] **Step 1: Import and derive the groups**
 
 Add to the imports:
@@ -775,57 +743,56 @@ import { strandedFamilyIds } from "@/lib/catalogue/health";
 Add a search box's state beside the other `useState` calls (near `:381`):
 
 ```ts
- /** Filters the Cabinets tab by family label or rung width. At ~200 rungs a
-  * flat scroll stops being navigable, and a width is how someone hunts. */
- const [familyQuery, setFamilyQuery] = useState("");
+/** Filters the Cabinets tab by family label or rung width. At ~200 rungs a
+ * flat scroll stops being navigable, and a width is how someone hunts. */
+const [familyQuery, setFamilyQuery] = useState("");
 ```
 
 After the `blockers` memo add:
 
 ```ts
- /**
-  * The Cabinets tab, grouped the way an admin arrives thinking: one room at a
-  * time. Membership comes from `roomTypes[].familyIds`, which the tab used to
-  * ignore entirely — so a family in no room looked healthy here while being
-  * unreachable from the planner.
-  */
- const familyGroups = useMemo(() => {
-  if (!draft) return [];
-  const q = familyQuery.trim().toLowerCase();
-  const matches = (family: Family) =>
-   q === "" ||
-   family.label.toLowerCase().includes(q) ||
-   family.sizes.some((s) => String(s.widthMm).includes(q));
+/**
+ * The Cabinets tab, grouped the way an admin arrives thinking: one room at a
+ * time. Membership comes from `roomTypes[].familyIds`, which the tab used to
+ * ignore entirely — so a family in no room looked healthy here while being
+ * unreachable from the planner.
+ */
+const familyGroups = useMemo(() => {
+	if (!draft) return [];
+	const q = familyQuery.trim().toLowerCase();
+	const matches = (family: Family) =>
+		q === "" ||
+		family.label.toLowerCase().includes(q) ||
+		family.sizes.some((s) => String(s.widthMm).includes(q));
 
-  const stranded = new Set(strandedFamilyIds(draft));
-  const indexOf = new Map(draft.families.map((f, i) => [f.id, i]));
+	const stranded = new Set(strandedFamilyIds(draft));
+	const indexOf = new Map(draft.families.map((f, i) => [f.id, i]));
 
-  const groups = draft.roomTypes.map((room) => ({
-   key: room.id,
-   label: room.label,
-   stranded: false,
-   indices: room.familyIds
-    .map((id) => indexOf.get(id))
-    .filter((i): i is number => i !== undefined)
-    .filter((i) => matches(draft.families[i])),
-  }));
+	const groups = draft.roomTypes.map((room) => ({
+		key: room.id,
+		label: room.label,
+		stranded: false,
+		indices: room.familyIds
+			.map((id) => indexOf.get(id))
+			.filter((i): i is number => i !== undefined)
+			.filter((i) => matches(draft.families[i])),
+	}));
 
-  groups.push({
-   key: "__stranded",
-   label: "In no room — customers cannot see these",
-   stranded: true,
-   indices: draft.families
-    .map((f, i) => (stranded.has(f.id) ? i : -1))
-    .filter((i) => i >= 0)
-    .filter((i) => matches(draft.families[i])),
-  });
+	groups.push({
+		key: "__stranded",
+		label: "In no room — customers cannot see these",
+		stranded: true,
+		indices: draft.families
+			.map((f, i) => (stranded.has(f.id) ? i : -1))
+			.filter((i) => i >= 0)
+			.filter((i) => matches(draft.families[i])),
+	});
 
-  return groups.filter((g) => g.indices.length > 0);
- }, [draft, familyQuery]);
+	return groups.filter((g) => g.indices.length > 0);
+}, [draft, familyQuery]);
 ```
 
 `Family` is already imported from `@/lib/planner/catalogueSchema` at the top of the file.
-
 - [ ] **Step 2: Wrap the families list in the groups**
 
 The block at `:584` opens:
@@ -903,72 +870,63 @@ Find the end of the families map — the `))}` that closes `draft.families.map((
 ```
 
 so the family card closes, then the group map, then the group div.
-
 - [ ] **Step 4: Put room membership on the family card**
 
 Inside the family `SectionCard`, immediately before the `Sizes & prices` block (`:807`, the `<div className="mt-3 border-neutral-100 border-t pt-3">` that holds it), insert:
 
 ```tsx
-          <div className="mt-3 border-neutral-100 border-t pt-3">
-           <p className="mb-2 text-[11px] text-neutral-500 uppercase tracking-wide">
-            Offered in
-           </p>
-           <div className="flex flex-wrap gap-1.5">
-            {draft.roomTypes.map((room, ri) => {
-             const on = room.familyIds.includes(family.id);
-             return (
-              <button
-               key={room.id}
-               type="button"
-               onClick={() =>
-                edit((n) => {
-                 const ids = n.roomTypes[ri].familyIds;
-                 n.roomTypes[ri].familyIds = on
-                  ? ids.filter((id) => id !== family.id)
-                  : [...ids, family.id];
-                 // A starter layout may not place a cabinet the
-                 // room no longer offers.
-                 if (on) {
-                  n.roomTypes[ri].starter = n.roomTypes[
-                   ri
-                  ].starter.filter(
-                   (s) => s.familyId !== family.id,
-                  );
-                 }
-                })
-               }
-               className={chipClass(on)}
-              >
-               {room.label}
-              </button>
-             );
-            })}
-           </div>
-           {!draft.roomTypes.some((r) =>
-            r.familyIds.includes(family.id),
-           ) && (
-            <p className="mt-2 text-[12px] text-amber-800">
-             No room offers this cabinet, so no customer can see
-             it. Ticking a room is what puts it in the planner;
-             unticking every room retires it without losing its
-             prices.
-            </p>
-           )}
-          </div>
+<div className="mt-3 border-neutral-100 border-t pt-3">
+	<p className="mb-2 text-[11px] text-neutral-500 uppercase tracking-wide">
+		Offered in
+	</p>
+	<div className="flex flex-wrap gap-1.5">
+		{draft.roomTypes.map((room, ri) => {
+			const on = room.familyIds.includes(family.id);
+			return (
+				<button
+					key={room.id}
+					type="button"
+					onClick={() =>
+						edit((n) => {
+							const ids = n.roomTypes[ri].familyIds;
+							n.roomTypes[ri].familyIds = on
+								? ids.filter((id) => id !== family.id)
+								: [...ids, family.id];
+							// A starter layout may not place a cabinet the
+							// room no longer offers.
+							if (on) {
+								n.roomTypes[ri].starter = n.roomTypes[ri].starter.filter(
+									(s) => s.familyId !== family.id,
+								);
+							}
+						})
+					}
+					className={chipClass(on)}
+				>
+					{room.label}
+				</button>
+			);
+		})}
+	</div>
+	{!draft.roomTypes.some((r) => r.familyIds.includes(family.id)) && (
+		<p className="mt-2 text-[12px] text-amber-800">
+			No room offers this cabinet, so no customer can see it. Ticking a room is
+			what puts it in the planner; unticking every room retires it without
+			losing its prices.
+		</p>
+	)}
+</div>;
 ```
 
 `chipClass` is already imported from `@/components/admin/styles` at the top of the file. This mirrors the toggle on the Rooms tab (`:1184-1210`) including its starter cleanup — the Rooms tab keeps its own copy, since it is still the right place to edit a room.
-
 - [ ] **Step 5: Verify types, lint and the suite**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: clean. A JSX nesting mistake in step 3 surfaces here as a parse error — re-read that hunk rather than guessing.
-
 - [ ] **Step 6: Verify in the running app**
 
 Run: `pnpm dev`, open `/admin/catalogue` → Cabinets.
 Expected: families grouped under Kitchen / Living room / Bedroom / Foyer with per-group counts; `Testing123` under "In no room — customers cannot see these"; typing `900` filters to families carrying a 900 rung; typing a family name filters by name; ticking a room on a family card moves it into that group; unticking every room moves it to the stranded group and shows the amber note.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -988,11 +946,9 @@ how anyone will navigate this once there is one design per width."
 ### Task 6: "What it holds" becomes a derived line
 
 **Files:**
-
 - Modify: `src/app/admin/catalogue/page.tsx:686-806` (the geometry block), `:664` (the top-level `Drawers` field)
 
 **Interfaces:**
-
 - Consumes: `fitOutOf`, `standOf` from `@/lib/planner/parts`; `constructionOf` from `@/lib/planner/catalogue`.
 - Produces: nothing.
 
@@ -1008,12 +964,12 @@ import { fitOutOf, standOf } from "@/lib/planner/parts";
 After the `familyGroups` memo add:
 
 ```ts
- /** The workshop constants the scene resolves with — board thickness and
-  * plinth height decide the fit-out the fallback draws. */
- const construction = useMemo(
-  () => (draft ? constructionOf(draft) : null),
-  [draft],
- );
+/** The workshop constants the scene resolves with — board thickness and
+ * plinth height decide the fit-out the fallback draws. */
+const construction = useMemo(
+	() => (draft ? constructionOf(draft) : null),
+	[draft],
+);
 ```
 
 - [ ] **Step 2: Add the summary helper**
@@ -1032,34 +988,34 @@ Add above `function CatalogueEditor()` (near the other module-level helpers, aro
  * stored fields as inputs invited edits the scene would ignore.
  */
 function fitOutSummary(family: Family, construction: Construction): string {
- const widest = Math.max(...family.sizes.map((s) => s.widthMm));
- const fit = fitOutOf(family, widest, construction);
- const stand = standOf(family, construction);
+	const widest = Math.max(...family.sizes.map((s) => s.widthMm));
+	const fit = fitOutOf(family, widest, construction);
+	const stand = standOf(family, construction);
 
- const parts: string[] = [];
- parts.push(
-  fit.shelves === 0
-   ? "no shelf"
-   : `${fit.shelves} shelf${fit.shelves === 1 ? "" : "s"}`,
- );
- if (fit.drawers > 0) parts.push(`${fit.drawers} drawers`);
- parts.push(
-  fit.doorLeaves === 0
-   ? "no door"
-   : `${fit.doorLeaves} door leaf${fit.doorLeaves === 1 ? "" : "s"} at ${widest} mm`,
- );
- parts.push(fit.hasBack ? "back panel" : "open back");
- if (stand.legs > 0) {
-  const diameter = family.geometry?.legDiameterMm ?? 0;
-  parts.push(
-   `${stand.legs} legs, ${stand.heightMm} mm${
-    diameter > 0 ? ` × ⌀${diameter}` : ""
-   }, ${stand.insetMm} mm in`,
-  );
- } else if (family.kind !== "wall") {
-  parts.push(`recessed plinth, ${stand.heightMm} mm`);
- }
- return parts.join(" · ");
+	const parts: string[] = [];
+	parts.push(
+		fit.shelves === 0
+			? "no shelf"
+			: `${fit.shelves} shelf${fit.shelves === 1 ? "" : "s"}`,
+	);
+	if (fit.drawers > 0) parts.push(`${fit.drawers} drawers`);
+	parts.push(
+		fit.doorLeaves === 0
+			? "no door"
+			: `${fit.doorLeaves} door leaf${fit.doorLeaves === 1 ? "" : "s"} at ${widest} mm`,
+	);
+	parts.push(fit.hasBack ? "back panel" : "open back");
+	if (stand.legs > 0) {
+		const diameter = family.geometry?.legDiameterMm ?? 0;
+		parts.push(
+			`${stand.legs} legs, ${stand.heightMm} mm${
+				diameter > 0 ? ` × ⌀${diameter}` : ""
+			}, ${stand.insetMm} mm in`,
+		);
+	} else if (family.kind !== "wall") {
+		parts.push(`recessed plinth, ${stand.heightMm} mm`);
+	}
+	return parts.join(" · ");
 }
 ```
 
@@ -1117,65 +1073,60 @@ Replace with:
 ```
 
 The nine `Num`/checkbox controls between them, and every `withGeometry(...)` writer, are untouched — they now live inside the disclosure.
-
 - [ ] **Step 5: Make the top-level `Drawers` field read-only when a design set it**
 
 At `:662-671` the field reads:
 
 ```tsx
-           <Num
-            label="Drawers"
-            value={family.drawers}
-            width="w-16"
-            onChange={(v) =>
-             edit((n) => {
-              n.families[fi].drawers = v;
-             })
-            }
-           />
+<Num
+	label="Drawers"
+	value={family.drawers}
+	width="w-16"
+	onChange={(v) =>
+		edit((n) => {
+			n.families[fi].drawers = v;
+		})
+	}
+/>;
 ```
 
 `fitOutOf:181` prefers `family.geometry.drawers` when geometry exists, so the input is a lie in that case. Replace the whole `<Num label="Drawers" … />` element with:
 
 ```tsx
-            {family.geometry ? (
-             <div className="flex flex-col gap-1">
-              <span className="text-[11px] text-neutral-500">
-               Drawers
-              </span>
-              <p className="px-2.5 py-2 text-neutral-700 text-sm tabular-nums">
-               {family.geometry.drawers}
-               <span className="ml-1.5 text-[12px] text-neutral-400">
-                from design
-               </span>
-              </p>
-             </div>
-            ) : (
-             <Num
-              label="Drawers"
-              value={family.drawers}
-              width="w-16"
-              onChange={(v) =>
-               edit((n) => {
-                n.families[fi].drawers = v;
-               })
-              }
-             />
-            )}
+{
+	family.geometry ? (
+		<div className="flex flex-col gap-1">
+			<span className="text-[11px] text-neutral-500">Drawers</span>
+			<p className="px-2.5 py-2 text-neutral-700 text-sm tabular-nums">
+				{family.geometry.drawers}
+				<span className="ml-1.5 text-[12px] text-neutral-400">from design</span>
+			</p>
+		</div>
+	) : (
+		<Num
+			label="Drawers"
+			value={family.drawers}
+			width="w-16"
+			onChange={(v) =>
+				edit((n) => {
+					n.families[fi].drawers = v;
+				})
+			}
+		/>
+	);
+}
 ```
 
 - [ ] **Step 6: Verify types, lint and the suite**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: clean.
-
 - [ ] **Step 7: Verify in the running app**
 
 Run: `pnpm dev`, open `/admin/catalogue` → Cabinets.
 Expected: every family shows one "What it holds" line. Base cabinet (which has geometry) reads something like `1 shelf · 2 door leafs at 900 mm · back panel · 4 legs, 100 mm × ⌀57, 17 mm in — measured from a design`; Drawer base reads `no shelf · 3 drawers · … — no design yet, planner defaults`. "Override these" reveals the nine inputs, and editing one still changes the line above it.
 
 Check the pluralisation reads correctly — "2 door leafs" is wrong English; if the line shows it, fix `fitOutSummary` to use `leaf`/`leaves` and re-run.
-
 - [ ] **Step 8: Commit**
 
 ```bash

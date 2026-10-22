@@ -1,26 +1,25 @@
 # Design intake (`lib/mesh`)
 
 How an OBJ export becomes catalogue data and a drawable mesh. Loaded only when
-working under `src/lib/mesh/` — the rules that govern what the *planner* does
+working under `src/lib/mesh/` — the rules that govern what the _planner_ does
 with the result stay in the root `CLAUDE.md` under "3D".
 
 ## Every stage infers, none assumes
 
 The admin keeps adding designs, so each import is a file nobody has seen. A
-`.skp` gave cabinets for free — component instances *are* cabinets — but an OBJ
+`.skp` gave cabinets for free — component instances _are_ cabinets — but an OBJ
 is one flat namespace of boxes with no units and no up-axis. So:
-
 - **Scale** (`normalise.ts`) is found by trying mm/cm/inch/metre and keeping the
   one that puts the modal panel thickness in 12–25mm. Board thickness is a
   constant of the trade; model size is not.
-- **Up-axis** is found by settling *depth first* (this product plans one wall, so
+- **Up-axis** is found by settling _depth first_ (this product plans one wall, so
   depth is usually the smallest extent) and then voting between the two axes
   left, on which one panels are thin on. Voting across all three gets it wrong
   on a real file, because doors and backs are thin on depth and outvote the
   shelves. The exception is a **square footprint**: a corner unit is drawn
   square on purpose and is often no taller than it is deep, so its smallest
   extent is its height, not its depth, and "depth first" would lay it on its
-  back. A square-*fronted* ordinary cabinet (width tied with height, both
+  back. A square-_fronted_ ordinary cabinet (width tied with height, both
   bigger than depth) ties the same two extents without being a corner, so the
   tie alone is not enough — the plate vote decides which reading is real: only
   when the smallest axis strictly wins the vote (a corner's bottom, top and
@@ -29,7 +28,7 @@ is one flat namespace of boxes with no units and no up-axis. So:
   possibly wrong for a corner unit whose named boards do not settle the vote —
   and that reading comes back **not confident**, which raises the "could not
   confidently tell which axis is up" note rather than asserting a guess.
-- **Which end is the wall.** A *named* front wins — if the drafter typed
+- **Which end is the wall.** A _named_ front wins — if the drafter typed
   `Door_L_`, that panel's side is the front, full stop. `inferFrontSide` is the
   fallback, and it deliberately ignores anything standing on the floor: feet are
   hardware by every test but a leveller sits under the middle of the carcass and
@@ -61,7 +60,7 @@ the row is not kept. The bytes are re-fetched from Blob; trust comes from the
 file, never from what a client claims about it.
 
 `measureDesign` deliberately skips the run-grouping. Over a lone cabinet
-`byEndPanels` measures the opening *between* the end panels, so an 800 carcass
+`byEndPanels` measures the opening _between_ the end panels, so an 800 carcass
 reports 768 — its clear width, minus two 16mm boards. The form wants the size on
 the invoice, which is the bounding box. `coalesceParts` unions the records an
 exporter split a panel into (safe here because it is one cabinet; across a run it
@@ -69,7 +68,7 @@ would merge neighbours).
 
 **Publishing merges nothing.** `lib/catalogue/buildCatalogue.ts` rebuilds the
 catalogue's families from every active design row — one design, one family, one
-size, and the family id *is* the design id — and carries door styles, finishes,
+size, and the family id _is_ the design id — and carries door styles, finishes,
 rates and room walls over from the published version. Name, all-in price, box
 and rooms come from the row the admin typed; only the fit-out and the mesh come
 from the file.

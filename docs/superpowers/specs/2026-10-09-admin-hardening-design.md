@@ -6,7 +6,6 @@ Status: scope agreed in conversation on 2026-10-09. Awaiting review of this writ
 
 The passkey step-up and the gateway refund (merged 2026-10-08) left three
 gaps their own reviews named:
-
 1. Guarded actions are recorded only as a `console.info` line, which the host
    discards within days. A refund or a role change has no durable "who".
 2. A staff account is unprotected until its owner enrols a passkey, and a

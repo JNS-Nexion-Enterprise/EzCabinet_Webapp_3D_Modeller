@@ -10,7 +10,6 @@ number on the account, and the notice that covers it must exist first.
 
 The planner takes full payment for made-to-order goods and shows the customer
 no terms, no refund policy and no seller address before they pay.
-
 - **Consumer Protection (Electronic Trade Transactions) Regulations 2024**
   (in force 25 December 2024, replacing the 2012 regulations) — an online
   seller must disclose: name, website, email and phone, physical address, a
@@ -43,21 +42,21 @@ change.
 
 ## Decisions
 
-| Question | Decision |
-| --- | --- |
-| Who writes the terms | We draft, marked draft. EzCabinet's counsel edits later. |
-| Where the text lives | `lib/copy/{en,ms,zh}.ts`, like the privacy notice. Not MDX (a dependency), not admin-editable (a CMS for three pages). |
+| Question                  | Decision                                                                                                                      |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Who writes the terms      | We draft, marked draft. EzCabinet's counsel edits later.                                                                      |
+| Where the text lives      | `lib/copy/{en,ms,zh}.ts`, like the privacy notice. Not MDX (a dependency), not admin-editable (a CMS for three pages).        |
 | How agreement is recorded | A required checkbox at checkout, refused server-side without it, with the wording's version and the time stored on the order. |
-| Refunds in the app | None. The policy tells the customer to contact EzCabinet; there is no refund or cancel button. |
-| GDPR | One sentence in the privacy notice. No consent or representative machinery. |
+| Refunds in the app        | None. The policy tells the customer to contact EzCabinet; there is no refund or cancel button.                                |
+| GDPR                      | One sentence in the privacy notice. No consent or representative machinery.                                                   |
 
 ## Pages
 
-| Route | Content |
-| --- | --- |
-| `/[lang]/terms` | Terms of sale and payment |
+| Route             | Content                        |
+| ----------------- | ------------------------------ |
+| `/[lang]/terms`   | Terms of sale and payment      |
 | `/[lang]/refunds` | Refund and cancellation policy |
-| `/[lang]/privacy` | Existing notice, extended |
+| `/[lang]/privacy` | Existing notice, extended      |
 
 All three are a title, a draft banner, an intro and a list of
 heading-plus-paragraph sections. `privacy/page.tsx` already renders exactly
@@ -88,14 +87,14 @@ sections. No page is indexed differently from privacy today.
 
 ### Refund policy — draft content
 
-| Situation | Outcome |
-| --- | --- |
-| Cancelled before production starts | Full refund |
-| Cancelled after production starts | No refund — the goods are made to order |
-| Damaged or defective on delivery | Report within **7 days** with photos; repaired or replaced |
-| Design changed at re-measure | Re-quoted; the difference is refunded or charged before production |
-| How refunds are paid | To the original payment method, within **14 working days** |
-| How to ask | Contact EzCabinet with the order reference (`IC-YYYYMMDD-NNN`) |
+| Situation                          | Outcome                                                            |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| Cancelled before production starts | Full refund                                                        |
+| Cancelled after production starts  | No refund — the goods are made to order                            |
+| Damaged or defective on delivery   | Report within **7 days** with photos; repaired or replaced         |
+| Design changed at re-measure       | Re-quoted; the difference is refunded or charged before production |
+| How refunds are paid               | To the original payment method, within **14 working days**         |
+| How to ask                         | Contact EzCabinet with the order reference (`IC-YYYYMMDD-NNN`)     |
 
 "Production starts" is a fact the app already records: `Order.productionStage`
 is null until an admin starts it (`lib/orders/stage.ts`). The policy is
@@ -105,22 +104,21 @@ written to match that line so staff and customer read the same boundary.
 
 ### How each 2024 duty is met
 
-| Duty | Met by |
-| --- | --- |
-| Disclosures in Bahasa Malaysia | `/ms/terms`, `/ms/refunds`, `/ms/privacy`, and the Malay checkout |
-| Seller name, address, email, phone | Terms section 1 and the line above the pay button |
-| Full price incl. taxes and shipping | Existing checkout breakdown; terms say so |
-| Estimated delivery time | Terms, Delivery — **4 to 6 weeks from re-measure**, our default |
-| Let the buyer correct an order | Terms, "Correcting your order": free edits before paying, by email until production starts |
-| Acknowledge the order at once | Existing: the order page the customer lands on, and the WhatsApp message when opted in |
-| Bear re-delivery of defective goods | Refund policy, damaged or defective |
-| Keep records three years | Orders are never deleted (`Order.userId` is `Restrict`) |
-| Statutory rights preserved | Terms, "Your rights as a consumer" |
+| Duty                                | Met by                                                                                     |
+| ----------------------------------- | ------------------------------------------------------------------------------------------ |
+| Disclosures in Bahasa Malaysia      | `/ms/terms`, `/ms/refunds`, `/ms/privacy`, and the Malay checkout                          |
+| Seller name, address, email, phone  | Terms section 1 and the line above the pay button                                          |
+| Full price incl. taxes and shipping | Existing checkout breakdown; terms say so                                                  |
+| Estimated delivery time             | Terms, Delivery — **4 to 6 weeks from re-measure**, our default                            |
+| Let the buyer correct an order      | Terms, "Correcting your order": free edits before paying, by email until production starts |
+| Acknowledge the order at once       | Existing: the order page the customer lands on, and the WhatsApp message when opted in     |
+| Bear re-delivery of defective goods | Refund policy, damaged or defective                                                        |
+| Keep records three years            | Orders are never deleted (`Order.userId` is `Restrict`)                                    |
+| Statutory rights preserved          | Terms, "Your rights as a consumer"                                                         |
 
 ### Privacy notice — additions
 
 New sections, added to the existing ones:
-
 - **Your account** — signing in with Google gives us your name, email and
   profile photo. (Piece B adds: the phone number and address you save.)
 - **Your orders** — name, phone, email, delivery address, the design and the
@@ -147,7 +145,6 @@ New sections, added to the existing ones:
 `QuoteScreen.tsx` already carries one required condition
 (`remeasureAccepted`) and one optional consent (`whatsappOptIn`). Terms follow
 the first pattern exactly.
-
 - **Checkbox**, unticked by default: "I agree to the Terms of sale and the
   Refund policy" — both linked, opening in a new tab so the design and the
   typed form are not lost. Pay / Place order stays disabled until ticked.

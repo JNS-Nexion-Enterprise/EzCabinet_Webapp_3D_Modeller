@@ -31,27 +31,28 @@ Also: the camera refits to a newly tapped wall automatically only in elevation v
 
 ## File map
 
-| File | Change |
-| --- | --- |
-| `src/lib/planner/floorplan.ts` | **new** — templates → walls, vertex kinds, frames, wall-length edits |
-| `src/lib/planner/__tests__/floorplan.test.ts` | **new** |
-| `src/lib/planner/layout.ts` | `reserved` becomes `Span[]` per row; `endWalls` on `PlannerLayout` |
-| `src/lib/planner/exposure.ts` | `EndWalls` becomes `{ wallWidthMm, left, right }` |
-| `src/lib/planner/room.ts` | rewritten for v3 |
-| `src/lib/planner/pricing.ts` | sums every corner worktop |
-| `src/lib/orders/layoutSchema.ts` | v3 schema, v1/v2 → v3 transforms |
-| `src/lib/orders/validate.ts` | plan validity, corners array |
-| `src/components/planner/Room.tsx` | polygon floor, one wall per edge, wall tap |
-| `src/components/planner/PlannerScene.tsx` | wall frames, `DropPicker`, camera, puck |
-| `src/components/planner/WallLengths.tsx` | **new** — plan-view length labels |
-| `src/components/planner/PositionDimensions.tsx` | export `EditableFigure` |
-| `src/components/planner/StudioScreen.tsx` | target wall, drop, room panel wiring |
-| `src/components/planner/studio/RoomPanel.tsx` | shape thumbnails, per-wall lengths |
-| `src/app/[lang]/planner/PlannerApp.tsx`, `QuoteScreen.tsx` | back-wall length from the plan |
-| `src/lib/copy/{en,ms,zh}.ts` | copy keys |
-| `CLAUDE.md` | room-shapes section |
+| File                                                       | Change                                                               |
+| ---------------------------------------------------------- | -------------------------------------------------------------------- |
+| `src/lib/planner/floorplan.ts`                             | **new** — templates → walls, vertex kinds, frames, wall-length edits |
+| `src/lib/planner/__tests__/floorplan.test.ts`              | **new**                                                              |
+| `src/lib/planner/layout.ts`                                | `reserved` becomes `Span[]` per row; `endWalls` on `PlannerLayout`   |
+| `src/lib/planner/exposure.ts`                              | `EndWalls` becomes `{ wallWidthMm, left, right }`                    |
+| `src/lib/planner/room.ts`                                  | rewritten for v3                                                     |
+| `src/lib/planner/pricing.ts`                               | sums every corner worktop                                            |
+| `src/lib/orders/layoutSchema.ts`                           | v3 schema, v1/v2 → v3 transforms                                     |
+| `src/lib/orders/validate.ts`                               | plan validity, corners array                                         |
+| `src/components/planner/Room.tsx`                          | polygon floor, one wall per edge, wall tap                           |
+| `src/components/planner/PlannerScene.tsx`                  | wall frames, `DropPicker`, camera, puck                              |
+| `src/components/planner/WallLengths.tsx`                   | **new** — plan-view length labels                                    |
+| `src/components/planner/PositionDimensions.tsx`            | export `EditableFigure`                                              |
+| `src/components/planner/StudioScreen.tsx`                  | target wall, drop, room panel wiring                                 |
+| `src/components/planner/studio/RoomPanel.tsx`              | shape thumbnails, per-wall lengths                                   |
+| `src/app/[lang]/planner/PlannerApp.tsx`, `QuoteScreen.tsx` | back-wall length from the plan                                       |
+| `src/lib/copy/{en,ms,zh}.ts`                               | copy keys                                                            |
+| `CLAUDE.md`                                                | room-shapes section                                                  |
 
 ---
+
 ### Task 1: Floor plan module
 
 **Files:**
@@ -64,15 +65,14 @@ Also: the camera refits to a newly tapped wall automatically only in elevation v
   - `type FloorPlan`, `type RoomShape = "rect" | "l" | "l-mirror"`, `type Vec2 = { xMm; zMm }`, `type WallGeom`, `type WallFrame = { yawRad; xMm; zMm }`
   - `MIN_LEG_MM = 1000`
   - `wallsOf(plan): WallGeom[]` — wall 0 is the back wall
-  - `vertexKind(plan, vertex): "inside" | "outside"` — vertex *i* = end of wall *i* = start of wall *i+1*
-  - `outlineOf(plan, outsetMm = 0): Vec2[]` — `outlineOf(plan)[i]` is wall *i*'s start
+  - `vertexKind(plan, vertex): "inside" | "outside"` — vertex _i_ = end of wall _i_ = start of wall _i+1_
+  - `outlineOf(plan, outsetMm = 0): Vec2[]` — `outlineOf(plan)[i]` is wall _i_'s start
   - `setWallLength(plan, wall, mm): FloorPlan` (clamped), `clampPlan(plan)`, `planIsValid(plan): boolean`
   - `shapeOf(plan): RoomShape`, `reshape(plan, shape): FloorPlan`
   - `frameOf(wall): WallFrame`, `toWorldMm(p: Vec3Mm, f)`, `toLocalMm(p: Vec3Mm, f)`
   - `nearestWall(plan, point: Vec2): { run: number; xMm: number }`
 
 Coordinates: plan millimetres, origin at the centre of the bounding box, `x` to the right, `z` toward the viewer (three.js world axes, scaled ×1000). Winding: facing any wall from inside, its start is on the left.
-
 - [ ] **Step 1: Write the failing test**
 
 `src/lib/planner/__tests__/floorplan.test.ts`:
@@ -130,7 +130,9 @@ describe("wallsOf", () => {
 	});
 
 	it("gives each wall the room's extent out from it", () => {
-		expect(wallsOf(rect).map((w) => w.depthMm)).toEqual([3600, 4200, 3600, 4200]);
+		expect(wallsOf(rect).map((w) => w.depthMm)).toEqual([
+			3600, 4200, 3600, 4200,
+		]);
 		// The notch's top wall faces the upper area only.
 		expect(wallsOf(l)[2].depthMm).toBe(2075);
 	});
@@ -179,7 +181,10 @@ describe("frames", () => {
 	it("puts a run's wall line on its wall", () => {
 		for (const plan of [rect, l, lMirror]) {
 			for (const wall of wallsOf(plan)) {
-				const p = toWorldMm({ x: 0, y: 0, z: -wall.depthMm / 2 }, frameOf(wall));
+				const p = toWorldMm(
+					{ x: 0, y: 0, z: -wall.depthMm / 2 },
+					frameOf(wall),
+				);
 				expect(p.x).toBeCloseTo((wall.startMm.xMm + wall.endMm.xMm) / 2);
 				expect(p.z).toBeCloseTo((wall.startMm.zMm + wall.endMm.zMm) / 2);
 			}
@@ -201,7 +206,9 @@ describe("setWallLength", () => {
 		expect(setWallLength(rect, 3, 3000)).toMatchObject({ depthMm: 3000 });
 		expect(setWallLength(l, 4, 4500)).toMatchObject({ notchWidthMm: 1000 });
 		expect(setWallLength(l, 1, 2500)).toMatchObject({ notchDepthMm: 2575 });
-		expect(setWallLength(lMirror, 5, 2500)).toMatchObject({ notchDepthMm: 2575 });
+		expect(setWallLength(lMirror, 5, 2500)).toMatchObject({
+			notchDepthMm: 2575,
+		});
 	});
 
 	it("clamps so the room never pinches shut", () => {
@@ -267,7 +274,6 @@ describe("nearestWall", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/floorplan.test.ts`
 Expected: FAIL — `Failed to resolve import "../floorplan"`.
-
 - [ ] **Step 3: Write the implementation**
 
 `src/lib/planner/floorplan.ts`:
@@ -344,8 +350,22 @@ function points(plan: FloorPlan): Vec2[] {
 	const nx = plan.notchWidthMm;
 	const nz = plan.notchDepthMm;
 	return plan.mirror
-		? [p(-w, -d), p(w, -d), p(w, d), p(-w + nx, d), p(-w + nx, d - nz), p(-w, d - nz)]
-		: [p(-w, -d), p(w, -d), p(w, d - nz), p(w - nx, d - nz), p(w - nx, d), p(-w, d)];
+		? [
+				p(-w, -d),
+				p(w, -d),
+				p(w, d),
+				p(-w + nx, d),
+				p(-w + nx, d - nz),
+				p(-w, d - nz),
+			]
+		: [
+				p(-w, -d),
+				p(w, -d),
+				p(w, d - nz),
+				p(w - nx, d - nz),
+				p(w - nx, d),
+				p(-w, d),
+			];
 }
 
 export function wallsOf(plan: FloorPlan): WallGeom[] {
@@ -359,7 +379,8 @@ export function wallsOf(plan: FloorPlan): WallGeom[] {
 		const depthMm = Math.max(
 			...pts.map(
 				(q) =>
-					(q.xMm - startMm.xMm) * inward.xMm + (q.zMm - startMm.zMm) * inward.zMm,
+					(q.xMm - startMm.xMm) * inward.xMm +
+					(q.zMm - startMm.zMm) * inward.zMm,
 			),
 		);
 		// `dz === 0 ? 0 : -dz`: atan2(-0, -1) is -π, and a front wall at -π
@@ -369,7 +390,10 @@ export function wallsOf(plan: FloorPlan): WallGeom[] {
 	});
 }
 
-export function vertexKind(plan: FloorPlan, vertex: number): "inside" | "outside" {
+export function vertexKind(
+	plan: FloorPlan,
+	vertex: number,
+): "inside" | "outside" {
 	const pts = points(plan);
 	const n = pts.length;
 	const i = ((vertex % n) + n) % n;
@@ -408,7 +432,11 @@ export function clampPlan(plan: FloorPlan): FloorPlan {
 		return {
 			...plan,
 			widthMm: clamp(plan.widthMm, WALL_LIMITS.minMm, WALL_LIMITS.maxMm),
-			depthMm: clamp(plan.depthMm, ROOM_DEPTH_LIMITS.minMm, ROOM_DEPTH_LIMITS.maxMm),
+			depthMm: clamp(
+				plan.depthMm,
+				ROOM_DEPTH_LIMITS.minMm,
+				ROOM_DEPTH_LIMITS.maxMm,
+			),
 		};
 	}
 	const widthMm = clamp(plan.widthMm, 2 * MIN_LEG_MM, WALL_LIMITS.maxMm);
@@ -470,7 +498,8 @@ export const shapeOf = (plan: FloorPlan): RoomShape =>
 /** Another template, keeping the back wall's length and the room's depth. */
 export function reshape(plan: FloorPlan, shape: RoomShape): FloorPlan {
 	const { widthMm, depthMm } = plan;
-	if (shape === "rect") return clampPlan({ template: "rect", widthMm, depthMm });
+	if (shape === "rect")
+		return clampPlan({ template: "rect", widthMm, depthMm });
 	return clampPlan({
 		template: "l",
 		widthMm,
@@ -490,8 +519,12 @@ export function reshape(plan: FloorPlan, shape: RoomShape): FloorPlan {
 export function frameOf(wall: WallGeom): WallFrame {
 	return {
 		yawRad: wall.yawRad,
-		xMm: (wall.startMm.xMm + wall.endMm.xMm) / 2 + (wall.inward.xMm * wall.depthMm) / 2,
-		zMm: (wall.startMm.zMm + wall.endMm.zMm) / 2 + (wall.inward.zMm * wall.depthMm) / 2,
+		xMm:
+			(wall.startMm.xMm + wall.endMm.xMm) / 2 +
+			(wall.inward.xMm * wall.depthMm) / 2,
+		zMm:
+			(wall.startMm.zMm + wall.endMm.zMm) / 2 +
+			(wall.inward.zMm * wall.depthMm) / 2,
 	};
 }
 
@@ -517,7 +550,10 @@ export function toLocalMm(p: Vec3Mm, f: WallFrame): Vec3Mm {
 
 /** The wall a floor point is nearest, and how far along it — where a cabinet
  * dropped there should land. */
-export function nearestWall(plan: FloorPlan, point: Vec2): { run: number; xMm: number } {
+export function nearestWall(
+	plan: FloorPlan,
+	point: Vec2,
+): { run: number; xMm: number } {
 	let best = { run: 0, xMm: 0 };
 	let bestMm = Number.POSITIVE_INFINITY;
 	wallsOf(plan).forEach((wall, run) => {
@@ -541,7 +577,6 @@ export function nearestWall(plan: FloorPlan, point: Vec2): { run: number; xMm: n
 
 Run: `pnpm vitest run src/lib/planner/__tests__/floorplan.test.ts`
 Expected: PASS, all tests. If a `toEqual` on a `Vec2` fails only by `-0` vs `0`, change that assertion to `toBeCloseTo` per field — do not change the implementation.
-
 - [ ] **Step 5: Lint and commit**
 
 ```bash
@@ -659,12 +694,10 @@ expect(runView(lRoom("left"), 0).reserved).toEqual({
 ```
 
 and each `.reserved?.floor` expectation becomes `.reserved?.floor).toEqual([{ … }])`.
-
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/reserved.test.ts src/lib/planner/__tests__/exposure.test.ts`
 Expected: FAIL (spreading a `Span` object, `endWalls` ignored).
-
 - [ ] **Step 3: Implement in `layout.ts` and `exposure.ts`**
 
 `layout.ts`, `PlannerLayout`:
@@ -689,42 +722,42 @@ Expected: FAIL (spreading a `Span` object, `endWalls` ignored).
 `occupiedSpans`, replace the `const corner = [...]` block:
 
 ```ts
-		const corner = [
-			...(layout.reserved?.[row] ?? []),
-			// A tall unit stands in the hung row too, so that row's corners are in
-			// its way as well — the same two-way rule as the wall cabinets above.
-			...(row === "floor" && isTallModule(layout, ignoreId)
-				? (layout.reserved?.wall ?? [])
-				: []),
-		];
+const corner = [
+	...(layout.reserved?.[row] ?? []),
+	// A tall unit stands in the hung row too, so that row's corners are in
+	// its way as well — the same two-way rule as the wall cabinets above.
+	...(row === "floor" && isTallModule(layout, ignoreId)
+		? (layout.reserved?.wall ?? [])
+		: []),
+];
 ```
 
 `snapTargets`:
 
 ```ts
-		for (const span of [
-			...(layout.reserved?.floor ?? []),
-			...(layout.reserved?.wall ?? []),
-		]) {
-			edges.push(span.startMm, span.endMm);
-		}
+for (const span of [
+	...(layout.reserved?.floor ?? []),
+	...(layout.reserved?.wall ?? []),
+]) {
+	edges.push(span.startMm, span.endMm);
+}
 ```
 
 `exposureOf`:
 
 ```ts
-		const walls = {
-			wallWidthMm: layout.wallWidthMm,
-			left: layout.endWalls?.left ?? layout.wallToWall,
-			right: layout.endWalls?.right ?? layout.wallToWall,
-		};
+const walls = {
+	wallWidthMm: layout.wallWidthMm,
+	left: layout.endWalls?.left ?? layout.wallToWall,
+	right: layout.endWalls?.right ?? layout.wallToWall,
+};
 ```
 
 `closeGaps`, `startOf`:
 
 ```ts
-		const startOf = (row: Row) =>
-			layout.reserved?.[row]?.find((span) => span.startMm === 0)?.endMm ?? 0;
+const startOf = (row: Row) =>
+	layout.reserved?.[row]?.find((span) => span.startMm === 0)?.endMm ?? 0;
 ```
 
 `exposure.ts`:
@@ -740,32 +773,33 @@ export type EndWalls = { wallWidthMm: number; left: boolean; right: boolean };
 In `exposedSides` replace the `if (walls?.enclosed) { … }` block:
 
 ```ts
-	if (walls?.left && Math.abs(self.xMm) <= touchingMm) left = false;
-	if (walls?.right && Math.abs(walls.wallWidthMm - selfEnd) <= touchingMm)
-		right = false;
+if (walls?.left && Math.abs(self.xMm) <= touchingMm) left = false;
+if (walls?.right && Math.abs(walls.wallWidthMm - selfEnd) <= touchingMm)
+	right = false;
 ```
 
 In `sideGapsMm` replace its `if (walls?.enclosed) { … }` block:
 
 ```ts
-	if (walls?.left) left = Math.min(left, Math.max(0, self.xMm));
-	if (walls?.right)
-		right = Math.min(right, Math.max(0, walls.wallWidthMm - selfEnd));
+if (walls?.left) left = Math.min(left, Math.max(0, self.xMm));
+if (walls?.right)
+	right = Math.min(right, Math.max(0, walls.wallWidthMm - selfEnd));
 ```
 
 Update the file's header comment sentence "Pass `EndWalls` and the run's two outer ends stop counting as exposed" to "Pass `EndWalls` and an end with a wall at it stops counting as exposed".
-
 - [ ] **Step 4: Keep today's callers compiling (Task 3 replaces `room.ts`)**
 
 `room.ts`:
 - `runView`: `...(floor && wall ? { reserved: { floor: [floor], wall: [wall] } } : {})`
 - `fromCorner`: the `reserved` rebuild becomes
+
   ```ts
   reserved: {
   	floor: view.reserved.floor?.map(flip),
   	wall: view.reserved.wall?.map(flip),
   },
   ```
+
   and `flip` takes a `Span` (not `Span | undefined`): `const flip = (span: Span): Span => ({ startMm: L - span.endMm, endMm: L - span.startMm });`
 - `exposureOf`: `const span = view.reserved?.[row]?.[0];`
 - `cornerWorktop`: `const span = view.reserved?.floor?.[0];`
@@ -776,12 +810,10 @@ Update the file's header comment sentence "Pass `EndWalls` and the run's two out
 - Corner worktop: `{cornerWorktop && layout.reserved?.floor?.[0] && (` and `layout.reserved.floor[0].startMm +`.
 
 `StudioScreen.tsx`, the `cornerMm` computation: `...Object.values(runView(layout, 0).reserved ?? {}).flat().map(`.
-
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/reserved.test.ts src/lib/planner/__tests__/exposure.test.ts src/lib/planner/__tests__/layout.test.ts src/lib/planner/__tests__/room.test.ts`
 Expected: PASS. `pnpm typecheck` should also pass at this point.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -855,12 +887,19 @@ const kitchen = () => emptyRoom(4200);
 
 /** The old left L, by hand: the back wall and the left wall, meeting at
  * vertex 3 — the start of the back wall and the end of the left wall. */
-const lRoom = (main: PlacedModule[] = [], side: PlacedModule[] = []): RoomLayout => {
+const lRoom = (
+	main: PlacedModule[] = [],
+	side: PlacedModule[] = [],
+): RoomLayout => {
 	const room = kitchen();
 	return {
 		...room,
 		runs: room.runs.map((run, i) =>
-			i === 0 ? { floor: main, wall: [] } : i === 3 ? { floor: side, wall: [] } : run,
+			i === 0
+				? { floor: main, wall: [] }
+				: i === 3
+					? { floor: side, wall: [] }
+					: run,
 		),
 	};
 };
@@ -875,12 +914,17 @@ const lPlan: FloorPlan = {
 };
 
 const xOf = (room: RoomLayout, id: string) =>
-	room.runs.flatMap((r) => [...r.floor, ...r.wall]).find((m) => m.id === id)?.xMm;
+	room.runs.flatMap((r) => [...r.floor, ...r.wall]).find((m) => m.id === id)
+		?.xMm;
 
 describe("asRoom", () => {
 	it("makes one wall's rows the back wall of a rectangle", () => {
 		const room = asRoom(emptyLayout(3000));
-		expect(room.plan).toEqual({ template: "rect", widthMm: 3000, depthMm: 3600 });
+		expect(room.plan).toEqual({
+			template: "rect",
+			widthMm: 3000,
+			depthMm: 3600,
+		});
 		expect(room.runs).toHaveLength(4);
 		expect(room.runs[0]).toEqual({ floor: [], wall: [] });
 		expect(room.corners).toEqual([]);
@@ -915,7 +959,13 @@ describe("runView", () => {
 
 describe("a straight run", () => {
 	it("edits exactly as the one-wall engine does", () => {
-		const flat = oneWall.addModule(emptyLayout(4200), "base-cabinet", 0, "a", 600);
+		const flat = oneWall.addModule(
+			emptyLayout(4200),
+			"base-cabinet",
+			0,
+			"a",
+			600,
+		);
 		const room = engine.addModule(kitchen(), "base-cabinet", 0, "a", 600);
 		expect(runView(room, 0).floor).toEqual(flat.floor);
 	});
@@ -936,8 +986,12 @@ describe("corners switch on when both walls hold cabinets", () => {
 	it("reserve the square on both walls and push both runs clear", () => {
 		let room = engine.addModule(kitchen(), "base-cabinet", 0, "a", 600);
 		room = engine.addModule(room, "base-cabinet", 3000, "s", 600, 3);
-		expect(runView(room, 0).reserved?.floor).toEqual([{ startMm: 0, endMm: 607 }]);
-		expect(runView(room, 3).reserved?.floor).toEqual([{ startMm: 2993, endMm: 3600 }]);
+		expect(runView(room, 0).reserved?.floor).toEqual([
+			{ startMm: 0, endMm: 607 },
+		]);
+		expect(runView(room, 3).reserved?.floor).toEqual([
+			{ startMm: 2993, endMm: 3600 },
+		]);
 		expect(xOf(room, "a")).toBe(607);
 		expect(xOf(room, "s")).toBe(2393);
 	});
@@ -1013,7 +1067,10 @@ describe("setWallLength", () => {
 		let room = engine.addModule(kitchen(), "base-cabinet", 2400, "a", 600);
 		room = engine.setWallLength(room, 0, 1000);
 		expect(runView(room, 0).wallWidthMm).toBe(3000);
-		expect(engine.wallLengthRangeMm(room, 0)).toEqual({ minMm: 3000, maxMm: 12000 });
+		expect(engine.wallLengthRangeMm(room, 0)).toEqual({
+			minMm: 3000,
+			maxMm: 12000,
+		});
 	});
 
 	it("keeps a run by its far corner when only that end has one", () => {
@@ -1032,7 +1089,10 @@ describe("corner units", () => {
 		let room = engine.addModule(kitchen(), "base-cabinet", 0, "a", 600);
 		room = engine.addModule(room, "corner-base", 0, "c");
 		expect(room.corners).toEqual([
-			expect.objectContaining({ vertex: 3, floor: expect.objectContaining({ id: "c" }) }),
+			expect.objectContaining({
+				vertex: 3,
+				floor: expect.objectContaining({ id: "c" }),
+			}),
 		]);
 		expect(xOf(room, "a")).toBe(900);
 		const [drawn] = engine.cornerPositionsOf(room, 0);
@@ -1053,7 +1113,14 @@ describe("corner units", () => {
 	});
 
 	it("go to the wall slot when they hang", () => {
-		const room = engine.addModule(kitchen(), "corner-wall", 0, "cw", undefined, 1);
+		const room = engine.addModule(
+			kitchen(),
+			"corner-wall",
+			0,
+			"cw",
+			undefined,
+			1,
+		);
 		expect(room.corners[0]).toMatchObject({ vertex: 0, floor: null });
 		expect(room.corners[0].wall?.familyId).toBe("corner-wall");
 	});
@@ -1070,7 +1137,9 @@ describe("corner units", () => {
 		if (!floor) throw new Error("fixture lost its corner");
 		const tampered: RoomLayout = {
 			...room,
-			corners: [{ ...room.corners[0], floor: { ...floor, xMm: 1234, rotationDeg: 90 } }],
+			corners: [
+				{ ...room.corners[0], floor: { ...floor, xMm: 1234, rotationDeg: 90 } },
+			],
 		};
 		const [drawn] = engine.cornerPositions(tampered);
 		expect(drawn.placed.xMm).toBe(0);
@@ -1084,7 +1153,9 @@ describe("corner units", () => {
 			{ widthMm: 900, priceRm: 1150, fits: true },
 		]);
 		expect(engine.removeModule(room, "c").corners).toEqual([]);
-		expect(setDoor(room, "c", "shaker").corners[0].floor?.doorStyleId).toBe("shaker");
+		expect(setDoor(room, "c", "shaker").corners[0].floor?.doorStyleId).toBe(
+			"shaker",
+		);
 	});
 });
 
@@ -1103,7 +1174,10 @@ describe("exposure", () => {
 		let room = engine.addModule(kitchen(), "base-cabinet", 0, "a", 600);
 		room = engine.addModule(room, "corner-base", 0, "c");
 		expect(engine.exposureOf(room).get("a")?.left).toBe(false);
-		expect(engine.exposureOf(room).get("c")).toEqual({ left: false, right: false });
+		expect(engine.exposureOf(room).get("c")).toEqual({
+			left: false,
+			right: false,
+		});
 		expect(engine.endPanels(room).some((p) => p.moduleId === "c")).toBe(false);
 	});
 });
@@ -1115,14 +1189,16 @@ describe("cornerWorktops", () => {
 	});
 
 	it("closes an empty corner when a base unit meets it", () => {
-		expect(engine.cornerWorktops(lRoom([base("a", 607)], [base("s", 2393)]))).toEqual([
-			{ vertex: 3, sizeMm: 607, topMm: 880 },
-		]);
+		expect(
+			engine.cornerWorktops(lRoom([base("a", 607)], [base("s", 2393)])),
+		).toEqual([{ vertex: 3, sizeMm: 607, topMm: 880 }]);
 	});
 
 	it("covers a corner base unit", () => {
 		const room = engine.addModule(kitchen(), "corner-base", 0, "c");
-		expect(engine.cornerWorktops(room)).toEqual([{ vertex: 3, sizeMm: 900, topMm: 880 }]);
+		expect(engine.cornerWorktops(room)).toEqual([
+			{ vertex: 3, sizeMm: 900, topMm: 880 },
+		]);
 	});
 });
 
@@ -1149,7 +1225,11 @@ describe("dispatch", () => {
 	it("finds, moves and removes across runs", () => {
 		const room = lRoom([base("a", 607)], [base("s", 1000)]);
 		expect(runIndexOf(room, "s")).toBe(3);
-		expect(engine.removeModules(room, ["a", "s"]).runs.every((r) => r.floor.length === 0)).toBe(true);
+		expect(
+			engine
+				.removeModules(room, ["a", "s"])
+				.runs.every((r) => r.floor.length === 0),
+		).toBe(true);
 	});
 
 	it("withRun writes rows only", () => {
@@ -1185,17 +1265,26 @@ describe("cornerShutSides", () => {
 	});
 
 	it("still shuts them when a cabinet is lifted off the floor", () => {
-		const lifted = lRoom([{ ...base("a", 607), hangAtMm: 40 }], [base("b", 2393)]);
+		const lifted = lRoom(
+			[{ ...base("a", 607), hangAtMm: 40 }],
+			[base("b", 2393)],
+		);
 		expect(engine.cornerShutSides(lifted)).toEqual(both);
 	});
 
 	it("lets them open when a lift clears the other run's doors", () => {
-		const hoisted = lRoom([{ ...base("a", 607), hangAtMm: 1500 }], [base("b", 2393)]);
+		const hoisted = lRoom(
+			[{ ...base("a", 607), hangAtMm: 1500 }],
+			[base("b", 2393)],
+		);
 		expect(engine.cornerShutSides(hoisted)).toEqual(new Map());
 	});
 
 	it("ignores a turned cabinet", () => {
-		const turned = lRoom([{ ...base("a", 607), rotationDeg: 30 }], [base("b", 2393)]);
+		const turned = lRoom(
+			[{ ...base("a", 607), rotationDeg: 30 }],
+			[base("b", 2393)],
+		);
 		expect(engine.cornerShutSides(turned)).toEqual(new Map());
 	});
 
@@ -1218,7 +1307,6 @@ describe("cornerShutSides", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts`
 Expected: FAIL — `cornerVertexFor` is not exported, `plan` is undefined.
-
 - [ ] **Step 3: Rewrite `src/lib/planner/room.ts`**
 
 Keep the existing file's long comments on `cascadeCorner`, `cornerShutSides` and `cornerWorktop` where the logic is unchanged — they record bugs this code has already been through. The code:
@@ -1341,7 +1429,10 @@ const hasCabinets = (run: Run | undefined) =>
 const lengthOf = (room: RoomLayout, run: number) =>
 	wallsOf(room.plan)[run].lengthMm;
 
-export const cornerAt = (room: RoomLayout, vertex: number): CornerUnits | null =>
+export const cornerAt = (
+	room: RoomLayout,
+	vertex: number,
+): CornerUnits | null =>
 	room.corners.find((corner) => corner.vertex === vertex) ?? null;
 
 export function isActiveCorner(room: RoomLayout, vertex: number): boolean {
@@ -1489,7 +1580,8 @@ function mapModule(
 	id: string,
 	edit: (module: PlacedModule) => PlacedModule,
 ): RoomLayout {
-	const hit = (module: PlacedModule) => (module.id === id ? edit(module) : module);
+	const hit = (module: PlacedModule) =>
+		module.id === id ? edit(module) : module;
 	return {
 		...room,
 		runs: room.runs.map((run) => ({
@@ -1504,8 +1596,11 @@ function mapModule(
 	};
 }
 
-export const setDoor = (room: RoomLayout, id: string, doorStyleId: string | null) =>
-	mapModule(room, id, (module) => ({ ...module, doorStyleId }));
+export const setDoor = (
+	room: RoomLayout,
+	id: string,
+	doorStyleId: string | null,
+) => mapModule(room, id, (module) => ({ ...module, doorStyleId }));
 
 export const setHinge = (room: RoomLayout, id: string, hinge: HingeSide) =>
 	mapModule(room, id, (module) => ({ ...module, hinge }));
@@ -1527,7 +1622,8 @@ Then `roomEngine`. It keeps the old file's structure; only the pieces below diff
 export function roomEngine(catalogue: PlannerCatalogue) {
 	const wall = plannerEngine(catalogue);
 	const views = (room: RoomLayout) => room.runs.map((_, i) => runView(room, i));
-	const allClear = (room: RoomLayout) => views(room).every((v) => wall.isClear(v));
+	const allClear = (room: RoomLayout) =>
+		views(room).every((v) => wall.isClear(v));
 
 	// inRunOf — unchanged from the old file.
 
@@ -1559,7 +1655,14 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 			if (!placed || !family) return [];
 			// The corner decides where it stands, whatever a client sent.
 			const { rotationDeg: _ignored, ...rest } = placed;
-			return [{ placed: { ...rest, xMm: 0 }, family, widthMm: placed.widthMm, xMm: 0 }];
+			return [
+				{
+					placed: { ...rest, xMm: 0 },
+					family,
+					widthMm: placed.widthMm,
+					xMm: 0,
+				},
+			];
 		});
 	}
 
@@ -1661,7 +1764,10 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 			wall: row === "wall" ? placed : (existing?.wall ?? null),
 		};
 		const next = cascadeCorner(
-			{ ...room, corners: [...room.corners.filter((c) => c.vertex !== vertex), slot] },
+			{
+				...room,
+				corners: [...room.corners.filter((c) => c.vertex !== vertex), slot],
+			},
 			vertex,
 		);
 		return allClear(next) ? next : room;
@@ -1696,9 +1802,13 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 			runs: room.runs.map((run, i) => {
 				const shiftMm = after[i].lengthMm - before[i].lengthMm;
 				const followsEnd =
-					isActiveCorner(room, i) && !isActiveCorner(room, startVertexOf(room, i));
+					isActiveCorner(room, i) &&
+					!isActiveCorner(room, startVertexOf(room, i));
 				if (!followsEnd || shiftMm === 0) return run;
-				const shift = (module: PlacedModule) => ({ ...module, xMm: module.xMm + shiftMm });
+				const shift = (module: PlacedModule) => ({
+					...module,
+					xMm: module.xMm + shiftMm,
+				});
 				return { floor: run.floor.map(shift), wall: run.wall.map(shift) };
 			}),
 		};
@@ -1710,7 +1820,11 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 	 * cut through a cabinet stops at the nearest length that does not — found by
 	 * bisection, so the answer is whatever `isClear` says and no second rule.
 	 */
-	function setWallLength(room: RoomLayout, wallIndex: number, mm: number): RoomLayout {
+	function setWallLength(
+		room: RoomLayout,
+		wallIndex: number,
+		mm: number,
+	): RoomLayout {
 		const current = wallsOf(room.plan)[wallIndex]?.lengthMm;
 		if (current === undefined) return room;
 		const attempt = (lengthMm: number) =>
@@ -1734,7 +1848,8 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 	/** The range `setWallLength` will actually reach, for the field's limits. */
 	const wallLengthRangeMm = (room: RoomLayout, wallIndex: number) => ({
 		minMm: wallsOf(setWallLength(room, wallIndex, 0).plan)[wallIndex].lengthMm,
-		maxMm: wallsOf(setWallLength(room, wallIndex, 1e6).plan)[wallIndex].lengthMm,
+		maxMm: wallsOf(setWallLength(room, wallIndex, 1e6).plan)[wallIndex]
+			.lengthMm,
 	});
 
 	function exposureOf(room: RoomLayout): Map<string, ExposedSides> {
@@ -1752,11 +1867,14 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 						if (!sides) continue;
 						const spread = spreadMm(position);
 						exposure.set(position.placed.id, {
-							left: sides.left && Math.abs(position.xMm - spread - span.endMm) > touchingMm,
+							left:
+								sides.left &&
+								Math.abs(position.xMm - spread - span.endMm) > touchingMm,
 							right:
 								sides.right &&
-								Math.abs(position.xMm + position.widthMm + spread - span.startMm) >
-									touchingMm,
+								Math.abs(
+									position.xMm + position.widthMm + spread - span.startMm,
+								) > touchingMm,
 						});
 					}
 				}
@@ -1784,10 +1902,18 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 			// A non-base corner unit fills the corner without closing it.
 			if (occupant && occupant.kind !== "base") return [];
 			if (unit && occupant) {
-				return [{ vertex, sizeMm: unit.widthMm, topMm: occupant.floorHeightMm + occupant.heightMm }];
+				return [
+					{
+						vertex,
+						sizeMm: unit.widthMm,
+						topMm: occupant.floorHeightMm + occupant.heightMm,
+					},
+				];
 			}
 			for (const run of [vertex, (vertex + 1) % countOf(room)]) {
-				const entry = cornerSpans(room, run, "floor").find((c) => c.vertex === vertex);
+				const entry = cornerSpans(room, run, "floor").find(
+					(c) => c.vertex === vertex,
+				);
 				if (!entry) continue;
 				const meeting = wall
 					.positionsOf(runView(room, run), "floor")
@@ -1799,11 +1925,13 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 								Math.abs(p.xMm + p.widthMm - entry.span.startMm) < 1),
 					);
 				if (meeting) {
-					return [{
-						vertex,
-						sizeMm: cornerSquareMm(room, vertex, "floor"),
-						topMm: meeting.family.floorHeightMm + meeting.family.heightMm,
-					}];
+					return [
+						{
+							vertex,
+							sizeMm: cornerSquareMm(room, vertex, "floor"),
+							topMm: meeting.family.floorHeightMm + meeting.family.heightMm,
+						},
+					];
 				}
 			}
 			return [];
@@ -1834,7 +1962,8 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 						if (!nearest || distanceOf(p) < distanceOf(nearest)) nearest = p;
 					}
 					if (!nearest) continue;
-					const leafMm = nearest.widthMm / (nearest.family.geometry?.doorLeaves || 1);
+					const leafMm =
+						nearest.widthMm / (nearest.family.geometry?.doorLeaves || 1);
 					const dMm = distanceOf(nearest);
 					const bottomMm = wall.floorHeightMmOf(nearest, view);
 					facing.push({
@@ -1842,7 +1971,10 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 						side: (atStart ? "left" : "right") as HingeSide,
 						upMm: [bottomMm, bottomMm + nearest.family.heightMm] as const,
 						alongMm: [dMm - leafMm * backReach, dMm + leafMm] as const,
-						outMm: [nearest.family.depthMm, nearest.family.depthMm + leafMm] as const,
+						outMm: [
+							nearest.family.depthMm,
+							nearest.family.depthMm + leafMm,
+						] as const,
 					});
 				}
 				if (facing.length < 2) continue;
@@ -1871,7 +2003,8 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 	): RoomLayout {
 		const family = familyIn(catalogue, familyId);
 		if (!family) return room;
-		if (isCorner(family)) return placeCorner(room, familyId, cornerVertexFor(room, run), id);
+		if (isCorner(family))
+			return placeCorner(room, familyId, cornerVertexFor(room, run), id);
 		if (run >= room.runs.length) return room;
 		const view = wall.addModule(runView(room, run), familyId, xMm, id, widthMm);
 		if (!wall.isClear(view)) return room;
@@ -1882,13 +2015,31 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 		return allClear(next) ? next : room;
 	}
 
-	function fits(room: RoomLayout, familyId: string, widthMm?: number, run = 0): boolean {
+	function fits(
+		room: RoomLayout,
+		familyId: string,
+		widthMm?: number,
+		run = 0,
+	): boolean {
 		const family = familyIn(catalogue, familyId);
 		if (!family) return false;
-		if (isCorner(family)) return placeCorner(room, familyId, cornerVertexFor(room, run), "probe") !== room;
+		if (isCorner(family))
+			return (
+				placeCorner(room, familyId, cornerVertexFor(room, run), "probe") !==
+				room
+			);
 		// Probed through `addModule`, because a cabinet that fits the bare wall
 		// can still be refused by the corner it switches on.
-		return addModule(room, familyId, nearCornerMm(room, run), "probe", widthMm, run) !== room;
+		return (
+			addModule(
+				room,
+				familyId,
+				nearCornerMm(room, run),
+				"probe",
+				widthMm,
+				run,
+			) !== room
+		);
 	}
 
 	function removeModules(room: RoomLayout, ids: Iterable<string>): RoomLayout {
@@ -1903,7 +2054,11 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 				wall: run.wall.filter((module) => !gone.has(module.id)),
 			})),
 			corners: room.corners
-				.map((corner) => ({ ...corner, floor: keep(corner.floor), wall: keep(corner.wall) }))
+				.map((corner) => ({
+					...corner,
+					floor: keep(corner.floor),
+					wall: keep(corner.wall),
+				}))
 				.filter((corner) => corner.floor || corner.wall),
 		};
 	}
@@ -1937,7 +2092,13 @@ export function roomEngine(catalogue: PlannerCatalogue) {
 			if (run >= 0) return wall.widthOptionsFor(runView(room, run), id);
 			const unit = cornerPositions(room).find((p) => p.placed.id === id);
 			return unit
-				? [{ widthMm: unit.widthMm, priceRm: unit.family.sizes[0].priceRm, fits: true }]
+				? [
+						{
+							widthMm: unit.widthMm,
+							priceRm: unit.family.sizes[0].priceRm,
+							fits: true,
+						},
+					]
 				: [];
 		},
 		// setGap … swapWithNeighbour via inRunOf — unchanged.
@@ -1964,12 +2125,10 @@ export type RoomEngine = ReturnType<typeof roomEngine>;
 ```
 
 Where the block above says "unchanged", paste the old entries exactly — they only call `runView`, `views`, `pooled`, `inRunOf` and `setting`, which keep their names.
-
 - [ ] **Step 4: Run the room tests**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts src/lib/planner/__tests__/floorplan.test.ts src/lib/planner/__tests__/reserved.test.ts`
 Expected: PASS. If a cascade expectation is off by the `spreadMm` of a turned cabinet, the fixture is wrong, not the engine — none of these fixtures turn a cabinet except "ignores a turned cabinet".
-
 - [ ] **Step 5: Pricing — every corner's worktop, and the flush-end change**
 
 `src/lib/planner/pricing.ts`, end of `worktopFt`:
@@ -1983,25 +2142,36 @@ Expected: PASS. If a cascade expectation is off by the `spreadMm` of a turned ca
 ```
 
 `src/lib/planner/__tests__/pricing.test.ts`:
-
 1. Remove `setWallToWall` from the import list.
 2. Replace the two tests "charges nothing once the run is enclosed and unbroken" and "costs less enclosed than open, by exactly the two buried ends" with:
 
 ```ts
-	it("charges nothing for a run built wall to wall", () => {
-		let run = addModule(setWallWidth(empty(), 1800), "base-cabinet", 0, "b1", 900);
-		run = addModule(run, "base-cabinet", 900, "b2", 900);
-		expect(price(run).endPanelCount).toBe(0);
-		expect(price(run).categories.some((c) => c.id === "endPanels")).toBe(false);
-	});
+it("charges nothing for a run built wall to wall", () => {
+	let run = addModule(
+		setWallWidth(empty(), 1800),
+		"base-cabinet",
+		0,
+		"b1",
+		900,
+	);
+	run = addModule(run, "base-cabinet", 900, "b2", 900);
+	expect(price(run).endPanelCount).toBe(0);
+	expect(price(run).categories.some((c) => c.id === "endPanels")).toBe(false);
+});
 
-	it("charges the end that stands clear of the wall", () => {
-		// Every room has walls now, so the left end, flush with one, is buried;
-		// the right end stops 600 short of the other and is clad.
-		let run = addModule(setWallWidth(empty(), 2400), "base-cabinet", 0, "b1", 900);
-		run = addModule(run, "base-cabinet", 900, "b2", 900);
-		expect(price(run).endPanelCount).toBe(1);
-	});
+it("charges the end that stands clear of the wall", () => {
+	// Every room has walls now, so the left end, flush with one, is buried;
+	// the right end stops 600 short of the other and is clad.
+	let run = addModule(
+		setWallWidth(empty(), 2400),
+		"base-cabinet",
+		0,
+		"b1",
+		900,
+	);
+	run = addModule(run, "base-cabinet", 900, "b2", 900);
+	expect(price(run).endPanelCount).toBe(1);
+});
 ```
 
 3. In "clads every exposed side, and says how many", the run starts flush with the left wall, so that end is now buried: `4` → `3` in both `endPanelCount` and `{ count: 4 }`, and update the comment to "3 sides: the floor run's right end, and the lone wall unit's two, which hangs clear of both walls". Check the fixture: if the lone wall unit sits at `x = 0`, its left side is buried too and the figure is `2` — use whatever the fixture gives and say so in the comment.
@@ -2009,23 +2179,21 @@ Expected: PASS. If a cascade expectation is off by the `spreadMm` of a turned ca
 5. Replace the `lWithBases` helper in "an L-shaped room":
 
 ```ts
-	const lWithBases = () => {
-		let room = emptyRoom(4200);
-		room = rooms.addModule(room, "base-cabinet", 0, "m", 600);
-		// The left wall, run 3: its corner with the back wall is its far end.
-		return rooms.addModule(room, "base-cabinet", 3000, "s", 600, 3);
-	};
+const lWithBases = () => {
+	let room = emptyRoom(4200);
+	room = rooms.addModule(room, "base-cabinet", 0, "m", 600);
+	// The left wall, run 3: its corner with the back wall is its far end.
+	return rooms.addModule(room, "base-cabinet", 3000, "s", 600, 3);
+};
 ```
 
 The two tests in that block keep their expectations (`600 + 600 + 607`, and `600 + 600 + 900` with the corner unit).
 
 Then run `pnpm vitest run src/lib/planner`. Any other failure must be the same cause — a cabinet flush with a side wall at `x = 0` or at the wall's end — and gets the same treatment: fix the expected number, with a comment naming the buried end. A failure with any other cause is a bug in Step 3.
-
 - [ ] **Step 6: Run the planner suite**
 
 Run: `pnpm vitest run src/lib/planner`
 Expected: PASS.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -2079,15 +2247,25 @@ describe("an L-shaped order", () => {
 		if (!unit) throw new Error("fixture lost its corner");
 		room.corners = [];
 		room.runs[0].floor.push({ ...unit, xMm: 2000 });
-		expect(checkRoom(room)).toMatchObject({ problem: "does_not_fit", moduleId: "c" });
+		expect(checkRoom(room)).toMatchObject({
+			problem: "does_not_fit",
+			moduleId: "c",
+		});
 	});
 
 	it("refuses an ordinary cabinet in the corner slot", () => {
 		const room = structuredClone(lKitchen());
 		const unit = room.corners[0].floor;
 		if (!unit) throw new Error("fixture lost its corner");
-		room.corners[0].floor = { ...unit, familyId: inKitchen.id, widthMm: inKitchen.sizes[0].widthMm };
-		expect(checkRoom(room)).toMatchObject({ problem: "does_not_fit", moduleId: "c" });
+		room.corners[0].floor = {
+			...unit,
+			familyId: inKitchen.id,
+			widthMm: inKitchen.sizes[0].widthMm,
+		};
+		expect(checkRoom(room)).toMatchObject({
+			problem: "does_not_fit",
+			moduleId: "c",
+		});
 	});
 
 	it("refuses a turned cabinet whose footprint reaches into the corner", () => {
@@ -2132,21 +2310,36 @@ describe("roomLayoutSchema", () => {
 	it("refuses a run count that is not the wall count", () => {
 		const straight = emptyRoom(4200);
 		expect(
-			roomLayoutSchema.safeParse({ ...straight, runs: straight.runs.slice(0, 2) }).success,
+			roomLayoutSchema.safeParse({
+				...straight,
+				runs: straight.runs.slice(0, 2),
+			}).success,
 		).toBe(false);
 	});
 
 	it("refuses a corner unit at an outside corner, and two at one corner", () => {
 		const slot = { floor: null, wall: null };
-		expect(roomLayoutSchema.safeParse({ ...l, corners: [{ vertex: 2, ...slot }] }).success).toBe(false);
 		expect(
-			roomLayoutSchema.safeParse({ ...l, corners: [{ vertex: 3, ...slot }, { vertex: 3, ...slot }] }).success,
+			roomLayoutSchema.safeParse({ ...l, corners: [{ vertex: 2, ...slot }] })
+				.success,
+		).toBe(false);
+		expect(
+			roomLayoutSchema.safeParse({
+				...l,
+				corners: [
+					{ vertex: 3, ...slot },
+					{ vertex: 3, ...slot },
+				],
+			}).success,
 		).toBe(false);
 	});
 
 	it("refuses a notch that leaves no room", () => {
 		expect(
-			roomLayoutSchema.safeParse({ ...l, plan: { ...l.plan, notchWidthMm: 5400 } }).success,
+			roomLayoutSchema.safeParse({
+				...l,
+				plan: { ...l.plan, notchWidthMm: 5400 },
+			}).success,
 		).toBe(false);
 	});
 });
@@ -2156,27 +2349,49 @@ describe("orderDesignSchema", () => {
 		const layout = twoCabinets();
 		const parsed = orderDesignSchema.parse({ schemaVersion: 1, layout });
 		expect(parsed.schemaVersion).toBe(3);
-		expect(parsed.layout.plan).toEqual({ template: "rect", widthMm: 4200, depthMm: 3600 });
-		expect(parsed.layout.runs[0]).toEqual({ floor: layout.floor, wall: layout.wall });
+		expect(parsed.layout.plan).toEqual({
+			template: "rect",
+			widthMm: 4200,
+			depthMm: 3600,
+		});
+		expect(parsed.layout.runs[0]).toEqual({
+			floor: layout.floor,
+			wall: layout.wall,
+		});
 		expect(parsed.layout.corners).toEqual([]);
 	});
 
 	it("reads a version-2 L onto the same walls", () => {
 		const layout = twoCabinets();
 		const side = [{ ...layout.floor[0], id: "s", xMm: 1000 }];
-		const unit = { ...layout.floor[0], id: "c", familyId: "corner-base", xMm: 55, rotationDeg: 270 };
+		const unit = {
+			...layout.floor[0],
+			id: "c",
+			familyId: "corner-base",
+			xMm: 55,
+			rotationDeg: 270,
+		};
 		const v2 = (sideOf: "left" | "right") => ({
 			schemaVersion: 2,
 			layout: {
 				...layout,
-				runs: [{ floor: layout.floor, wall: [] }, { floor: side, wall: [] }],
+				runs: [
+					{ floor: layout.floor, wall: [] },
+					{ floor: side, wall: [] },
+				],
 				corner: { side: sideOf, floor: unit, wall: null },
 			},
 		});
 
 		const left = orderDesignSchema.parse(v2("left")).layout;
 		expect(left.runs[3].floor).toEqual(side);
-		expect(left.corners).toEqual([{ vertex: 3, floor: expect.not.objectContaining({ rotationDeg: 270 }), wall: null }]);
+		expect(left.corners).toEqual([
+			{
+				vertex: 3,
+				floor: expect.not.objectContaining({ rotationDeg: 270 }),
+				wall: null,
+			},
+		]);
 
 		const right = orderDesignSchema.parse(v2("right")).layout;
 		expect(right.runs[1].floor).toEqual(side);
@@ -2190,14 +2405,18 @@ describe("orderDesignSchema", () => {
 
 Run: `pnpm vitest run src/lib/orders`
 Expected: FAIL — `schemaVersion` is 2, `corners` undefined.
-
 - [ ] **Step 3: Rewrite `src/lib/orders/layoutSchema.ts`**
 
 ```ts
 import { z } from "zod";
 import { planIsValid, vertexKind, wallsOf } from "@/lib/planner/floorplan";
 import type { PlacedModule, PlannerLayout } from "@/lib/planner/layout";
-import { asRoom, type CornerUnits, type RoomLayout, type Run } from "@/lib/planner/room";
+import {
+	asRoom,
+	type CornerUnits,
+	type RoomLayout,
+	type Run,
+} from "@/lib/planner/room";
 
 /**
  * The layout document as it arrives from a customer's browser at checkout —
@@ -2262,7 +2481,11 @@ const roomLayoutV2Schema = z
 
 const planSchema = z
 	.union([
-		z.object({ template: z.literal("rect"), widthMm: z.number(), depthMm: z.number() }),
+		z.object({
+			template: z.literal("rect"),
+			widthMm: z.number(),
+			depthMm: z.number(),
+		}),
 		z.object({
 			template: z.literal("l"),
 			widthMm: z.number(),
@@ -2297,13 +2520,19 @@ export const roomLayoutSchema = z
 	.refine(
 		(room) =>
 			room.corners.every(
-				(c) => c.vertex < room.runs.length && vertexKind(room.plan, c.vertex) === "inside",
+				(c) =>
+					c.vertex < room.runs.length &&
+					vertexKind(room.plan, c.vertex) === "inside",
 			),
 		{ message: "a corner unit stands only in an inside corner" },
 	)
-	.refine((room) => new Set(room.corners.map((c) => c.vertex)).size === room.corners.length, {
-		message: "one slot per corner",
-	}) satisfies z.ZodType<RoomLayout>;
+	.refine(
+		(room) =>
+			new Set(room.corners.map((c) => c.vertex)).size === room.corners.length,
+		{
+			message: "one slot per corner",
+		},
+	) satisfies z.ZodType<RoomLayout>;
 
 /**
  * What an order stores. The version is the promise that an order placed today
@@ -2321,7 +2550,14 @@ export type OrderDesign = {
  * L and the right wall for a right one; the winding matches, so `xMm` carries
  * over. A corner unit's stored turn was never trusted and is dropped. */
 function fromV2(v2: z.infer<typeof roomLayoutV2Schema>): RoomLayout {
-	const { wallWidthMm, roomDepthMm, wallToWall: _gone, runs, corner, ...rest } = v2;
+	const {
+		wallWidthMm,
+		roomDepthMm,
+		wallToWall: _gone,
+		runs,
+		corner,
+		...rest
+	} = v2;
 	const empty = (): Run => ({ floor: [], wall: [] });
 	const next: Run[] = [runs[0], empty(), empty(), empty()];
 	const corners: CornerUnits[] = [];
@@ -2352,10 +2588,16 @@ export const orderDesignSchema = z.union([
 	z.object({ schemaVersion: z.literal(3), layout: roomLayoutSchema }),
 	z
 		.object({ schemaVersion: z.literal(2), layout: roomLayoutV2Schema })
-		.transform(({ layout }) => ({ schemaVersion: 3 as const, layout: fromV2(layout) })),
+		.transform(({ layout }) => ({
+			schemaVersion: 3 as const,
+			layout: fromV2(layout),
+		})),
 	z
 		.object({ schemaVersion: z.literal(1), layout: plannerLayoutSchema })
-		.transform(({ layout }) => ({ schemaVersion: 3 as const, layout: asRoom(layout) })),
+		.transform(({ layout }) => ({
+			schemaVersion: 3 as const,
+			layout: asRoom(layout),
+		})),
 ]);
 ```
 
@@ -2387,17 +2629,14 @@ The corner rows:
 ```
 
 Update the comment above `isClear` to "A cabinet inside a corner square, or a square grown into a run, is not a design anyone can fit."
-
 - [ ] **Step 5: Find other writers of the version**
 
 Run: `grep -rn "ORDER_DESIGN_VERSION\|schemaVersion: 2\|roomLayoutSchema\|\.corner\b" src --include=*.ts --include=*.tsx | grep -v __tests__`
 Every hit outside `layoutSchema.ts` must read the constant or the parsed layout, never a literal `2` or `layout.corner`. Fix any that do. (The checkout route should already write `ORDER_DESIGN_VERSION`.)
-
 - [ ] **Step 6: Run the tests**
 
 Run: `pnpm test`
 Expected: PASS, whole suite.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -2433,7 +2672,14 @@ Keep `FLOOR_TILE_M`, `FLOOR_COLOR`, `floorTexture`, and the `SCRIBE` comment (re
 
 ```tsx
 import { useMemo } from "react";
-import { RepeatWrapping, Shape, SRGBColorSpace, type Texture, TextureLoader, Vector2 } from "three";
+import {
+	RepeatWrapping,
+	Shape,
+	SRGBColorSpace,
+	type Texture,
+	TextureLoader,
+	Vector2,
+} from "three";
 import { WALL_GAP_MM } from "@/lib/planner/catalogue";
 import { type FloorPlan, outlineOf } from "@/lib/planner/floorplan";
 
@@ -2481,7 +2727,11 @@ export function Room({
 		<group>
 			<mesh rotation={[-Math.PI / 2, 0, 0]}>
 				<shapeGeometry args={[floorShape]} />
-				<meshStandardMaterial map={floorMap} color={FLOOR_COLOR} roughness={0.7} />
+				<meshStandardMaterial
+					map={floorMap}
+					color={FLOOR_COLOR}
+					roughness={0.7}
+				/>
 			</mesh>
 			{outline.map((start, i) => {
 				const end = outline[(i + 1) % outline.length];
@@ -2492,7 +2742,11 @@ export function Room({
 						// A wall's place in the outline is its identity.
 						// biome-ignore lint/suspicious/noArrayIndexKey: see above
 						key={i}
-						position={[m((start.xMm + end.xMm) / 2), height / 2, m((start.zMm + end.zMm) / 2)]}
+						position={[
+							m((start.xMm + end.xMm) / 2),
+							height / 2,
+							m((start.zMm + end.zMm) / 2),
+						]}
 						rotation={[0, Math.atan2(dz === 0 ? 0 : -dz, dx), 0]}
 						onClick={
 							onWallPick &&
@@ -2518,7 +2772,6 @@ export function Room({
 ```
 
 The plank rows no longer start whole at the back wall (the old `offset` trick assumed a rectangle). Accepted: nobody counts floor planks.
-
 - [ ] **Step 2: Frames instead of yaws in `PlannerScene.tsx`**
 
 Imports: add `import { frameOf, nearestWall, toLocalMm, toWorldMm, type WallFrame, wallsOf } from "@/lib/planner/floorplan";`; from `@/lib/planner/room` import `cornerAt, cornerSpans, type RoomLayout, runView, withRun` (drop `runYawRad`); from `@/lib/planner/layout` add `type Span`.
@@ -2551,7 +2804,6 @@ Then in `Run`:
 - `turnMm(p, yaw)` → `toWorldMm(p, frame)` (two sites in `snapAt`)
 
 Confirm with `grep -n "turnMm\|\byaw\b" src/components/planner/PlannerScene.tsx` — nothing left.
-
 - [ ] **Step 3: Corners per run in `Run`**
 
 Replace the props `cornerFilled: { floor: boolean; wall: boolean }` and `cornerWorktop` doc with:
@@ -2597,32 +2849,39 @@ In the `sideGaps` memo:
 
 Corner worktop: it now always sits at this run's start, so
 `{cornerWorktop && (` and the x position `m(cornerWorktop.sizeMm / 2 - runWidthMm / 2)`.
-
 - [ ] **Step 4: The scene root**
 
 In `PlannerScene` (the default export), add the three props from **Produces**, drop `"side"` from `PlannerView`, and replace the `runs`/`corners`/`cornerFilled`/`cornerWorktop`/`pickerRuns` memos with:
 
 ```ts
-	const walls = useMemo(() => wallsOf(layout.plan), [layout.plan]);
-	const runs = useMemo(
-		() => layout.runs.map((_, i) => ({ view: runView(layout, i), frame: frameOf(walls[i]) })),
-		[layout, walls],
-	);
-	const count = layout.runs.length;
-	const cornersByRun = useMemo(
-		() => layout.runs.map((_, i) => rooms.cornerPositionsOf(layout, i)),
-		[rooms, layout],
-	);
-	const filledByRun = useMemo(
-		() =>
-			layout.runs.map((_, i) => ({
-				floor: cornerSpans(layout, i, "floor").filter((c) => cornerAt(layout, c.vertex)?.floor).map((c) => c.span),
-				wall: cornerSpans(layout, i, "wall").filter((c) => cornerAt(layout, c.vertex)?.wall).map((c) => c.span),
-			})),
-		[layout],
-	);
-	const worktops = useMemo(() => rooms.cornerWorktops(layout), [rooms, layout]);
-	const target = runs[Math.min(targetRun, count - 1)];
+const walls = useMemo(() => wallsOf(layout.plan), [layout.plan]);
+const runs = useMemo(
+	() =>
+		layout.runs.map((_, i) => ({
+			view: runView(layout, i),
+			frame: frameOf(walls[i]),
+		})),
+	[layout, walls],
+);
+const count = layout.runs.length;
+const cornersByRun = useMemo(
+	() => layout.runs.map((_, i) => rooms.cornerPositionsOf(layout, i)),
+	[rooms, layout],
+);
+const filledByRun = useMemo(
+	() =>
+		layout.runs.map((_, i) => ({
+			floor: cornerSpans(layout, i, "floor")
+				.filter((c) => cornerAt(layout, c.vertex)?.floor)
+				.map((c) => c.span),
+			wall: cornerSpans(layout, i, "wall")
+				.filter((c) => cornerAt(layout, c.vertex)?.wall)
+				.map((c) => c.span),
+		})),
+	[layout],
+);
+const worktops = useMemo(() => rooms.cornerWorktops(layout), [rooms, layout]);
+const target = runs[Math.min(targetRun, count - 1)];
 ```
 
 `main`/`runWidthMm` become the target's: `const runWidthMm = target.view.wallWidthMm;` and every later `main` → `target.view`.
@@ -2630,43 +2889,52 @@ In `PlannerScene` (the default export), add the three props from **Produces**, d
 `<Room … />`:
 
 ```tsx
-			<Room
-				plan={layout.plan}
-				height={m(layout.ceilingHeightMm)}
-				targetWall={targetRun}
-				onWallPick={measureMode ? undefined : onWallPickAction}
-			/>
+<Room
+	plan={layout.plan}
+	height={m(layout.ceilingHeightMm)}
+	targetWall={targetRun}
+	onWallPick={measureMode ? undefined : onWallPickAction}
+/>;
 ```
 
 The runs:
 
 ```tsx
-			{runs.map(({ view, frame }, i) => (
-				// biome-ignore lint/suspicious/noArrayIndexKey: a run's index is its wall
-				<group key={i} position={[m(frame.xMm), 0, m(frame.zMm)]} rotation={[0, frame.yawRad, 0]}>
-					<Run
-						layout={view}
-						frame={frame}
-						corners={cornersByRun[i]}
-						filledSpans={filledByRun[i]}
-						cornerWorktop={worktops.find((w) => (w.vertex + 1) % count === i) ?? null}
-						/* …and every other prop exactly as before: catalogue, engine,
+{
+	runs.map(({ view, frame }, i) => (
+		// biome-ignore lint/suspicious/noArrayIndexKey: a run's index is its wall
+		<group
+			key={i}
+			position={[m(frame.xMm), 0, m(frame.zMm)]}
+			rotation={[0, frame.yawRad, 0]}
+		>
+			<Run
+				layout={view}
+				frame={frame}
+				corners={cornersByRun[i]}
+				filledSpans={filledByRun[i]}
+				cornerWorktop={
+					worktops.find((w) => (w.vertex + 1) % count === i) ?? null
+				}
+				/* …and every other prop exactly as before: catalogue, engine,
 						   finishHex, …, onLayoutChange (still `withRun(roomRef.current, i, next)`). */
-					/>
-					{/* PositionDimensions — unchanged */}
-				</group>
-			))}
-			{view === "plan" && onWallLengthAction && (
-				<WallLengths
-					plan={layout.plan}
-					onPickAction={onWallPickAction}
-					onLengthAction={onWallLengthAction}
-				/>
-			)}
+			/>
+			{/* PositionDimensions — unchanged */}
+		</group>
+	));
+}
+{
+	view === "plan" && onWallLengthAction && (
+		<WallLengths
+			plan={layout.plan}
+			onPickAction={onWallPickAction}
+			onLengthAction={onWallLengthAction}
+		/>
+	);
+}
 ```
 
 Delete `NO_CORNERS` if nothing else uses it.
-
 - [ ] **Step 5: `DropPicker` returns a wall**
 
 ```tsx
@@ -2676,7 +2944,11 @@ function DropPicker({
 }: {
 	plan: FloorPlan;
 	pickerRef: React.RefObject<
-		((clientX: number, clientY: number) => { run: number; xMm: number } | null) | null
+		| ((
+				clientX: number,
+				clientY: number,
+		  ) => { run: number; xMm: number } | null)
+		| null
 	>;
 }) {
 	const camera = useThree((s) => s.camera);
@@ -2710,51 +2982,58 @@ function DropPicker({
 ```
 
 Import `type FloorPlan` from `floorplan.ts`, and render it as `<DropPicker plan={layout.plan} pickerRef={pickerRef} />`.
-
 - [ ] **Step 6: Camera framing follows the target wall**
 
 `FitCamera` props: replace `cornerSide` with `frame: WallFrame`, add `planWidthMm`, `planDepthMm`. Inside the effect, replace the `centre`, `radius` and `direction` blocks:
 
 ```ts
-		const { runWidthMm, roomDepthMm, ceilingHeightMm, aspect, frame, planWidthMm, planDepthMm } =
-			framing.current;
-		const width = m(runWidthMm);
-		const height = m(ceilingHeightMm);
-		const depth = m(roomDepthMm);
-		const halfFovV = (camera.fov * Math.PI) / 360;
-		const halfFovH = Math.atan(Math.tan(halfFovV) * aspect);
-		let centre: Vector3;
-		let direction: Vector3;
-		let radius: number;
-		if (view === "plan") {
-			// The whole floor plan, from above, back wall at the top.
-			centre = new Vector3(0, 0, 0);
-			direction = VIEW_DIRECTION.plan;
-			radius = Math.hypot(m(planWidthMm), m(planDepthMm)) / 2;
-		} else {
-			// Framed in the target wall's own frame, then carried into the room's.
-			const c = toWorldMm({ x: 0, y: ceilingHeightMm / 2.2, z: 0 }, frame);
-			centre = new Vector3(m(c.x), m(c.y), m(c.z));
-			direction = VIEW_DIRECTION[view].clone().applyAxisAngle(new Vector3(0, 1, 0), frame.yawRad);
-			radius =
-				view === "elevation"
-					? Math.hypot(width, height) / 2
-					: Math.hypot(width, height, depth) / 2;
-		}
-		const distance = (radius / Math.sin(Math.min(halfFovV, halfFovH))) * 0.95;
+const {
+	runWidthMm,
+	roomDepthMm,
+	ceilingHeightMm,
+	aspect,
+	frame,
+	planWidthMm,
+	planDepthMm,
+} = framing.current;
+const width = m(runWidthMm);
+const height = m(ceilingHeightMm);
+const depth = m(roomDepthMm);
+const halfFovV = (camera.fov * Math.PI) / 360;
+const halfFovH = Math.atan(Math.tan(halfFovV) * aspect);
+let centre: Vector3;
+let direction: Vector3;
+let radius: number;
+if (view === "plan") {
+	// The whole floor plan, from above, back wall at the top.
+	centre = new Vector3(0, 0, 0);
+	direction = VIEW_DIRECTION.plan;
+	radius = Math.hypot(m(planWidthMm), m(planDepthMm)) / 2;
+} else {
+	// Framed in the target wall's own frame, then carried into the room's.
+	const c = toWorldMm({ x: 0, y: ceilingHeightMm / 2.2, z: 0 }, frame);
+	centre = new Vector3(m(c.x), m(c.y), m(c.z));
+	direction = VIEW_DIRECTION[view]
+		.clone()
+		.applyAxisAngle(new Vector3(0, 1, 0), frame.yawRad);
+	radius =
+		view === "elevation"
+			? Math.hypot(width, height) / 2
+			: Math.hypot(width, height, depth) / 2;
+}
+const distance = (radius / Math.sin(Math.min(halfFovV, halfFovH))) * 0.95;
 ```
 
 `framing.current` gains `frame, planWidthMm, planDepthMm`. The effect's dependency list: `[view, refitKey, camera, controls, elevationWall]` where
 
 ```ts
-	// Elevation is a drawing of one wall, so tapping another wall redraws it.
-	// The 3D view keeps the customer's framing until they ask for a reset.
-	const elevationWall =
-		view === "elevation" ? `${frame.yawRad}:${frame.xMm}:${frame.zMm}` : "";
+// Elevation is a drawing of one wall, so tapping another wall redraws it.
+// The 3D view keeps the customer's framing until they ask for a reset.
+const elevationWall =
+	view === "elevation" ? `${frame.yawRad}:${frame.xMm}:${frame.zMm}` : "";
 ```
 
 Delete `SIDE_RIGHT_DIRECTION` and `VIEW_DIRECTION.side`.
-
 - [ ] **Step 7: The pan puck, in the target wall's frame**
 
 `PanGizmo` props: replace `cornerSide` with `frame: WallFrame`; keep a `frameRef` like `boundsRef`. Delete `side` from `PAN_AXES` and `panAnchor`'s `view === "side"` branch. Replace `panPlane`:
@@ -2772,24 +3051,30 @@ const panPlane = (target: Vector3Type, view: PlannerView, yawRad: number) => {
 Add, inside the component:
 
 ```ts
-	/** A world point the puck was dragged to, masked to this view's axes and
-	 * clamped to the room — both in the target wall's frame, where the axes and
-	 * `clampPanTarget`'s box mean something — and carried back out. */
-	const panTo = useCallback(
-		(point: Vector3Type, anchor: Vector3Type, out: Vector3Type) => {
-			const f = frameRef.current;
-			const axes = PAN_AXES[view];
-			const p = toLocalMm({ x: point.x * 1000, y: point.y * 1000, z: point.z * 1000 }, f);
-			const a = toLocalMm({ x: anchor.x * 1000, y: anchor.y * 1000, z: anchor.z * 1000 }, f);
-			const clamped = clampPanTarget(
-				{ x: axes.x ? p.x : a.x, y: axes.y ? p.y : a.y, z: axes.z ? p.z : a.z },
-				boundsRef.current,
-			);
-			const w = toWorldMm(clamped, f);
-			return out.set(m(w.x), m(w.y), m(w.z));
-		},
-		[view],
-	);
+/** A world point the puck was dragged to, masked to this view's axes and
+ * clamped to the room — both in the target wall's frame, where the axes and
+ * `clampPanTarget`'s box mean something — and carried back out. */
+const panTo = useCallback(
+	(point: Vector3Type, anchor: Vector3Type, out: Vector3Type) => {
+		const f = frameRef.current;
+		const axes = PAN_AXES[view];
+		const p = toLocalMm(
+			{ x: point.x * 1000, y: point.y * 1000, z: point.z * 1000 },
+			f,
+		);
+		const a = toLocalMm(
+			{ x: anchor.x * 1000, y: anchor.y * 1000, z: anchor.z * 1000 },
+			f,
+		);
+		const clamped = clampPanTarget(
+			{ x: axes.x ? p.x : a.x, y: axes.y ? p.y : a.y, z: axes.z ? p.z : a.z },
+			boundsRef.current,
+		);
+		const w = toWorldMm(clamped, f);
+		return out.set(m(w.x), m(w.y), m(w.z));
+	},
+	[view],
+);
 ```
 
 `release`: `glide.current = panTo(spot.current, controls.target, new Vector3());`
@@ -2826,7 +3111,6 @@ At the call sites:
 ```
 
 Also update `lib/planner/camera.ts`'s header comment: "centred on the run" → "in the targeted wall's own frame".
-
 - [ ] **Step 8: Plan-view wall lengths**
 
 In `PositionDimensions.tsx`, `export` `EditableFigure` and `CHIP`.
@@ -2868,9 +3152,15 @@ export function WallLengths({
 					// biome-ignore lint/suspicious/noArrayIndexKey: a wall's index is its identity
 					key={i}
 					position={[
-						m((wall.startMm.xMm + wall.endMm.xMm) / 2 + wall.inward.xMm * INSET_MM),
+						m(
+							(wall.startMm.xMm + wall.endMm.xMm) / 2 +
+								wall.inward.xMm * INSET_MM,
+						),
 						0.02,
-						m((wall.startMm.zMm + wall.endMm.zMm) / 2 + wall.inward.zMm * INSET_MM),
+						m(
+							(wall.startMm.zMm + wall.endMm.zMm) / 2 +
+								wall.inward.zMm * INSET_MM,
+						),
 					]}
 					center
 					zIndexRange={[4, 0]}
@@ -2892,7 +3182,6 @@ export function WallLengths({
 ```
 
 `t.planner.room.wallName` is added in Task 6; until then this file does not typecheck.
-
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -2923,20 +3212,19 @@ In each dictionary, under `planner.room`, **delete** `shapeStraight`, `shapeLeft
 
 Add:
 
-| key | en | ms | zh |
-| --- | --- | --- | --- |
-| `planner.room.shapeRect` | Rectangle | Segi empat | 矩形 |
-| `planner.room.shapeL` | L-shaped | Bentuk L | L 形 |
-| `planner.room.shapeLMirror` | L-shaped, mirrored | Bentuk L, bertentangan | L 形（镜像） |
-| `planner.room.shapeLocked` (reworded) | Clear every wall but the back wall to change the room's shape. | Kosongkan semua dinding kecuali dinding belakang untuk menukar bentuk bilik. | 清空后墙以外的所有墙面，才能更改房间形状。 |
-| `planner.room.wallName` | Wall {n} | Dinding {n} | 墙 {n} |
-| `planner.room.wallsHint` | Tap a wall in the room, or a length in the plan view, to change it. | Ketik dinding dalam bilik, atau ukuran dalam pandangan pelan, untuk mengubahnya. | 点按房间中的墙面，或平面图中的尺寸，即可修改。 |
-| `planner.addCabinets.targetWallHint` | Adding to wall {n}. Tap another wall in the room to build there. | Menambah ke dinding {n}. Ketik dinding lain dalam bilik untuk membina di sana. | 正在添加到墙 {n}。点按房间中的另一面墙即可在那里布置。 |
+| key                                   | en                                                                  | ms                                                                               | zh                                                     |
+| ------------------------------------- | ------------------------------------------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `planner.room.shapeRect`              | Rectangle                                                           | Segi empat                                                                       | 矩形                                                   |
+| `planner.room.shapeL`                 | L-shaped                                                            | Bentuk L                                                                         | L 形                                                   |
+| `planner.room.shapeLMirror`           | L-shaped, mirrored                                                  | Bentuk L, bertentangan                                                           | L 形（镜像）                                           |
+| `planner.room.shapeLocked` (reworded) | Clear every wall but the back wall to change the room's shape.      | Kosongkan semua dinding kecuali dinding belakang untuk menukar bentuk bilik.     | 清空后墙以外的所有墙面，才能更改房间形状。             |
+| `planner.room.wallName`               | Wall {n}                                                            | Dinding {n}                                                                      | 墙 {n}                                                 |
+| `planner.room.wallsHint`              | Tap a wall in the room, or a length in the plan view, to change it. | Ketik dinding dalam bilik, atau ukuran dalam pandangan pelan, untuk mengubahnya. | 点按房间中的墙面，或平面图中的尺寸，即可修改。         |
+| `planner.addCabinets.targetWallHint`  | Adding to wall {n}. Tap another wall in the room to build there.    | Menambah ke dinding {n}. Ketik dinding lain dalam bilik untuk membina di sana.   | 正在添加到墙 {n}。点按房间中的另一面墙即可在那里布置。 |
 
 Check the placeholder syntax against an existing key that `fill` fills (e.g. `fitFree`) and match it — `{n}` above assumes single braces.
 
 Then: `grep -rnE "shapeStraight|shapeLeft|shapeRight|shapeRefused|sideWallLength|roomDepth\b|wallLength\b|narrowWallNote|openEnds|toWalls|runAria|noPanelNeededNote|panelNeededNote|sideHint|mainWall|sideWall|view\.side" src --include=*.tsx --include=*.ts | grep -v "src/lib/copy/"` — every hit is fixed in the steps below; none may remain at the end.
-
 - [ ] **Step 2: `RoomPanel.tsx`**
 
 ```tsx
@@ -2945,7 +3233,12 @@ Then: `grep -rnE "shapeStraight|shapeLeft|shapeRight|shapeRefused|sideWallLength
 import { fill } from "@/lib/copy/fill";
 import { CEILING_LIMITS, type RoomTypeId } from "@/lib/planner/catalogue";
 import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
-import { outlineOf, type RoomShape, reshape, wallsOf } from "@/lib/planner/floorplan";
+import {
+	outlineOf,
+	type RoomShape,
+	reshape,
+	wallsOf,
+} from "@/lib/planner/floorplan";
 import type { RoomLayout } from "@/lib/planner/room";
 import { useCopy } from "../CopyContext";
 import { DimensionField } from "../DimensionField";
@@ -2957,11 +3250,21 @@ const SHAPES: RoomShape[] = ["rect", "l", "l-mirror"];
  * disagree with the room it makes. Inline SVG, per CLAUDE.md: no WebGL
  * context per thumbnail. */
 function ShapeThumb({ shape }: { shape: RoomShape }) {
-	const plan = reshape({ template: "rect", widthMm: 3000, depthMm: 3000 }, shape);
-	const points = outlineOf(plan).map((p) => `${p.xMm},${p.zMm}`).join(" ");
+	const plan = reshape(
+		{ template: "rect", widthMm: 3000, depthMm: 3000 },
+		shape,
+	);
+	const points = outlineOf(plan)
+		.map((p) => `${p.xMm},${p.zMm}`)
+		.join(" ");
 	return (
 		<svg viewBox="-1700 -1700 3400 3400" className="h-8 w-8" aria-hidden="true">
-			<polygon points={points} fill="none" stroke="currentColor" strokeWidth={160} />
+			<polygon
+				points={points}
+				fill="none"
+				stroke="currentColor"
+				strokeWidth={160}
+			/>
 		</svg>
 	);
 }
@@ -3036,12 +3339,16 @@ export function RoomPanel({
 					))}
 				</div>
 				{SHAPES.some((option) => option !== shape && !reachable[option]) && (
-					<p className="text-[11px] text-neutral-500 leading-4">{t.planner.room.shapeLocked}</p>
+					<p className="text-[11px] text-neutral-500 leading-4">
+						{t.planner.room.shapeLocked}
+					</p>
 				)}
 			</div>
 
 			<div className="flex flex-col gap-2">
-				<p className="text-[11px] text-neutral-500 leading-4">{t.planner.room.wallsHint}</p>
+				<p className="text-[11px] text-neutral-500 leading-4">
+					{t.planner.room.wallsHint}
+				</p>
 				{wallsOf(layout.plan).map((wall, i) => (
 					<div
 						// biome-ignore lint/suspicious/noArrayIndexKey: a wall's index is its identity
@@ -3078,7 +3385,6 @@ export function RoomPanel({
 ```
 
 Paste the two blocks the comments name from the old file verbatim, and keep its header comment, reworded for walls.
-
 - [ ] **Step 3: `StudioScreen.tsx`**
 
 Imports: from `@/lib/planner/room` import `cornerVertexFor, emptyRoom, nearCornerMm, type RoomLayout, runIndexOf, runView, setDoors, setHinge` (drop `shapeOf`); add `import { type RoomShape, shapeOf } from "@/lib/planner/floorplan";`.
@@ -3090,15 +3396,15 @@ From the `useRoomEngine()` destructure remove `minWallWidthMm`, `minRoomDepthMm`
 State:
 
 ```ts
-	const pickerRef = useRef<
-		((x: number, y: number) => { run: number; xMm: number } | null) | null
-	>(null);
-	// …
-	const [view, setView] = useState<PlannerView>("3d");
-	// Which wall the add menu builds on. Tapping a wall in the room sets it.
-	const [targetRun, setTargetRun] = useState(0);
-	// A shape change can leave fewer walls than the index held.
-	const run = Math.min(targetRun, layout.runs.length - 1);
+const pickerRef = useRef<
+	((x: number, y: number) => { run: number; xMm: number } | null) | null
+>(null);
+// …
+const [view, setView] = useState<PlannerView>("3d");
+// Which wall the add menu builds on. Tapping a wall in the room sets it.
+const [targetRun, setTargetRun] = useState(0);
+// A shape change can leave fewer walls than the index held.
+const run = Math.min(targetRun, layout.runs.length - 1);
 ```
 
 Replace every use of `shownView` with `view`.
@@ -3106,22 +3412,22 @@ Replace every use of `shownView` with `view`.
 The fit figures:
 
 ```ts
-	const overhang = overhangMm(layout);
-	// The targeted wall: its corner squares are not free wall.
-	const targetView = runView(layout, run);
-	const cornerMm = (targetView.reserved?.floor ?? []).reduce(
-		(total, span) => total + span.endMm - span.startMm,
-		0,
-	);
-	const freeMm = Math.round(
-		targetView.wallWidthMm - Math.max(cornerMm, runExtentMm(layout, run)),
-	);
-	// Every wall with a run on it, from its corner.
-	const runMetres = layout.runs
-		.map((_, i) => runExtentMm(layout, i))
-		.filter((mm) => mm > 0)
-		.map((mm) => `${(mm / 1000).toFixed(2)} m`)
-		.join(" + ");
+const overhang = overhangMm(layout);
+// The targeted wall: its corner squares are not free wall.
+const targetView = runView(layout, run);
+const cornerMm = (targetView.reserved?.floor ?? []).reduce(
+	(total, span) => total + span.endMm - span.startMm,
+	0,
+);
+const freeMm = Math.round(
+	targetView.wallWidthMm - Math.max(cornerMm, runExtentMm(layout, run)),
+);
+// Every wall with a run on it, from its corner.
+const runMetres = layout.runs
+	.map((_, i) => runExtentMm(layout, i))
+	.filter((mm) => mm > 0)
+	.map((mm) => `${(mm / 1000).toFixed(2)} m`)
+	.join(" + ");
 ```
 
 (Remove `minWallMm`.)
@@ -3129,47 +3435,54 @@ The fit figures:
 `dropCarcass`:
 
 ```ts
-	const dropCarcass = (familyId: string, clientX: number, clientY: number) => {
-		// Dropped near a wall is dropped on that wall.
-		const hit = pickerRef.current?.(clientX, clientY) ?? { run, xMm: 0 };
-		track("cabinet_added", { family: familyId, via: "drag" });
-		setTargetRun(hit.run);
-		setLayoutAction((prev) =>
-			addModule(prev, familyId, hit.xMm, undefined, undefined, hit.run),
-		);
-	};
+const dropCarcass = (familyId: string, clientX: number, clientY: number) => {
+	// Dropped near a wall is dropped on that wall.
+	const hit = pickerRef.current?.(clientX, clientY) ?? { run, xMm: 0 };
+	track("cabinet_added", { family: familyId, via: "drag" });
+	setTargetRun(hit.run);
+	setLayoutAction((prev) =>
+		addModule(prev, familyId, hit.xMm, undefined, undefined, hit.run),
+	);
+};
 ```
 
 `roomBody`:
 
 ```tsx
-	const roomBody = (
-		<RoomPanel
-			catalogue={catalogue}
-			roomId={roomId}
-			layout={layout}
-			freeMm={freeMm}
-			overhangMm={overhang}
-			shape={shapeOf(layout.plan)}
-			reachable={{
-				rect: setShape(layout, "rect") !== layout || shapeOf(layout.plan) === "rect",
-				l: setShape(layout, "l") !== layout || shapeOf(layout.plan) === "l",
-				"l-mirror": setShape(layout, "l-mirror") !== layout || shapeOf(layout.plan) === "l-mirror",
-			}}
-			wallRanges={layout.runs.map((_, i) => wallLengthRangeMm(layout, i))}
-			targetWall={run}
-			onShapeAction={(shape: RoomShape) => {
-				if (setShape(layout, shape) === layout) return;
-				track("room_shape_changed", { shape });
-				setLayoutAction((prev) => setShape(prev, shape));
-			}}
-			onChangeRoomAction={onChangeRoomAction}
-			onWallLengthAction={(wall, mm) => setLayoutAction((prev) => setWallLength(prev, wall, mm))}
-			onTargetWallAction={setTargetRun}
-			onCeilingAction={(mm) => setLayoutAction((prev) => setCeilingHeight(prev, mm))}
-			onOpenDefaultsAction={() => setTool("defaults")}
-		/>
-	);
+const roomBody = (
+	<RoomPanel
+		catalogue={catalogue}
+		roomId={roomId}
+		layout={layout}
+		freeMm={freeMm}
+		overhangMm={overhang}
+		shape={shapeOf(layout.plan)}
+		reachable={{
+			rect:
+				setShape(layout, "rect") !== layout || shapeOf(layout.plan) === "rect",
+			l: setShape(layout, "l") !== layout || shapeOf(layout.plan) === "l",
+			"l-mirror":
+				setShape(layout, "l-mirror") !== layout ||
+				shapeOf(layout.plan) === "l-mirror",
+		}}
+		wallRanges={layout.runs.map((_, i) => wallLengthRangeMm(layout, i))}
+		targetWall={run}
+		onShapeAction={(shape: RoomShape) => {
+			if (setShape(layout, shape) === layout) return;
+			track("room_shape_changed", { shape });
+			setLayoutAction((prev) => setShape(prev, shape));
+		}}
+		onChangeRoomAction={onChangeRoomAction}
+		onWallLengthAction={(wall, mm) =>
+			setLayoutAction((prev) => setWallLength(prev, wall, mm))
+		}
+		onTargetWallAction={setTargetRun}
+		onCeilingAction={(mm) =>
+			setLayoutAction((prev) => setCeilingHeight(prev, mm))
+		}
+		onOpenDefaultsAction={() => setTool("defaults")}
+	/>
+);
 ```
 
 `wallLengthRangeMm` bisects twice per wall per render — at most 12 bisections of ~14 steps over ≤ 6 short runs. If the panel ever feels slow on a phone, memoise on `layout`.
@@ -3177,9 +3490,9 @@ The fit figures:
 `addBody`: replace the `{layout.corner && ( … target wall chips … )}` block with
 
 ```tsx
-			<p className="text-[11px] text-neutral-500 leading-4">
-				{fill(t.planner.addCabinets.targetWallHint, { n: run + 1 })}
-			</p>
+<p className="text-[11px] text-neutral-500 leading-4">
+	{fill(t.planner.addCabinets.targetWallHint, { n: run + 1 })}
+</p>;
 ```
 
 and the corner-category guard with `if (category.startsWith("CORNER_") && cornerVertexFor(layout, run) === null) return null;`.
@@ -3195,23 +3508,19 @@ and the corner-category guard with `if (category.startsWith("CORNER_") && corner
 ```
 
 Finally `grep -n "layout\.corner\|wallWidthMm\|roomDepthMm\|wallToWall" src/components/planner/StudioScreen.tsx` — fix any remaining hit the same way (the back wall's length is `runView(layout, 0).wallWidthMm`).
-
 - [ ] **Step 4: The other readers of the old fields**
 
 `PlannerApp.tsx` ~l.196 and `QuoteScreen.tsx` ~l.298: `layout.wallWidthMm` → `wallsOf(layout.plan)[0].lengthMm` (import `wallsOf` from `@/lib/planner/floorplan`). Then:
 
 Run: `grep -rnE "\.corner\b|wallWidthMm|roomDepthMm|wallToWall|runYawRad|setCornerSide|cornerWorktop\b|minRoomDepthMm|setRoomDepth" src --include=*.tsx | grep -v __tests__`
 Every remaining hit must be on a `PlannerLayout` (a run view), not a `RoomLayout`.
-
 - [ ] **Step 5: Typecheck, lint, test**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: all three PASS.
-
 - [ ] **Step 6: Browser check**
 
 Start the dev server (`pnpm dev`) and open the kitchen planner. Record a GIF of steps 2–6.
-
 1. The room opens as a rectangle with four walls; the back wall is tinted as the target.
 2. Room panel → pick **L-shaped**. The floor becomes an L; six walls. In **plan** view, each wall shows its length; set the notch's top wall (wall 3) to 1500 and see walls 2 and 4 follow.
 3. Tap the left wall in 3D; the tint moves; add a base cabinet from the menu — it lands on the left wall. Add one to the back wall: both slide clear of the corner square.
@@ -3223,7 +3532,6 @@ Start the dev server (`pnpm dev`) and open the kitchen planner. Record a GIF of 
 9. `/admin/orders`: an order placed before this change still renders.
 
 Expected: all nine as described. Any failure goes back to the task that owns it.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -3366,7 +3674,6 @@ Spec §5. TDD throughout; `lib/planner` stays framework-free. Runs after Task 8'
 ### Task 10: Free-standing cabinets — scene and studio (added 2026-09-19)
 
 **Files:** `src/components/planner/PlannerScene.tsx`, `StudioScreen.tsx` (and only what else typecheck forces).
-
 - **Drawing.** Each free cabinet is drawn as a one-cabinet `Run`:
   - Build a `PlannerLayout` view: `wallWidthMm = widthMm`, `roomDepthMm = depthMm + 2 × WALL_GAP_MM`, the cabinet at `xMm 0`, `endWalls {false,false}`, no `reserved`.
   - Give it a frame `{ yawRad: rotationDeg·π/180, xMm, zMm }` (the cabinet's local centre is then at the frame origin).

@@ -3,12 +3,10 @@
 ## Context
 
 Two needs raised while demoing FPX payment:
-
 1. **An admin must not cancel an order (or do other money/people actions) by mistake.** Today "Cancel order" is a browser `confirm()`, "Mark paid" has no confirmation, and nothing proves the person at the keyboard is the account owner.
 2. **Cancelling a paid order must refund the customer automatically**, and the refund's status must come back from the payment gateway, the same way "paid" does today. Today a paid order cannot be cancelled at all and there is no refund code.
 
 Decisions already made by the user:
-
 - Guard scope: cancel order, mark paid by hand, delete user, reset customer passkey, reset 2FA, remove password, and the new refund.
 - Authorisation: **staff passkey**, prompted on each guarded action.
 - Refund: **through the gateway**, **full amount only**, **only before production starts**, **superadmin only**.

@@ -43,19 +43,19 @@ there later as a one-line change. `lib/planner` is untouched.
 The working parts the lighting touches, and how each stays safe. Each row is a
 check in Verification.
 
-| Working part | Risk | Safeguard |
-|---|---|---|
-| Selection, drag-preview, measure overlay, wall-number colours | Tone mapping also recolours UI meshes (`meshBasicMaterial` is tone-mapped by default) | `toneMapped={false}` on every UI/overlay material — they keep today's exact colours |
-| Tap, drag, snap (raycasts on invisible hit planes) | Hit planes casting shadow or catching AO | Shadows are opt-in per mesh (`castShadow` only on cabinets and worktops); hit planes untouched; raycasting is independent of lighting |
-| Measuring tool | None — snaps to geometry | No change to `snapToCabinet` or `parts.ts` |
-| Doors open/hidden toggle | Stale shadow of a hidden door | Shadow redraw on every toggle and during the animation |
-| Elevation and plan views (orthographic) | Shadows/AO clutter a technical view | Verified in all three views; if needed, shadows/AO switch off in elevation/plan |
-| Finish, door-style, wall-paint colours | Colour shift | Neutral tone mapping plus side-by-side swatch check before merge |
-| Procedural fallback (`Cabinet.tsx`) | Looks different from drafted cabinets | Same cast/receive flags on both |
-| On-top overlays (`depthTest={false}`) on `high` | AO darkens them | Not fully safeguarded: Task 11 saw no visible darkening or halo on a real selection, but the overlays are not drawn outside the composer's passes — see the row below |
-| Overlay colours on the high tier | The composer's Neutral ToneMapping effect and N8AO apply to the whole image, so `toneMapped={false}` does not hold on high: brand green `#1f5138` renders ≈(4,75,46) instead of (31,81,56), white ≈242 | Accepted; follow-up: draw overlays on their own layer after the composer |
-| Weak phones | Frame drops | Costly work is `high`-only and lazy; `low` adds no per-frame work except during a drag |
-| Tests, typecheck, Biome | — | Stay green; every PR gated on them |
+| Working part                                                  | Risk                                                                                                                                                                                                   | Safeguard                                                                                                                                                             |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Selection, drag-preview, measure overlay, wall-number colours | Tone mapping also recolours UI meshes (`meshBasicMaterial` is tone-mapped by default)                                                                                                                  | `toneMapped={false}` on every UI/overlay material — they keep today's exact colours                                                                                   |
+| Tap, drag, snap (raycasts on invisible hit planes)            | Hit planes casting shadow or catching AO                                                                                                                                                               | Shadows are opt-in per mesh (`castShadow` only on cabinets and worktops); hit planes untouched; raycasting is independent of lighting                                 |
+| Measuring tool                                                | None — snaps to geometry                                                                                                                                                                               | No change to `snapToCabinet` or `parts.ts`                                                                                                                            |
+| Doors open/hidden toggle                                      | Stale shadow of a hidden door                                                                                                                                                                          | Shadow redraw on every toggle and during the animation                                                                                                                |
+| Elevation and plan views (orthographic)                       | Shadows/AO clutter a technical view                                                                                                                                                                    | Verified in all three views; if needed, shadows/AO switch off in elevation/plan                                                                                       |
+| Finish, door-style, wall-paint colours                        | Colour shift                                                                                                                                                                                           | Neutral tone mapping plus side-by-side swatch check before merge                                                                                                      |
+| Procedural fallback (`Cabinet.tsx`)                           | Looks different from drafted cabinets                                                                                                                                                                  | Same cast/receive flags on both                                                                                                                                       |
+| On-top overlays (`depthTest={false}`) on `high`               | AO darkens them                                                                                                                                                                                        | Not fully safeguarded: Task 11 saw no visible darkening or halo on a real selection, but the overlays are not drawn outside the composer's passes — see the row below |
+| Overlay colours on the high tier                              | The composer's Neutral ToneMapping effect and N8AO apply to the whole image, so `toneMapped={false}` does not hold on high: brand green `#1f5138` renders ≈(4,75,46) instead of (31,81,56), white ≈242 | Accepted; follow-up: draw overlays on their own layer after the composer                                                                                              |
+| Weak phones                                                   | Frame drops                                                                                                                                                                                            | Costly work is `high`-only and lazy; `low` adds no per-frame work except during a drag                                                                                |
+| Tests, typecheck, Biome                                       | —                                                                                                                                                                                                      | Stay green; every PR gated on them                                                                                                                                    |
 
 **Kill switch.** Phase 1 is one component (`<StudioLighting />`); reverting is
 a one-line swap back to the old two lights. Phase 2 sits behind the tier, so
@@ -65,7 +65,6 @@ a one-line swap back to the old two lights. Phase 2 sits behind the tier, so
 
 New `components/planner/Lighting.tsx`, exporting `<StudioLighting />`, replaces
 the two light lines in `PlannerScene.tsx`.
-
 - **Tone mapping:** `NeutralToneMapping` on the Canvas `gl` (three 0.185 has
   it). Built for product rendering; keeps sRGB swatch and wall-paint colours
   close to what the admin typed.
@@ -98,13 +97,13 @@ No new dependencies. Frame rate unchanged.
   well in front of the room, angled toward the reference run's open end: a
   cabinet run sits flush against its wall, so a shadow with any z-throw lands
   almost on top of the cabinet's own silhouette there — it only reads as a
-  *separate* shadow when thrown sideways past the run's open end, which only
-  happens toward the side the key is *not* on. The negative x is that side for
+  _separate_ shadow when thrown sideways past the run's open end, which only
+  happens toward the side the key is _not_ on. The negative x is that side for
   Task 1's reference scene, not a universal rule. Door-front brightness stays
   within ±3% of the Phase 1 value at this position. **I3, handled by a
   non-shadow fill (Task 13):** measured on an L room with base units on both
   the back wall and the key's own -x wall (dev catalogue only, no wall or tall
-  units), cabinet *fronts* on the key's own wall read ~20–25% darker than the
+  units), cabinet _fronts_ on the key's own wall read ~20–25% darker than the
   back wall's fronts at every x tried in -5..-2 — the side Lightformers' fill
   lights the flat wall it was tuned against, not a front facing sideways into
   the room, and shallower x loses the Task 12 cast shadow before it fixes
@@ -134,13 +133,12 @@ No new dependencies. Frame rate unchanged.
 
 ### Tiers
 
-| | low (default) | high |
-|---|---|---|
-| Environment, neutral tone mapping, soft key | yes | yes |
-| Shadow map | 1024² | 2048² |
-| Floor blob pools | on | off |
-| N8AO ambient occlusion | no | yes |
-
+|                                             | low (default) | high  |
+| ------------------------------------------- | ------------- | ----- |
+| Environment, neutral tone mapping, soft key | yes           | yes   |
+| Shadow map                                  | 1024²         | 2048² |
+| Floor blob pools                            | on            | off   |
+| N8AO ambient occlusion                      | no            | yes   |
 - Every device starts `low`. drei `<PerformanceMonitor>`: `onIncline` → `high`,
   `onDecline` → `low`, `onFallback` → locked `low` for the session. No
   user-agent sniffing. Tier is view state in `PlannerScene`, never on the
@@ -168,7 +166,6 @@ no caller.
 
 No `lib/planner` change, so no engine tests. The frustum fit is a min/max over
 existing `outlineOf`, no new helper. Verification is visual and measured:
-
 1. Before/after screenshots of the same kitchen (straight run, wall units, a
    glass door) in 3D, elevation and plan, plus one L room, against `pnpm dev`.
 2. Each finish's door beside its swatch — neutral tone mapping must keep them
@@ -186,8 +183,8 @@ existing `outlineOf`, no new helper. Verification is visual and measured:
 
 ## CLAUDE.md change (PR 2)
 
-Under "Mobile performance rules", replace *"No real-time shadows. One
-directional light, one ambient, one soft blurred plane beneath the unit"* with:
+Under "Mobile performance rules", replace _"No real-time shadows. One
+directional light, one ambient, one soft blurred plane beneath the unit"_ with:
 one shadow-casting key light; shadow map redrawn only on change, never per
 frame; environment from Lightformers, no HDR files; neutral tone mapping; AO
 only on the `high` tier, lazy-loaded; a captured screenshot always renders at

@@ -60,7 +60,6 @@ the start screen carries the language links instead.
 ## Studio
 
 Top to bottom:
-
 1. Header: back pill **Rooms** → room picker; title = the room's label;
    subtitle "{m} m wall" (the targeted wall's length, 2 decimals); right, the
    tutorials link.
@@ -92,19 +91,18 @@ Top to bottom:
 The design is a layout reference. Where its content contradicts `CLAUDE.md`,
 the app wins:
 
-| Design | Built instead | Why |
-| --- | --- | --- |
-| "Infinite Cabinet" | `{brand}` / EzCabinet | Brand |
-| "Then, a starting layout" — Full run / Blank wall | Not built | Rooms open on an empty wall |
-| Width chips 400 / 600 / 800, "300–900 mm" ranges | `SelectionPanel` and the add menu as they are | One design, one cabinet; no ladder |
-| "Fridge housing · carcass only" | Not built | A placed cabinet always wears a door |
-| Invented prices, finish names, "Glass" front | The catalogue's | Prices come from the catalogue |
-| "Free to try · no account needed" | Not built | Checkout needs an account |
-| Quote: name / phone / email / area, "a designer calls you" | `QuoteScreen`'s own fields, sign-in, passkey, terms, Stripe / bank transfer | It is a paid checkout |
-| Admin link | Not built | No admin link on public pages |
+| Design                                                     | Built instead                                                               | Why                                  |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------ |
+| "Infinite Cabinet"                                         | `{brand}` / EzCabinet                                                       | Brand                                |
+| "Then, a starting layout" — Full run / Blank wall          | Not built                                                                   | Rooms open on an empty wall          |
+| Width chips 400 / 600 / 800, "300–900 mm" ranges           | `SelectionPanel` and the add menu as they are                               | One design, one cabinet; no ladder   |
+| "Fridge housing · carcass only"                            | Not built                                                                   | A placed cabinet always wears a door |
+| Invented prices, finish names, "Glass" front               | The catalogue's                                                             | Prices come from the catalogue       |
+| "Free to try · no account needed"                          | Not built                                                                   | Checkout needs an account            |
+| Quote: name / phone / email / area, "a designer calls you" | `QuoteScreen`'s own fields, sign-in, passkey, terms, Stripe / bank transfer | It is a paid checkout                |
+| Admin link                                                 | Not built                                                                   | No admin link on public pages        |
 
 And where the design has no home for something the app does:
-
 - **Room tab = `RoomPanel` + the Setup (defaults) body under it.** The design's
   Room tab already mixes the room with "Wall units hang at", so kick board,
   wall-units mode, hang height, flush tops and close gaps follow it there.

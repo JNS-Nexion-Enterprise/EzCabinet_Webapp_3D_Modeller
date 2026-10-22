@@ -16,12 +16,11 @@
 
 ## Context
 
-`src/lib/logistics/adapters/easyparcel.ts` is a `stubAdapter` today. Its own comment says why: *"The request and response shapes are not public enough to write against."* They are now. EasyParcel publishes a full Open API reference, and this plan implements against it.
+`src/lib/logistics/adapters/easyparcel.ts` is a `stubAdapter` today. Its own comment says why: _"The request and response shapes are not public enough to write against."_ They are now. EasyParcel publishes a full Open API reference, and this plan implements against it.
 
 EasyParcel matters because of the split `carriers.ts` already draws: Lalamove is the `vehicle` partner that moves finished carcasses, and the `parcel` partners carry "hardware, samples and spare doors." Today every one of those small jobs is booked as `manual` — phoned in, no price, no tracking. EasyParcel is the one parcel partner with an API we can reach, and it fronts City-Link, DHL eCommerce, Skynet, J&T and the rest, so one integration covers the whole parcel side rather than three more adapters.
 
 Four decisions were confirmed with the user before writing this plan:
-
 1. **OAuth tokens live in a DB row**, with in-app connect/callback routes, so an admin can re-authorise from the admin page when the refresh token expires.
 2. **Postcode, city and state come from the existing geocode** — Google already returns `address_components` on the call `geocode.ts` makes at save time.
 3. **Standard shipping only.** EasyParcel's `/ondemand/*` API resells Lalamove and pandaGo; this app already talks to Lalamove directly, and routing it through a middleman would put two Lalamove prices on one comparison screen.
@@ -42,33 +41,33 @@ Four decisions were confirmed with the user before writing this plan:
 
 `adapters/lalamove.ts` is the reference implementation and this adapter copies its shape deliberately — pure exported payload builders, a thin private `call()`, `readReply` over Zod instead of a cast, a `…NotDeliverable` error for job-shaped failures, `trace` at every step. What follows is where the two APIs genuinely diverge, and what each divergence costs.
 
-| | Lalamove v3 | EasyParcel `2026-06` | Consequence |
-| --- | --- | --- | --- |
-| **Auth** | HMAC-SHA256 over `ts\r\nVERB\r\npath\r\n\r\nbody`, key + secret from env | OAuth 2.0 authorization code, `Bearer` token, 10 h access / ~1 y refresh | The only difference the `CarrierAdapter` contract cannot absorb. Needs `tokens.ts`, a DB row, and a human click-through — **Task 3**. |
-| **Sandbox vs live** | Decided by the key: `pk_test…` picks the sandbox host | Same host, same app; decided by which **account** an admin links at connect time | The adapter cannot tell you which one it is on. Nothing in code can assert it, so the admin page says "connected", never "connected to live". |
-| **Addressing** | `stops[].coordinates` required; the address line is a label the driver reads | `postcode` + `subdivision_code` + `country`; coordinates are never sent | Opposite requirements from the same form. Both are read out of one Google reply at save time — **Task 2**. |
-| **Weight** | Optional, and deliberately omitted (`item.weight` is an undocumented per-city enum) | **Required.** No weight, no quote | An unweighed job quotes on Lalamove and is refused by EasyParcel, with a message saying so on the row. |
-| **Schedule** | `scheduleAt` optional; omitting it means "as soon as possible" | `collection_date` **required**, `YYYY-MM-DD` | A job with a null `scheduledAt` still needs a date. `collectionDate()` defaults to today in Kuala Lumpur. |
-| **Phone** | E.164 whole: `+60123456789` | Split: `phone_number_country_code: "MY"` + `phone_number: "123456789"` | `toE164` is reused for both; EasyParcel strips the `+60` after it. |
-| **Quote** | One price. `quotationId` valid **5 minutes**, plus two `stopId`s that must be carried into the order | A marketplace — one rate per courier service. No documented expiry; the booking is keyed on `service_id` alone | `quoteRef` packs three values for Lalamove and one for EasyParcel. See the re-quote note below. |
-| **Failure signalling** | Non-2xx only | **HTTP 200 with per-element `status: "error"` and an `errors[]` array** | `carrierFetch` treats 200 as success, so every EasyParcel reply must additionally be checked at `data[0].status`. This is the easiest thing to get wrong in the whole integration. |
-| **Booking retry** | Not idempotent — a retry is a second lorry | Not idempotent — a retry deducts the wallet twice and prints two consignment notes | Same posture. `idempotent` stays `false` on both `book` paths. |
-| **Cancel** | `DELETE /v3/orders/{id}`; refused once a driver has been matched >5 min | `POST /shipment/cancel` with a `cancel_list[]` and a required `remark`; refunds to the wallet | Same contract (`cancel?()`), different verb and a mandatory reason string. |
-| **Tracking read** | `GET /v3/orders/{id}`, then a second call for the driver | `POST /shipment/details` with the shipment number, one call | EasyParcel's is simpler but costs a token read (occasionally a refresh transaction) per poll. Still inside the cron's 50-job cap. |
-| **Driver telemetry** | Name, phone, plate, live coordinates | **None.** A parcel network has no driver to report | `TrackingUpdate.driverName` / `latitude` / … stay `undefined` for EasyParcel, so `applyTrackingUpdate` leaves those columns alone and the admin panel's driver block renders empty. Correct, not missing. |
-| **Status vocabulary** | Seven words; **no in-transit state** — a Lalamove job goes `PICKED_UP` → `COMPLETED` | Numeric codes `0/2/3/4/5/6/7/8/11`, and `4` really is in-transit | Both go through `CARRIER_STATUS_MAPS` and `mapCarrierStatus` unchanged. EasyParcel's table is keyed on the stringified code, because the *text* belongs to the courier, not to EasyParcel. |
-| **Webhook identity** | Unsigned, but the body carries the `apiKey` the order was placed with | **Unsigned and carries nothing.** No HMAC, no header, no timestamp | The only check left is a secret we put in the registered URL, which is the upgrade path `lalamove.ts`'s own comment already names. `verifyWebhook` gains a `url` argument — **Task 6**. |
-| **Webhook noise** | 10 event types, 2 carry an order | 5 topics, 4 carry a `shipment_number`, 1 (OnDemand) does not | The `{ kind: "ignored" }` member added in `cf31ac1` covers EasyParcel unchanged. Same lesson, second partner. |
-| **Order id** | `orderId`, one opaque string | `shipment_number` (`ES-YYMM-XXXXX`) for `details`/`cancel`, `awb_number` for `tracking_status` | `carrierOrderId` holds the shipment number; using `details` rather than `tracking_status` for the poll is what keeps it to one column. |
-| **Printable label** | None — a driver turns up | `awb_url`, and the courier will not collect a box without it taped on | The one field `CarrierBooking` does not have. Adds `labelUrl` — **Task 5**. |
+|                        | Lalamove v3                                                                                          | EasyParcel `2026-06`                                                                                           | Consequence                                                                                                                                                                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Auth**               | HMAC-SHA256 over `ts\r\nVERB\r\npath\r\n\r\nbody`, key + secret from env                             | OAuth 2.0 authorization code, `Bearer` token, 10 h access / ~1 y refresh                                       | The only difference the `CarrierAdapter` contract cannot absorb. Needs `tokens.ts`, a DB row, and a human click-through — **Task 3**.                                                                     |
+| **Sandbox vs live**    | Decided by the key: `pk_test…` picks the sandbox host                                                | Same host, same app; decided by which **account** an admin links at connect time                               | The adapter cannot tell you which one it is on. Nothing in code can assert it, so the admin page says "connected", never "connected to live".                                                             |
+| **Addressing**         | `stops[].coordinates` required; the address line is a label the driver reads                         | `postcode` + `subdivision_code` + `country`; coordinates are never sent                                        | Opposite requirements from the same form. Both are read out of one Google reply at save time — **Task 2**.                                                                                                |
+| **Weight**             | Optional, and deliberately omitted (`item.weight` is an undocumented per-city enum)                  | **Required.** No weight, no quote                                                                              | An unweighed job quotes on Lalamove and is refused by EasyParcel, with a message saying so on the row.                                                                                                    |
+| **Schedule**           | `scheduleAt` optional; omitting it means "as soon as possible"                                       | `collection_date` **required**, `YYYY-MM-DD`                                                                   | A job with a null `scheduledAt` still needs a date. `collectionDate()` defaults to today in Kuala Lumpur.                                                                                                 |
+| **Phone**              | E.164 whole: `+60123456789`                                                                          | Split: `phone_number_country_code: "MY"` + `phone_number: "123456789"`                                         | `toE164` is reused for both; EasyParcel strips the `+60` after it.                                                                                                                                        |
+| **Quote**              | One price. `quotationId` valid **5 minutes**, plus two `stopId`s that must be carried into the order | A marketplace — one rate per courier service. No documented expiry; the booking is keyed on `service_id` alone | `quoteRef` packs three values for Lalamove and one for EasyParcel. See the re-quote note below.                                                                                                           |
+| **Failure signalling** | Non-2xx only                                                                                         | **HTTP 200 with per-element `status: "error"` and an `errors[]` array**                                        | `carrierFetch` treats 200 as success, so every EasyParcel reply must additionally be checked at `data[0].status`. This is the easiest thing to get wrong in the whole integration.                        |
+| **Booking retry**      | Not idempotent — a retry is a second lorry                                                           | Not idempotent — a retry deducts the wallet twice and prints two consignment notes                             | Same posture. `idempotent` stays `false` on both `book` paths.                                                                                                                                            |
+| **Cancel**             | `DELETE /v3/orders/{id}`; refused once a driver has been matched >5 min                              | `POST /shipment/cancel` with a `cancel_list[]` and a required `remark`; refunds to the wallet                  | Same contract (`cancel?()`), different verb and a mandatory reason string.                                                                                                                                |
+| **Tracking read**      | `GET /v3/orders/{id}`, then a second call for the driver                                             | `POST /shipment/details` with the shipment number, one call                                                    | EasyParcel's is simpler but costs a token read (occasionally a refresh transaction) per poll. Still inside the cron's 50-job cap.                                                                         |
+| **Driver telemetry**   | Name, phone, plate, live coordinates                                                                 | **None.** A parcel network has no driver to report                                                             | `TrackingUpdate.driverName` / `latitude` / … stay `undefined` for EasyParcel, so `applyTrackingUpdate` leaves those columns alone and the admin panel's driver block renders empty. Correct, not missing. |
+| **Status vocabulary**  | Seven words; **no in-transit state** — a Lalamove job goes `PICKED_UP` → `COMPLETED`                 | Numeric codes `0/2/3/4/5/6/7/8/11`, and `4` really is in-transit                                               | Both go through `CARRIER_STATUS_MAPS` and `mapCarrierStatus` unchanged. EasyParcel's table is keyed on the stringified code, because the _text_ belongs to the courier, not to EasyParcel.                |
+| **Webhook identity**   | Unsigned, but the body carries the `apiKey` the order was placed with                                | **Unsigned and carries nothing.** No HMAC, no header, no timestamp                                             | The only check left is a secret we put in the registered URL, which is the upgrade path `lalamove.ts`'s own comment already names. `verifyWebhook` gains a `url` argument — **Task 6**.                   |
+| **Webhook noise**      | 10 event types, 2 carry an order                                                                     | 5 topics, 4 carry a `shipment_number`, 1 (OnDemand) does not                                                   | The `{ kind: "ignored" }` member added in `cf31ac1` covers EasyParcel unchanged. Same lesson, second partner.                                                                                             |
+| **Order id**           | `orderId`, one opaque string                                                                         | `shipment_number` (`ES-YYMM-XXXXX`) for `details`/`cancel`, `awb_number` for `tracking_status`                 | `carrierOrderId` holds the shipment number; using `details` rather than `tracking_status` for the poll is what keeps it to one column.                                                                    |
+| **Printable label**    | None — a driver turns up                                                                             | `awb_url`, and the courier will not collect a box without it taped on                                          | The one field `CarrierBooking` does not have. Adds `labelUrl` — **Task 5**.                                                                                                                               |
 
 ### The one behavioural difference worth deciding on
 
 `book/route.ts` re-quotes immediately before booking and uses the **fresh** quote's `quoteRef`, discarding the one the admin clicked. For Lalamove that is mandatory: the `quotationId` expires in five minutes and the `stopId`s must match it.
 
-For EasyParcel it means the admin can see *"City-Link — RM 9.80"*, click book, and have the re-quote's `cheapest()` return DHL at RM 9.75 — booked with a different courier than the row said, and under the 10% guard the route uses to catch a price move.
+For EasyParcel it means the admin can see _"City-Link — RM 9.80"_, click book, and have the re-quote's `cheapest()` return DHL at RM 9.75 — booked with a different courier than the row said, and under the 10% guard the route uses to catch a price move.
 
-This plan leaves that behaviour alone and documents it, for three reasons: `cheapest()` is deterministic on the same rates, EasyParcel's rates move daily at most, and the booking confirmation shows the courier that was actually booked. The alternative — threading the admin's chosen `quoteRef` through `bookInputSchema` and into `book()` — would have to be conditional per carrier, because Lalamove must *not* honour a stale ref. Record it as a `ponytail:` comment on `cheapest()` naming that as the upgrade path, and revisit if a courier swap ever surprises anyone.
+This plan leaves that behaviour alone and documents it, for three reasons: `cheapest()` is deterministic on the same rates, EasyParcel's rates move daily at most, and the booking confirmation shows the courier that was actually booked. The alternative — threading the admin's chosen `quoteRef` through `bookInputSchema` and into `book()` — would have to be conditional per carrier, because Lalamove must _not_ honour a stale ref. Record it as a `ponytail:` comment on `cheapest()` naming that as the upgrade path, and revisit if a courier swap ever surprises anyone.
 
 ### What needs no change at all
 
@@ -80,8 +79,7 @@ Three layers, and the split matters because only two of them can run in CI.
 
 **1. Pure functions — unit tests.** `subdivisionCode`, `mmToCm`, `parcelOf`, `quotationBody`, `submitBody`, `collectionDate`, `cheapest`, `willExpireSoon`, the status table. No I/O, fast, and where most of the assertions live. This is the layer the repo already has for Lalamove.
 
-**2. The wire — stubbed-`fetch` tests.** Every adapter method, every route the integration adds, exercised end to end with `vi.stubGlobal("fetch", …)`. This is the layer that answers *"is the API being called as intended"* in CI, and it asserts **both directions**:
-
+**2. The wire — stubbed-`fetch` tests.** Every adapter method, every route the integration adds, exercised end to end with `vi.stubGlobal("fetch", …)`. This is the layer that answers _"is the API being called as intended"_ in CI, and it asserts **both directions**:
 - **What we send** — the exact URL, the `Authorization` header, and the serialised request body, read off `fetchMock.mock.calls[0]`. `lalamove.test.ts` already does this (it re-derives the HMAC from `init.body` to prove the signed bytes are the sent bytes); EasyParcel's equivalents assert the Bearer token and the JSON payload.
 - **What we do with the reply** — the response fixtures are copied **verbatim from EasyParcel's own documented samples** into `__tests__/fixtures/easyparcel.ts`, so a Zod schema that drifts from their real shape fails a test rather than a booking. Every failure mode gets a case too: the HTTP-200-with-`status: "error"` shape, a reply missing a field, a token that has expired.
 
@@ -95,43 +93,43 @@ Three layers, and the split matters because only two of them can run in CI.
 
 **New:**
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/logistics/malaysia.ts` | Malaysian state name → ISO 3166-2 code (`"Selangor"` → `"MY-10"`). Pure, isomorphic. |
-| `src/lib/logistics/oauth.ts` | The OAuth 2.0 half that touches no database: URLs, the token schema, the token-endpoint call, expiry maths. Testable with a stubbed `fetch`. |
-| `src/lib/logistics/tokens.ts` | The thin half that does: read the row, refresh under a lock, write it back. `server-only`. |
-| `src/app/api/admin/logistics/easyparcel/connect/route.ts` | Redirects the admin to EasyParcel's login. |
-| `src/app/api/admin/logistics/easyparcel/callback/route.ts` | Exchanges the returned code for the first token pair. |
-| `src/lib/logistics/__tests__/fixtures/easyparcel.ts` | Every EasyParcel payload this integration parses, copied verbatim from their docs. One place, so a shape change is one edit. |
-| `src/lib/logistics/__tests__/malaysia.test.ts` | |
-| `src/lib/logistics/__tests__/oauth.test.ts` | |
-| `src/lib/logistics/__tests__/tokens.test.ts` | |
-| `src/lib/logistics/__tests__/easyparcel.test.ts` | |
-| `scripts/easyparcel-ping.mjs` | Live smoke test against the sandbox, mirroring `scripts/lalamove-ping.mjs`. Run by a human or a nightly job, never in PR CI. |
-| `.github/workflows/ci.yml` | lint · typecheck · test on every push and PR. The repo has no CI today. |
+| File                                                       | Responsibility                                                                                                                                |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/logistics/malaysia.ts`                            | Malaysian state name → ISO 3166-2 code (`"Selangor"` → `"MY-10"`). Pure, isomorphic.                                                          |
+| `src/lib/logistics/oauth.ts`                               | The OAuth 2.0 half that touches no database: URLs, the token schema, the token-endpoint call, expiry maths. Testable with a stubbed `fetch`.  |
+| `src/lib/logistics/tokens.ts`                              | The thin half that does: read the row, refresh under a lock, write it back. `server-only`.                                                    |
+| `src/app/api/admin/logistics/easyparcel/connect/route.ts`  | Redirects the admin to EasyParcel's login.                                                                                                    |
+| `src/app/api/admin/logistics/easyparcel/callback/route.ts` | Exchanges the returned code for the first token pair.                                                                                         |
+| `src/lib/logistics/__tests__/fixtures/easyparcel.ts`       | Every EasyParcel payload this integration parses, copied verbatim from their docs. One place, so a shape change is one edit.                  |
+| `src/lib/logistics/__tests__/malaysia.test.ts`             |                                                                                                                                               |
+| `src/lib/logistics/__tests__/oauth.test.ts`                |                                                                                                                                               |
+| `src/lib/logistics/__tests__/tokens.test.ts`               |                                                                                                                                               |
+| `src/lib/logistics/__tests__/easyparcel.test.ts`           |                                                                                                                                               |
+| `scripts/easyparcel-ping.mjs`                              | Live smoke test against the sandbox, mirroring `scripts/lalamove-ping.mjs`. Run by a human or a nightly job, never in PR CI.                  |
+| `.github/workflows/ci.yml`                                 | lint · typecheck · test on every push and PR. The repo has no CI today.                                                                       |
 
 **Modified:**
 
-| File | Change |
-| --- | --- |
-| `prisma/schema.prisma` | `Delivery`: six place columns + `labelUrl`. New `CarrierToken` model. |
-| `src/lib/logistics/geocode.ts` | Parse `address_components`; return postcode, city, state. |
-| `src/lib/logistics/carriers.ts` | `WORKSHOP_POSTCODE` / `_CITY` / `_STATE`, and `pickupPlace()` beside `pickupPin()`. |
-| `src/lib/logistics/types.ts` | `DeliveryJob` place fields; `CarrierBooking.labelUrl`; `verifyWebhook` gains a `url` parameter. |
-| `src/lib/logistics/status.ts` | Fill `CARRIER_STATUS_MAPS.easyparcel`. |
-| `src/lib/logistics/store.ts` | `toJob` carries the place fields. |
-| `src/lib/logistics/adapters/easyparcel.ts` | Replace the stub with the real adapter. |
-| `src/app/api/admin/deliveries/route.ts`, `[id]/route.ts` | Persist the place columns on create and edit. |
-| `src/app/api/admin/deliveries/[id]/book/route.ts` | Persist `labelUrl`. |
-| `src/app/api/webhooks/[carrier]/route.ts` | Pass the request URL to `verifyWebhook`. |
-| `src/app/admin/logistics/LogisticsManager.tsx` | "Print AWB label" link; EasyParcel connection state. |
-| `CLAUDE.md` | Logistics section + open questions. |
+| File                                                     | Change                                                                                          |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `prisma/schema.prisma`                                   | `Delivery`: six place columns + `labelUrl`. New `CarrierToken` model.                           |
+| `src/lib/logistics/geocode.ts`                           | Parse `address_components`; return postcode, city, state.                                       |
+| `src/lib/logistics/carriers.ts`                          | `WORKSHOP_POSTCODE` / `_CITY` / `_STATE`, and `pickupPlace()` beside `pickupPin()`.             |
+| `src/lib/logistics/types.ts`                             | `DeliveryJob` place fields; `CarrierBooking.labelUrl`; `verifyWebhook` gains a `url` parameter. |
+| `src/lib/logistics/status.ts`                            | Fill `CARRIER_STATUS_MAPS.easyparcel`.                                                          |
+| `src/lib/logistics/store.ts`                             | `toJob` carries the place fields.                                                               |
+| `src/lib/logistics/adapters/easyparcel.ts`               | Replace the stub with the real adapter.                                                         |
+| `src/app/api/admin/deliveries/route.ts`, `[id]/route.ts` | Persist the place columns on create and edit.                                                   |
+| `src/app/api/admin/deliveries/[id]/book/route.ts`        | Persist `labelUrl`.                                                                             |
+| `src/app/api/webhooks/[carrier]/route.ts`                | Pass the request URL to `verifyWebhook`.                                                        |
+| `src/app/admin/logistics/LogisticsManager.tsx`           | "Print AWB label" link; EasyParcel connection state.                                            |
+| `CLAUDE.md`                                              | Logistics section + open questions.                                                             |
 
 ---
 
 ## Task 1: Malaysian state codes
 
-EasyParcel takes `subdivision_code` as ISO 3166-2 (`"MY-10"`). Google's geocoder returns a state *name*. This is the table between them, and it is the only new pure module the integration needs.
+EasyParcel takes `subdivision_code` as ISO 3166-2 (`"MY-10"`). Google's geocoder returns a state _name_. This is the table between them, and it is the only new pure module the integration needs.
 
 **Files:**
 - Create: `src/lib/logistics/malaysia.ts`
@@ -190,7 +188,6 @@ describe("subdivisionCode", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/malaysia.test.ts`
 Expected: FAIL — `Failed to resolve import "../malaysia"`.
-
 - [ ] **Step 3: Write the module**
 
 ```ts
@@ -235,8 +232,7 @@ const CODES: Record<string, string> = {
  * The three federal territories arrive with a prefix as often as without it,
  * and in either language. Stripping the prefix is cheaper than six more keys.
  */
-const PREFIX =
-	/^(wilayah persekutuan|federal territory of|w\.?p\.?|ft)\s+/;
+const PREFIX = /^(wilayah persekutuan|federal territory of|w\.?p\.?|ft)\s+/;
 
 export function subdivisionCode(stateName: string): string | null {
 	const trimmed = stateName.trim();
@@ -255,7 +251,6 @@ export function subdivisionCode(stateName: string): string | null {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/malaysia.test.ts`
 Expected: PASS, 6 tests.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -317,20 +312,38 @@ The Google reply to stub — the `address_components` array is what this task ad
 
 ```json
 {
-  "status": "OK",
-  "results": [{
-    "formatted_address": "Jalan PJU 5/20, Kota Damansara, 47810 Petaling Jaya, Selangor",
-    "geometry": {
-      "location": { "lat": 3.1509, "lng": 101.5931 },
-      "location_type": "ROOFTOP"
-    },
-    "address_components": [
-      { "long_name": "47810", "short_name": "47810", "types": ["postal_code"] },
-      { "long_name": "Petaling Jaya", "short_name": "PJ", "types": ["locality"] },
-      { "long_name": "Selangor", "short_name": "Selangor", "types": ["administrative_area_level_1", "political"] },
-      { "long_name": "Malaysia", "short_name": "MY", "types": ["country", "political"] }
-    ]
-  }]
+	"status": "OK",
+	"results": [
+		{
+			"formatted_address": "Jalan PJU 5/20, Kota Damansara, 47810 Petaling Jaya, Selangor",
+			"geometry": {
+				"location": { "lat": 3.1509, "lng": 101.5931 },
+				"location_type": "ROOFTOP"
+			},
+			"address_components": [
+				{
+					"long_name": "47810",
+					"short_name": "47810",
+					"types": ["postal_code"]
+				},
+				{
+					"long_name": "Petaling Jaya",
+					"short_name": "PJ",
+					"types": ["locality"]
+				},
+				{
+					"long_name": "Selangor",
+					"short_name": "Selangor",
+					"types": ["administrative_area_level_1", "political"]
+				},
+				{
+					"long_name": "Malaysia",
+					"short_name": "MY",
+					"types": ["country", "political"]
+				}
+			]
+		}
+	]
 }
 ```
 
@@ -338,7 +351,6 @@ The Google reply to stub — the `address_components` array is what this task ad
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/geocode.test.ts`
 Expected: FAIL — `postcode` is `undefined`.
-
 - [ ] **Step 3: Extend the geocode parse**
 
 In `src/lib/logistics/geocode.ts`, add `address_components` to `responseSchema.results[]` and a reader beside it. Everything else in the file — the `PRECISE` gate, the null-on-anything-unexpected contract, `resolveCoordinates`' three rules — stays exactly as it is.
@@ -480,7 +492,6 @@ export async function resolveCoordinates(
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/geocode.test.ts`
 Expected: PASS. Fix any existing test in that file that constructs a `StoredPin` literal — they now need the three new fields.
-
 - [ ] **Step 5: Add the workshop's place and `pickupPlace`**
 
 In `src/lib/logistics/carriers.ts`, beside `WORKSHOP_PIN` and `WORKSHOP_PHONE`:
@@ -528,7 +539,6 @@ export function pickupPlace(address: string, stored: Place): Place | null {
 ```
 
 Add cases to `src/lib/logistics/__tests__/carriers.test.ts` mirroring whatever it already asserts about `pickupPin`: a stored place wins; the workshop address with an empty stored place gets the constants; another address with an empty stored place gets `null`.
-
 - [ ] **Step 6: Migrate the schema**
 
 In `prisma/schema.prisma`, on `model Delivery`, beside the existing `siteLat`/`siteGeocodedFor` block:
@@ -553,30 +563,27 @@ In `prisma/schema.prisma`, on `model Delivery`, beside the existing `siteLat`/`s
 
 Run: `pnpm prisma migrate dev --name delivery_place_and_label`
 Then: `pnpm prisma generate`
-
 - [ ] **Step 7: Carry the fields through `DeliveryJob` and `toJob`**
 
 In `src/lib/logistics/types.ts`, add to the `DeliveryJob` type after the lat/lng block:
 
 ```ts
-	/**
-	 * Null when the geocode did not return them — see `lib/logistics/geocode.ts`.
-	 * A parcel partner refuses the job rather than guessing.
-	 */
-	sitePostcode: string | null;
-	siteCity: string | null;
-	siteState: string | null;
-	pickupPostcode: string | null;
-	pickupCity: string | null;
-	pickupState: string | null;
+/**
+ * Null when the geocode did not return them — see `lib/logistics/geocode.ts`.
+ * A parcel partner refuses the job rather than guessing.
+ */
+sitePostcode: string | null;
+siteCity: string | null;
+siteState: string | null;
+pickupPostcode: string | null;
+pickupCity: string | null;
+pickupState: string | null;
 ```
 
 And in `src/lib/logistics/store.ts`, add the six matching lines to `toJob`.
-
 - [ ] **Step 8: Persist them on create and edit**
 
 In both `src/app/api/admin/deliveries/route.ts` (POST) and `src/app/api/admin/deliveries/[id]/route.ts` (PATCH):
-
 - The `blank` seed in the POST route becomes `{ lat: null, lng: null, geocodedFor: null, postcode: null, city: null, state: null }`.
 - The PATCH route's two `resolveCoordinates` current-pin literals gain `postcode: existing.sitePostcode, city: existing.siteCity, state: existing.siteState` (and the `pickup*` equivalents).
 - Both `prisma` calls gain the six columns from the resolved `site` / `pickup` results, next to the `siteLat` / `siteGeocodedFor` lines already there.
@@ -585,7 +592,6 @@ In both `src/app/api/admin/deliveries/route.ts` (POST) and `src/app/api/admin/de
 
 Run: `pnpm tsc --noEmit && pnpm test`
 Expected: PASS. Any type error here is a `DeliveryJob` or `StoredPin` literal in a test fixture that needs the new fields — add them as `null`.
-
 - [ ] **Step 10: Commit**
 
 ```bash
@@ -599,7 +605,7 @@ git commit -m "feat(logistics): keep the postcode and state the geocode already 
 
 EasyParcel authenticates with OAuth 2.0 authorization code — a human clicks through an EasyParcel login once, and the app then holds a 10-hour access token and a ~1-year refresh token.
 
-The token pair goes in a DB row rather than an env var for two reasons. EasyParcel's docs say the token endpoint returns *"the new Refresh token for the next refresh"* — if it rotates, an env var goes stale the first time it is used and there is no way to write one back from a serverless function. And a row is shared across Fluid Compute instances, so a refresh by one is a refresh for all.
+The token pair goes in a DB row rather than an env var for two reasons. EasyParcel's docs say the token endpoint returns _"the new Refresh token for the next refresh"_ — if it rotates, an env var goes stale the first time it is used and there is no way to write one back from a serverless function. And a row is shared across Fluid Compute instances, so a refresh by one is a refresh for all.
 
 It is split across two files on purpose. Everything that can be tested by stubbing `fetch` lives in `oauth.ts` and has no `prisma` import; only the read-refresh-write lives in `tokens.ts`. That is what lets the token exchange — the part most likely to be wrong — be covered by the same house pattern as every other test here, instead of needing a database in CI.
 
@@ -655,7 +661,6 @@ model CarrierToken {
 ```
 
 Run: `pnpm prisma migrate dev --name carrier_token && pnpm prisma generate`
-
 - [ ] **Step 2: Start the fixtures file**
 
 Every EasyParcel payload this integration parses lives here, copied verbatim from their documented samples. One file, so a shape change is one edit rather than a hunt through four test files — and so a reviewer can diff our belief about their API against their docs directly.
@@ -705,9 +710,12 @@ export const quotationReply = {
 						service_name: "Aramex (Pick Up)",
 						courier_id: "EP-CR0AP",
 						courier_name: "Aramex",
-						courier_logo: "https://s3-ap-southeast-1.amazonaws.com/…/Aramex.jpg",
+						courier_logo:
+							"https://s3-ap-southeast-1.amazonaws.com/…/Aramex.jpg",
 						delivery_duration: null,
-						service_tag: [{ name: "Service Methods", value: "Pick Up from Door" }],
+						service_tag: [
+							{ name: "Service Methods", value: "Pick Up from Door" },
+						],
 						is_pickup: true,
 						is_dropoff: false,
 					},
@@ -727,7 +735,8 @@ export const quotationReply = {
 						service_name: "City-Link (Drop Off)",
 						courier_id: "EP-CR0CL",
 						courier_name: "City-Link Express",
-						courier_logo: "https://s3-ap-southeast-1.amazonaws.com/…/CityLink.jpg",
+						courier_logo:
+							"https://s3-ap-southeast-1.amazonaws.com/…/CityLink.jpg",
 						delivery_duration: "1-3 working days",
 						service_tag: [{ name: "Service Methods", value: "Drop-Off" }],
 						is_pickup: false,
@@ -1029,7 +1038,6 @@ describe("willExpireSoon", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/oauth.test.ts`
 Expected: FAIL — `Failed to resolve import "../oauth"`.
-
 - [ ] **Step 5: Write `oauth.ts`**
 
 ```ts
@@ -1147,14 +1155,12 @@ export async function requestToken(
 	}
 	return parsed.data;
 }
-
 ```
 
 - [ ] **Step 6: Run the OAuth tests**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/oauth.test.ts`
 Expected: PASS, 11 tests.
-
 - [ ] **Step 7: Write the failing token-store test**
 
 `tokens.ts` is the only file in this integration that cannot be tested with a stubbed `fetch` alone — it reads and writes a row. `vi.mock` on the db module is a new pattern for this repo, so it gets a comment saying why; the alternative is a Postgres service in CI for one file's worth of logic.
@@ -1201,7 +1207,9 @@ const tx = {
 	},
 };
 
-const { accessTokenFor, exchangeCode, hasConnection } = await import("../tokens");
+const { accessTokenFor, exchangeCode, hasConnection } = await import(
+	"../tokens"
+);
 const { CarrierNotConfigured } = await import("../types");
 
 function stubToken() {
@@ -1321,7 +1329,6 @@ describe("hasConnection", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/tokens.test.ts`
 Expected: FAIL — `Failed to resolve import "../tokens"`.
-
 - [ ] **Step 9: Write `tokens.ts`**
 
 ```ts
@@ -1347,7 +1354,11 @@ import { CarrierNotConfigured } from "./types";
  * more. Every EasyParcel call goes through `accessTokenFor`.
  */
 
-async function write(carrierId: string, token: TokenResponse, connectedBy?: string) {
+async function write(
+	carrierId: string,
+	token: TokenResponse,
+	connectedBy?: string,
+) {
 	const data = {
 		accessToken: token.access_token,
 		refreshToken: token.refresh_token,
@@ -1443,7 +1454,6 @@ export async function accessTokenFor(carrierId: string): Promise<string> {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/tokens.test.ts`
 Expected: PASS, 6 tests.
-
 - [ ] **Step 11: Write the connect route**
 
 ```ts
@@ -1539,7 +1549,6 @@ export async function GET(request: Request) {
 
 Run: `pnpm tsc --noEmit && pnpm test && pnpm biome check --write .`
 Expected: PASS.
-
 - [ ] **Step 14: Commit**
 
 ```bash
@@ -1660,7 +1669,9 @@ describe("parcelOf", () => {
 	});
 
 	it("refuses a job with no items at all", () => {
-		expect(() => parcelOf(job({ items: [] }))).toThrow(EasyParcelNotDeliverable);
+		expect(() => parcelOf(job({ items: [] }))).toThrow(
+			EasyParcelNotDeliverable,
+		);
 	});
 });
 
@@ -1732,7 +1743,6 @@ describe("cheapest", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcel.test.ts`
 Expected: FAIL — `mmToCm`, `parcelOf`, `quotationBody`, `cheapest` are not exported.
-
 - [ ] **Step 3: Write the adapter's quote half**
 
 Replace `src/lib/logistics/adapters/easyparcel.ts` entirely.
@@ -1752,11 +1762,7 @@ import { carrierFetch } from "../http";
 import { easyparcelAppConfigured } from "../oauth";
 import { accessTokenFor } from "../tokens";
 import { trace } from "../trace";
-import type {
-	CarrierAdapter,
-	CarrierQuote,
-	DeliveryJob,
-} from "../types";
+import type { CarrierAdapter, CarrierQuote, DeliveryJob } from "../types";
 
 /**
  * EasyParcel — the parcel partner, and the one that fronts every Malaysian
@@ -1985,13 +1991,17 @@ function num(value: string | null | undefined): number | null {
 export function cheapest(quotations: Quotation[]): Quotation | null {
 	const priced = quotations
 		.map((q) => ({ q, price: num(q.pricing.total_amount) }))
-		.filter((row): row is { q: Quotation; price: number } => row.price !== null);
+		.filter(
+			(row): row is { q: Quotation; price: number } => row.price !== null,
+		);
 	if (priced.length === 0) return null;
 
 	priced.sort((a, b) => {
 		if (a.price !== b.price) return a.price - b.price;
-		return Number(b.q.courier.is_pickup ?? false) -
-			Number(a.q.courier.is_pickup ?? false);
+		return (
+			Number(b.q.courier.is_pickup ?? false) -
+			Number(a.q.courier.is_pickup ?? false)
+		);
 	});
 	return priced[0].q;
 }
@@ -2089,10 +2099,9 @@ export const easyparcelAdapter: CarrierAdapter = {
 ```
 
 Note: only `pickupPlace` is used in this task. `WORKSHOP_ADDRESS`, `WORKSHOP_CITY`, `WORKSHOP_PHONE`, `WORKSHOP_POSTCODE` and `WORKSHOP_STATE` are consumed by `submitBody` in Task 5 — drop whichever Biome flags as unused here and re-add them there.
-
 - [ ] **Step 4: Write the wire test for `quote`**
 
-The payload builders above are pure and already covered. This is the part that proves the *call* is right: the URL, the Bearer token, the serialised body, and what we do with EasyParcel's own documented reply.
+The payload builders above are pure and already covered. This is the part that proves the _call_ is right: the URL, the Bearer token, the serialised body, and what we do with EasyParcel's own documented reply.
 
 `quote()` reaches for a token, so the DB module is faked the same way `tokens.test.ts` does it — a live token, no refresh. Append to `src/lib/logistics/__tests__/easyparcel.test.ts`, **merging the `vitest` import into the one already at the top of that file** rather than adding a second (Biome flags duplicate module imports):
 
@@ -2223,7 +2232,6 @@ describe("easyparcelAdapter.quote", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcel.test.ts`
 Expected: PASS, 20 tests.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -2277,7 +2285,6 @@ describe("easyparcel status codes", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/status.test.ts`
 Expected: FAIL — every `mapCarrierStatus("easyparcel", …)` returns `null`.
-
 - [ ] **Step 3: Fill the status table**
 
 In `src/lib/logistics/status.ts`, replace `easyparcel: {}`:
@@ -2311,7 +2318,6 @@ In `src/lib/logistics/status.ts`, replace `easyparcel: {}`:
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/status.test.ts`
 Expected: PASS.
-
 - [ ] **Step 5: Widen `CarrierBooking`**
 
 In `src/lib/logistics/types.ts`:
@@ -2390,7 +2396,6 @@ describe("submitBody", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcel.test.ts`
 Expected: FAIL — `submitBody` and `collectionDate` are not exported.
-
 - [ ] **Step 8: Write book, track and cancel**
 
 Add to `src/lib/logistics/adapters/easyparcel.ts` — and replace the two `not implemented` stubs.
@@ -2610,7 +2615,12 @@ import {
 } from "./fixtures/easyparcel";
 
 describe("easyparcelAdapter.book", () => {
-	const chosen = { carrierId: "easyparcel", priceRm: 8.2, etaMinutes: null, quoteRef: "EP-CS09C" };
+	const chosen = {
+		carrierId: "easyparcel",
+		priceRm: 8.2,
+		etaMinutes: null,
+		quoteRef: "EP-CS09C",
+	};
 
 	it("submits to the orders endpoint with the service the admin chose", async () => {
 		const fetchMock = stubResponses(submitReply);
@@ -2646,9 +2656,7 @@ describe("easyparcelAdapter.book", () => {
 	});
 
 	it("is never retried — a resubmit deducts the wallet twice", async () => {
-		const fetchMock = vi.fn(
-			async () => new Response("boom", { status: 500 }),
-		);
+		const fetchMock = vi.fn(async () => new Response("boom", { status: 500 }));
 		vi.stubGlobal("fetch", fetchMock);
 
 		await expect(easyparcelAdapter.book(job(), chosen)).rejects.toThrow();
@@ -2698,7 +2706,10 @@ describe("easyparcelAdapter.track", () => {
 			data: [
 				{
 					shipment_number: "ES-2602-VC4KV",
-					shipment_details: { shipment_status_code: 8, shipment_status: "On Hold" },
+					shipment_details: {
+						shipment_status_code: 8,
+						shipment_status: "On Hold",
+					},
 				},
 			],
 		});
@@ -2740,7 +2751,6 @@ describe("easyparcelAdapter.cancel", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcel.test.ts`
 Expected: PASS, 37 tests.
-
 - [ ] **Step 11: Persist the label on booking**
 
 In `src/app/api/admin/deliveries/[id]/book/route.ts`, in the `prisma.delivery.update` data block, beside `trackingUrl: booking.trackingUrl`:
@@ -2762,7 +2772,7 @@ git commit -m "feat(logistics): book, track and cancel an EasyParcel shipment"
 
 ## Task 6: The webhook
 
-EasyParcel posts to a URL registered in their Developer Hub and **signs nothing** — no HMAC, no shared secret in a header, nothing. The only identity available is a secret we put in the URL ourselves, which is exactly the upgrade path `lalamove.ts` already names in its own `verifyWebhook` comment: *"a secret path segment, which needs `verifyWebhook` widened to see the request URL."*
+EasyParcel posts to a URL registered in their Developer Hub and **signs nothing** — no HMAC, no shared secret in a header, nothing. The only identity available is a secret we put in the URL ourselves, which is exactly the upgrade path `lalamove.ts` already names in its own `verifyWebhook` comment: _"a secret path segment, which needs `verifyWebhook` widened to see the request URL."_
 
 So this task widens it. `verifyWebhook(rawBody, headers, url)`; Lalamove ignores the third argument, EasyParcel compares `?token=` against `EASYPARCEL_WEBHOOK_TOKEN` in constant time.
 
@@ -2813,7 +2823,9 @@ describe("easyparcelAdapter.verifyWebhook", () => {
 	});
 
 	it("refuses a payload with the wrong token", () => {
-		expect(hook("/api/webhooks/easyparcel?token=wrong", statusUpdate)).toBeNull();
+		expect(
+			hook("/api/webhooks/easyparcel?token=wrong", statusUpdate),
+		).toBeNull();
 	});
 
 	it("refuses a payload with no token at all", () => {
@@ -2828,7 +2840,10 @@ describe("easyparcelAdapter.verifyWebhook", () => {
 	it("reads a tracking update, whose status lives under another key", () => {
 		// Their own sample, typo and all — code 5 is Delivered whatever the
 		// courier's text says, which is exactly why the table is keyed on the code.
-		const event = hook("/api/webhooks/easyparcel?token=s3cret", webhooks.trackingUpdate);
+		const event = hook(
+			"/api/webhooks/easyparcel?token=s3cret",
+			webhooks.trackingUpdate,
+		);
 		expect(event).toEqual({
 			kind: "order",
 			carrierOrderId: "ES-2504-G7FDF",
@@ -2839,7 +2854,10 @@ describe("easyparcelAdapter.verifyWebhook", () => {
 	it("accepts an event carrying no shipment rather than answering 400", () => {
 		// `shipment.awb.update` and `shipment.created` are real topics that carry
 		// no status. A carrier that gets an error back resends for hours.
-		const event = hook("/api/webhooks/easyparcel?token=s3cret", webhooks.awbUpdate);
+		const event = hook(
+			"/api/webhooks/easyparcel?token=s3cret",
+			webhooks.awbUpdate,
+		);
 		expect(event).toEqual({
 			kind: "order",
 			carrierOrderId: "ES-2504-G7FDF",
@@ -2848,8 +2866,14 @@ describe("easyparcelAdapter.verifyWebhook", () => {
 	});
 
 	it("ignores a topic with no shipment number", () => {
-		const event = hook("/api/webhooks/easyparcel?token=s3cret", webhooks.ondemandUpdate);
-		expect(event).toEqual({ kind: "ignored", eventType: "ondemand.status.update" });
+		const event = hook(
+			"/api/webhooks/easyparcel?token=s3cret",
+			webhooks.ondemandUpdate,
+		);
+		expect(event).toEqual({
+			kind: "ignored",
+			eventType: "ondemand.status.update",
+		});
 	});
 
 	it("refuses a body that is not JSON", () => {
@@ -2868,7 +2892,6 @@ describe("easyparcelAdapter.verifyWebhook", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcel.test.ts`
 Expected: FAIL — `verifyWebhook` is undefined on the adapter, and the interface takes two arguments.
-
 - [ ] **Step 3: Widen the interface**
 
 In `src/lib/logistics/types.ts`:
@@ -2893,16 +2916,15 @@ In `src/lib/logistics/types.ts`:
 In `src/app/api/webhooks/[carrier]/route.ts`, replace the verify call:
 
 ```ts
-	let event: CarrierWebhookEvent | null;
-	try {
-		event = adapter.verifyWebhook(rawBody, request.headers, new URL(request.url));
-	} catch {
-		event = null;
-	}
+let event: CarrierWebhookEvent | null;
+try {
+	event = adapter.verifyWebhook(rawBody, request.headers, new URL(request.url));
+} catch {
+	event = null;
+}
 ```
 
 `lalamove.ts` needs no change — `verifyWebhook(rawBody)` already satisfies a wider signature. Confirm with `pnpm tsc --noEmit`.
-
 - [ ] **Step 4: Write EasyParcel's `verifyWebhook`**
 
 Add to `src/lib/logistics/adapters/easyparcel.ts`:
@@ -3010,7 +3032,6 @@ And on the adapter object:
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcel.test.ts src/lib/logistics/__tests__/lalamove.test.ts`
 Expected: PASS. The Lalamove webhook tests pass unchanged — if one fails on arity, it is calling `verifyWebhook` with two arguments through a typed reference; pass a `new URL(...)` third argument.
-
 - [ ] **Step 6: Verify and commit**
 
 Run: `pnpm tsc --noEmit && pnpm test && pnpm biome check --write .`
@@ -3055,13 +3076,11 @@ import { easyparcelAppConfigured, hasConnection } from "@/lib/logistics/tokens";
 - [ ] **Step 2: Add the connect banner**
 
 In `src/app/admin/logistics/LogisticsManager.tsx`, beside the existing "geocoding is not configured" notice — match its markup and tone exactly rather than inventing a new component. Three states:
-
 - `appConfigured === false` → "EasyParcel is not set up on this deployment." No link. An admin cannot fix a missing environment variable from this page, which is the same reasoning `enabledCarriers()` already applies.
 - `appConfigured && !connected` → "EasyParcel is not connected — parcel jobs cannot be quoted." with a link to `/api/admin/logistics/easyparcel/connect` reading "Connect EasyParcel account".
 - `connected` → nothing. A working integration does not need a banner.
 
 Read `?easyparcel=connected` / `?easyparcel=failed` off the URL (the callback redirects with it) and show a one-line confirmation or "Connecting the EasyParcel account failed — try again."
-
 - [ ] **Step 3: Add the label link**
 
 In the booked-delivery detail panel, beside the existing `delivery.trackingUrl` block:
@@ -3080,7 +3099,6 @@ In the booked-delivery detail panel, beside the existing `delivery.trackingUrl` 
 ```
 
 Add `labelUrl` to whatever `Delivery` type the file declares for the API payload.
-
 - [ ] **Step 4: Document the environment variables**
 
 Add to `.env.local` (and `.env.example` if present):
@@ -3103,10 +3121,9 @@ APP_URL=http://localhost:3000
 - [ ] **Step 5: Update `CLAUDE.md`**
 
 Three edits:
-
 - In the `lib/logistics/` tree in **Directory layout**, add `tokens.ts ← a partner's OAuth tokens: one row, refreshed under a lock` and change `adapters/` to `one file per partner; manual, lalamove and easyparcel are live`.
-- In **Known issues**, add: *"EasyParcel's webhooks are unsigned. Nothing in their payload identifies the sender, so the callback URL carries a secret query token and that is the entire check — see `verifyWebhook` in `adapters/easyparcel.ts`."*
-- In **Open questions**, extend the workshop-address entry: `WORKSHOP_POSTCODE`, `WORKSHOP_CITY` and `WORKSHOP_STATE` are placeholders derived from `WORKSHOP_PIN`, and EasyParcel prices the origin zone off them — a wrong postcode there is a wrong price on every parcel quote. Add: *"Does EzCabinet have an EasyParcel account, and who tops up the wallet? `submit_orders` deducts at booking time and a shipment cannot be booked against an empty wallet."*
+- In **Known issues**, add: _"EasyParcel's webhooks are unsigned. Nothing in their payload identifies the sender, so the callback URL carries a secret query token and that is the entire check — see `verifyWebhook` in `adapters/easyparcel.ts`."_
+- In **Open questions**, extend the workshop-address entry: `WORKSHOP_POSTCODE`, `WORKSHOP_CITY` and `WORKSHOP_STATE` are placeholders derived from `WORKSHOP_PIN`, and EasyParcel prices the origin zone off them — a wrong postcode there is a wrong price on every parcel quote. Add: _"Does EzCabinet have an EasyParcel account, and who tops up the wallet? `submit_orders` deducts at booking time and a shipment cannot be booked against an empty wallet."_
 
 - [ ] **Step 6: Verify and commit**
 
@@ -3123,7 +3140,7 @@ git commit -m "feat(logistics): connect and print an EasyParcel shipment from th
 
 ## Task 8: The smoke script and CI
 
-The tests up to here prove the adapter behaves correctly *against our belief about EasyParcel's API*. Two things are still missing: something that checks that belief against the real API, and something that makes any of it gate a merge.
+The tests up to here prove the adapter behaves correctly _against our belief about EasyParcel's API_. Two things are still missing: something that checks that belief against the real API, and something that makes any of it gate a merge.
 
 **Files:**
 - Create: `scripts/easyparcel-ping.mjs`
@@ -3266,7 +3283,6 @@ Run: `pnpm easyparcel:ping <refresh_token>`
 Expected: a wallet balance, and a `quotations[]` array with at least one courier. Every response shape should match the corresponding fixture — a difference is a real finding, and the fixture is what gets corrected.
 
 Note the script prints a **new** refresh token: the one in the DB is now spent, and the app will refresh to its own on the next call. Do not paste the printed one back into the row.
-
 - [ ] **Step 4: Write the CI workflow**
 
 The repo has no `.github/` at all, so this is the whole gate. Node and pnpm versions come from `package.json` — read `packageManager` and `engines` before pinning anything here.
@@ -3313,13 +3329,11 @@ jobs:
 ```
 
 No database service and no secrets. Every test in this plan runs on stubbed `fetch` and a faked db module, which is the property that keeps this workflow to four commands — and the reason `tokens.ts` was split from `oauth.ts` in the first place.
-
 - [ ] **Step 5: Note where the live check belongs**
 
 Add to `CLAUDE.md`, under the logistics notes:
 
 > `pnpm easyparcel:ping` is the only thing that checks EasyParcel's real API shape; CI runs against recorded fixtures and cannot see a renamed field. Run it before a release that touches `lib/logistics`, or wire it to a scheduled workflow with the credentials as repository secrets. It is deliberately not in PR CI: it needs secrets in the runner, it fails on EasyParcel's downtime rather than on our bugs, and a partner outage must not block an unrelated merge.
-
 - [ ] **Step 6: Verify and commit**
 
 Run: `pnpm lint && pnpm typecheck && pnpm test`
@@ -3336,7 +3350,6 @@ git commit -m "ci: run lint, typecheck and tests, and add an EasyParcel smoke sc
 Unit tests cover the pure halves; these are the checks that prove the integration is real.
 
 **Before any of it:** register an app at https://developer.easyparcel.com, set `EASYPARCEL_CLIENT_ID` and `EASYPARCEL_CLIENT_SECRET`, add `http://localhost:3000/api/admin/logistics/easyparcel/callback` as a redirect URI, and set up a **sandbox** connection with test credit topped up (Settings → Connection Management → Add New Connection → Sandbox, then Top Up).
-
 1. **Whole suite green — the three commands CI runs.**
    `pnpm lint && pnpm typecheck && pnpm test`
 
@@ -3349,7 +3362,7 @@ Unit tests cover the pure halves; these are the checks that prove the integratio
 
    `LOGISTICS_DEBUG=1 pnpm dev` prints the request and reply for each step if it does not.
 
-4. **Quote a job it should refuse.** Add a `BC 800mm` carcass (800 × 720 × 560, 45 kg) to a job and compare again. The EasyParcel row reads *"…is past what a courier will take — this is a lorry job"*, and the Lalamove row still prices. Remove every `weightKg` and compare: the row reads *"EasyParcel prices by weight and nothing on this job is weighed"*.
+4. **Quote a job it should refuse.** Add a `BC 800mm` carcass (800 × 720 × 560, 45 kg) to a job and compare again. The EasyParcel row reads _"…is past what a courier will take — this is a lorry job"_, and the Lalamove row still prices. Remove every `weightKg` and compare: the row reads _"EasyParcel prices by weight and nothing on this job is weighed"_.
 
 5. **Book it.** With the parcel job, book EasyParcel. The job goes `BOOKED`, `carrierOrderId` is an `ES-YYMM-XXXXX`, and "Print AWB label" opens a consignment note PDF. Check the EasyParcel sandbox dashboard shows the shipment and the wallet is down by the quoted amount.
 

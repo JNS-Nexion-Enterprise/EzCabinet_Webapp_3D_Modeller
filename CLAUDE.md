@@ -25,7 +25,6 @@ Phase 0 (catalogue + pricing spec with client) not yet complete — see Open que
 ## Stack
 
 The dependency list is `package.json`. The two that need saying:
-
 - Mux for the DIY tutorial videos — the one thing in the app that is streamed rather than generated
 - Deployed on Vercel, functions pinned to `sin1` (Singapore) — users are in Klang Valley
 
@@ -49,7 +48,6 @@ Room document (JSON) — RoomLayout, src/lib/planner/room.ts
 ### One design, one cabinet
 
 The customer does not drag a slider or step through a size ladder. EzCabinet draws **one export per width** — BC 600, BC 800, BC 900 — and each export is its own cabinet: its own name, all-in price (door included), box and drawn model. A catalogue family is exactly one design with exactly one size, and its id is the design's id. This is deliberate:
-
 - It matches how EzCabinet manufactures — standard modules, each a SKU.
 - It is what makes rendering the drafted model 1:1 possible: every cabinet has a real file behind it.
 - The price a customer sees is the one the admin typed, and the Phase 4 SKU list falls straight out of the layout.
@@ -71,7 +69,7 @@ cabinet-aware clamp is the engine's `setWallLength` (`room.ts`): a wall never
 goes shorter than what its cabinets, corner squares and any free cabinet need —
 it bisects to the nearest length `isClear` accepts.
 
-A room is still **runs** — `runs[i]` belongs to wall *i*. Each run is still the
+A room is still **runs** — `runs[i]` belongs to wall _i_. Each run is still the
 one-dimensional thing `layout.ts` places: `runView` hands a run to that engine
 as an ordinary `PlannerLayout`, with an active corner as a `reserved` span, and
 `withRun` writes its rows back. No placement rule knows about corners — a
@@ -98,7 +96,7 @@ there has an open end.
 Every room now has walls all round, so a cabinet flush against a side wall
 (within one board) wears no end panel — see Open questions. Stored orders are
 design v3; v1 and v2 are migrated to v3 on read as a `rect` plan — v2 never had
-an L-shaped *room*, only an L-shaped kitchen run along two walls of a
+an L-shaped _room_, only an L-shaped kitchen run along two walls of a
 rectangle. The straight run lands on wall 0; a v2 L's side run lands on wall 3
 (left) or wall 1 (right), and its corner unit at the vertex those walls share
 (3 or 0), so the kitchen the customer built is unchanged, only the room around
@@ -236,7 +234,6 @@ src/
 ```
 
 `lib/planner` must stay framework-free. Everything in it is `(layout, catalogue) => result`. This lets us:
-
 - build and test the whole engine against fixtures before any UI exists
 - run the same code client-side for instant feedback and server-side as the authority
 - lift the folder into Factory Tracker in Phase 4 without dragging UI along
@@ -252,7 +249,6 @@ catalogue omits. The seed publishes no cabinets. `PLANNER_CATALOGUE` is frozen. 
 
 The live catalogue comes from the published `CatalogueVersion` and is passed
 explicitly to the three things that consume it:
-
 - `plannerEngine(catalogue)` — the placement functions in `layout.ts`, bound to
   one catalogue. A factory rather than a per-function parameter because
   `positioned` is the only place a `familyId` becomes a `Family`, but nearly
@@ -282,7 +278,7 @@ published. "Which catalogue is live" is now a value with an owner.
 - **Sizes are validated against the family's ladder.** Reject off-ladder widths server-side.
 - **The catalogue lives in the database.** Cabinets and their prices are `CabinetDesign` rows, rebuilt into a `CatalogueVersion` on every publish — the version table is the price history. The disaster-recovery copy for cabinets is Postgres plus the design files in Blob; `lib/planner/catalogue.ts` seeds only settings. Ship seed changes as their own commit.
 - **Every admin route calls `requireAuth`.** `lib/auth/route.ts`'s `withAuth` wraps every handler under `src/app/api/admin`, with one named exemption in the coverage test's allow-list (`logistics/easyparcel/callback/route.ts` — EasyParcel's own redirect, checked by its `state` cookie instead), and the test fails the build on any other exported method it does not see gated — see [Auth](#auth).
-- **A customer notification is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey`, one row per channel (`Notification.channel`) — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. `draftsFor` (`lib/whatsapp/templates.ts`) is the one place that decides channels: order placed, payment confirmed and refunded always go by email; stage and delivery mails unless WhatsApp carries them — the customer opted in *and* `whatsappConfigured()`, so before WhatsApp is live a ticked box still gets mail. Preview deployments never get `WHATSAPP_TOKEN` or `RESEND_API_KEY`.
+- **A customer notification is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey`, one row per channel (`Notification.channel`) — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. `draftsFor` (`lib/whatsapp/templates.ts`) is the one place that decides channels: order placed, payment confirmed and refunded always go by email; stage and delivery mails unless WhatsApp carries them — the customer opted in _and_ `whatsappConfigured()`, so before WhatsApp is live a ticked box still gets mail. Preview deployments never get `WHATSAPP_TOKEN` or `RESEND_API_KEY`.
 
 ## 3D
 
@@ -292,26 +288,26 @@ the software's job is to ingest it and put it in front of a customer — not to
 re-derive a cabinet somebody has already drawn.
 
 This reverses what this document said until August 2026. The old rule —
-*"nothing in the scene is an image or a loaded model"* — rebuilt every cabinet
+_"nothing in the scene is an image or a loaded model"_ — rebuilt every cabinet
 from eleven extracted numbers, and the visible result was a Häfele Axilo 48
 leveller rendered as a plain grey cylinder. The three arguments for it do not
 survive contact with the numbers:
 
-| The old objection | What is actually true |
-| --- | --- |
-| "Heavy web geometry that fights the mobile budget" | The client's whole wall run is **8,058 verts / 13,896 triangles**. As binary that is **176 KB** — about what *one* of their decor photos costs (`Rhone Oak.jpg` is 178 KB). One cabinet is ~25 KB, ~13 KB gzipped. The old figure was measuring OBJ *text*, which is ASCII floats at ~6× the binary. |
-| "A baked mesh cannot resize to the size ladder" | True, and irrelevant: a cabinet never resizes. The client draws **one export per width** — BC 800, BC 900, BC 1000 — and each is its own cabinet. |
-| "No parameters, so it can never produce a price or a BOM" | Price and BOM come from the layout document and the catalogue row. Geometry never fed them and still does not. The mesh is purely visual. |
+| The old objection                                         | What is actually true                                                                                                                                                                                                                                                                                |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| "Heavy web geometry that fights the mobile budget"        | The client's whole wall run is **8,058 verts / 13,896 triangles**. As binary that is **176 KB** — about what _one_ of their decor photos costs (`Rhone Oak.jpg` is 178 KB). One cabinet is ~25 KB, ~13 KB gzipped. The old figure was measuring OBJ _text_, which is ASCII floats at ~6× the binary. |
+| "A baked mesh cannot resize to the size ladder"           | True, and irrelevant: a cabinet never resizes. The client draws **one export per width** — BC 800, BC 900, BC 1000 — and each is its own cabinet.                                                                                                                                                    |
+| "No parameters, so it can never produce a price or a BOM" | Price and BOM come from the layout document and the catalogue row. Geometry never fed them and still does not. The mesh is purely visual.                                                                                                                                                            |
 
 ### What is drawn from a file, and what is not
 
-| | Source |
-| --- | --- |
-| Cabinet geometry | **the drafted mesh, 1:1** |
-| Room shell — floor, walls, ceiling | procedural. No file describes the customer's room |
-| Worktop spanning a run | procedural. It crosses cabinets, so no single export has it |
-| Finish, door style | **our** materials, painted per classified mesh group |
-| Price | the design row, all-in; door styles add a surcharge |
+|                                    | Source                                                      |
+| ---------------------------------- | ----------------------------------------------------------- |
+| Cabinet geometry                   | **the drafted mesh, 1:1**                                   |
+| Room shell — floor, walls, ceiling | procedural. No file describes the customer's room           |
+| Worktop spanning a run             | procedural. It crosses cabinets, so no single export has it |
+| Finish, door style                 | **our** materials, painted per classified mesh group        |
+| Price                              | the design row, all-in; door styles add a surcharge         |
 
 ### Classified at intake, not at runtime
 
@@ -330,7 +326,6 @@ BC 800mm.obj  (private Blob — carries their part naming)
 
 **The mesh is grouped by role, and that is load-bearing.** Two features carry
 the sale, and both need to know which triangles are fronts:
-
 - the **finish picker**, which paints the customer's colour onto exactly the
   surfaces a sprayer would paint;
 - the **doors-open/hidden toggle**, which hides those groups and nothing else.
@@ -344,7 +339,7 @@ grain tile tinted per finish is both smaller and better.
 **Nothing is dropped for being unrecognised.** A record `roles.ts` cannot place
 goes to `other` and is still drawn, with a neutral material. `readObj` discards
 `G-Object.041` as carrying no readable design intent — but in the client's own
-sample job that record *is* the adjustable feet. Unrecognised is not unwanted.
+sample job that record _is_ the adjustable feet. Unrecognised is not unwanted.
 
 **`Cabinet.tsx` is the fallback, not the primary.** Six procedural boxes rebuilt
 from `parts.ts`, still rendered for a family with no published mesh: every
@@ -380,7 +375,7 @@ which ones are procedural instead.
 
 ### `parts.ts`, and what it is still for
 
-`lib/planner/parts.ts` returns every box in one *procedural* cabinet — sides,
+`lib/planner/parts.ts` returns every box in one _procedural_ cabinet — sides,
 top, bottom, back, legs, shelves, door leaves, drawer fronts — as
 `{ role, index, centreMm, sizeMm }` in the cabinet's own frame. `Cabinet.tsx`
 renders the fallback from it and `measure.ts` snaps against it. Both used to
@@ -432,7 +427,6 @@ it, price it, publish it. That is what lets one person maintain the catalogue.
 ### Mobile performance rules
 
 Mid-range Android is the target device.
-
 - Lazy-load the 3D bundle behind `Suspense` so it never blocks LCP on the landing page
 - **Nothing in the planner's first load may import three.** `StudioScreen`, `StartScreen` and `PlannerApp` are in it; the scene is not. One static import of a file that imports three (it was `peekDesignMesh` from `DesignedCabinet.tsx`) put 238 KB gzipped of three and R3F on the room picker. The mesh cache lives in `designMesh.ts`, which is three-free, for that reason. Check with `.next/diagnostics/route-bundle-stats.json` after a build: `/[lang]/planner` was 295 KB gzipped once fixed.
 - **The quote screen is a lazy chunk** (`PlannerApp.tsx`), fetched while the customer is in the studio, and Stripe is imported from `@stripe/stripe-js/pure` — the main entry requests js.stripe.com the moment it is imported.
@@ -448,7 +442,7 @@ Mid-range Android is the target device.
 - **A finish can override that with a real decor photo.** The `finish:<id>` site-image slot feeds both the landing swatch and the 3D door, so uploading one supplier decor scan makes the strip and the cabinet show the same board. The photo becomes the front's `map` with the material colour set to white; the grain tile stays on as the roughness map. Absent an upload, the generated grain tinted by `finish.hex` is the fallback — see `components/planner/grain.ts`.
 - **Decor scans are the supplier's IP.** Board suppliers (Max World and the like) publish decor images for their own catalogue; they are production print masters, not stock photography. Get written permission before putting one on a public page — for a fabricator that buys the board this is normally just a request to the rep
 - **The geometry is not the problem; the textures are.** Measured on the client's own export: a whole wall run is 176 KB of binary geometry, one cabinet ~25 KB (~13 KB gzipped). One decor scan is 178 KB. Budget accordingly — the reflex to cut triangles is aimed at the wrong thing here.
-- **Meshes are served `immutable` and fetched once per SKU.** The pathname carries the source file's sha256, so a given URL's bytes never change; `DesignedCabinet.tsx` caches the *promise*, so four identical base units in a run are one request. Prefetch sibling ladder rungs if changing a width ever feels slow.
+- **Meshes are served `immutable` and fetched once per SKU.** The pathname carries the source file's sha256, so a given URL's bytes never change; `DesignedCabinet.tsx` caches the _promise_, so four identical base units in a run are one request. Prefetch sibling ladder rungs if changing a width ever feels slow.
 - **A design past `MAX_TRIANGLES` (200,000) is refused** and falls back to procedural. That is not a cabinet — it is a whole room, or a file with the furniture library left switched on.
 - `InstancedMesh` for shelves/drawers only if a design gets large enough to need it
 
@@ -456,17 +450,17 @@ Two features carry the sale: a **doors-open / doors-hidden toggle** so the custo
 
 ## Where assets live
 
-| Kind | Home | Why |
-| --- | --- | --- |
-| Grain/laminate textures | `/public` | Static, versioned with code, free off Vercel CDN |
-| Palette thumbnails | Inline SVG (`components/planner/thumbs.tsx`) | Drawn from the family's own proportions. Never boot a WebGL context per thumbnail. |
-| Design exports (`.obj`, or `.zip` with textures) | Vercel Blob, **private** | The source file carries the client's module standard, layer structure and part naming. Never public, never in `/public`. Reachable only under `/api/admin`. |
-| Derived render meshes (`.icbmesh`) | Vercel Blob, served **public** via `/api/cabinet-mesh/[id]` | The geometry a customer's browser draws, so it has to get out — but only as triangles, with the drafter's materials and every part name stripped. The store is private-access-only, so the route is the hole, exactly like site images. Regenerable from the source, so it is cache, not record. |
-| Homepage / room / finish photos | Vercel Blob, public | Slot-keyed (`hero`, `room:<id>`, `finish:<id>`), uploaded at `/admin/site-content`. Slots are derived from the live catalogue, not hardcoded, so adding a finish adds its photo slot |
-| Canvas screenshots | Vercel Blob | User-generated at runtime, one per lead |
-| Quote PDFs | Vercel Blob | Same |
-| Tutorial videos | **Mux**, not Blob | Needs transcoding, adaptive bitrate and a poster frame. Blob would serve one giant MP4 to a phone on Malaysian mobile data |
-| Catalogue versions, designs, tutorials, site-image slots, leads, Blob URLs | Postgres | |
+| Kind                                                                       | Home                                                        | Why                                                                                                                                                                                                                                                                                              |
+| -------------------------------------------------------------------------- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Grain/laminate textures                                                    | `/public`                                                   | Static, versioned with code, free off Vercel CDN                                                                                                                                                                                                                                                 |
+| Palette thumbnails                                                         | Inline SVG (`components/planner/thumbs.tsx`)                | Drawn from the family's own proportions. Never boot a WebGL context per thumbnail.                                                                                                                                                                                                               |
+| Design exports (`.obj`, or `.zip` with textures)                           | Vercel Blob, **private**                                    | The source file carries the client's module standard, layer structure and part naming. Never public, never in `/public`. Reachable only under `/api/admin`.                                                                                                                                      |
+| Derived render meshes (`.icbmesh`)                                         | Vercel Blob, served **public** via `/api/cabinet-mesh/[id]` | The geometry a customer's browser draws, so it has to get out — but only as triangles, with the drafter's materials and every part name stripped. The store is private-access-only, so the route is the hole, exactly like site images. Regenerable from the source, so it is cache, not record. |
+| Homepage / room / finish photos                                            | Vercel Blob, public                                         | Slot-keyed (`hero`, `room:<id>`, `finish:<id>`), uploaded at `/admin/site-content`. Slots are derived from the live catalogue, not hardcoded, so adding a finish adds its photo slot                                                                                                             |
+| Canvas screenshots                                                         | Vercel Blob                                                 | User-generated at runtime, one per lead                                                                                                                                                                                                                                                          |
+| Quote PDFs                                                                 | Vercel Blob                                                 | Same                                                                                                                                                                                                                                                                                             |
+| Tutorial videos                                                            | **Mux**, not Blob                                           | Needs transcoding, adaptive bitrate and a poster frame. Blob would serve one giant MP4 to a phone on Malaysian mobile data                                                                                                                                                                       |
+| Catalogue versions, designs, tutorials, site-image slots, leads, Blob URLs | Postgres                                                    |                                                                                                                                                                                                                                                                                                  |
 
 Test: if you could delete it and rebuild it from a `git clone`, it belongs in the repo, not Blob.
 
@@ -475,7 +469,6 @@ Test: if you could delete it and rebuild it from a `git clone`, it belongs in th
 ## UX flow
 
 Three screens. Rooms open on an **empty wall**: there is no invented starter run to price, and one assembled from whatever designs exist would look random. Blank canvases still cost conversion, which is what the preset designs below are for.
-
 1. **Start** — pick a room; a room with no designs yet is shown as coming soon and cannot be picked
 2. **Studio** — an empty room opens on the Room panel (shape, wall lengths, ceiling) with a **Next: add cabinets** button, since a wall cannot shrink below what its cabinets need; then drag cabinets in from a menu grouped by category, choose door style and finish, measure. A placed cabinet always wears a door style — its price includes the door
 3. **Checkout** — one page: contact, delivery, and (with a gateway live) Stripe's Payment Element drawing only the payment method, then one **Pay** button that creates the order and confirms its payment → `/[lang]/order/[token]`. With no gateway (`payment-gateway` flag on `manual`) it is **Place order**, and the order page shows bank transfer details until an admin marks it paid
@@ -583,7 +576,6 @@ This is the one place the app streams something it did not generate. It is a sep
 ### Telemetry
 
 PostHog **Cloud EU**, installed from the Vercel Marketplace, so we can see where customers drop out of the funnel and what broke in their browser. Vercel Web Analytics could not do that job — anonymous aggregate counts, no per-visitor journeys, no replay, no alerts — so it runs beside PostHog as a plain page-view count, never instead of it.
-
 - **One module:** `lib/analytics.ts` — `track`, `captureError`, consent. `posthog-js` is imported on idle, never on the LCP path. `<Analytics>` mounts in `app/[lang]/layout.tsx` only; **admin is not tracked**.
 - **Through our origin:** `next.config.ts` rewrites `/api/ph/*` to the EU hosts, so ad blockers do not hide drop-offs. `/api/` already bypasses the locale redirect and the admin gate. The region is hardcoded there and in `analytics.ts` because PostHog fixes it at install.
 - **Consent (PDPA s.129):** cookieless until the visitor accepts (`opt_out_capturing_by_default` + `cookieless_mode: "on_reject"` — drop the first and "pending" sets cookies). Accepting enables cookies and the error-triggered replay. `/[lang]/privacy` is a **draft** for EzCabinet's counsel.
@@ -956,9 +948,8 @@ Better Auth's in-memory adapter — keep it passing; the unit tests alone
 passed while a real bug shipped.
 
 Three rules in those hooks look like candidates for tidying and are not:
-
 - **A session is marked verified after a registration only on positive
-  evidence** — the result is not an API error by `isAPIError`, *and* the
+  evidence** — the result is not an API error by `isAPIError`, _and_ the
   account now has at least one passkey row. An earlier `instanceof APIError`
   check missed validation errors, so a malformed request could mark a session
   verified with no passkey at all. Do not simplify it back.
@@ -1010,20 +1001,19 @@ Separate Postgres database from Factory Tracker.
 
 ## Phasing
 
-| Phase | Work |
-| --- | --- |
-| 0 | Catalogue + pricing spec workshop with client, including the design-intake process |
-| 1 | Layout schema, rules, pricing — headless, tested against fixtures ✅ |
-| 2 | Planner UI + 3D scene ✅ |
-| 3 | Lead capture, share links, admin inbox (admin catalogue + designs ✅; paid checkout, orders admin, order → delivery pre-fill ✅; share links and a real payment gateway not started); L-shaped kitchens ✅ |
-| 4 | Approved quote → **SKU list** → production job in Factory Tracker. Factory Tracker pushes production stages onto `POST /api/admin/orders/[id]/stage` (today an admin presses it). |
+| Phase | Work                                                                                                                                                                                                       |
+| ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0     | Catalogue + pricing spec workshop with client, including the design-intake process                                                                                                                         |
+| 1     | Layout schema, rules, pricing — headless, tested against fixtures ✅                                                                                                                                       |
+| 2     | Planner UI + 3D scene ✅                                                                                                                                                                                   |
+| 3     | Lead capture, share links, admin inbox (admin catalogue + designs ✅; paid checkout, orders admin, order → delivery pre-fill ✅; share links and a real payment gateway not started); L-shaped kitchens ✅ |
+| 4     | Approved quote → **SKU list** → production job in Factory Tracker. Factory Tracker pushes production stages onto `POST /api/admin/orders/[id]/stage` (today an admin presses it).                          |
 
 **Phase 4 changed shape when the planner started rendering the drafted model.** A derived cut list is no longer available, because the app no longer derives the cabinet — it draws the one the client already drew. What Factory Tracker receives is a SKU list (`1× BC 800mm`). For a factory that manufactures to standard modules that is arguably the more useful payload, but it is a change to the contract and **the client should hear it**.
 
 ## Known issues
 
 Recorded rather than fixed. Do not paper over them; fix them deliberately.
-
 1. **Drafter naming is load-bearing now.** `roles.ts` classifies mesh groups from the drafter's own names, and that classification decides which triangles take the customer's finish and which disappear on the doors-hidden toggle. A renamed group used to cost an inferred shelf count; it now costs the finish picker on that cabinet. The review table shows the classification before publish and the fallback is one material across the whole mesh, but this belongs in the Phase 0 conversation about drafting conventions.
 2. **Until the first publish after the one-design-one-cabinet change, the live catalogue is the old one** — seed families with invented prices, and the junk `Testing123` among them. The first publish from `/admin/cabinet-designs` rebuilds it from design rows and removes them all. Set the base door style's surcharge to RM 0 before that publish, or every cabinet is charged its door twice.
 3. **EasyParcel's webhooks are unsigned.** Nothing in their payload identifies the sender, so the callback URL carries a secret query token and that is the entire check — see `verifyWebhook` in `adapters/easyparcel.ts`.
@@ -1083,7 +1073,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 - **Their real module standard** for living room, bedroom, and foyer. Only the kitchen dimensions come from a real design export; the rest are invented.
 - **What does `Door_L_` mean?** The left-hand leaf of a pair, or a door hinged
   on its left stile? `hingeSideFromName` reads the token, but only trusts it for
-  a *lone* door — on a pair the outward rule already answers it, and guessing
+  a _lone_ door — on a pair the outward rule already answers it, and guessing
   the convention would be reading handedness into what may only be position.
   Their answer decides whether a single door's drawn name can seed its swing.
 - **Design-intake cadence.** How often do new exports arrive, and will the panel naming (`G-UEnd_(L)`, `G-Door(R)`, …) stay stable? Extraction depends on it, so a change in their drawing habits is a change to `lib/mesh`.

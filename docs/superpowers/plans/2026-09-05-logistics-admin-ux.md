@@ -47,17 +47,17 @@ build on it.
 
 ## File structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/app/admin/logistics/form.ts` | **new.** Form state: its shape, a blank one, one built from a saved row, and the request body it becomes. Pure, no React. |
-| `src/app/admin/logistics/__tests__/form.test.ts` | **new.** Round-trip and payload tests for the above. |
-| `src/lib/logistics/coords.ts` | **new.** A pasted pin parsed into numbers, and the three-way state of a stored pin. Isomorphic. |
-| `src/lib/logistics/__tests__/coords.test.ts` | **new.** |
-| `src/app/admin/logistics/errors.ts` | **new.** API error code to a sentence an admin can act on. |
-| `src/app/admin/logistics/__tests__/errors.test.ts` | **new.** |
-| `src/app/admin/logistics/LogisticsManager.tsx` | Rendering only: consumes the three modules above. |
-| `src/app/admin/logistics/page.tsx` | Passes `geocodingConfigured` down. |
-| `src/app/api/admin/deliveries/route.ts` | GET also reports `geocodingConfigured`. |
+| File                                               | Responsibility                                                                                                            |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `src/app/admin/logistics/form.ts`                  | **new.** Form state: its shape, a blank one, one built from a saved row, and the request body it becomes. Pure, no React. |
+| `src/app/admin/logistics/__tests__/form.test.ts`   | **new.** Round-trip and payload tests for the above.                                                                      |
+| `src/lib/logistics/coords.ts`                      | **new.** A pasted pin parsed into numbers, and the three-way state of a stored pin. Isomorphic.                           |
+| `src/lib/logistics/__tests__/coords.test.ts`       | **new.**                                                                                                                  |
+| `src/app/admin/logistics/errors.ts`                | **new.** API error code to a sentence an admin can act on.                                                                |
+| `src/app/admin/logistics/__tests__/errors.test.ts` | **new.**                                                                                                                  |
+| `src/app/admin/logistics/LogisticsManager.tsx`     | Rendering only: consumes the three modules above.                                                                         |
+| `src/app/admin/logistics/page.tsx`                 | Passes `geocodingConfigured` down.                                                                                        |
+| `src/app/api/admin/deliveries/route.ts`            | GET also reports `geocodingConfigured`.                                                                                   |
 
 ---
 
@@ -86,7 +86,6 @@ that imports `form.ts`), move the `DeliveryRow`, `DeliveryEventRow` and
 `QuoteRow` type declarations **into `form.ts`** and re-export them from
 `LogisticsManager.tsx` for any existing importer:
 `export type { DeliveryRow } from "./form";`
-
 - [ ] **Step 1: Write the failing test**
 
 Create `src/app/admin/logistics/__tests__/form.test.ts`:
@@ -108,7 +107,14 @@ const row: DeliveryRow = {
 	pickupLat: null,
 	pickupLng: null,
 	items: [
-		{ label: "Base unit", qty: 2, widthMm: 800, heightMm: 720, depthMm: 560, weightKg: null },
+		{
+			label: "Base unit",
+			qty: 2,
+			widthMm: 800,
+			heightMm: 720,
+			depthMm: 560,
+			weightKg: null,
+		},
 	],
 	totalWeightKg: null,
 	totalVolumeM3: 0.645,
@@ -142,9 +148,10 @@ describe("formFrom", () => {
 	});
 
 	it("gives every item a key React can keep across edits", () => {
-		const uids = formFrom({ ...row, items: [...row.items, ...row.items] }).items.map(
-			(i) => i.uid,
-		);
+		const uids = formFrom({
+			...row,
+			items: [...row.items, ...row.items],
+		}).items.map((i) => i.uid);
 		expect(new Set(uids).size).toBe(2);
 	});
 });
@@ -181,7 +188,6 @@ describe("toPayload", () => {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/form.test.ts`
 Expected: FAIL — `Failed to resolve import "../form"`.
-
 - [ ] **Step 3: Create `form.ts` by moving code out of the component**
 
 Cut `FormItem`, `emptyItem`, `blankForm`, `FormState`, `localDateTime`,
@@ -190,10 +196,7 @@ Cut `FormItem`, `emptyItem`, `blankForm`, `FormState`, `localDateTime`,
 `toPayload` built from the body `save()` currently inlines:
 
 ```ts
-import type {
-	DeliveryItem,
-	DeliveryStatusName,
-} from "@/lib/logistics/types";
+import type { DeliveryItem, DeliveryStatusName } from "@/lib/logistics/types";
 
 /**
  * The delivery form as state, and the two translations either side of it: a
@@ -350,7 +353,6 @@ Move the existing `parseCoords` into `form.ts` unchanged for now — it returns
 `{ lat, lng } | null`. Task 2 replaces it with the `{ ok }` result from
 `@/lib/logistics/coords` and rewrites those four lines. The tests above assert
 the payload, not the parser, so they hold across that swap.
-
 - [ ] **Step 4: Point the component at the new module**
 
 In `LogisticsManager.tsx`: delete the moved declarations, add
@@ -371,19 +373,20 @@ export type { DeliveryEventRow, DeliveryRow, QuoteRow } from "./form";
 ```
 
 and reduce `save()`'s body to `body: JSON.stringify(toPayload(state))`.
-
 - [ ] **Step 5: Say which job is being edited**
 
 The form renders at the top of the page, far from the row that opened it. In
 `DeliveryForm`, above the first field grid:
 
 ```tsx
-{state.id !== null && (
-	<p className="text-[13px] text-neutral-500">
-		Editing <span className="text-neutral-900">{state.customerName}</span>.
-		Saving re-checks the address, so a corrected line gets a fresh map pin.
-	</p>
-)}
+{
+	state.id !== null && (
+		<p className="text-[13px] text-neutral-500">
+			Editing <span className="text-neutral-900">{state.customerName}</span>.
+			Saving re-checks the address, so a corrected line gets a fresh map pin.
+		</p>
+	);
+}
 ```
 
 and in `LogisticsManager`, make the Edit button scroll the form into view:
@@ -399,7 +402,6 @@ onClick={() => {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/form.test.ts && npx tsc --noEmit`
 Expected: all form tests PASS, tsc silent.
-
 - [ ] **Step 7: Format and commit**
 
 ```bash
@@ -494,7 +496,6 @@ describe("parseCoords", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: FAIL — `Failed to resolve import "../coords"`.
-
 - [ ] **Step 3: Write `coords.ts`**
 
 ```ts
@@ -522,7 +523,8 @@ const PAIR = /(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/;
 /** `/@lat,lng,17z` — the map's own viewport, and the pin when one is dropped. */
 const AT = /@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/;
 /** `!3dlat!4dlng` — how a shared place url carries the pin. Longitude first. */
-const BANG = /!3d(-?\d+(?:\.\d+)?).*?!4d(-?\d+(?:\.\d+)?)|!4d(-?\d+(?:\.\d+)?).*?!3d(-?\d+(?:\.\d+)?)/;
+const BANG =
+	/!3d(-?\d+(?:\.\d+)?).*?!4d(-?\d+(?:\.\d+)?)|!4d(-?\d+(?:\.\d+)?).*?!3d(-?\d+(?:\.\d+)?)/;
 
 export function parseCoords(raw: string): ParsedCoords {
 	const text = raw.trim();
@@ -551,7 +553,9 @@ export function parseCoords(raw: string): ParsedCoords {
 
 	// Last, and only on the query part of a url, so a street number in a path
 	// cannot be read as a latitude.
-	const pair = PAIR.exec(text.includes("?") ? text.slice(text.indexOf("?")) : text);
+	const pair = PAIR.exec(
+		text.includes("?") ? text.slice(text.indexOf("?")) : text,
+	);
 	if (pair) {
 		const lat = Number(pair[1]);
 		const lng = Number(pair[2]);
@@ -573,7 +577,6 @@ export const COORDS_HINT = {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: PASS, 9 tests.
-
 - [ ] **Step 5: Use it in the form, and show the hint**
 
 In `form.ts`, delete the local `parseCoords`, add
@@ -590,25 +593,25 @@ override lines in `toPayload`:
 In `DeliveryForm`, under each of the two pin inputs:
 
 ```tsx
-{(() => {
-	const parsed = parseCoords(state.siteCoords);
-	return parsed.ok || parsed.reason === "empty" ? null : (
-		<span className="text-[11px] text-amber-700">
-			{COORDS_HINT[parsed.reason]}
-		</span>
-	);
-})()}
+{
+	(() => {
+		const parsed = parseCoords(state.siteCoords);
+		return parsed.ok || parsed.reason === "empty" ? null : (
+			<span className="text-[11px] text-amber-700">
+				{COORDS_HINT[parsed.reason]}
+			</span>
+		);
+	})();
+}
 ```
 
 Same block for `state.pickupCoords`, reading `COORDS_HINT` and `parseCoords`
 from `@/lib/logistics/coords`. Both inputs already sit inside a `<label>` with
 `flex-col`, so the hint lands under the field.
-
 - [ ] **Step 6: Prove the wiring holds**
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/form.test.ts src/lib/logistics/__tests__/coords.test.ts && npx tsc --noEmit`
 Expected: PASS, tsc silent.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -665,7 +668,6 @@ describe("pinState", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: FAIL — `pinState is not a function`.
-
 - [ ] **Step 3: Add `pinState` to `coords.ts`**
 
 ```ts
@@ -691,7 +693,6 @@ export function pinState(
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: PASS, 13 tests.
-
 - [ ] **Step 5: Plumb the flag through the server**
 
 In `src/app/api/admin/deliveries/route.ts`, add the import and one field:
@@ -711,11 +712,11 @@ In `src/app/admin/logistics/page.tsx`:
 ```tsx
 import { isGeocodingConfigured } from "@/lib/logistics/geocode";
 // …
-				<LogisticsManager
-					initial={JSON.parse(JSON.stringify(deliveries))}
-					workshopAddress={WORKSHOP_ADDRESS}
-					geocodingConfigured={isGeocodingConfigured()}
-				/>
+<LogisticsManager
+	initial={JSON.parse(JSON.stringify(deliveries))}
+	workshopAddress={WORKSHOP_ADDRESS}
+	geocodingConfigured={isGeocodingConfigured()}
+/>;
 ```
 
 - [ ] **Step 6: Render it — badge, both stops, and a banner when the key is missing**
@@ -724,24 +725,29 @@ import { isGeocodingConfigured } from "@/lib/logistics/geocode";
 `DeliveryDetail`. Above the list, once:
 
 ```tsx
-{!geocodingConfigured && (
-	<p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
-		Addresses are not being looked up — GOOGLE_GEOCODING_API_KEY is not set on
-		this deployment. Paste a pin on each job, or vehicle partners cannot quote.
-	</p>
-)}
+{
+	!geocodingConfigured && (
+		<p className="rounded-lg bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
+			Addresses are not being looked up — GOOGLE_GEOCODING_API_KEY is not set on
+			this deployment. Paste a pin on each job, or vehicle partners cannot
+			quote.
+		</p>
+	);
+}
 ```
 
 On each row, beside the status badge:
 
 ```tsx
-{!row.carrierOrderId &&
-	(pinState(row.siteLat, geocodingConfigured) !== "located" ||
-		pinState(row.pickupLat, geocodingConfigured) !== "located") && (
-		<span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-[11px] text-amber-800">
-			No map pin
-		</span>
-	)}
+{
+	!row.carrierOrderId &&
+		(pinState(row.siteLat, geocodingConfigured) !== "located" ||
+			pinState(row.pickupLat, geocodingConfigured) !== "located") && (
+			<span className="rounded-full bg-amber-50 px-2.5 py-1 font-medium text-[11px] text-amber-800">
+				No map pin
+			</span>
+		);
+}
 ```
 
 In `DeliveryDetail`, replace the single site warning with one that covers both
@@ -758,24 +764,25 @@ const PIN_TROUBLE: Record<Exclude<PinState, "located">, string> = {
 ```
 
 ```tsx
-{(["site", "pickup"] as const).map((stop) => {
-	const state = pinState(
-		stop === "site" ? delivery.siteLat : delivery.pickupLat,
-		geocodingConfigured,
-	);
-	if (state === "located") return null;
-	return (
-		<p key={stop} className="text-amber-700 sm:col-span-2">
-			The {stop} address {PIN_TROUBLE[state]} Vehicle partners price by
-			coordinate, so only own lorry can be booked. Use Edit above to fix the
-			address or paste a pin.
-		</p>
-	);
-})}
+{
+	(["site", "pickup"] as const).map((stop) => {
+		const state = pinState(
+			stop === "site" ? delivery.siteLat : delivery.pickupLat,
+			geocodingConfigured,
+		);
+		if (state === "located") return null;
+		return (
+			<p key={stop} className="text-amber-700 sm:col-span-2">
+				The {stop} address {PIN_TROUBLE[state]} Vehicle partners price by
+				coordinate, so only own lorry can be booked. Use Edit above to fix the
+				address or paste a pin.
+			</p>
+		);
+	});
+}
 ```
 
 Keep the existing "Site pin: …" line for the located case.
-
 - [ ] **Step 7: Show the result of a save without a second click**
 
 At the end of `save()`, after `await load()`, open the row that was just
@@ -787,7 +794,6 @@ if (body?.delivery?.id) setOpenId(body.delivery.id);
 ```
 
 (`POST` returns `{ delivery }` with 201; `PATCH` returns `{ delivery }`.)
-
 - [ ] **Step 8: Verify**
 
 Run: `pnpm vitest run src/lib/logistics src/app/admin/logistics && npx tsc --noEmit`
@@ -797,7 +803,6 @@ Then check by hand: `pnpm dev`, open `/admin/logistics`, save a job with a
 nonsense address, and confirm the row shows "No map pin", the row opens by
 itself, and the panel blames the geocoder (locally, with no key set) rather
 than the address.
-
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -832,7 +837,9 @@ describe("messageFor", () => {
 	});
 
 	it("never shows a raw code to an admin", () => {
-		expect(messageFor("invalid_body", "fallback")).not.toContain("invalid_body");
+		expect(messageFor("invalid_body", "fallback")).not.toContain(
+			"invalid_body",
+		);
 	});
 
 	it("falls back when the server said something new", () => {
@@ -853,7 +860,6 @@ describe("messageFor", () => {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/errors.test.ts`
 Expected: FAIL — `Failed to resolve import "../errors"`.
-
 - [ ] **Step 3: Write `errors.ts`**
 
 ```ts
@@ -883,7 +889,6 @@ export function messageFor(code: unknown, fallback: string): string {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/errors.test.ts`
 Expected: PASS, 4 tests.
-
 - [ ] **Step 5: Use it at all five call sites**
 
 Replace each `setError(body?.error ?? "…")` / `onError(body?.error ?? "…")`
@@ -913,7 +918,6 @@ onError(messageFor(body?.error, "Could not update this job"));
 
 Run: `pnpm vitest run src/app/admin/logistics && npx tsc --noEmit`
 Expected: PASS, tsc silent.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -937,7 +941,6 @@ git commit -m "feat(logistics): show an admin a sentence, not an error code"
 some browser contexts, and asks the same three people for the same name every
 time. The booking panel already has the field; make it the one place, and
 remember it.
-
 - [ ] **Step 1: Seed the field from the last name used**
 
 ```ts
@@ -956,7 +959,6 @@ const rememberActor = (name: string) => {
 ```
 
 Point the booking input's `onChange` at `rememberActor(e.target.value)`.
-
 - [ ] **Step 2: Give the status buttons the same field**
 
 Above the row of `Mark …` / `Cancel job` buttons in the booked branch:
@@ -969,7 +971,7 @@ Above the row of `Mark …` / `Cancel job` buttons in the booked branch:
 		value={bookedBy}
 		onChange={(e) => rememberActor(e.target.value)}
 	/>
-</label>
+</label>;
 ```
 
 - [ ] **Step 3: Drop `prompt()`**
@@ -999,7 +1001,6 @@ timeline records the name, and the name is still in the field after a reload.
 Then: `pnpm vitest run && npx tsc --noEmit` — the whole suite, since this is
 the last task.
 Expected: PASS, tsc silent.
-
 - [ ] **Step 5: Commit**
 
 ```bash

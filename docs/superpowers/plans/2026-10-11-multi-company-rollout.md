@@ -38,48 +38,48 @@ created on Vercel from it.**
 ### To finish the infrastructure work
 
 - [ ] Create a private bucket for the state file (Cloudflare R2 free tier
-      works) and an access key for it. Fill in `infra/backend.hcl`.
+  works) and an access key for it. Fill in `infra/backend.hcl`.
 - [ ] Create a Vercel API token for the JNS team.
 - [ ] Choose the state passphrase and store it in a password manager.
 - [ ] Create a database for the demo site. No OpenTofu provider exists for
-      Prisma Postgres, so this stays a manual step for every company.
+  Prisma Postgres, so this stays a manual step for every company.
 - [ ] Get the demo site's Stripe test keys and a Google sign-in client. Fill
-      in `infra/secrets.auto.tfvars`.
+  in `infra/secrets.auto.tfvars`.
 - [ ] Confirm the demo domain. `planner-demo.jnsnexion.com.my` is a guess.
 - [ ] Run the first `tofu apply` for demo and read its plan closely. The
-      firewall rule and the alert filter (`statusGroup:5xx`) are untested.
+  firewall rule and the alert filter (`statusGroup:5xx`) are untested.
 - [ ] Add `tenants/ezcabinet.json` once its domain is chosen.
 - [ ] A weekly `tofu plan` that reports settings changed by hand in the
-      dashboard.
+  dashboard.
 - [ ] Set the `payment-gateway` flag per project. It is not in the config.
 - [ ] Push `feature/development`. Remove the finished worktree
-      `.claude/worktrees/iac` and its branch `worktree-iac`.
+  `.claude/worktrees/iac` and its branch `worktree-iac`.
 
 ### Step zero: ownership (before any second sale)
 
 - [ ] A written agreement with EzCabinet, reviewed by a lawyer: JNS owns the
-      software and may license it to others; EzCabinet owns its designs,
-      prices, photos and customer data. Nothing written covers this today.
+  software and may license it to others; EzCabinet owns its designs,
+  prices, photos and customer data. Nothing written covers this today.
 - [ ] Move EzCabinet's own material out of the shared code. The next clients
-      are its competitors.
+  are its competitors.
   - `public/hero-frames/` and `public/finishes/rhone-oak.jpg`
   - `FINISHES`, the kitchen dimensions in `CONSTRUCTION`,
     `WALL_CABINET_FLOOR_MM` and `deliveryFlatRm: 85` in
     `src/lib/planner/catalogue.ts`
 - [ ] A standard contract for new clients: licence not ownership, what the
-      fee covers, what happens to their data when they leave.
+  fee covers, what happens to their data when they leave.
 
 ### Phase 1: make one release safe and automatic
 
 - [ ] CI runs `pnpm build` and `pnpm audit --prod --audit-level high`.
 - [ ] `.github/dependabot.yml`, weekly, with linked packages grouped
-      (`better-auth`, `prisma`, `three`, `next` with `react`, `stripe`).
+  (`better-auth`, `prisma`, `three`, `next` with `react`, `stripe`).
 - [ ] Auto-merge for patch updates once CI is green. Needs branch protection
-      on `main` requiring the CI check.
+  on `main` requiring the CI check.
 - [ ] `src/lib/env.ts`: one zod schema for every env name, so a missing one
-      fails the build. Add the four names missing from `.env.example`.
+  fails the build. Add the four names missing from `.env.example`.
 - [ ] `GET /api/health`: commit sha, tenant, database reachable, last
-      migration.
+  migration.
 - [ ] Pin Node 24 in `package.json` and `.nvmrc`.
 
 ### Phase 2: take the company out of the code
@@ -94,20 +94,19 @@ a hero switch. It covers part of the first, second, third and sixth items
 below, and its guard test covers the dictionaries only. Three English-only
 mails, the accent colour and `mode` are untouched. See
 `docs/ops/demo-site-runbook.md`.
-
 - [ ] `src/lib/tenant.ts` and a zod `tenantSchema` that loads
-      `tenants/<slug>.json`. Extend the tenant file with: legal name, contact
-      email, order reference prefix, workshop details, bank details, accent
-      colour, passkey and 2FA names, the Meta verification token, and the
-      legal parameters.
+  `tenants/<slug>.json`. Extend the tenant file with: legal name, contact
+  email, order reference prefix, workshop details, bank details, accent
+  colour, passkey and 2FA names, the Meta verification token, and the
+  legal parameters.
 - [x] `WORKSHOP_*` and `BANK_TRANSFER` left the tenant file for `/admin/company`
-      (docs/superpowers/plans/2026-10-21-company-details.md); the tenant file
-      seeds them for a new company's first run.
+  (docs/superpowers/plans/2026-10-21-company-details.md); the tenant file
+  seeds them for a new company's first run.
 - [ ] Replace the literal brand name in about 30 source files and the four
-      copy dictionaries with the `{brand}` placeholder.
+  copy dictionaries with the `{brand}` placeholder.
 - [ ] A guard test that fails on `ezcabinet` under `src/` outside `tenants/`.
 - [ ] Replace the accent colour `#1f5138`, inline in about 75 files, with one
-      CSS variable.
+  CSS variable.
 - [ ] Move the hero frames and favicon under `public/tenants/<slug>/`.
 - [ ] Add `mode: "checkout" | "quote"` to the tenant file.
 
@@ -115,39 +114,39 @@ mails, the accent colour and `mode` are untouched. See
 
 - [ ] Auto-tag a patch release when a Dependabot PR merges.
 - [ ] `release-demo.yml`: deploy demo on any tag, then run a browser test
-      (sign in, add a cabinet, place a test-mode order).
+  (sign in, add a cabinet, place a test-mode order).
 - [ ] `release-clients.yml`: started by hand, refuses a tag demo did not
-      pass, deploys EzCabinet first and then the rest four at a time. Each
-      deploy is followed by a health check and a smoke test, with rollback
-      on failure.
+  pass, deploys EzCabinet first and then the rest four at a time. Each
+  deploy is followed by a health check and a smoke test, with rollback
+  on failure.
 - [ ] `scripts/smoke.mjs`.
 - [ ] Write the migration rule into `CLAUDE.md`: every migration is additive,
-      because a rollback puts old code on a migrated database.
+  because a rollback puts old code on a migrated database.
 - [ ] A fleet check every 15 minutes, run as a Vercel cron on the demo
-      project, posting to Slack.
+  project, posting to Slack.
 - [ ] `docs/ops/new-client-runbook.md`.
 - [ ] Register a domain for each company. Move EzCabinet to its own before
-      any customer enrols a passkey.
+  any customer enrols a passkey.
 
 ### Phase 4: running the fleet
 
 - [ ] Backups: record what the database provider keeps, write
-      `docs/ops/restore-runbook.md`, rehearse a restore on demo. Copy each
-      company's design files to a second bucket weekly.
+  `docs/ops/restore-runbook.md`, rehearse a restore on demo. Copy each
+  company's design files to a second bucket weekly.
 - [ ] `docs/ops/secrets.md`: where secrets live and how to rotate them. One
-      Resend key per company.
+  Resend key per company.
 - [ ] One JNS superadmin per company for support.
 - [ ] Error tracking tagged with the tenant.
 - [ ] A Vercel spend limit and a record of usage per company.
 - [ ] An offboarding runbook: export, domain transfer, destroy, delete.
 - [ ] A sealed document saying how to run a release if the maintainer is
-      unavailable.
+  unavailable.
 
 ### Separate project
 
 - [ ] The quote-only flow: the design ends at "send to sales" with no
-      payment, delivery or passkey step. `CLAUDE.md` lists it as designed but
-      not built. It needs its own spec.
+  payment, delivery or passkey step. `CLAUDE.md` lists it as designed but
+  not built. It needs its own spec.
 
 ## Open questions
 

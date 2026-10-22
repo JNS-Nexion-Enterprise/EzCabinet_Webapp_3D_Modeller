@@ -23,7 +23,7 @@
 - No new dependency.
 - Every mail goes through `renderEmail` (`lib/email/layout.ts`); `oneLook.test.ts` must keep passing.
 - Every admin route is `export const METHOD = withAuth(...)`; `src/lib/auth/__tests__/coverage.test.ts` must keep passing.
-- Sentence case in UI copy. Biome formatting (tabs). Comments match the surrounding density: a docblock says *why*, not what.
+- Sentence case in UI copy. Biome formatting (tabs). Comments match the surrounding density: a docblock says _why_, not what.
 - Migrations are hand-written (CLAUDE.md Known issue 12) and checked with `prisma migrate diff`.
 - Never set `TENANT` in `.env.local`.
 - Commit messages: conventional (`feat(company): …`), ending with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
@@ -53,7 +53,6 @@
 ## Before Task 1: workspace
 
 Other Claude sessions edit the main checkout, so this work goes in its own worktree with its own database.
-
 - [ ] Create the worktree from `feature/development`. The branch is `feature/company-details` at `.claude/worktrees/company-details`; enter it with `EnterWorktree`. Inside it, every git command is plain and alone.
 - [ ] Run `pnpm install`.
 - [ ] Copy `.env.local` from the main checkout. Set its `DATABASE_URL` database name to `cabinet_company`.
@@ -110,16 +109,36 @@ Below, `PSQL` means `docker compose -f /Users/tenghaoooi/Documents/JNS_Nexion_Pr
 - [ ] **Step 2: Write the failing tests** in `details.test.ts`:
 
 ```ts
-const input = (over: Record<string, unknown> = {}) => ({ ...testCompany(), ssmNumber: "", ...over });
+const input = (over: Record<string, unknown> = {}) => ({
+	...testCompany(),
+	ssmNumber: "",
+	...over,
+});
 const ok = (over = {}) => companyDetailsSchema.safeParse(input(over)).success;
 
 describe("companyDetailsSchema", () => {
 	it("accepts a complete company and turns a blank SSM number into null", () => {
 		expect(companyDetailsSchema.parse(input()).ssmNumber).toBeNull();
-		expect(companyDetailsSchema.parse(input({ ssmNumber: " 202301012345 " })).ssmNumber).toBe("202301012345");
+		expect(
+			companyDetailsSchema.parse(input({ ssmNumber: " 202301012345 " }))
+				.ssmNumber,
+		).toBe("202301012345");
 	});
-	it.each(["brand", "legalName", "contactEmail", "phone", "address", "postcode", "city", "state", "closeTime", "bankName", "bankAccountName", "bankAccountNumber", "orderPrefix"])(
-		"requires %s", (field) => expect(ok({ [field]: "  " })).toBe(false));
+	it.each([
+		"brand",
+		"legalName",
+		"contactEmail",
+		"phone",
+		"address",
+		"postcode",
+		"city",
+		"state",
+		"closeTime",
+		"bankName",
+		"bankAccountName",
+		"bankAccountNumber",
+		"orderPrefix",
+	])("requires %s", (field) => expect(ok({ [field]: "  " })).toBe(false));
 	it("keeps the brand between 2 and 60 characters", () => {
 		expect(ok({ brand: "E" })).toBe(false);
 		expect(ok({ brand: "E".repeat(61) })).toBe(false);
@@ -130,15 +149,21 @@ describe("companyDetailsSchema", () => {
 		expect(ok({ lat: 5.98, lng: 116.07 })).toBe(true); // Kota Kinabalu
 	});
 	it("strips spaces and dashes from the account number, then wants digits only", () => {
-		expect(companyDetailsSchema.parse(input({ bankAccountNumber: "5621 2345-6789" })).bankAccountNumber).toBe("562123456789");
+		expect(
+			companyDetailsSchema.parse(input({ bankAccountNumber: "5621 2345-6789" }))
+				.bankAccountNumber,
+		).toBe("562123456789");
 		expect(ok({ bankAccountNumber: "5621-ABCD" })).toBe(false);
 	});
 	it("upper-cases the order prefix and keeps it to five letters or digits", () => {
-		expect(companyDetailsSchema.parse(input({ orderPrefix: "po" })).orderPrefix).toBe("PO");
+		expect(
+			companyDetailsSchema.parse(input({ orderPrefix: "po" })).orderPrefix,
+		).toBe("PO");
 		expect(ok({ orderPrefix: "ABCDEF" })).toBe(false);
 		expect(ok({ orderPrefix: "I-C" })).toBe(false);
 	});
-	it("wants a phone a courier can call", () => expect(ok({ phone: "call the office" })).toBe(false));
+	it("wants a phone a courier can call", () =>
+		expect(ok({ phone: "call the office" })).toBe(false));
 	it("wants a five-digit postcode and an ISO state code", () => {
 		expect(ok({ postcode: "4380" })).toBe(false);
 		expect(ok({ state: "Selangor" })).toBe(false);
@@ -148,7 +173,8 @@ describe("companyDetailsSchema", () => {
 		expect(ok({ closeTime: "24:00" })).toBe(false);
 		expect(ok({ closeTime: "17:30" })).toBe(true);
 	});
-	it("wants an email", () => expect(ok({ contactEmail: "hello at ezcabinet" })).toBe(false));
+	it("wants an email", () =>
+		expect(ok({ contactEmail: "hello at ezcabinet" })).toBe(false));
 });
 
 describe("workshopMoved", () => {
@@ -157,28 +183,57 @@ describe("workshopMoved", () => {
 		expect(workshopMoved(a, { ...a, address: ` ${a.address}  ` })).toBe(false);
 		expect(workshopMoved(a, { ...a, phone: "03-5555 1234" })).toBe(false);
 	});
-	it.each([["address", "Lot 9, Jalan Baru, 47500 Subang Jaya"], ["lat", 3.07], ["lng", 101.59], ["postcode", "47500"], ["city", "Subang Jaya"], ["state", "MY-14"]])(
-		"is true when %s changes", (field, value) => expect(workshopMoved(a, { ...a, [field]: value })).toBe(true));
+	it.each([
+		["address", "Lot 9, Jalan Baru, 47500 Subang Jaya"],
+		["lat", 3.07],
+		["lng", 101.59],
+		["postcode", "47500"],
+		["city", "Subang Jaya"],
+		["state", "MY-14"],
+	])("is true when %s changes", (field, value) =>
+		expect(workshopMoved(a, { ...a, [field]: value })).toBe(true),
+	);
 });
 
 describe("bankChanged", () => {
 	const a = testCompany();
-	it.each([["bankName", "CIMB"], ["bankAccountName", "EzCabinet Trading"], ["bankAccountNumber", "8000111222"]])(
-		"is true when %s changes", (field, value) => expect(bankChanged(a, { ...a, [field]: value })).toBe(true));
-	it("is false when only the address changes", () => expect(bankChanged(a, { ...a, address: "elsewhere" })).toBe(false));
+	it.each([
+		["bankName", "CIMB"],
+		["bankAccountName", "EzCabinet Trading"],
+		["bankAccountNumber", "8000111222"],
+	])("is true when %s changes", (field, value) =>
+		expect(bankChanged(a, { ...a, [field]: value })).toBe(true),
+	);
+	it("is false when only the address changes", () =>
+		expect(bankChanged(a, { ...a, address: "elsewhere" })).toBe(false));
 });
 
 describe("sellerLine", () => {
 	it("names the company, its registration and the address", () =>
-		expect(sellerLine(testCompany({ ssmNumber: "202301012345" }))).toBe("EzCabinet Sdn Bhd (202301012345), Lot 5, Jalan Kilang 2, 43800 Dengkil, Selangor"));
+		expect(sellerLine(testCompany({ ssmNumber: "202301012345" }))).toBe(
+			"EzCabinet Sdn Bhd (202301012345), Lot 5, Jalan Kilang 2, 43800 Dengkil, Selangor",
+		));
 	it("does not repeat the name when the address already starts with it", () =>
-		expect(sellerLine({ legalName: "EzCabinet Sdn Bhd", ssmNumber: null, address: "EzCabinet Sdn Bhd, Klang Valley, Selangor" })).toBe("EzCabinet Sdn Bhd, Klang Valley, Selangor"));
+		expect(
+			sellerLine({
+				legalName: "EzCabinet Sdn Bhd",
+				ssmNumber: null,
+				address: "EzCabinet Sdn Bhd, Klang Valley, Selangor",
+			}),
+		).toBe("EzCabinet Sdn Bhd, Klang Valley, Selangor"));
 });
 
 describe("seedCompany", () => {
 	it("is this deployment's tenant values, with no SSM number and an 18:00 close", () => {
 		const seed = seedCompany();
-		expect(seed).toMatchObject({ brand: "EzCabinet", orderPrefix: "IC", ssmNumber: null, closeTime: "18:00", address: "EzCabinet Sdn Bhd, Klang Valley, Selangor", lat: 2.9848868 });
+		expect(seed).toMatchObject({
+			brand: "EzCabinet",
+			orderPrefix: "IC",
+			ssmNumber: null,
+			closeTime: "18:00",
+			address: "EzCabinet Sdn Bhd, Klang Valley, Selangor",
+			lat: 2.9848868,
+		});
 	});
 });
 
@@ -188,7 +243,9 @@ it("lastFour keeps the last four digits, and nothing when there are none", () =>
 });
 
 it("mapsLink opens the pin in Google Maps", () =>
-	expect(mapsLink(2.98, 101.86)).toBe("https://www.google.com/maps/search/?api=1&query=2.98,101.86"));
+	expect(mapsLink(2.98, 101.86)).toBe(
+		"https://www.google.com/maps/search/?api=1&query=2.98,101.86",
+	));
 ```
 
 - [ ] **Step 3: Run** `pnpm vitest run src/lib/company/__tests__/details.test.ts`. Expected: FAIL, cannot resolve `../details`.
@@ -223,7 +280,7 @@ it("mapsLink opens the pin in Google Maps", () =>
   - `Delivery.fromWorkshop Boolean @default(false)`
 
 - [ ] **Step 1: Edit `schema.prisma`.** Docblocks:
-  - On the model: append-only; the newest row is live; the history of the address and the bank account *is* this table, the way `CatalogueVersion` is the price history.
+  - On the model: append-only; the newest row is live; the history of the address and the bank account _is_ this table, the way `CatalogueVersion` is the price history.
   - `savedById`: no relation, so deleting a staff row keeps the record; `savedByName` stays, like `Order.paidByName`.
   - `refPrefix`: the prefix live when the row was made; null on rows made before 2026-10-22, which were all made under the seed prefix (`orderRef` / `deliveryRef`).
   - `fromWorkshop`: true when the job leaves from the workshop; such a job carries the workshop's pin and place, and moves with the workshop until it is booked (`lib/company/save.ts`).
@@ -253,7 +310,6 @@ PSQL "SELECT id, \"fromWorkshop\", \"pickupLat\", \"pickupPostcode\", \"refPrefi
 ```
 
 Expected: `legacy-other | f | (null) | (null) | (null)` and `legacy-workshop | t | 2.9848868 | 43800 | (null)`.
-
 - [ ] **Step 6: Check the schema matches the database:** `pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`. Expected: an empty migration (`-- This is an empty migration.`).
 
 - [ ] **Step 7: Clean up and regenerate:** `PSQL "DELETE FROM \"Delivery\" WHERE id LIKE 'legacy-%';"`, then `pnpm exec prisma generate`, then `pnpm typecheck`. Expected: typecheck passes; nothing reads the new columns yet.
@@ -282,22 +338,47 @@ Expected: `legacy-other | f | (null) | (null) | (null)` and `legacy-workshop | t
 ```ts
 it("reads the seed, unsaved, when no row exists", async () => {
 	findFirst.mockResolvedValue(null);
-	expect(await readCompany()).toEqual({ details: seedCompany(), savedAt: null, savedByName: null });
+	expect(await readCompany()).toEqual({
+		details: seedCompany(),
+		savedAt: null,
+		savedByName: null,
+	});
 });
 it("reads the newest row, and who saved it", async () => {
 	const at = new Date("2026-10-22T02:00:00Z");
-	findFirst.mockResolvedValue({ id: "c2", ...testCompany({ brand: "Kabinet Baru" }), savedById: "u1", savedByName: "Aisyah", savedAt: at });
-	expect(await readCompany()).toEqual({ details: testCompany({ brand: "Kabinet Baru" }), savedAt: at, savedByName: "Aisyah" });
-	expect(findFirst).toHaveBeenCalledWith({ orderBy: [{ savedAt: "desc" }, { id: "desc" }] });
+	findFirst.mockResolvedValue({
+		id: "c2",
+		...testCompany({ brand: "Kabinet Baru" }),
+		savedById: "u1",
+		savedByName: "Aisyah",
+		savedAt: at,
+	});
+	expect(await readCompany()).toEqual({
+		details: testCompany({ brand: "Kabinet Baru" }),
+		savedAt: at,
+		savedByName: "Aisyah",
+	});
+	expect(findFirst).toHaveBeenCalledWith({
+		orderBy: [{ savedAt: "desc" }, { id: "desc" }],
+	});
 });
 it("getCompany is the live details alone, so the cache holds only plain values", async () => {
 	findFirst.mockResolvedValue(null);
 	expect(await getCompany()).toEqual(seedCompany());
 });
 it("reserves the seed brand and every brand ever saved, once each", async () => {
-	findMany.mockResolvedValue([{ brand: "EzCabinet" }, { brand: "Kabinet Baru" }]);
-	expect((await getReservedBrands()).sort()).toEqual(["EzCabinet", "Kabinet Baru"]);
-	expect(findMany).toHaveBeenCalledWith({ distinct: ["brand"], select: { brand: true } });
+	findMany.mockResolvedValue([
+		{ brand: "EzCabinet" },
+		{ brand: "Kabinet Baru" },
+	]);
+	expect((await getReservedBrands()).sort()).toEqual([
+		"EzCabinet",
+		"Kabinet Baru",
+	]);
+	expect(findMany).toHaveBeenCalledWith({
+		distinct: ["brand"],
+		select: { brand: true },
+	});
 });
 ```
 
@@ -330,11 +411,29 @@ it("reserves the seed brand and every brand ever saved, once each", async () => 
 ```ts
 describe("orderRef", () => {
 	it("prints the prefix the order was placed under", () =>
-		expect(orderRef({ refPrefix: "PO", number: 14, createdAt: "2026-08-26T07:12:00Z" })).toBe("PO-20260826-014"));
+		expect(
+			orderRef({
+				refPrefix: "PO",
+				number: 14,
+				createdAt: "2026-08-26T07:12:00Z",
+			}),
+		).toBe("PO-20260826-014"));
 	it("keeps the day in Malaysia", () =>
-		expect(orderRef({ refPrefix: "IC", number: 14, createdAt: "2026-08-26T17:30:00Z" })).toBe("IC-20260827-014"));
+		expect(
+			orderRef({
+				refPrefix: "IC",
+				number: 14,
+				createdAt: "2026-08-26T17:30:00Z",
+			}),
+		).toBe("IC-20260827-014"));
 	it("reads an order made before refs were stored under the seed prefix", () =>
-		expect(orderRef({ refPrefix: null, number: 14, createdAt: "2026-08-26T07:12:00Z" })).toBe(`${seedCompany().orderPrefix}-20260826-014`));
+		expect(
+			orderRef({
+				refPrefix: null,
+				number: 14,
+				createdAt: "2026-08-26T07:12:00Z",
+			}),
+		).toBe(`${seedCompany().orderPrefix}-20260826-014`));
 });
 ```
 
@@ -343,7 +442,6 @@ describe("orderRef", () => {
 `src/app/api/orders/__tests__/route.test.ts`: mock `@/lib/company/store` with `getCompany` resolving `testCompany({ orderPrefix: "PO" })`. Add: `it("stamps the order with the prefix live when it is placed")` — assert `tx.order.create` was called with `data` containing `refPrefix: "PO"`. This is the ref snapshot: an order keeps that prefix whatever the company changes to later, because `orderRef` reads only the stored one.
 
 `src/app/api/admin/deliveries/__tests__/route.test.ts`: mock `@/lib/company/store` likewise; assert `create` data contains `refPrefix: "PO"`.
-
 - [ ] **Step 2: Run** `pnpm vitest run src/lib/orders src/lib/logistics/__tests__/publicTracking.test.ts src/app/api/orders/__tests__/route.test.ts src/app/api/admin/deliveries/__tests__/route.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Change `orderRef` and `deliveryRef`.** Their docblocks say the prefix is the stored one, and that null means legacy, read as the seed.
 - [ ] **Step 4: Write the prefix at creation.**
@@ -369,7 +467,12 @@ describe("orderRef", () => {
 - [ ] **Step 1: Write the failing test** in `dictionary.test.ts`. Mock `@/lib/company/store` with a `getCompany` `vi.fn`.
 
 ```ts
-const company = testCompany({ brand: "Kabinet Baru", legalName: "Kabinet Baru Sdn Bhd", orderPrefix: "KB", ssmNumber: "202301012345" });
+const company = testCompany({
+	brand: "Kabinet Baru",
+	legalName: "Kabinet Baru Sdn Bhd",
+	orderPrefix: "KB",
+	ssmNumber: "202301012345",
+});
 
 it("fills the company's facts into the copy", async () => {
 	getCompany.mockResolvedValue(company);
@@ -377,17 +480,22 @@ it("fills the company's facts into the copy", async () => {
 	expect(t.common.brand).toBe("Kabinet Baru");
 	expect(t.landing.footer.email).toBe(company.contactEmail);
 	expect(t.privacy.draft).toContain("Kabinet Baru Sdn Bhd");
-	expect(JSON.stringify(t)).not.toMatch(/\{(brand|legalName|orderPrefix|seller)\}/);
+	expect(JSON.stringify(t)).not.toMatch(
+		/\{(brand|legalName|orderPrefix|seller)\}/,
+	);
 });
-it.each(["en", "ms", "zh"] as const)("%s: the seller block names the seller, email and phone", async (locale) => {
-	getCompany.mockResolvedValue(company);
-	const t = await getDictionary(locale);
-	for (const line of [t.quote.soldBy, t.terms.seller]) {
-		expect(line).toContain(sellerLine(company));
-		expect(line).toContain(company.contactEmail);
-		expect(line).toContain(company.phone);
-	}
-});
+it.each(["en", "ms", "zh"] as const)(
+	"%s: the seller block names the seller, email and phone",
+	async (locale) => {
+		getCompany.mockResolvedValue(company);
+		const t = await getDictionary(locale);
+		for (const line of [t.quote.soldBy, t.terms.seller]) {
+			expect(line).toContain(sellerLine(company));
+			expect(line).toContain(company.contactEmail);
+			expect(line).toContain(company.phone);
+		}
+	},
+);
 it("leaves a customer's own {email} for the page to fill", async () => {
 	getCompany.mockResolvedValue(company);
 	expect((await getDictionary("en")).signIn.codeSent).toContain("{email}");
@@ -474,12 +582,22 @@ const workshop = testCompany();
 describe("workshopPickup", () => {
 	it("gives the workshop's own pin and place when the job leaves from the workshop", () =>
 		expect(workshopPickup(` ${workshop.address} `, null, workshop)).toEqual({
-			pickupAddress: workshop.address, pickupLat: workshop.lat, pickupLng: workshop.lng, pickupGeocodedFor: workshop.address,
-			pickupPostcode: "43800", pickupCity: "Dengkil", pickupState: "MY-10",
+			pickupAddress: workshop.address,
+			pickupLat: workshop.lat,
+			pickupLng: workshop.lng,
+			pickupGeocodedFor: workshop.address,
+			pickupPostcode: "43800",
+			pickupCity: "Dengkil",
+			pickupState: "MY-10",
 		}));
-	it("is null for any other address", () => expect(workshopPickup("12 Jalan Setia, Shah Alam", null, workshop)).toBeNull());
+	it("is null for any other address", () =>
+		expect(
+			workshopPickup("12 Jalan Setia, Shah Alam", null, workshop),
+		).toBeNull());
 	it("is null when the admin typed a pin, even at the workshop's address", () =>
-		expect(workshopPickup(workshop.address, { lat: 3.1, lng: 101.6 }, workshop)).toBeNull());
+		expect(
+			workshopPickup(workshop.address, { lat: 3.1, lng: 101.6 }, workshop),
+		).toBeNull());
 });
 ```
 
@@ -549,7 +667,7 @@ describe("workshopPickup", () => {
   - `start.ts` passes `brand: (await getCompany()).brand`, and `stripe.ts` uses `order.brand`.
   - `admin/layout.tsx` swaps `export const metadata` for `generateMetadata()`, titled `${brand} · Admin`, and passes `brand` to the provider.
   - `AdminHeader` and the login page read `useAdminBrand()`. The login page keeps `tenant.heroFrames`, a switch.
-  - `SetupTwoFactor` sends `issuer: \`${useAdminBrand()} Admin\`` in `twoFactor.enable`.
+  - `SetupTwoFactor` sends `issuer: \`${useAdminBrand()} Admin\``in`twoFactor.enable`.
   - `auth.ts` uses `seedCompany().brand` for `rpName` and the default `issuer`, with a comment giving decision 3's reason.
 - [ ] **Step 4: Run** `pnpm test && pnpm typecheck`. Expected: PASS.
 - [ ] **Step 5: Commit:** `git add -A src`, then `git commit -m "feat(company): admin chrome, 2FA issuer and payment description use the saved name"`
@@ -608,37 +726,89 @@ describe("workshopPickup", () => {
 
 ```ts
 it("saves a change that is not a move without asking, and touches no delivery", async () => {
-	expect(await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, false)).toEqual({ ok: true, repointed: 0 });
-	expect(companyCreate).toHaveBeenCalledWith({ data: { ...prev, phone: "03-5555 1234", savedById: "u1", savedByName: "Aisyah" } });
+	expect(
+		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, false),
+	).toEqual({ ok: true, repointed: 0 });
+	expect(companyCreate).toHaveBeenCalledWith({
+		data: {
+			...prev,
+			phone: "03-5555 1234",
+			savedById: "u1",
+			savedByName: "Aisyah",
+		},
+	});
 	expect(txFindMany).not.toHaveBeenCalled();
 	expect(revalidateTag).toHaveBeenCalledWith("company", { expire: 0 });
 	expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
 });
 it("asks first when a move would touch deliveries, and writes nothing", async () => {
-	planFindMany.mockResolvedValue([{ id: "d1", number: 41, status: "DRAFT", customerName: "Mei" }, { id: "d2", number: 42, status: "BOOKED", customerName: "Ali" }]);
+	planFindMany.mockResolvedValue([
+		{ id: "d1", number: 41, status: "DRAFT", customerName: "Mei" },
+		{ id: "d2", number: 42, status: "BOOKED", customerName: "Ali" },
+	]);
 	const result = await saveCompany(moved, actor, false);
-	expect(result).toEqual({ ok: false, error: "confirm_move", move: { repoint: [expect.objectContaining({ id: "d1" })], booked: [expect.objectContaining({ id: "d2" })] } });
+	expect(result).toEqual({
+		ok: false,
+		error: "confirm_move",
+		move: {
+			repoint: [expect.objectContaining({ id: "d1" })],
+			booked: [expect.objectContaining({ id: "d2" })],
+		},
+	});
 	expect(companyCreate).not.toHaveBeenCalled();
-	expect(planFindMany).toHaveBeenCalledWith(expect.objectContaining({ where: { fromWorkshop: true, status: { in: ["DRAFT", "QUOTED", "BOOKED", "DRIVER_ASSIGNED"] } } }));
+	expect(planFindMany).toHaveBeenCalledWith(
+		expect.objectContaining({
+			where: {
+				fromWorkshop: true,
+				status: { in: ["DRAFT", "QUOTED", "BOOKED", "DRIVER_ASSIGNED"] },
+			},
+		}),
+	);
 });
 it("on confirm, moves every unbooked workshop delivery with the workshop and records it", async () => {
 	txFindMany.mockResolvedValue([{ id: "d1" }]);
 	updateMany.mockResolvedValue({ count: 1 });
-	expect(await saveCompany(moved, actor, true)).toEqual({ ok: true, repointed: 1 });
-	expect(txFindMany).toHaveBeenCalledWith({ where: { fromWorkshop: true, status: { in: ["DRAFT", "QUOTED"] } }, select: { id: true } });
-	expect(updateMany).toHaveBeenCalledWith({ where: { id: "d1", fromWorkshop: true, status: { in: ["DRAFT", "QUOTED"] } }, data: workshopColumns(moved) });
-	expect(eventCreate).toHaveBeenCalledWith({ data: { deliveryId: "d1", source: "ADMIN", actor: "Aisyah", message: `Pickup moved with the workshop: ${prev.address} → ${moved.address}` } });
+	expect(await saveCompany(moved, actor, true)).toEqual({
+		ok: true,
+		repointed: 1,
+	});
+	expect(txFindMany).toHaveBeenCalledWith({
+		where: { fromWorkshop: true, status: { in: ["DRAFT", "QUOTED"] } },
+		select: { id: true },
+	});
+	expect(updateMany).toHaveBeenCalledWith({
+		where: {
+			id: "d1",
+			fromWorkshop: true,
+			status: { in: ["DRAFT", "QUOTED"] },
+		},
+		data: workshopColumns(moved),
+	});
+	expect(eventCreate).toHaveBeenCalledWith({
+		data: {
+			deliveryId: "d1",
+			source: "ADMIN",
+			actor: "Aisyah",
+			message: `Pickup moved with the workshop: ${prev.address} → ${moved.address}`,
+		},
+	});
 });
 it("leaves a delivery booked between the question and the save where it is", async () => {
 	txFindMany.mockResolvedValue([{ id: "d1" }]);
 	updateMany.mockResolvedValue({ count: 0 });
-	expect(await saveCompany(moved, actor, true)).toEqual({ ok: true, repointed: 0 });
+	expect(await saveCompany(moved, actor, true)).toEqual({
+		ok: true,
+		repointed: 0,
+	});
 	expect(eventCreate).not.toHaveBeenCalled();
 });
 it("moves without asking when no delivery is affected", async () => {
 	planFindMany.mockResolvedValue([]);
 	txFindMany.mockResolvedValue([]);
-	expect(await saveCompany(moved, actor, false)).toEqual({ ok: true, repointed: 0 });
+	expect(await saveCompany(moved, actor, false)).toEqual({
+		ok: true,
+		repointed: 0,
+	});
 	expect(companyCreate).toHaveBeenCalled();
 });
 ```
@@ -708,56 +878,92 @@ it("moves without asking when no delivery is affected", async () => {
 
 Field messages (exact copy):
 
-| Field | Message |
-| --- | --- |
-| brand | Between 2 and 60 characters. |
-| legalName | Enter the registered company name. |
-| ssmNumber | Up to 40 characters. |
-| contactEmail | Enter an email address. |
-| phone | Enter a Malaysian number a courier can call. |
-| address | Enter the full address, as on your letterhead. |
-| postcode | Five digits. |
-| city | Enter the town. |
-| state | Choose a state. |
-| lat, lng | The pin must be inside Malaysia. |
-| closeTime | Use 24-hour time, like 18:00. |
-| bankName | Enter the bank's name. |
-| bankAccountName | Enter the name on the account. |
-| bankAccountNumber | Digits only. Spaces and dashes are fine. |
-| orderPrefix | One to five letters or digits. |
-
+| Field             | Message                                        |
+| ----------------- | ---------------------------------------------- |
+| brand             | Between 2 and 60 characters.                   |
+| legalName         | Enter the registered company name.             |
+| ssmNumber         | Up to 40 characters.                           |
+| contactEmail      | Enter an email address.                        |
+| phone             | Enter a Malaysian number a courier can call.   |
+| address           | Enter the full address, as on your letterhead. |
+| postcode          | Five digits.                                   |
+| city              | Enter the town.                                |
+| state             | Choose a state.                                |
+| lat, lng          | The pin must be inside Malaysia.               |
+| closeTime         | Use 24-hour time, like 18:00.                  |
+| bankName          | Enter the bank's name.                         |
+| bankAccountName   | Enter the name on the account.                 |
+| bankAccountNumber | Digits only. Spaces and dashes are fine.       |
+| orderPrefix       | One to five letters or digits.                 |
 - [ ] **Step 1: Write the failing tests.**
 
 `form.test.ts`:
 
 ```ts
 describe("readPin", () => {
-	it("reads latitude, longitude", () => expect(readPin("2.98489, 101.86181")).toEqual({ ok: true, lat: 2.98489, lng: 101.86181 }));
-	it("reads a full Google Maps link", () => expect(readPin("https://www.google.com/maps/place/X/@2.9,101.8,17z/data=!3d2.9848868!4d101.861807")).toMatchObject({ ok: true, lat: 2.9848868 }));
+	it("reads latitude, longitude", () =>
+		expect(readPin("2.98489, 101.86181")).toEqual({
+			ok: true,
+			lat: 2.98489,
+			lng: 101.86181,
+		}));
+	it("reads a full Google Maps link", () =>
+		expect(
+			readPin(
+				"https://www.google.com/maps/place/X/@2.9,101.8,17z/data=!3d2.9848868!4d101.861807",
+			),
+		).toMatchObject({ ok: true, lat: 2.9848868 }));
 	it("explains a short link instead of failing silently", () =>
-		expect(readPin("https://maps.app.goo.gl/abc123")).toEqual({ ok: false, message: "That is a short link. Open it, then copy the full address from the browser bar." }));
+		expect(readPin("https://maps.app.goo.gl/abc123")).toEqual({
+			ok: false,
+			message:
+				"That is a short link. Open it, then copy the full address from the browser bar.",
+		}));
 	it("asks for a pin when the box is empty", () =>
-		expect(readPin(" ")).toEqual({ ok: false, message: "Enter the pin as latitude, longitude, or paste a Google Maps link." }));
+		expect(readPin(" ")).toEqual({
+			ok: false,
+			message:
+				"Enter the pin as latitude, longitude, or paste a Google Maps link.",
+		}));
 	it("says what it could not read", () =>
-		expect(readPin("near the mamak")).toEqual({ ok: false, message: "Could not read a pin from that. Use latitude, longitude, like 2.98489, 101.86181." }));
+		expect(readPin("near the mamak")).toEqual({
+			ok: false,
+			message:
+				"Could not read a pin from that. Use latitude, longitude, like 2.98489, 101.86181.",
+		}));
 });
 describe("fieldErrors", () => {
 	it("words each failing field once", () => {
-		const parsed = companyDetailsSchema.safeParse({ ...testCompany(), ssmNumber: "", postcode: "4380", lat: 101.8 });
+		const parsed = companyDetailsSchema.safeParse({
+			...testCompany(),
+			ssmNumber: "",
+			postcode: "4380",
+			lat: 101.8,
+		});
 		expect(parsed.success).toBe(false);
-		if (!parsed.success) expect(fieldErrors(parsed.error)).toEqual({ postcode: "Five digits.", lat: "The pin must be inside Malaysia." });
+		if (!parsed.success)
+			expect(fieldErrors(parsed.error)).toEqual({
+				postcode: "Five digits.",
+				lat: "The pin must be inside Malaysia.",
+			});
 	});
 });
 describe("gdexNotice", () => {
-	it("says nothing when GDEX is not set up", () => expect(gdexNotice(false, null, "43800")).toBeNull());
-	it("still renders when GDEX did not answer", () => expect(gdexNotice(true, null, "43800")).toEqual({ kind: "unchecked" }));
-	it("warns when GDEX would collect from another postcode", () => expect(gdexNotice(true, "43900", "43800")).toEqual({ kind: "mismatch", gdexPostcode: "43900" }));
-	it("only reminds when they agree", () => expect(gdexNotice(true, "43800", "43800")).toEqual({ kind: "reminder" }));
+	it("says nothing when GDEX is not set up", () =>
+		expect(gdexNotice(false, null, "43800")).toBeNull());
+	it("still renders when GDEX did not answer", () =>
+		expect(gdexNotice(true, null, "43800")).toEqual({ kind: "unchecked" }));
+	it("warns when GDEX would collect from another postcode", () =>
+		expect(gdexNotice(true, "43900", "43800")).toEqual({
+			kind: "mismatch",
+			gdexPostcode: "43900",
+		}));
+	it("only reminds when they agree", () =>
+		expect(gdexNotice(true, "43800", "43800")).toEqual({ kind: "reminder" }));
 });
 ```
 
 `geocode/__tests__/route.test.ts`, with `requireAuth` mocked as in the other admin route tests and `@/lib/logistics/geocode` mocked: a superadmin posting `{ address: "Lot 5, Jalan Kilang 2, Dengkil" }` gets `{ found, fault: null }` with `geocodeAddress` called on the trimmed address; an empty address gets 400.
-
 - [ ] **Step 2: Run** `pnpm vitest run src/app/admin/company src/app/api/admin/company`. Expected: FAIL.
 - [ ] **Step 3: Implement `form.ts` and the geocode route.**
 - [ ] **Step 4: Implement the page.**
@@ -808,7 +1014,6 @@ describe("gdexNotice", () => {
 - Modify: `CLAUDE.md`, `docs/superpowers/plans/2026-10-11-multi-company-rollout.md`, `docs/superpowers/specs/2026-10-19-company-details-design.md` (status line)
 
 **Interfaces:** none new.
-
 - [ ] **Step 1: Write the guard test.** Walk `src` (not `__tests__`, not `src/generated`):
   - The files that import `@/lib/tenant` are exactly `["src/app/admin/login/page.tsx", "src/lib/company/details.ts", "src/lib/finishPhotos.ts"]`. The login page and `finishPhotos` read switches; `details.ts` reads the seed.
   - No file matches `/WORKSHOP_[A-Z]+|BANK_TRANSFER/`.

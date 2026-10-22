@@ -16,11 +16,11 @@ EzCabinet.
 
 **Out, deliberately:**
 
-| Not translated | Why |
-| --- | --- |
+| Not translated                                           | Why                                                                                                                                                                                                                                                                                  |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Catalogue labels — family, door style, room type, finish | Client-authored rows in Postgres. `BC 600mm` and `Rhone Oak` are SKUs and decor names; Malaysian trade buyers read them in English. Translating them means a schema change, three inputs per label in the admin editor, and a forever obligation on the client for every new design. |
-| Tutorial titles and descriptions | Same reason — admin-authored DB content. |
-| `/admin` | Three internal users behind one shared secret. Translating a catalogue editor buys nothing. |
+| Tutorial titles and descriptions                         | Same reason — admin-authored DB content.                                                                                                                                                                                                                                             |
+| `/admin`                                                 | Three internal users behind one shared secret. Translating a catalogue editor buys nothing.                                                                                                                                                                                          |
 
 Locales: `en`, `zh` (Simplified — the Malaysian standard), `ms`.
 Short codes, not `en-US`/`zh-Hans`, because they sit in the URL.
@@ -33,7 +33,7 @@ is small: it does not need a translation pipeline, a CMS, or ICU.
 
 The `next.config` `i18n` key — `locales`, `defaultLocale`, `domains` — is
 **Pages Router only** and does not exist for the App Router. Next.js's
-official App Router guide describes a *pattern*, not an API: a `[lang]`
+official App Router guide describes a _pattern_, not an API: a `[lang]`
 dynamic segment, locale negotiation in the proxy, and dictionary objects.
 
 So the choice was never native-versus-custom. It was: follow the documented
@@ -45,21 +45,21 @@ plural machinery is unused. A dependency and a provider on the surface whose
 weight `CLAUDE.md` says decides whether the lead loads the page at all.
 
 **Rejected — copy in Postgres, editable at `/admin/site-content`:** fails the
-repo's own test — *"if you could delete it and rebuild it from a `git clone`,
-it belongs in the repo."* Also adds a DB read to every public page render.
+repo's own test — _"if you could delete it and rebuild it from a `git clone`,
+it belongs in the repo."_ Also adds a DB read to every public page render.
 
 ## Architecture
 
 ### Native primitives we take
 
-| Primitive | Use |
-| --- | --- |
-| `app/[lang]/` segment | Forwards `lang` to every layout and page |
-| `next/root-params` → `lang()` | Reads the locale in any Server Component or server-side util, no prop drilling |
-| `PageProps<'/[lang]'>` / `LayoutProps<'/[lang]'>` | Global typed route params |
-| `generateStaticParams` | Pre-renders all three locales statically |
-| `hasLocale()` + `notFound()` | `/de/planner` 404s rather than throwing |
-| `Intl.NumberFormat('ms-MY')` | RM prices. No formatting library. |
+| Primitive                                         | Use                                                                            |
+| ------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `app/[lang]/` segment                             | Forwards `lang` to every layout and page                                       |
+| `next/root-params` → `lang()`                     | Reads the locale in any Server Component or server-side util, no prop drilling |
+| `PageProps<'/[lang]'>` / `LayoutProps<'/[lang]'>` | Global typed route params                                                      |
+| `generateStaticParams`                            | Pre-renders all three locales statically                                       |
+| `hasLocale()` + `notFound()`                      | `/de/planner` 404s rather than throwing                                        |
+| `Intl.NumberFormat('ms-MY')`                      | RM prices. No formatting library.                                              |
 
 Verified against the installed Next **16.3.1**: `next/root-params` ships and is
 not behind an experimental flag. One implementation note — its getters are
@@ -75,11 +75,11 @@ and server-side utilities, **not in Client Components**.
 
 Our copy sits on both sides of that line:
 
-| Surface | Kind | How it gets copy |
-| --- | --- | --- |
-| `src/app/page.tsx` (591 lines, most of the copy) | Server | `getDictionary()` directly — zero bundle cost, only HTML ships |
-| `tutorials/page.tsx` | Server | same |
-| `StudioScreen`, `QuoteScreen`, `PlannerScene`, `DimensionField`, `Room` | `'use client'` | `CopyProvider` / `useCopy()` |
+| Surface                                                                 | Kind           | How it gets copy                                               |
+| ----------------------------------------------------------------------- | -------------- | -------------------------------------------------------------- |
+| `src/app/page.tsx` (591 lines, most of the copy)                        | Server         | `getDictionary()` directly — zero bundle cost, only HTML ships |
+| `tutorials/page.tsx`                                                    | Server         | same                                                           |
+| `StudioScreen`, `QuoteScreen`, `PlannerScene`, `DimensionField`, `Room` | `'use client'` | `CopyProvider` / `useCopy()`                                   |
 
 `CopyProvider` is not a preference — `root-params` explicitly does not reach
 client components. It mirrors the existing `CatalogueProvider` / `useCatalogue`
@@ -147,7 +147,7 @@ locales does not actually pay out.
 
 I draft all three locales. English is the source. The client reviews a flagged
 short list — roughly twenty strings where register decides whether the page
-converts: cabinetry trade terms (*kabinet dapur*, *laminat*, *kayu solid*), the
+converts: cabinetry trade terms (_kabinet dapur_, _laminat_, _kayu solid_), the
 price breakdown, the quote CTA, anything legal-adjacent — rather than
 proofreading all 127.
 
@@ -159,13 +159,13 @@ text edit with no code change.
 `lib/copy` is pure data, so it tests like the rest of `lib/planner` — vitest,
 no React.
 
-| Test | Asserts |
-| --- | --- |
-| Key parity | `zh` and `ms` have exactly `en`'s key set. The type gate catches this at compile time; the test catches it in CI where a `// @ts-expect-error` cannot hide it. |
-| No untranslated leakage | No `zh` or `ms` value is byte-identical to its `en` value, except an allow-list (brand name, `RM`, numerals) |
-| Locale negotiation | `Accept-Language` samples → expected locale; unknown → `en` |
-| Proxy isolation | `/admin/*` and `/api/*` are never locale-redirected; admin auth behaviour unchanged |
-| Bad locale | `/de/planner` → 404, not a crash |
+| Test                    | Asserts                                                                                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Key parity              | `zh` and `ms` have exactly `en`'s key set. The type gate catches this at compile time; the test catches it in CI where a `// @ts-expect-error` cannot hide it. |
+| No untranslated leakage | No `zh` or `ms` value is byte-identical to its `en` value, except an allow-list (brand name, `RM`, numerals)                                                   |
+| Locale negotiation      | `Accept-Language` samples → expected locale; unknown → `en`                                                                                                    |
+| Proxy isolation         | `/admin/*` and `/api/*` are never locale-redirected; admin auth behaviour unchanged                                                                            |
+| Bad locale              | `/de/planner` → 404, not a crash                                                                                                                               |
 
 Existing 396 tests must stay green — the planner engine is untouched by this
 work.

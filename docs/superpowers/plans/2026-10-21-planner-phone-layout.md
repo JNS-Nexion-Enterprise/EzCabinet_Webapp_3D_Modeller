@@ -13,7 +13,6 @@
 ## Global Constraints
 
 Amended (Ruling 7): the boundary is spelled `max-[760px]` / `min-[760px]` / `(width < 760px)`; 759 spellings below are superseded.
-
 - Phone = viewport `< 760px`. At `≥ 760px` every planner screen renders byte-for-byte as before (desktop and the `max-lg` tablet stack). Use `max-[759px]:` / `min-[760px]:` variants, never `sm`/`md`/`lg`, for phone-only rules.
 - No new dependencies. No testing-library — logic goes in pure modules with vitest tests; layout is checked in a browser.
 - Copy lives in `src/lib/copy/{en,ms,zh}.ts`; `ms` and `zh` are typed against `Dictionary`, so a missing key fails `pnpm typecheck`. Sentence case. No new user-facing string outside the dictionary.
@@ -92,7 +91,6 @@ describe("doors button", () => {
 
 Run: `pnpm vitest run src/components/planner/__tests__/phoneStudio.test.ts`
 Expected: FAIL, cannot resolve `../studio/phoneStudio`.
-
 - [ ] **Step 3: Implement `phoneStudio.ts`** with the exports above. It is a pure module: no React and no copy. Move `DoorView` and its doc comment out of `StudioScreen.tsx` and import it back there. `doorModes` stays in `StudioScreen`.
 
 - [ ] **Step 4: Implement `usePhone.ts`.** Use `useSyncExternalStore(subscribe, () => matchMedia(PHONE_QUERY).matches, () => false)`, where `subscribe` adds and removes a `change` listener on `matchMedia(PHONE_QUERY)`. The server snapshot is `false` because only the studio uses this, and the studio never renders on the server. Say so in a one-line comment, so nobody reaches for it on the start screen.
@@ -101,7 +99,6 @@ Expected: FAIL, cannot resolve `../studio/phoneStudio`.
 
 Run: `pnpm vitest run src/components/planner/__tests__/phoneStudio.test.ts && pnpm lint && pnpm typecheck`
 Expected: 4 tests pass; lint and typecheck clean.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -128,24 +125,23 @@ git commit -m "feat(planner): phone tab rules and the phone media hook"
   - `Segmented<T extends string>({ label, options: { id: T; label: string }[], value: T, onPickAction: (id: T) => void })`: a `role="group"` with `aria-label={label}`, one button per option with `aria-pressed`.
 - Produces copy, `t.planner.phone`:
 
-| key | en | ms | zh |
-| --- | --- | --- | --- |
-| `backHome` | Home | Utama | 首页 |
-| `backRooms` | Rooms | Bilik | 房间 |
-| `backEdit` | Edit | Sunting | 编辑 |
-| `wallSubtitle` | {m} m wall | Dinding {m} m | {m} 米墙面 |
-| `tapHint` | Tap a cabinet to edit it | Ketik kabinet untuk menyuntingnya | 点击柜子即可编辑 |
-| `tabsLabel` | Studio panels | Panel studio | 工作室面板 |
-| `tabs.selected` | Selected | Dipilih | 已选 |
-| `tabs.add` | Add | Tambah | 添加 |
-| `tabs.room` | Room | Bilik | 房间 |
-| `tabs.run` | Run | Susunan | 布局 |
-| `doorsAria` | Doors: {mode}. Tap to change. | Pintu: {mode}. Ketik untuk tukar. | 门板：{mode}。点击切换。 |
+| key             | en                            | ms                                | zh                       |
+| --------------- | ----------------------------- | --------------------------------- | ------------------------ |
+| `backHome`      | Home                          | Utama                             | 首页                     |
+| `backRooms`     | Rooms                         | Bilik                             | 房间                     |
+| `backEdit`      | Edit                          | Sunting                           | 编辑                     |
+| `wallSubtitle`  | {m} m wall                    | Dinding {m} m                     | {m} 米墙面               |
+| `tapHint`       | Tap a cabinet to edit it      | Ketik kabinet untuk menyuntingnya | 点击柜子即可编辑         |
+| `tabsLabel`     | Studio panels                 | Panel studio                      | 工作室面板               |
+| `tabs.selected` | Selected                      | Dipilih                           | 已选                     |
+| `tabs.add`      | Add                           | Tambah                            | 添加                     |
+| `tabs.room`     | Room                          | Bilik                             | 房间                     |
+| `tabs.run`      | Run                           | Susunan                           | 布局                     |
+| `doorsAria`     | Doors: {mode}. Tap to change. | Pintu: {mode}. Ketik untuk tukar. | 门板：{mode}。点击切换。 |
 
 (`{mode}` is filled with the existing `planner.room.doorsClosed` / `doorsOpen` / `doorsHidden`. "Susunan" and "布局" match the words `planner.run.heading` already uses.)
-
 - [ ] **Step 1: Add the copy** to all three dictionaries, then run `pnpm typecheck && pnpm vitest run src/lib/copy`.
-Expected: clean. The dictionary tests pass, including "has no empty strings".
+  Expected: clean. The dictionary tests pass, including "has no empty strings".
 
 - [ ] **Step 2: Write `PhoneChrome.tsx`** to the spec's values. No `"use client"` directive: it has no hooks, and every caller (`StartScreen`, `StudioScreen`, `QuoteScreen`) is already inside `PlannerApp`'s client tree. No three imports.
 
@@ -193,28 +189,28 @@ git commit -m "feat(planner): phone start screen and the shared phone header and
 // PhoneStudio.tsx — a layout, no state of its own.
 export function PhoneStudio(props: {
 	roomLabel: string;
-	wallMetres: string;          // "4.20", already formatted
-	onBackAction: () => void;    // to the room picker
+	wallMetres: string; // "4.20", already formatted
+	onBackAction: () => void; // to the room picker
 	view: PlannerView;
 	onViewAction: (view: PlannerView) => void;
-	scene: React.ReactNode;      // the one PlannerScene element
-	chip: React.ReactNode;       // run-of-wall · units text
-	footnote: React.ReactNode;   // measure readout, tap hint, or null
+	scene: React.ReactNode; // the one PlannerScene element
+	chip: React.ReactNode; // run-of-wall · units text
+	footnote: React.ReactNode; // measure readout, tap hint, or null
 	doors: { view: DoorView; onCycleAction: () => void; disabled: boolean };
 	measuring: boolean;
 	onMeasureAction: () => void;
 	onResetViewAction: () => void;
 	tab: PhoneTab;
 	onTabAction: (tab: PhoneTab) => void;
-	body: React.ReactNode;       // the active tab's body
-	bar: React.ReactNode;        // <PriceFooter variant="bar" … />
+	body: React.ReactNode; // the active tab's body
+	bar: React.ReactNode; // <PriceFooter variant="bar" … />
 }): React.JSX.Element;
 ```
 
 - [ ] **Step 1: `PriceFooter` bar variant.** `variant="bar"` renders one row, per spec § Studio item 6:
   - on the left, the total as a `<button>` that opens the existing breakdown dialog, holding the "Estimated total" label, the ESTIMATE badge (`t.planner.price.estimateBadge`) and the total;
   - on the right, the CTA (`t.planner.price.cta`, `ctaDisabled` honoured, `phonePrimary` with `px-[22px]` and no `w-full`).
-  `notice` is ignored in this variant. The dialog markup is shared by both variants. The panel variant is untouched.
+    `notice` is ignored in this variant. The dialog markup is shared by both variants. The panel variant is untouched.
 
 - [ ] **Step 2: Split `StudioScreen`'s render into values.** No behaviour changes in this step. Pull these out of the returned tree into `const`s above `return`, and use them in the desktop tree exactly where they were:
   - `scene`: the `<PlannerScene …/>` element. `showWallNumbers` and `showPanPuck` read `roomOpen` (below).
@@ -223,7 +219,7 @@ export function PhoneStudio(props: {
   - `runList`: the `<RunList …/>` at 1279.
   - `finishBody`: the finish block's contents at 1313–1352.
   - `roomOpen = phone ? tab === "room" : panel === "room"`, replacing `panel === "room"` in `wallRanges` and `roomBody`. Both are only built while Room is showing, as now.
-  Run `pnpm typecheck`, then at 1280 × 800 open the studio and check the tool rail, every panel, right-click menu and drag-to-add behave as before.
+    Run `pnpm typecheck`, then at 1280 × 800 open the studio and check the tool rail, every panel, right-click menu and drag-to-add behave as before.
 
 - [ ] **Step 3: Phone state and wiring in `StudioScreen`.**
   - `const phone = usePhone();`
@@ -241,7 +237,7 @@ export function PhoneStudio(props: {
   - The tabs: `Segmented` over `PHONE_TABS`, label `t.planner.phone.tabsLabel`.
   - The body, with padding `16px 16px 140px`.
   - `<PhoneBar>{bar}</PhoneBar>`.
-  Use typed glyphs for the three icon buttons, as `ToolRail` does: `◫` doors, `⟺` measure, `⤾` reset. No icon library.
+    Use typed glyphs for the three icon buttons, as `ToolRail` does: `◫` doors, `⟺` measure, `⤾` reset. No icon library.
 
 - [ ] **Step 5: Return the phone tree** when `phone` is true, building the props from the values in Step 2:
   - `body` per tab:
@@ -253,7 +249,7 @@ export function PhoneStudio(props: {
   - `chip`: the same `runOfWall` text and unit count as the desktop chip.
   - `bar`: `<PriceFooter variant="bar" …/>`, with the same props as the desktop footer.
   - No `onContextMenu` and no drop handlers on phone.
-  The desktop return is otherwise unchanged.
+    The desktop return is otherwise unchanged.
 
 - [ ] **Step 6: Check it in the browser at 390 × 844 and 360 × 640** (`/en/planner`, pick Kitchen, Start planning):
   - Empty room: Room tab active, the language strip hidden, Get a quote disabled. "Next: add cabinets" → Add tab active.

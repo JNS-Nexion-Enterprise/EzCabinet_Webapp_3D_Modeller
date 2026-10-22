@@ -24,18 +24,18 @@
 
 ## File Structure
 
-| File | Responsibility |
-|---|---|
-| Create `src/components/planner/lightingRig.ts` | Pure: `keyLightRig`, `markShadowsDirty` / `takeShadowFrame`, `syncShadowFlags`, `qualityFromSearch`, `SHADOW_MAP`, `SHADOW_MAP_SIZE`, `Quality` |
-| Create `src/components/planner/__tests__/lightingRig.test.ts` | Tests for the above |
-| Create `src/components/planner/Lighting.tsx` | `<StudioLighting />`: tone mapping, environment, lights, shadow redraw |
-| Create `src/components/planner/HighQualityEffects.tsx` | N8AO + neutral tone mapping through `EffectComposer` (default export, lazy) |
-| Modify `src/components/planner/PlannerScene.tsx` | Use `<StudioLighting />`, `shadows` prop, quality tier, blob-pool switch, delete `WallShadow`, UI `toneMapped={false}`, dirty on drag |
-| Modify `src/components/planner/Room.tsx` | Walls/floor tagged receive-only |
-| Modify `src/components/planner/Hinge.tsx`, `Slide.tsx` | Mark shadows dirty while animating |
-| Modify `src/components/planner/DesignedCabinet.tsx` | Mark shadows dirty when a drafted mesh arrives |
-| Modify `src/components/planner/MeasureOverlay.tsx`, `PositionDimensions.tsx`, `Cabinet.tsx` | `toneMapped={false}` on overlay materials |
-| Modify `CLAUDE.md` | Replace the "No real-time shadows" rule |
+| File                                                                                        | Responsibility                                                                                                                                  |
+| ------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Create `src/components/planner/lightingRig.ts`                                              | Pure: `keyLightRig`, `markShadowsDirty` / `takeShadowFrame`, `syncShadowFlags`, `qualityFromSearch`, `SHADOW_MAP`, `SHADOW_MAP_SIZE`, `Quality` |
+| Create `src/components/planner/__tests__/lightingRig.test.ts`                               | Tests for the above                                                                                                                             |
+| Create `src/components/planner/Lighting.tsx`                                                | `<StudioLighting />`: tone mapping, environment, lights, shadow redraw                                                                          |
+| Create `src/components/planner/HighQualityEffects.tsx`                                      | N8AO + neutral tone mapping through `EffectComposer` (default export, lazy)                                                                     |
+| Modify `src/components/planner/PlannerScene.tsx`                                            | Use `<StudioLighting />`, `shadows` prop, quality tier, blob-pool switch, delete `WallShadow`, UI `toneMapped={false}`, dirty on drag           |
+| Modify `src/components/planner/Room.tsx`                                                    | Walls/floor tagged receive-only                                                                                                                 |
+| Modify `src/components/planner/Hinge.tsx`, `Slide.tsx`                                      | Mark shadows dirty while animating                                                                                                              |
+| Modify `src/components/planner/DesignedCabinet.tsx`                                         | Mark shadows dirty when a drafted mesh arrives                                                                                                  |
+| Modify `src/components/planner/MeasureOverlay.tsx`, `PositionDimensions.tsx`, `Cabinet.tsx` | `toneMapped={false}` on overlay materials                                                                                                       |
+| Modify `CLAUDE.md`                                                                          | Replace the "No real-time shadows" rule                                                                                                         |
 
 ---
 
@@ -46,19 +46,15 @@
 The before/after comparison needs a "before". Nothing is changed in this task.
 
 **Files:** none (outputs go to the session scratchpad, not the repo)
-
 - [ ] **Step 1: Start the app**
 
 Run: `pnpm dev` (background). Open `http://localhost:3000/en/planner`.
-
 - [ ] **Step 2: Build the reference scene**
 
 Pick the kitchen. Place a straight run of at least three base units with wall units above, including one glass-door design if the catalogue has one. Note the finish in use.
-
 - [ ] **Step 3: Capture screenshots**
 
 Capture the 3D, elevation and plan views. Then switch the room to L-shaped in the Room panel and capture 3D once more. Save them as `before-3d.png`, `before-elevation.png`, `before-plan.png`, `before-l.png` in the scratchpad directory.
-
 - [ ] **Step 4: Record baseline frame times**
 
 Chrome DevTools → Performance, 4× CPU throttle, mobile viewport (e.g. Pixel 7). Record 5 s of idle orbiting and 5 s of dragging a base unit along the wall. Write the average frame time for each into `baseline.txt` in the scratchpad.
@@ -183,7 +179,7 @@ Replace this block (comment plus the two lights):
 with:
 
 ```tsx
-			<StudioLighting />
+<StudioLighting />;
 ```
 
 and add the import next to the other local imports:
@@ -196,7 +192,6 @@ import { StudioLighting } from "./Lighting";
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
-
 - [ ] **Step 4: Tune by eye**
 
 With `pnpm dev` running, rebuild the Task 1 scene. Adjust `ENVIRONMENT_INTENSITY` (range 0.5–1.2), `AMBIENT_INTENSITY` (0–0.4) and `KEY_INTENSITY` (1.0–2.5) until:
@@ -224,42 +219,45 @@ Tone mapping applies to `meshBasicMaterial` and line materials too. UI geometry 
 Example, `MoveHandle`:
 
 ```tsx
-				<meshBasicMaterial color="#1f5138" toneMapped={false} />
+<meshBasicMaterial color="#1f5138" toneMapped={false} />;
 ```
 
 Example, `MeasureOverlay` glyph:
 
 ```tsx
-			<meshBasicMaterial
-				color={color}
-				transparent={opacity < 1}
-				opacity={opacity}
-				depthTest={false}
-				toneMapped={false}
-			/>
+<meshBasicMaterial
+	color={color}
+	transparent={opacity < 1}
+	opacity={opacity}
+	depthTest={false}
+	toneMapped={false}
+/>;
 ```
 
 Example, lines and edges (drei passes material props through):
 
 ```tsx
-			<Line points={[start, end]} color={LINE_COLOR} lineWidth={2} toneMapped={false} />
+<Line
+	points={[start, end]}
+	color={LINE_COLOR}
+	lineWidth={2}
+	toneMapped={false}
+/>;
 ```
 
 ```tsx
-					<Edges
-						color={SELECTION_COLOR}
-						lineWidth={SELECTION_LINE_PX}
-						toneMapped={false}
-					/>
+<Edges
+	color={SELECTION_COLOR}
+	lineWidth={SELECTION_LINE_PX}
+	toneMapped={false}
+/>;
 ```
 
 Find every one with: `grep -n "meshBasicMaterial\|<Line\|<Edges" src/components/planner/*.tsx`
-
 - [ ] **Step 2: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass. If `typecheck` rejects `toneMapped` on `Line` or `Edges`, read drei's `LineProps` / `EdgesProps` in `node_modules/@react-three/drei/core/` for how that version passes material props, apply `toneMapped: false` that way, and note which component needed it.
-
 - [ ] **Step 3: Check colours by eye**
 
 Select a cabinet, open the measure tool, show the position dimensions. The selection outline, move handle, pan puck and dimension lines match the green `#1f5138` of the DOM labels beside them.
@@ -269,19 +267,15 @@ Select a cabinet, open the measure tool, show the position dimensions. The selec
 ### Task 4: Phase 1 verification
 
 **Files:** none
-
 - [ ] **Step 1: After screenshots**
 
 Repeat Task 1 Steps 2–3 and save `after1-*.png` beside the baselines. Compare in pairs: finishes truer to swatch, glass/handle highlights present, no clipped whites.
-
 - [ ] **Step 2: Functional regression pass (spec "Must not break")**
 
 On `pnpm dev`, each must behave exactly as on `main`: select, multi-select, drag along a wall, drag to another wall, drop free-standing, rotate a free cabinet, resize, measure (snap points land on the same edges), doors open, doors hidden, wall paint, room shape rect ↔ L, wall length edit, 3D / elevation / plan views, quote screen preview.
-
 - [ ] **Step 3: Performance**
 
 Repeat Task 1 Step 4. Pass: idle and drag frame times within noise of `baseline.txt` (Phase 1 adds no per-frame work).
-
 - [ ] **Step 4: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
@@ -454,7 +448,6 @@ describe("qualityFromSearch", () => {
 
 Run: `pnpm vitest run src/components/planner/__tests__/lightingRig.test.ts`
 Expected: FAIL — cannot resolve `../lightingRig`.
-
 - [ ] **Step 3: Write `lightingRig.ts`**
 
 ```ts
@@ -600,7 +593,6 @@ export function qualityFromSearch(
 
 Run: `pnpm vitest run src/components/planner/__tests__/lightingRig.test.ts`
 Expected: PASS, all tests.
-
 - [ ] **Step 5: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
@@ -732,46 +724,45 @@ const SHADOW_RADIUS = 4;
 In the `<Canvas>` props, add:
 
 ```tsx
-			// Redrawn on demand, never per frame — see `SHADOW_MAP`.
-			shadows={SHADOW_MAP}
+// Redrawn on demand, never per frame — see `SHADOW_MAP`.
+shadows = { SHADOW_MAP };
 ```
 
 Replace `<StudioLighting />` with:
 
 ```tsx
-			<StudioLighting
-				plan={layout.plan}
-				ceilingHeightMm={layout.ceilingHeightMm}
-				quality={quality}
-			/>
+<StudioLighting
+	plan={layout.plan}
+	ceilingHeightMm={layout.ceilingHeightMm}
+	quality={quality}
+/>;
 ```
 
 Until Task 8, declare `quality` as a constant above the `return` of `PlannerScene`:
 
 ```tsx
-	const quality: Quality = "low";
+const quality: Quality = "low";
 ```
 
 Add a dirty effect beside the other hooks in `PlannerScene` (after `freeRuns` is fine):
 
 ```tsx
-	// Anything that moves, adds or removes a cabinet changes what casts. The
-	// door animation and a drag mark their own frames as they run.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: the deps are the triggers, not inputs
-	useEffect(() => {
-		markShadowsDirty();
-	}, [layout, openIds, doorsHidden, finish]);
+// Anything that moves, adds or removes a cabinet changes what casts. The
+// door animation and a drag mark their own frames as they run.
+// biome-ignore lint/correctness/useExhaustiveDependencies: the deps are the triggers, not inputs
+useEffect(() => {
+	markShadowsDirty();
+}, [layout, openIds, doorsHidden, finish]);
 ```
 
 Imports: `import { markShadowsDirty, type Quality, SHADOW_MAP } from "./lightingRig";`
-
 - [ ] **Step 3: Mark dirty during a drag**
 
 In `Run`, in `onDragMove.current = (event) => { … }`, right after `if (!drag) return;`:
 
 ```tsx
-		// The cabinet is moved imperatively below, not through a re-render.
-		markShadowsDirty();
+// The cabinet is moved imperatively below, not through a re-render.
+markShadowsDirty();
 ```
 
 - [ ] **Step 4: Mark dirty while doors animate**
@@ -779,40 +770,38 @@ In `Run`, in `onDragMove.current = (event) => { … }`, right after `if (!drag) 
 `Hinge.tsx`, in `useFrame`, after the `group.position.x = …` line that follows the `MathUtils.damp` call:
 
 ```tsx
-		markShadowsDirty();
+markShadowsDirty();
 ```
 
 and inside the settle branch, after landing on the target (inside `if (current !== target) { … }`):
 
 ```tsx
-				markShadowsDirty();
+markShadowsDirty();
 ```
 
 `Slide.tsx`, same two places: after `group.position.z = MathUtils.damp(…)`, and inside `if (current !== target)` (turn the one-liner into a block):
 
 ```tsx
-			if (current !== target) {
-				group.position.z = target;
-				markShadowsDirty();
-			}
+if (current !== target) {
+	group.position.z = target;
+	markShadowsDirty();
+}
 ```
 
 Both files: `import { markShadowsDirty } from "./lightingRig";`
-
 - [ ] **Step 5: Mark dirty when a drafted mesh arrives**
 
 `DesignedCabinet.tsx`, in `useDesignMesh`, after the existing `useEffect`:
 
 ```tsx
-	// The drafted mesh lands a frame or more after the layout that asked for
-	// it, with no layout change to redraw the shadows.
-	useEffect(() => {
-		if (groups) markShadowsDirty();
-	}, [groups]);
+// The drafted mesh lands a frame or more after the layout that asked for
+// it, with no layout change to redraw the shadows.
+useEffect(() => {
+	if (groups) markShadowsDirty();
+}, [groups]);
 ```
 
 Import: `import { markShadowsDirty } from "./lightingRig";`
-
 - [ ] **Step 6: Walls and floor receive only**
 
 `Room.tsx`: add `userData={RECEIVE_ONLY}` to the floor `<mesh rotation={[-Math.PI / 2, 0, 0]}>` and to each wall `<mesh …>`, and define once near the colour constants:
@@ -828,7 +817,6 @@ const RECEIVE_ONLY = { shadow: "receive" };
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
-
 - [ ] **Step 8: Check by eye, and tune**
 
 `pnpm dev`, the Task 1 scene:
@@ -854,7 +842,6 @@ Expected: all pass.
 - [ ] **Step 1: Delete `WallShadow`**
 
 Delete the `WallShadow` function with its doc comment, the `SHADOW_VIEW` constant with its comment, and the whole wall-unit branch at the end of `ContactShadows` (the comment "Wall units get a soft patch on the wall itself…" and the `positionsOf(layout, "wall").map(…<WallShadow …/>)` block). Remove imports left unused (`MeshBasicMaterial`, `PlaneGeometry`, and `useFrame` / `Vector3` only if nothing else uses them — `pnpm lint` reports unused imports).
-
 - [ ] **Step 2: Fainter floor pools**
 
 In `ContactShadows`, change the floor `<Shadow>`'s `opacity={0.5}` to `opacity={0.35}`, and update its doc comment's first line to:
@@ -867,19 +854,20 @@ In `ContactShadows`, change the floor `<Shadow>`'s `opacity={0.5}` to `opacity={
 ```
 
 (keep the rest of that comment about the pool being wider than the cabinet).
-
 - [ ] **Step 3: A switch for the pools**
 
 Add `blobShadows: boolean` to `Run`'s props (destructure it beside `freeStanding`), and wrap both `<ContactShadows …/>` in `Run`:
 
 ```tsx
-			{blobShadows && (
-				<ContactShadows
-					layout={stayLayout}
-					runWidthMm={runWidthMm}
-					engine={engine}
-				/>
-			)}
+{
+	blobShadows && (
+		<ContactShadows
+			layout={stayLayout}
+			runWidthMm={runWidthMm}
+			engine={engine}
+		/>
+	);
+}
 ```
 
 (and the same for the `floatLayout` one). At both `<Run` call sites in `PlannerScene`:
@@ -892,7 +880,6 @@ Add `blobShadows: boolean` to `Run`'s props (destructure it beside `freeStanding
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
-
 - [ ] **Step 5: Check by eye**
 
 Wall units: the real shadow shows below them on the wall; from a side angle no grey smudge floats on bare wall. Floor units: the pool still grounds them, lighter than before.
@@ -912,19 +899,19 @@ Wall units: the real shadow shows below them on the wall; from a side angle no g
 Replace `const quality: Quality = "low";` with:
 
 ```tsx
-	// Every device starts on `low` and earns `high` by measured frame rate —
-	// no user-agent guessing, so a strong phone gets it and a weak laptop does
-	// not. View state: never on the layout, never stored.
-	const [forced] = useState(() =>
-		typeof window === "undefined"
-			? null
-			: qualityFromSearch(
-					window.location.search,
-					process.env.NODE_ENV !== "production",
-				),
-	);
-	const [measured, setMeasured] = useState<Quality>("low");
-	const quality = forced ?? measured;
+// Every device starts on `low` and earns `high` by measured frame rate —
+// no user-agent guessing, so a strong phone gets it and a weak laptop does
+// not. View state: never on the layout, never stored.
+const [forced] = useState(() =>
+	typeof window === "undefined"
+		? null
+		: qualityFromSearch(
+				window.location.search,
+				process.env.NODE_ENV !== "production",
+			),
+);
+const [measured, setMeasured] = useState<Quality>("low");
+const quality = forced ?? measured;
 ```
 
 - [ ] **Step 2: Mount the monitor**
@@ -932,25 +919,25 @@ Replace `const quality: Quality = "low";` with:
 Inside `<Canvas>`, right after `<StudioLighting …/>`:
 
 ```tsx
-			{/* Flip-flopping means the device sits on the line: settle on `low`
-			    for the session rather than swapping AO in and out. */}
-			<PerformanceMonitor
-				flipflops={3}
-				onIncline={() => setMeasured("high")}
-				onDecline={() => setMeasured("low")}
-				onFallback={() => setMeasured("low")}
-			/>
+{
+	/* Flip-flopping means the device sits on the line: settle on `low`
+			    for the session rather than swapping AO in and out. */
+}
+<PerformanceMonitor
+	flipflops={3}
+	onIncline={() => setMeasured("high")}
+	onDecline={() => setMeasured("low")}
+	onFallback={() => setMeasured("low")}
+/>;
 ```
 
 Add `PerformanceMonitor` to the existing `@react-three/drei` import, and `qualityFromSearch` to the `./lightingRig` import.
 
 Note — redraw on tier change needs nothing extra: `StudioLighting`'s refit effect depends on `mapSize`, which changes with the tier, and it calls `markShadowsDirty()`.
-
 - [ ] **Step 3: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
-
 - [ ] **Step 4: Check the tiers**
 
 `/en/planner?quality=high`: shadows sharper (2048²), floor pools gone. `?quality=low`: 1024², pools present. No param on a desktop: starts `low`, moves to `high` within a few seconds (confirm by the pools vanishing).
@@ -968,7 +955,6 @@ Expected: all pass.
 
 Run: `pnpm add @react-three/postprocessing postprocessing`
 Expected: `@react-three/postprocessing` 3.x and `postprocessing` 6.36+ in `dependencies`; no peer warnings about `three` or `@react-three/fiber`.
-
 - [ ] **Step 2: Create `HighQualityEffects.tsx`**
 
 ```tsx
@@ -1012,18 +998,19 @@ const HighQualityEffects = lazy(() => import("./HighQualityEffects"));
 Add `lazy` and `Suspense` to the `react` import. Inside `<Canvas>`, after `<PerformanceMonitor …/>`:
 
 ```tsx
-			{quality === "high" && (
-				<Suspense fallback={null}>
-					<HighQualityEffects />
-				</Suspense>
-			)}
+{
+	quality === "high" && (
+		<Suspense fallback={null}>
+			<HighQualityEffects />
+		</Suspense>
+	);
+}
 ```
 
 - [ ] **Step 4: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint && pnpm build`
 Expected: all pass. In the `pnpm build` output, confirm `postprocessing` is not in the planner route's first-load JS (it lands in a separate async chunk).
-
 - [ ] **Step 5: Check by eye and on the network tab**
 
 - `?quality=high`: soft darkening in the creases (cabinet/wall, cabinet/floor, between neighbours, under wall units). The network tab shows the postprocessing chunk load.
@@ -1066,24 +1053,19 @@ Expected: pass.
 ### Task 11: Phase 2 verification
 
 **Files:** none
-
 - [ ] **Step 1: After screenshots**
 
 Repeat Task 1 Steps 2–3 at `?quality=low` and `?quality=high`, saving `after2-low-*.png` and `after2-high-*.png`. Compare with the baselines and with `after1-*`.
-
 - [ ] **Step 2: Functional regression pass**
 
 Repeat Task 4 Step 2 in full, on both tiers. Also: in elevation and plan views, check whether shadows or AO clutter the technical drawing. If they do, report it to the user with screenshots rather than deciding alone — the spec allows switching them off in those views, but it is a visible change.
-
 - [ ] **Step 3: Performance**
 
 Repeat Task 1 Step 4 at `?quality=low`. Pass: idle orbit within noise of `baseline.txt`; drag at ≥ ~30 fps (≤ 33 ms/frame). Record the numbers for the PR description.
-
 - [ ] **Step 4: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint && pnpm build`
 Expected: all pass.
-
 - [ ] **Step 5: Hand back**
 
 Report to the user: what changed, the tuned constants, the frame-time numbers, the screenshot paths, any overlay needing `depthWrite={false}`, and the elevation/plan call if one arose. The user commits and pushes.

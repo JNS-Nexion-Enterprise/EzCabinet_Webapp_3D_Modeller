@@ -62,19 +62,19 @@ already done.**
 
 ## What is edited
 
-| Field | Today | Validated as |
-| --- | --- | --- |
-| Brand name | `tenant.brand` | required, 2–60 chars |
-| Legal name | `tenant.legalName` | required |
-| SSM registration number | missing | optional; shown in the seller block when set |
-| Contact email | `tenant.contactEmail` | email |
-| Phone | `tenant.workshopPhone` | must normalise with `toE164` (`lib/logistics/phone.ts`) |
-| Address line | `tenant.workshopAddress` | required |
-| Postcode, city, state | `tenant.workshopPostcode/City/State` | 5-digit postcode; state an ISO 3166-2:MY code (`lib/logistics/malaysia.ts`) |
-| Map pin | `tenant.workshopPin` | required lat/lng inside Malaysia |
-| Courier close time | `WORKSHOP_CLOSE_TIME` | `HH:MM`, Malaysia time |
-| Bank name, account name, account number | `BANK_TRANSFER` | account number digits only |
-| Order prefix | `tenant.orderPrefix` | 1–5 uppercase letters/digits |
+| Field                                   | Today                                | Validated as                                                                |
+| --------------------------------------- | ------------------------------------ | --------------------------------------------------------------------------- |
+| Brand name                              | `tenant.brand`                       | required, 2–60 chars                                                        |
+| Legal name                              | `tenant.legalName`                   | required                                                                    |
+| SSM registration number                 | missing                              | optional; shown in the seller block when set                                |
+| Contact email                           | `tenant.contactEmail`                | email                                                                       |
+| Phone                                   | `tenant.workshopPhone`               | must normalise with `toE164` (`lib/logistics/phone.ts`)                     |
+| Address line                            | `tenant.workshopAddress`             | required                                                                    |
+| Postcode, city, state                   | `tenant.workshopPostcode/City/State` | 5-digit postcode; state an ISO 3166-2:MY code (`lib/logistics/malaysia.ts`) |
+| Map pin                                 | `tenant.workshopPin`                 | required lat/lng inside Malaysia                                            |
+| Courier close time                      | `WORKSHOP_CLOSE_TIME`                | `HH:MM`, Malaysia time                                                      |
+| Bank name, account name, account number | `BANK_TRANSFER`                      | account number digits only                                                  |
+| Order prefix                            | `tenant.orderPrefix`                 | 1–5 uppercase letters/digits                                                |
 
 One phone serves the driver's pickup contact and the "call us" line in mail,
 as it does today.
@@ -85,12 +85,12 @@ as it does today.
   `lib/auth/permissions.ts`'s `SUPERADMIN_ONLY`. The save route passes
   `{ stepUp: true }` to `withAuth`, like Mark paid and Refund, and joins the
   step-up coverage test. The tab sits beside People in `SUPERADMIN_TABS`.
-  *(Claude's call; the owner did not object.)*
+  _(Claude's call; the owner did not object.)_
 - **A bank change is announced.** Saving a change to any bank field mails
   every active superadmin: who changed it, when (Malaysia time), bank name
   and the last four digits of the old and new account. No link, same reason
   as `lib/auth/passkeyMail.ts`. Through `lib/email/layout.ts`, so the
-  one-look test holds. *(Claude's call.)*
+  one-look test holds. _(Claude's call.)_
 - **References are fixed when they are made.** `Order` and `Delivery` each
   gain a stored `ref` written at creation from the prefix live at that
   moment. `lib/orders/ref.ts` and `lib/logistics/publicTracking.ts` stop
@@ -98,8 +98,8 @@ as it does today.
   page, track page, mail, WhatsApp variables, Stripe metadata, refunds)
   reads the stored one. The migration backfills existing rows with each
   deployment's own current prefix, not a literal `IC` — the demo database
-  holds `PO-` orders. A prefix change affects new orders only. *(Owner's
-  decision.)*
+  holds `PO-` orders. A prefix change affects new orders only. _(Owner's
+  decision.)_
 - **A delivery records where it leaves from.** A delivery already stores
   `pickupAddress`, `pickupLat/Lng` and `pickupPostcode/City/State`. It gains
   a `fromWorkshop` flag, and creating one from the workshop always writes
@@ -108,8 +108,8 @@ as it does today.
   and those fallbacks go. The migration sets `fromWorkshop` and fills the
   pin and place on existing rows whose pickup is today's workshop address,
   before the fallbacks are removed.
-- **Unbooked workshop deliveries move with the workshop.** *(Owner's
-  decision.)* Deliveries are created when an order is paid and wait 4–6
+- **Unbooked workshop deliveries move with the workshop.** _(Owner's
+  decision.)_ Deliveries are created when an order is paid and wait 4–6
   weeks in production, so on moving day most open jobs still point at the
   old building. Saving a changed address, pin or place re-points every
   delivery that is `fromWorkshop` and not yet booked at a carrier: address,
@@ -119,14 +119,14 @@ as it does today.
   jobs are left alone — the carrier already has a pickup — and the page
   lists those too, so staff know which to rebook or phone in. A job whose
   pickup an admin typed by hand is not `fromWorkshop` and never moves.
-- **GDEX is warned about, not integrated.** *(Owner's decision.)* GDEX
+- **GDEX is warned about, not integrated.** _(Owner's decision.)_ GDEX
   quotes and books from the sender on EzCabinet's own GDEX account profile
   (`GetUserDetails` in `adapters/gdex.ts`) and ignores the app's address.
   `/admin/company` says the GDEX profile has to be updated in GDEX, and
   shows a mismatch warning when GDEX is configured and its profile postcode
   differs from the saved one. GDEX's booking reference (`ICB-${job.number}`
-  today) uses the delivery's stored ref instead of a literal. *(Claude's
-  call.)*
+  today) uses the delivery's stored ref instead of a literal. _(Claude's
+  call.)_
 - **Bank details are live, not snapshotted.** An unpaid order's page shows
   the current account — the old one may be closed. Mail already sent keeps
   what it said; accepted.
@@ -149,12 +149,11 @@ as it does today.
 - **Previous brand names stay reserved.** `customerName.ts` refuses a
   customer name that poses as the business; it refuses the current brand
   and every past brand in the table, and drops the literal `"ezcabinet"`.
-  *(Claude's call.)*
+  _(Claude's call.)_
 
 ## Every reader that moves
 
 From `grep` on 2026-10-19:
-
 - Carriers: `adapters/lalamove.ts`, `easyparcel.ts`, `fedex.ts` (brand,
   legal name, phone, close time, pickup place), `api/admin/deliveries`,
   `admin/logistics` (default pickup address).
@@ -199,7 +198,7 @@ From `grep` on 2026-10-19:
 
 ## Left to the builder
 
-- Every field is required except the SSM number. *(Claude's call.)*
+- Every field is required except the SSM number. _(Claude's call.)_
 - Caching: how the saved row is read per request without a query on every
   render, and how a save invalidates it — following the
   `unstable_cache`/`revalidateTag` pattern in `lib/catalogue/store.ts` —
