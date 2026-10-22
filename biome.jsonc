@@ -12,6 +12,9 @@
 			"!public",
 			// pnpm writes it; anything else formatting it is undone on install.
 			"!pnpm-lock.yaml",
+			// The design-sync tool's local cache. It ignores itself with a nested
+			// .gitignore, which Biome's VCS integration does not read.
+			"!.design-sync/.cache",
 			// Biome 2.6.2's Markdown formatter re-pads these tables differently on
 			// every pass, so they never settle. Drop these lines once it does.
 			"!docs/superpowers/plans/2026-09-06-easyparcel-integration.md",
