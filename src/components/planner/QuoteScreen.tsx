@@ -18,6 +18,7 @@ import type { RoomLayout } from "@/lib/planner/room";
 import { clearDraft } from "@/lib/plannerDraft";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
+import { PhoneHeader, phoneBar, phonePrimary } from "./PhoneChrome";
 import { PlannerHeader } from "./PlannerHeader";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
 import { type StripePayApi, StripePayment } from "./StripePayment";
@@ -37,8 +38,8 @@ const PlannerScene = dynamic(() => import("./PlannerScene"), {
 });
 
 const FIELD =
-	// 16px below `sm`: iOS Safari zooms the page on focusing anything smaller.
-	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 text-base text-[#171717] sm:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
+	// 16px below 760 (not `sm`, which would leave 640-759 at 14): iOS Safari zooms the page on focusing anything smaller.
+	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 max-[760px]:min-h-[50px] max-[760px]:rounded-[10px] max-[760px]:px-3.5 text-base text-[#171717] min-[760px]:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
 const fieldClass = (error: string | undefined) =>
 	`${FIELD} ${error ? "border-[1.5px] border-[#b42318]" : "border border-[#d4d4d4]"}`;
 
@@ -370,39 +371,52 @@ export function QuoteScreen({
 	const LABEL = "font-medium text-[#404040] text-[12px]";
 
 	return (
-		<main className="flex h-[calc(100dvh-2.25rem)] flex-col bg-[#e9e7e3] text-[#171717]">
-			<PlannerHeader
-				trail={[
-					{ label: t.common.brand, href: `/${locale}` },
-					{ label: t.planner.crumbs.roomPlanner, onClick: onBackToStartAction },
-					{ label: t.planner.crumbs.quote },
-				]}
-			>
-				<button
-					type="button"
-					onClick={onBackToStudioAction}
-					className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 font-medium text-[12px] hover:border-[#a3a3a3] hover:bg-[#faf9f7]"
+		<main className="flex h-[calc(100dvh-2.25rem)] flex-col bg-[#e9e7e3] text-[#171717] max-[760px]:h-auto max-[760px]:min-h-dvh max-[760px]:bg-white">
+			<PhoneHeader
+				className="min-[760px]:hidden"
+				back={{
+					label: t.planner.phone.backEdit,
+					onClick: onBackToStudioAction,
+				}}
+				title={t.planner.crumbs.quote}
+			/>
+			<div className="contents max-[760px]:hidden">
+				<PlannerHeader
+					trail={[
+						{ label: t.common.brand, href: `/${locale}` },
+						{
+							label: t.planner.crumbs.roomPlanner,
+							onClick: onBackToStartAction,
+						},
+						{ label: t.planner.crumbs.quote },
+					]}
 				>
-					<svg
-						width="12"
-						height="12"
-						viewBox="0 0 12 12"
-						fill="none"
-						aria-hidden
+					<button
+						type="button"
+						onClick={onBackToStudioAction}
+						className="flex min-h-9 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 font-medium text-[12px] hover:border-[#a3a3a3] hover:bg-[#faf9f7]"
 					>
-						<path
-							d="M7.5 2.5 4 6l3.5 3.5"
-							stroke="currentColor"
-							strokeWidth="1.4"
-							strokeLinecap="round"
-							strokeLinejoin="round"
-						/>
-					</svg>
-					{t.quote.backToEditing}
-				</button>
-			</PlannerHeader>
+						<svg
+							width="12"
+							height="12"
+							viewBox="0 0 12 12"
+							fill="none"
+							aria-hidden
+						>
+							<path
+								d="M7.5 2.5 4 6l3.5 3.5"
+								stroke="currentColor"
+								strokeWidth="1.4"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+							/>
+						</svg>
+						{t.quote.backToEditing}
+					</button>
+				</PlannerHeader>
+			</div>
 
-			<div className="flex min-h-0 flex-1 justify-center overflow-y-auto px-4 pt-10 pb-14 sm:px-7">
+			<div className="flex min-h-0 flex-1 justify-center overflow-y-auto px-4 pt-10 pb-14 sm:px-7 max-[760px]:overflow-visible max-[760px]:px-5 max-[760px]:pt-5 max-[760px]:pb-[120px]">
 				<div className="flex w-full max-w-[1040px] flex-wrap items-start gap-8">
 					<div className="min-w-0 flex-[1_1_440px]">
 						<h2 className="mb-1.5 font-semibold text-[22px]">
@@ -557,11 +571,11 @@ export function QuoteScreen({
 									/>
 									{errorText("email")}
 								</label>
-								<label className="flex min-h-9 cursor-pointer items-start gap-[9px]">
+								<label className="flex min-h-9 cursor-pointer items-start gap-[9px] max-[760px]:min-h-11 max-[760px]:items-center">
 									<input
 										name="whatsappOptIn"
 										type="checkbox"
-										className="mt-px h-4 w-4 shrink-0 accent-[#171717]"
+										className="mt-px h-4 w-4 shrink-0 accent-[#171717] max-[760px]:mt-0 max-[760px]:size-[22px]"
 									/>
 									<span className="text-[#5c574e] text-[12px] leading-[17px]">
 										{t.quote.whatsappOptIn}
@@ -616,7 +630,7 @@ export function QuoteScreen({
 							)}
 
 							<div className="flex flex-col gap-3 border-[#d9d6d0] border-t pt-5">
-								<label className="flex min-h-9 cursor-pointer items-start gap-[9px]">
+								<label className="flex min-h-9 cursor-pointer items-start gap-[9px] max-[760px]:min-h-11 max-[760px]:items-center">
 									<input
 										name="remeasure"
 										type="checkbox"
@@ -624,7 +638,7 @@ export function QuoteScreen({
 										disabled={busy}
 										aria-invalid={!!fieldErrors.remeasure}
 										aria-describedby={describedBy("remeasure")}
-										className="mt-px h-4 w-4 shrink-0 accent-[#171717]"
+										className="mt-px h-4 w-4 shrink-0 accent-[#171717] max-[760px]:mt-0 max-[760px]:size-[22px]"
 									/>
 									<span className="text-[#5c574e] text-[12px] leading-[17px]">
 										{t.quote.remeasureNote}
@@ -634,12 +648,12 @@ export function QuoteScreen({
 									<p
 										id="err-remeasure"
 										role="alert"
-										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
+										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px] max-[760px]:ml-[31px]"
 									>
 										{fieldErrors.remeasure}
 									</p>
 								)}
-								<label className="flex min-h-9 cursor-pointer items-start gap-[9px]">
+								<label className="flex min-h-9 cursor-pointer items-start gap-[9px] max-[760px]:min-h-11 max-[760px]:items-center">
 									<input
 										name="terms"
 										type="checkbox"
@@ -647,7 +661,7 @@ export function QuoteScreen({
 										disabled={busy}
 										aria-invalid={!!fieldErrors.terms}
 										aria-describedby={describedBy("terms")}
-										className="mt-px h-4 w-4 shrink-0 accent-[#171717]"
+										className="mt-px h-4 w-4 shrink-0 accent-[#171717] max-[760px]:mt-0 max-[760px]:size-[22px]"
 									/>
 									{/* New tabs: the typed form and the design must still be
 									    here when the customer comes back from reading. */}
@@ -657,7 +671,7 @@ export function QuoteScreen({
 											href={`/${locale}/terms`}
 											target="_blank"
 											rel="noopener"
-											className="underline"
+											className="underline max-[760px]:py-3.5"
 										>
 											{t.quote.termsLink}
 										</a>
@@ -666,7 +680,7 @@ export function QuoteScreen({
 											href={`/${locale}/refunds`}
 											target="_blank"
 											rel="noopener"
-											className="underline"
+											className="underline max-[760px]:py-3.5"
 										>
 											{t.quote.refundsLink}
 										</a>
@@ -676,7 +690,7 @@ export function QuoteScreen({
 									<p
 										id="err-terms"
 										role="alert"
-										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
+										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px] max-[760px]:ml-[31px]"
 									>
 										{fieldErrors.terms}
 									</p>
@@ -721,68 +735,73 @@ export function QuoteScreen({
 										{error}
 									</p>
 								)}
-								<button
-									type="submit"
-									disabled={busy || payClient === undefined}
-									className="mt-1 flex min-h-12 items-center justify-center gap-2.5 rounded-[10px] bg-[#171717] px-3 font-medium text-[14px] text-white transition hover:bg-[#262626] active:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
-								>
-									{busy && <Spinner />}
-									{busy ? (
-										stripeClient ? (
-											t.quote.paying
-										) : (
-											t.quote.submitting
-										)
-									) : stripeClient ? (
-										<span className="font-semibold tabular-nums">
-											{fill(t.quote.payCta, { amount: total })}
-										</span>
-									) : (
-										<>
-											{t.quote.submitCta}
+								<div className={phoneBar}>
+									<button
+										type="submit"
+										disabled={busy || payClient === undefined}
+										className={`mt-1 flex min-h-12 w-full items-center justify-center gap-2.5 rounded-[10px] bg-[#171717] px-3 font-medium text-[14px] text-white transition hover:bg-[#262626] active:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50 ${phonePrimary} max-[760px]:mt-0`}
+									>
+										{busy && <Spinner />}
+										{busy ? (
+											stripeClient ? (
+												t.quote.paying
+											) : (
+												t.quote.submitting
+											)
+										) : stripeClient ? (
 											<span className="font-semibold tabular-nums">
-												{total}
+												{fill(t.quote.payCta, { amount: total })}
 											</span>
-										</>
-									)}
-								</button>
+										) : (
+											<>
+												{t.quote.submitCta}
+												<span className="font-semibold tabular-nums">
+													{total}
+												</span>
+											</>
+										)}
+									</button>
+								</div>
 							</div>
 						</form>
 					</div>
 
-					<aside className="flex min-w-0 flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0">
-						<div className="relative h-[180px] overflow-hidden rounded-[10px] border border-[#e5e5e5] bg-[#efeeeb]">
-							<PlannerScene
-								layout={layout}
-								finish={finish}
-								finishTextures={finishTextures}
-								selectedIds={new Set()}
-								doorTargetId={null}
-								targetRun={0}
-								frameWholeRoom
-								showPanPuck={false}
-								onLayoutChangeAction={() => {}}
-								onSelectAction={() => {}}
-								pickerRef={pickerRef}
-								hitTestRef={hitTestRef}
-							/>
-						</div>
-						<div>
-							<p className="mb-[3px] font-semibold text-[13px]">
-								{fill(t.quote.summary, {
-									room: room.label,
-									// Every wall with a run, as the studio reads it.
-									runs:
-										runExtentsMm(layout)
-											.map((mm) => `${(mm / 1000).toFixed(2)} m`)
-											.join(" + ") || "0.00 m",
-									count: placed.length,
-									unit: placed.length === 1 ? t.planner.unit : t.planner.units,
-								})}
-							</p>
-							<p className="text-[#5c574e] text-[12px]">
-								{finishLabel} · {frontLabel}
-							</p>
+					<aside className="flex min-w-0 flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0 max-[760px]:order-first max-[760px]:basis-full max-[760px]:rounded-2xl max-[760px]:p-2.5">
+						<div className="flex flex-col gap-4 max-[760px]:flex-row max-[760px]:items-center max-[760px]:gap-3.5">
+							<div className="relative h-[180px] overflow-hidden max-[760px]:h-[84px] max-[760px]:w-[112px] max-[760px]:shrink-0 rounded-[10px] border border-[#e5e5e5] bg-[#efeeeb]">
+								<PlannerScene
+									layout={layout}
+									finish={finish}
+									finishTextures={finishTextures}
+									selectedIds={new Set()}
+									doorTargetId={null}
+									targetRun={0}
+									frameWholeRoom
+									showPanPuck={false}
+									onLayoutChangeAction={() => {}}
+									onSelectAction={() => {}}
+									pickerRef={pickerRef}
+									hitTestRef={hitTestRef}
+								/>
+							</div>
+							<div className="min-w-0">
+								<p className="mb-[3px] font-semibold text-[13px] max-[760px]:text-[15px]">
+									{fill(t.quote.summary, {
+										room: room.label,
+										// Every wall with a run, as the studio reads it.
+										runs:
+											runExtentsMm(layout)
+												.map((mm) => `${(mm / 1000).toFixed(2)} m`)
+												.join(" + ") || "0.00 m",
+										count: placed.length,
+										unit:
+											placed.length === 1 ? t.planner.unit : t.planner.units,
+									})}
+								</p>
+								<p className="text-[#5c574e] text-[12px] max-[760px]:text-[#666] max-[760px]:text-[13px]">
+									{finishLabel} · {frontLabel}
+								</p>
+							</div>
 						</div>
 						<ul className="flex flex-col gap-1.5 border-[#e5e5e5] border-t pt-3">
 							{price.categories.map((line) => (
