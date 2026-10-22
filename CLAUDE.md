@@ -858,10 +858,11 @@ password. Both Reset 2FA and Remove password log the actor's and target's ids.
 **Actions that move money or access ask twice, and ask for a passkey.**
 Cancel order, mark paid, refund through the gateway, mark refunded, invite or
 promote a staff member, change a role, delete user, reset passkey, reset 2FA,
-remove password and save the company's details (`company:manage`, superadmin
-only) open a confirmation dialog
+and remove password open a confirmation dialog
 (`components/admin/ConfirmDialog.tsx`); suspend and restore are one click
-with no dialog. All of their routes pass
+with no dialog. Saving the company's details (`company:manage`, superadmin
+only) is step-up too, but asks first only when a workshop move would touch
+open deliveries. All of their routes pass
 `{ stepUp: true }` to `withAuth`: the session must have passed a passkey
 authentication in the last five minutes (`lib/auth/stepUp.ts`), or the route
 answers 403 `step_up_required` and the browser prompts and repeats the call
@@ -1054,6 +1055,9 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 18. **A workshop move that commits while a carrier booking is in flight can book from the old pickup.** `saveCompany` re-points unbooked `DRAFT`/`QUOTED` deliveries that leave from the workshop; one an admin is booking at that moment is re-pointed after the carrier call has read the old address. The window is one carrier call and is accepted; the admin sees the delivery's new pickup on the next load.
 19. **Two superadmins saving company details at the same instant both read the previous details outside the transaction.** A move's event text can then cite a stale "from" address, and the newest row may not match the deliveries that were re-pointed. The upgrade path is an advisory lock around the read and the append; with a handful of superadmins it has not been worth it.
 20. **Two company facts are read from the seed, not the saved row, by design.** The passkey `rpName` is the seed brand, because Better Auth copies its options at construction and there is no database at module load (the authenticator issuer for TOTP is sent live from the setup screen). And an order or delivery with a `null` `refPrefix` — one placed before company details existed — reads as the seed prefix, resolved only in `orderRef`/`deliveryRef`, so changing the saved prefix never renames an old reference.
+21. **A company form left open in a tab saves its whole loaded state**, so it can silently put back an address, prefix or bank account a colleague changed since. The fix is a `savedAt` check that answers 409 when the newest row differs from the one the form loaded. Not done.
+22. **A logistics form opened before a workshop move still pre-fills the old address.** The create route no longer recognises it as the workshop, so it geocodes it as a typed pickup with `fromWorkshop: false`, and that job never moves with the workshop. Reload the form after a move.
+23. **Every brand ever saved stays reserved in customer names.** A brand saved by mistake as a common short word (say "Tan") refuses customers with that word in their name until a developer removes the row. There is no release control.
 
 ## Open questions — resolve before trusting pricing.ts
 
