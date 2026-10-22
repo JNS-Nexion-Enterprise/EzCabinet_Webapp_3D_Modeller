@@ -147,6 +147,18 @@ describe("parseCustomerName", () => {
 		});
 	});
 
+	it("reserves a short brand as a word, not inside other names", () => {
+		expect(parseCustomerName("Alice Tan", ["IC"])).toEqual({
+			name: "Alice Tan",
+		});
+		expect(parseCustomerName("IC", ["IC"])).toEqual({
+			error: "name_refused",
+		});
+		expect(parseCustomerName("Ali I.C.", ["IC"])).toEqual({
+			error: "name_refused",
+		});
+	});
+
 	it("ignores a brand that folds to nothing", () => {
 		expect(parseCustomerName("Aiman", ["!!", ""])).toEqual({ name: "Aiman" });
 	});

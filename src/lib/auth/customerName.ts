@@ -47,6 +47,9 @@ const fold = (text: string): string =>
 		.toLowerCase()
 		.replace(/[^\p{L}\p{N}]/gu, "");
 
+/** A brand folding shorter than this is matched as a whole word only ("IC" is not in "Alice"). */
+const SHORT_BRAND = 4;
+
 /**
  * A name that would read as the business on a staff screen or in a mail:
  * anything containing the current brand or any brand saved before it
@@ -54,7 +57,7 @@ const fold = (text: string): string =>
  * "support".
  *
  * Both are tested folded; only this check folds, and what is stored is the
- * name as typed. A brand is looked for in the whole name, spaces and all.
+ * name as typed. A brand is looked for in the whole name, spaces and all (a brand under four characters only as a whole word).
  * The prefix is looked for in the first word only, or real names whose
  * opening letters spell it across a space are refused ("Ad Minh", "Sup
  * Port"). A word ends at an ordinary space and nothing else — a hair space
@@ -66,11 +69,15 @@ const fold = (text: string): string =>
 function posesAsBusiness(name: string, brands: readonly string[]): boolean {
 	const first = name.split(" ").map(fold).find(Boolean) ?? "";
 	const folded = fold(name);
+	const words = name.split(" ").map(fold);
 	return (
 		// A brand that folds to nothing ("!!") would match every name.
 		brands.some((brand) => {
 			const business = fold(brand);
-			return business !== "" && folded.includes(business);
+			if (business === "") return false;
+			return business.length < SHORT_BRAND
+				? words.includes(business)
+				: folded.includes(business);
 		}) || /^(admin|support)/.test(first)
 	);
 }
