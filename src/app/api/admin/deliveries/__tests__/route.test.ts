@@ -5,6 +5,7 @@ const findUnique = vi.hoisted(() => vi.fn());
 const claim = vi.hoisted(() => vi.fn());
 const create = vi.hoisted(() => vi.fn());
 const resolveCoordinates = vi.hoisted(() => vi.fn());
+const isFormerWorkshop = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth/requireAuth", async () => {
 	const actual = await vi.importActual<typeof import("@/lib/auth/requireAuth")>(
@@ -25,7 +26,10 @@ vi.mock("@/lib/company/store", async () => {
 	const { testCompany } = await import(
 		"@/lib/company/__tests__/company.fixture"
 	);
-	return { getCompany: async () => testCompany({ orderPrefix: "PO" }) };
+	return {
+		getCompany: async () => testCompany({ orderPrefix: "PO" }),
+		isFormerWorkshop,
+	};
 });
 vi.mock("@/lib/logistics/geocode", () => ({
 	resolveCoordinates,
@@ -66,6 +70,7 @@ beforeEach(() => {
 	});
 	claim.mockResolvedValue({ count: 1 });
 	create.mockResolvedValue({ id: "d1" });
+	isFormerWorkshop.mockResolvedValue(false);
 });
 
 describe("POST /api/admin/deliveries", () => {
@@ -89,6 +94,29 @@ describe("POST /api/admin/deliveries", () => {
 		await call();
 		expect(create.mock.calls[0][0].data.fromWorkshop).toBe(false);
 		expect(resolveCoordinates).toHaveBeenCalledTimes(2);
+	});
+
+	it("refuses a pickup at the old workshop from a form opened before the move", async () => {
+		isFormerWorkshop.mockResolvedValue(true);
+		const response = await call({ pickupAddress: "Lot 1, Jalan Lama, Klang" });
+		expect(response.status).toBe(409);
+		await expect(response.json()).resolves.toEqual({ error: "workshop_moved" });
+		expect(isFormerWorkshop).toHaveBeenCalledWith(
+			"Lot 1, Jalan Lama, Klang",
+			expect.objectContaining({ address: testCompany().address }),
+		);
+		expect(resolveCoordinates).not.toHaveBeenCalled();
+		expect(create).not.toHaveBeenCalled();
+	});
+
+	it("lets a typed pin at the old workshop through", async () => {
+		isFormerWorkshop.mockResolvedValue(true);
+		const response = await call({
+			pickupAddress: "Lot 1, Jalan Lama, Klang",
+			pickupLat: 3.05,
+			pickupLng: 101.45,
+		});
+		expect(response.status).toBe(201);
 	});
 
 	it("creates a paid order's delivery, re-checking the order as it writes", async () => {

@@ -97,11 +97,14 @@ const jobRows = (jobs: MoveJob[]) => (
 
 export function CompanyForm({
 	initial,
+	loadedAt,
 	gdexConfigured,
 	gdexPostcode,
 	geocoderFault,
 }: {
 	initial: CompanyDetails;
+	/** `savedAt` of the row this page was opened on; null for the setup values. */
+	loadedAt: string | null;
 	gdexConfigured: boolean;
 	gdexPostcode: string | null;
 	geocoderFault: string | null;
@@ -122,6 +125,8 @@ export function CompanyForm({
 	const [saving, setSaving] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
+	// Moves on with each save, so this tab is never stale against itself.
+	const [version, setVersion] = useState(loadedAt);
 
 	const set = (k: keyof typeof v) => (e: { target: { value: string } }) => {
 		setV((s) => ({ ...s, [k]: e.target.value }));
@@ -174,14 +179,21 @@ export function CompanyForm({
 		const res = await fetchGuarded("/api/admin/company", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ details, confirmMove }),
+			body: JSON.stringify({ details, confirmMove, loadedAt: version }),
 		});
 		if (typeof res === "string") return { message: res };
 		const data = await res.json().catch(() => null);
 		if (res.status === 409 && data?.error === "confirm_move") {
 			return { move: data.move };
 		}
+		if (res.status === 409 && data?.error === "stale") {
+			return {
+				message:
+					"Someone saved the company details after you opened this page. Nothing was changed — reload to see theirs, then make your change again.",
+			};
+		}
 		if (!res.ok) return { message: "Could not save. Nothing was changed." };
+		setVersion(data?.savedAt ?? null);
 		return { repointed: Number(data?.repointed ?? 0) };
 	}
 

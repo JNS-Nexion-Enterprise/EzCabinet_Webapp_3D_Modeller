@@ -38,6 +38,7 @@ export default async function CompanyPage() {
 				</div>
 				<CompanyForm
 					initial={details}
+					loadedAt={savedAt?.toISOString() ?? null}
 					gdexConfigured={gdexConfigured}
 					gdexPostcode={gdexPostcode}
 					geocoderFault={geocoderFault()}

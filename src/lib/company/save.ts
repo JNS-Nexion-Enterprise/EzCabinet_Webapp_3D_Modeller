@@ -14,8 +14,9 @@ export type MoveJob = {
 };
 export type MovePlan = { repoint: MoveJob[]; booked: MoveJob[] };
 export type SaveResult =
-	| { ok: true; repointed: number }
-	| { ok: false; error: "confirm_move"; move: MovePlan };
+	| { ok: true; repointed: number; savedAt: string }
+	| { ok: false; error: "confirm_move"; move: MovePlan }
+	| { ok: false; error: "stale" };
 
 const UNBOOKED = ["DRAFT", "QUOTED"] as const;
 const BOOKED = ["BOOKED", "DRIVER_ASSIGNED"] as const;
@@ -37,13 +38,23 @@ const BOOKED = ["BOOKED", "DRIVER_ASSIGNED"] as const;
  *
  * A changed bank account is announced to every superadmin once the save has
  * committed.
+ *
+ * `loadedAt` is the `savedAt` of the row the form was opened on (null for the
+ * setup values). The form posts every field, so a tab left open across a
+ * colleague's save would quietly put their address or bank account back; a
+ * mismatch answers `stale` and writes nothing. Two saves in the same instant
+ * can still both pass (Known issue 20).
  */
 export async function saveCompany(
 	next: CompanyDetails,
 	actor: { id: string | null; name: string },
 	confirmMove: boolean,
+	loadedAt: string | null,
 ): Promise<SaveResult> {
-	const previous = (await readCompany()).details;
+	const { details: previous, savedAt } = await readCompany();
+	if ((savedAt?.toISOString() ?? null) !== loadedAt) {
+		return { ok: false, error: "stale" };
+	}
 	const moved = workshopMoved(previous, next);
 
 	if (moved && !confirmMove) {
@@ -68,11 +79,11 @@ export async function saveCompany(
 		}
 	}
 
-	const repointed = await prisma.$transaction(async (tx) => {
-		await tx.companyDetails.create({
+	const { repointed, row } = await prisma.$transaction(async (tx) => {
+		const row = await tx.companyDetails.create({
 			data: { ...next, savedById: actor.id, savedByName: actor.name },
 		});
-		if (!moved) return 0;
+		if (!moved) return { repointed: 0, row };
 
 		// One conditional UPDATE is as race-safe as per-row writes: a row booked
 		// before it runs no longer matches, so it acts on what is unbooked at
@@ -93,7 +104,7 @@ export async function saveCompany(
 				})),
 			});
 		}
-		return movedJobs.length;
+		return { repointed: movedJobs.length, row };
 	});
 
 	revalidateTag(COMPANY_CACHE_TAG, { expire: 0 });
@@ -105,5 +116,6 @@ export async function saveCompany(
 		queueBankChangeMail(previous, next, actor.name);
 	}
 
-	return { ok: true, repointed };
+	// The form's next `loadedAt`, so the same tab can save again.
+	return { ok: true, repointed, savedAt: row.savedAt.toISOString() };
 }

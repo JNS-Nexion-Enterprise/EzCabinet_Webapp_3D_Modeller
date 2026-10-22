@@ -73,3 +73,19 @@ export const getReservedBrands = unstable_cache(
 	["company-brands"],
 	{ tags: [COMPANY_CACHE_TAG] },
 );
+
+/**
+ * Whether `address` is where the workshop used to be: the setup address or
+ * any saved before the current one. A logistics form opened before a move
+ * still offers it, and a job created from it would be geocoded as an ordinary
+ * pickup — at the old building, never moved with the workshop.
+ */
+export async function isFormerWorkshop(
+	address: string,
+	current: CompanyDetails,
+): Promise<boolean> {
+	const typed = address.trim();
+	if (typed === current.address) return false;
+	if (typed === seedCompany().address) return true;
+	return (await prisma.companyDetails.count({ where: { address: typed } })) > 0;
+}

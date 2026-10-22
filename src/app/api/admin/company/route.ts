@@ -10,6 +10,9 @@ export const runtime = "nodejs";
 const bodySchema = z.object({
 	details: companyDetailsSchema,
 	confirmMove: z.boolean().default(false),
+	// Required, not defaulted: a body that cannot say which version it edits
+	// could overwrite anything.
+	loadedAt: z.string().nullable(),
 });
 
 /**
@@ -17,6 +20,7 @@ const bodySchema = z.object({
  *
  * A save that would move unbooked deliveries answers 409 `confirm_move` with
  * what it would touch; the client asks, then repeats with `confirmMove: true`.
+ * A save from a page opened before someone else's answers 409 `stale`.
  *
  * `BYPASS_USER.id` is not a real row, so a local bypass admin is recorded by
  * name only (`savedById` null), as `orders/[id]/paid` does.
@@ -36,14 +40,13 @@ export const POST = withAuth(
 			parsed.data.details,
 			{ id: user.id === BYPASS_USER.id ? null : user.id, name: user.name },
 			parsed.data.confirmMove,
+			parsed.data.loadedAt,
 		);
 		if (!result.ok) {
-			return NextResponse.json(
-				{ error: result.error, move: result.move },
-				{ status: 409 },
-			);
+			const { ok: _ok, ...body } = result;
+			return NextResponse.json(body, { status: 409 });
 		}
-		return NextResponse.json({ ok: true, repointed: result.repointed });
+		return NextResponse.json(result);
 	},
 	{ stepUp: true },
 );

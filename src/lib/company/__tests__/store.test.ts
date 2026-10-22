@@ -4,13 +4,15 @@ import { testCompany } from "./company.fixture";
 
 const findFirst = vi.hoisted(() => vi.fn());
 const findMany = vi.hoisted(() => vi.fn());
+const count = vi.hoisted(() => vi.fn());
 
 vi.mock("next/cache", () => ({ unstable_cache: (fn: unknown) => fn }));
 vi.mock("@/lib/catalogue/db", () => ({
-	prisma: { companyDetails: { findFirst, findMany } },
+	prisma: { companyDetails: { findFirst, findMany, count } },
 }));
 
-const { readCompany, getCompany, getReservedBrands } = await import("../store");
+const { readCompany, getCompany, getReservedBrands, isFormerWorkshop } =
+	await import("../store");
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -61,5 +63,33 @@ describe("company store", () => {
 			distinct: ["brand"],
 			select: { brand: true },
 		});
+	});
+});
+
+describe("isFormerWorkshop", () => {
+	const now = testCompany();
+
+	it("is not the workshop it is now, however it is padded", async () => {
+		expect(await isFormerWorkshop(` ${now.address} `, now)).toBe(false);
+		expect(count).not.toHaveBeenCalled();
+	});
+
+	it("is the setup address once the workshop has moved", async () => {
+		expect(await isFormerWorkshop(seedCompany().address, now)).toBe(true);
+	});
+
+	it("is any address saved before", async () => {
+		count.mockResolvedValue(1);
+		expect(await isFormerWorkshop("Lot 1, Jalan Lama, Klang", now)).toBe(true);
+		expect(count).toHaveBeenCalledWith({
+			where: { address: "Lot 1, Jalan Lama, Klang" },
+		});
+	});
+
+	it("is not an address the company never had", async () => {
+		count.mockResolvedValue(0);
+		expect(await isFormerWorkshop("12 Jalan Setia, Shah Alam", now)).toBe(
+			false,
+		);
 	});
 });

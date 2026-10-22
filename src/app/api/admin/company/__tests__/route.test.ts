@@ -15,6 +15,9 @@ const { testCompany } = await import("@/lib/company/__tests__/company.fixture");
 const { BYPASS_USER } = await import("@/lib/auth/requireAuth");
 const { POST } = await import("../route");
 
+const LOADED = "2026-10-22T14:00:00.000Z";
+const LATER = "2026-10-22T15:00:00.000Z";
+
 const call = (body: unknown) =>
 	POST(
 		new Request("http://x", { method: "POST", body: JSON.stringify(body) }),
@@ -29,7 +32,7 @@ beforeEach(() => {
 		role: "SUPERADMIN",
 		passkeyVerifiedAt: new Date(),
 	});
-	saveCompany.mockResolvedValue({ ok: true, repointed: 2 });
+	saveCompany.mockResolvedValue({ ok: true, repointed: 2, savedAt: LATER });
 });
 
 describe("POST /api/admin/company", () => {
@@ -45,19 +48,41 @@ describe("POST /api/admin/company", () => {
 	it("passes the move question through as a 409", async () => {
 		const move = { repoint: [], booked: [] };
 		saveCompany.mockResolvedValue({ ok: false, error: "confirm_move", move });
-		const res = await call({ details: testCompany() });
+		const res = await call({ details: testCompany(), loadedAt: LOADED });
 		expect(res.status).toBe(409);
 		expect(await res.json()).toEqual({ error: "confirm_move", move });
 	});
 
+	it("answers 409 stale when someone saved since the page loaded", async () => {
+		saveCompany.mockResolvedValue({ ok: false, error: "stale" });
+		const res = await call({ details: testCompany(), loadedAt: LOADED });
+		expect(res.status).toBe(409);
+		expect(await res.json()).toEqual({ error: "stale" });
+	});
+
+	it("refuses a body that does not say which version it loaded", async () => {
+		const res = await call({ details: testCompany() });
+		expect(res.status).toBe(400);
+		expect(saveCompany).not.toHaveBeenCalled();
+	});
+
 	it("saves as the signed-in superadmin", async () => {
-		const res = await call({ details: testCompany(), confirmMove: true });
+		const res = await call({
+			details: testCompany(),
+			confirmMove: true,
+			loadedAt: LOADED,
+		});
 		expect(res.status).toBe(200);
-		expect(await res.json()).toEqual({ ok: true, repointed: 2 });
+		expect(await res.json()).toEqual({
+			ok: true,
+			repointed: 2,
+			savedAt: LATER,
+		});
 		expect(saveCompany).toHaveBeenCalledWith(
 			expect.objectContaining({ brand: testCompany().brand }),
 			{ id: "u1", name: "Aisyah" },
 			true,
+			LOADED,
 		);
 	});
 
@@ -66,11 +91,12 @@ describe("POST /api/admin/company", () => {
 			...BYPASS_USER,
 			passkeyVerifiedAt: new Date(),
 		});
-		await call({ details: testCompany() });
+		await call({ details: testCompany(), loadedAt: LOADED });
 		expect(saveCompany).toHaveBeenCalledWith(
 			expect.anything(),
 			{ id: null, name: BYPASS_USER.name },
 			false,
+			LOADED,
 		);
 	});
 });

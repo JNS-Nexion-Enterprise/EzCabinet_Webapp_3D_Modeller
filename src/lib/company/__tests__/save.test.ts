@@ -42,6 +42,8 @@ const moved = testCompany({
 	lng: 101.5951,
 });
 const actor = { id: "u1", name: "Aisyah" };
+const SAVED = new Date("2026-10-22T14:00:00.000Z");
+const savedAt = SAVED.toISOString();
 
 beforeEach(() => {
 	vi.clearAllMocks();
@@ -50,6 +52,7 @@ beforeEach(() => {
 		savedAt: null,
 		savedByName: null,
 	});
+	companyCreate.mockResolvedValue({ savedAt: SAVED });
 	planFindMany.mockResolvedValue([]);
 	updateManyAndReturn.mockResolvedValue([]);
 });
@@ -57,8 +60,8 @@ beforeEach(() => {
 describe("saveCompany", () => {
 	it("saves a change that is not a move without asking, and touches no delivery", async () => {
 		expect(
-			await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, false),
-		).toEqual({ ok: true, repointed: 0 });
+			await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, false, null),
+		).toEqual({ ok: true, repointed: 0, savedAt });
 		expect(companyCreate).toHaveBeenCalledWith({
 			data: {
 				...prev,
@@ -77,7 +80,7 @@ describe("saveCompany", () => {
 			{ id: "d1", number: 41, status: "DRAFT", customerName: "Mei" },
 			{ id: "d2", number: 42, status: "BOOKED", customerName: "Ali" },
 		]);
-		const result = await saveCompany(moved, actor, false);
+		const result = await saveCompany(moved, actor, false, null);
 		expect(result).toEqual({
 			ok: false,
 			error: "confirm_move",
@@ -102,9 +105,10 @@ describe("saveCompany", () => {
 
 	it("on confirm, moves every unbooked workshop delivery in one write and records each", async () => {
 		updateManyAndReturn.mockResolvedValue([{ id: "d1" }, { id: "d2" }]);
-		expect(await saveCompany(moved, actor, true)).toEqual({
+		expect(await saveCompany(moved, actor, true, null)).toEqual({
 			ok: true,
 			repointed: 2,
+			savedAt,
 		});
 		expect(updateManyAndReturn).toHaveBeenCalledWith({
 			where: { fromWorkshop: true, status: { in: ["DRAFT", "QUOTED"] } },
@@ -122,35 +126,76 @@ describe("saveCompany", () => {
 
 	it("records nothing when every job was booked in between", async () => {
 		updateManyAndReturn.mockResolvedValue([]);
-		expect(await saveCompany(moved, actor, true)).toEqual({
+		expect(await saveCompany(moved, actor, true, null)).toEqual({
 			ok: true,
 			repointed: 0,
+			savedAt,
 		});
 		expect(eventCreateMany).not.toHaveBeenCalled();
 	});
 
 	it("moves without asking when no delivery is affected", async () => {
 		planFindMany.mockResolvedValue([]);
-		expect(await saveCompany(moved, actor, false)).toEqual({
+		expect(await saveCompany(moved, actor, false, null)).toEqual({
 			ok: true,
 			repointed: 0,
+			savedAt,
 		});
 		expect(companyCreate).toHaveBeenCalled();
 	});
 
 	it("touches no delivery when confirmed but the workshop did not move", async () => {
-		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, true);
+		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, true, null);
 		expect(updateManyAndReturn).not.toHaveBeenCalled();
 		expect(eventCreateMany).not.toHaveBeenCalled();
 	});
 
+	it("refuses a save from a page loaded before a newer save, and writes nothing", async () => {
+		readCompany.mockResolvedValue({
+			details: moved,
+			savedAt: new Date("2026-10-22T15:00:00.000Z"),
+			savedByName: "Farid",
+		});
+		// A tab opened on the 14:00 row, or on the setup values before any save.
+		for (const loadedAt of [savedAt, null]) {
+			expect(
+				await saveCompany(
+					{ ...prev, phone: "03-5555 1234" },
+					actor,
+					false,
+					loadedAt,
+				),
+			).toEqual({ ok: false, error: "stale" });
+		}
+		expect(companyCreate).not.toHaveBeenCalled();
+		expect(planFindMany).not.toHaveBeenCalled();
+		expect(revalidateTag).not.toHaveBeenCalled();
+		expect(queueBankChangeMail).not.toHaveBeenCalled();
+	});
+
+	it("saves when the page loaded the newest row", async () => {
+		readCompany.mockResolvedValue({
+			details: prev,
+			savedAt: SAVED,
+			savedByName: "Farid",
+		});
+		expect(
+			await saveCompany(
+				{ ...prev, phone: "03-5555 1234" },
+				actor,
+				false,
+				savedAt,
+			),
+		).toEqual({ ok: true, repointed: 0, savedAt });
+	});
+
 	it("announces a changed bank account, and only then", async () => {
 		const next = { ...prev, bankAccountNumber: "111122223333" };
-		await saveCompany(next, actor, false);
+		await saveCompany(next, actor, false, null);
 		expect(queueBankChangeMail).toHaveBeenCalledWith(prev, next, "Aisyah");
 
 		queueBankChangeMail.mockClear();
-		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, false);
+		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, false, null);
 		expect(queueBankChangeMail).not.toHaveBeenCalled();
 	});
 });

@@ -18,6 +18,8 @@ const MESSAGE: Record<string, string> = {
 		"A split needs items on both sides — tick some, but not all of them.",
 	no_pickup_board: "Only GDEX schedules a collection we can check.",
 	pickup_check_failed: "Could not reach GDEX to check the collection.",
+	workshop_moved:
+		"The workshop has moved since this form was opened. Reload the page to pick up the new address.",
 	app_url_not_set:
 		"This deployment does not know its own address, so a partner cannot redirect back to it.",
 };

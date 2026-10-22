@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
-import { getCompany } from "@/lib/company/store";
+import { getCompany, isFormerWorkshop } from "@/lib/company/store";
 import { workshopPickup } from "@/lib/logistics/carriers";
 import { pinFor } from "@/lib/logistics/coords";
 import {
@@ -90,6 +90,15 @@ export const POST = withAuth("logistics:book", async (request) => {
 	const company = await getCompany();
 	const given = pinFor(pickupLat, pickupLng, rest.pickupAddress);
 	const workshop = workshopPickup(rest.pickupAddress, given, company);
+	// A form opened before a move still offers the old workshop; geocoded, the
+	// job would leave from the old building. A typed pin says the admin meant it.
+	if (
+		!workshop &&
+		given === null &&
+		(await isFormerWorkshop(rest.pickupAddress, company))
+	) {
+		return NextResponse.json({ error: "workshop_moved" }, { status: 409 });
+	}
 	const [site, geocoded] = await Promise.all([
 		resolveCoordinates(
 			rest.siteAddress,
