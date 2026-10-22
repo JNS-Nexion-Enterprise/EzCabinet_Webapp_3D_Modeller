@@ -12,6 +12,8 @@
 
 ## Global Constraints
 
+Amended (Ruling 7): the boundary is spelled `max-[760px]` / `min-[760px]` / `(width < 760px)`; 759 spellings below are superseded.
+
 - Phone = viewport `< 760px`. At `≥ 760px` every planner screen renders byte-for-byte as before (desktop and the `max-lg` tablet stack). Use `max-[759px]:` / `min-[760px]:` variants, never `sm`/`md`/`lg`, for phone-only rules.
 - No new dependencies. No testing-library — logic goes in pure modules with vitest tests; layout is checked in a browser.
 - Copy lives in `src/lib/copy/{en,ms,zh}.ts`; `ms` and `zh` are typed against `Dictionary`, so a missing key fails `pnpm typecheck`. Sentence case. No new user-facing string outside the dictionary.

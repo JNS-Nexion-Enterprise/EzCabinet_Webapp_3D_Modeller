@@ -83,7 +83,7 @@ export function LanguageSwitcher({
 					aria-current={locale === current ? "true" : undefined}
 					className={`${
 						inline
-							? `inline-flex items-center ${tall ? "min-h-11 px-2.5" : "min-h-9 px-1"}`
+							? `inline-flex items-center ${tall ? "min-h-11 min-w-11 justify-center px-2.5" : "min-h-9 px-1"}`
 							: ""
 					} ${
 						locale === current

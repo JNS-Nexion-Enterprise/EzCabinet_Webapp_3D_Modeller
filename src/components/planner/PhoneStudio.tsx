@@ -19,7 +19,21 @@ export const views = (t: Dictionary): { id: PlannerView; label: string }[] => [
 /** White, round, 44 px: the canvas card's three buttons. */
 const canvasButton =
 	"pointer-events-auto flex size-11 shrink-0 items-center justify-center rounded-full text-[18px] shadow-[0_1px_3px_rgba(0,0,0,.08)] disabled:opacity-40";
-const canvasButtonOff = "bg-white/94 text-neutral-800";
+const canvasButtonOff = "bg-white/94 text-neutral-800 active:bg-[#ececec]";
+
+/** Hand-drawn like the tutorials triangle: the old text glyphs are empty boxes
+ *  on some Android fonts. */
+const Glyph = ({ children }: { children: React.ReactNode }) => (
+	<svg
+		viewBox="0 0 24 24"
+		aria-hidden
+		className="size-5 fill-none stroke-current stroke-[1.8]"
+		strokeLinecap="round"
+		strokeLinejoin="round"
+	>
+		{children}
+	</svg>
+);
 
 /**
  * The studio below 760px (spec: planner-phone-layout, "Studio"): a scrolling
@@ -38,6 +52,7 @@ export function PhoneStudio({
 	scene,
 	chip,
 	footnote,
+	measureControls,
 	doors,
 	measuring,
 	onMeasureAction,
@@ -60,6 +75,8 @@ export function PhoneStudio({
 	chip: React.ReactNode;
 	/** The measure readout, the tap hint, or null. */
 	footnote: React.ReactNode;
+	/** Axis chips and Clear, between the canvas card and the tabs. */
+	measureControls?: React.ReactNode;
 	doors: { view: DoorView; onCycleAction: () => void; disabled: boolean };
 	measuring: boolean;
 	onMeasureAction: () => void;
@@ -89,7 +106,7 @@ export function PhoneStudio({
 						href="/tutorials"
 						target="_blank"
 						aria-label={t.planner.diyTutorials}
-						className="flex size-11 items-center justify-center rounded-full text-neutral-900 hover:bg-[#f5f5f5]"
+						className="flex size-11 items-center justify-center rounded-full text-neutral-900 hover:bg-[#f5f5f5] active:bg-[#ececec]"
 					>
 						{/* The desktop header's hand-drawn play triangle. */}
 						<svg
@@ -154,7 +171,9 @@ export function PhoneStudio({
 								measuring ? "bg-neutral-900 text-white" : canvasButtonOff
 							}`}
 						>
-							⟺
+							<Glyph>
+								<path d="M3 12h18M3 8v8M21 8v8M7 9l-4 3 4 3M17 9l4 3-4 3" />
+							</Glyph>
 						</button>
 						<button
 							type="button"
@@ -163,17 +182,21 @@ export function PhoneStudio({
 							title={t.planner.panel.resetView}
 							className={`${canvasButton} ${canvasButtonOff}`}
 						>
-							⤾
+							<Glyph>
+								<path d="M4 12a8 8 0 1 0 3-6.2M4 4v4.5h4.5" />
+							</Glyph>
 						</button>
 					</div>
 				</div>
 
 				{footnote && (
-					<div className="pointer-events-none absolute inset-x-2.5 bottom-3 z-[6] flex justify-center text-center text-[#5c5c5c] text-[13px]">
+					<div className="pointer-events-none absolute right-14 bottom-3 left-2.5 z-[6] flex justify-center text-center text-[#5c5c5c] text-[13px]">
 						{footnote}
 					</div>
 				)}
 			</div>
+
+			{measureControls && <div className="px-4 pt-2">{measureControls}</div>}
 
 			<div className="px-4 pt-4">
 				<Segmented

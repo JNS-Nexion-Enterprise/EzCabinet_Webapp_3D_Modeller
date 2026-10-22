@@ -823,73 +823,81 @@ export function StudioScreen({
 		/>
 	);
 
+	const axisChips = (
+		<fieldset className="flex items-center gap-0.5">
+			<legend className="sr-only">{t.planner.measure.constrainLabel}</legend>
+			{MEASURE_AXES.map((axis) => (
+				<button
+					key={axis}
+					type="button"
+					onClick={() => setMeasureAxis(axis)}
+					aria-pressed={measureAxis === axis}
+					className={`rounded px-1.5 py-0.5 text-[11px] transition max-[760px]:min-h-11 max-[760px]:min-w-11 max-[760px]:px-3 max-[760px]:text-[14px] ${
+						measureAxis === axis
+							? "bg-neutral-900 text-white"
+							: "text-neutral-500 hover:bg-neutral-100"
+					}`}
+				>
+					{AXIS_LABEL[axis]}
+				</button>
+			))}
+		</fieldset>
+	);
+
+	const measureLine = measurement ? (
+		<span className="flex items-center gap-2 text-[12px] text-neutral-800">
+			<span>{Math.round(measurement.distanceMm)}mm</span>
+			<DimChip
+				axis="x"
+				valueMm={measurement.widthMm}
+				maxAxisMm={maxMeasuredAxisMm}
+			/>
+			<DimChip
+				axis="y"
+				valueMm={measurement.heightMm}
+				maxAxisMm={maxMeasuredAxisMm}
+			/>
+			<DimChip
+				axis="z"
+				valueMm={measurement.depthMm}
+				maxAxisMm={maxMeasuredAxisMm}
+			/>
+		</span>
+	) : (
+		<span className="text-[12px] text-neutral-500">
+			{measurePoints.length === 0
+				? t.planner.measure.clickToStart
+				: t.planner.measure.clickSecondPoint}
+		</span>
+	);
+
+	const clearButton = measurePoints.length > 0 && (
+		<button
+			type="button"
+			onClick={() => setMeasurePoints([])}
+			className="text-[12px] text-[#1f5138] hover:underline max-[760px]:min-h-11 max-[760px]:px-3 max-[760px]:text-[14px]"
+		>
+			{t.planner.clear}
+		</button>
+	);
+
+	// What each end actually landed on. The glyph in the scene says the
+	// same thing, but a marker seen edge-on is easy to misread and a
+	// wrong snap is a wrong number.
+	const snapNote = measurePoints.length > 0 && (
+		<p className="text-[11px] text-neutral-400">
+			{measurePoints.map((snap) => SNAP_LABEL[snap.kind]).join(" → ")}
+		</p>
+	);
+
 	const measureReadout = (
 		<>
-			<fieldset className="flex items-center gap-0.5">
-				<legend className="sr-only">{t.planner.measure.constrainLabel}</legend>
-				{MEASURE_AXES.map((axis) => (
-					<button
-						key={axis}
-						type="button"
-						onClick={() => setMeasureAxis(axis)}
-						aria-pressed={measureAxis === axis}
-						className={`rounded px-1.5 py-0.5 text-[11px] transition max-[760px]:min-h-11 max-[760px]:min-w-11 max-[760px]:px-3 max-[760px]:text-[14px] ${
-							measureAxis === axis
-								? "bg-neutral-900 text-white"
-								: "text-neutral-500 hover:bg-neutral-100"
-						}`}
-					>
-						{AXIS_LABEL[axis]}
-					</button>
-				))}
-			</fieldset>
-
+			{axisChips}
 			<div className="flex items-center gap-2">
-				{measurement ? (
-					<span className="flex items-center gap-2 text-[12px] text-neutral-800">
-						<span>{Math.round(measurement.distanceMm)}mm</span>
-						<DimChip
-							axis="x"
-							valueMm={measurement.widthMm}
-							maxAxisMm={maxMeasuredAxisMm}
-						/>
-						<DimChip
-							axis="y"
-							valueMm={measurement.heightMm}
-							maxAxisMm={maxMeasuredAxisMm}
-						/>
-						<DimChip
-							axis="z"
-							valueMm={measurement.depthMm}
-							maxAxisMm={maxMeasuredAxisMm}
-						/>
-					</span>
-				) : (
-					<span className="text-[12px] text-neutral-500">
-						{measurePoints.length === 0
-							? t.planner.measure.clickToStart
-							: t.planner.measure.clickSecondPoint}
-					</span>
-				)}
-				{measurePoints.length > 0 && (
-					<button
-						type="button"
-						onClick={() => setMeasurePoints([])}
-						className="text-[12px] text-[#1f5138] hover:underline max-[760px]:min-h-11 max-[760px]:px-3 max-[760px]:text-[14px]"
-					>
-						{t.planner.clear}
-					</button>
-				)}
+				{measureLine}
+				{clearButton}
 			</div>
-
-			{/* What each end actually landed on. The glyph in the scene says the
-			    same thing, but a marker seen edge-on is easy to misread and a
-			    wrong snap is a wrong number. */}
-			{measurePoints.length > 0 && (
-				<p className="text-[11px] text-neutral-400">
-					{measurePoints.map((snap) => SNAP_LABEL[snap.kind]).join(" → ")}
-				</p>
-			)}
+			{snapNote}
 		</>
 	);
 
@@ -1211,11 +1219,20 @@ export function StudioScreen({
 				chip={chip}
 				footnote={
 					measureMode ? (
-						<div className="pointer-events-auto flex flex-col items-center gap-1.5 rounded-lg bg-white/92 px-2.5 py-2 shadow-sm">
-							{measureReadout}
+						<div className="rounded-lg bg-white/92 px-2.5 py-1.5 shadow-sm">
+							{measureLine}
 						</div>
 					) : selection.length === 0 ? (
 						t.planner.phone.tapHint
+					) : null
+				}
+				measureControls={
+					measureMode ? (
+						<div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+							{axisChips}
+							{clearButton}
+							{snapNote}
+						</div>
 					) : null
 				}
 				doors={{

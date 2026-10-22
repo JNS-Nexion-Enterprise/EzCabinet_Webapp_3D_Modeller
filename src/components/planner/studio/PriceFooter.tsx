@@ -66,7 +66,7 @@ export function PriceFooter({
 						type="button"
 						onClick={() => setOpen(false)}
 						aria-label={t.common.close}
-						className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-neutral-200 text-neutral-600 hover:bg-[#f4f3f1]"
+						className="flex h-9 w-9 max-[760px]:size-11 shrink-0 items-center justify-center rounded-lg border border-neutral-200 text-neutral-600 hover:bg-[#f4f3f1]"
 					>
 						✕
 					</button>
@@ -119,6 +119,7 @@ export function PriceFooter({
 				<button
 					type="button"
 					onClick={() => setOpen(true)}
+					aria-haspopup="dialog"
 					className="flex min-h-11 flex-1 flex-col items-start text-left"
 				>
 					<span className="flex w-full items-center gap-1.5 text-[#5c5c5c] text-[12px] leading-4">
@@ -137,7 +138,7 @@ export function PriceFooter({
 					type="button"
 					onClick={onQuoteAction}
 					disabled={ctaDisabled}
-					className={`${phonePrimary} shrink-0 whitespace-nowrap max-[760px]:px-[22px]`}
+					className={`${phonePrimary} shrink-0 whitespace-nowrap max-[760px]:px-[22px] max-[360px]:px-3.5`}
 				>
 					{t.planner.phone.quoteCta}
 				</button>

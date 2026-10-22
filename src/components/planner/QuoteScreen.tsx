@@ -38,8 +38,8 @@ const PlannerScene = dynamic(() => import("./PlannerScene"), {
 });
 
 const FIELD =
-	// 16px below `sm`: iOS Safari zooms the page on focusing anything smaller.
-	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 max-[760px]:min-h-[50px] max-[760px]:rounded-[10px] max-[760px]:px-3.5 text-base text-[#171717] sm:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
+	// 16px below 760 (not `sm`, which would leave 640-759 at 14): iOS Safari zooms the page on focusing anything smaller.
+	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 max-[760px]:min-h-[50px] max-[760px]:rounded-[10px] max-[760px]:px-3.5 text-base text-[#171717] min-[760px]:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
 const fieldClass = (error: string | undefined) =>
 	`${FIELD} ${error ? "border-[1.5px] border-[#b42318]" : "border border-[#d4d4d4]"}`;
 
@@ -766,7 +766,7 @@ export function QuoteScreen({
 						</form>
 					</div>
 
-					<aside className="flex min-w-0 flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0 max-[760px]:order-first max-[760px]:rounded-2xl max-[760px]:p-2.5">
+					<aside className="flex min-w-0 flex-[0_1_380px] flex-col gap-4 rounded-[14px] border border-[#e5e5e5] bg-[#f7f6f4] p-[22px] lg:sticky lg:top-0 max-[760px]:order-first max-[760px]:basis-full max-[760px]:rounded-2xl max-[760px]:p-2.5">
 						<div className="flex flex-col gap-4 max-[760px]:flex-row max-[760px]:items-center max-[760px]:gap-3.5">
 							<div className="relative h-[180px] overflow-hidden max-[760px]:h-[84px] max-[760px]:w-[112px] max-[760px]:shrink-0 rounded-[10px] border border-[#e5e5e5] bg-[#efeeeb]">
 								<PlannerScene
@@ -785,7 +785,7 @@ export function QuoteScreen({
 								/>
 							</div>
 							<div className="min-w-0">
-								<p className="mb-[3px] font-semibold text-[13px]">
+								<p className="mb-[3px] font-semibold text-[13px] max-[760px]:text-[15px]">
 									{fill(t.quote.summary, {
 										room: room.label,
 										// Every wall with a run, as the studio reads it.
@@ -798,7 +798,7 @@ export function QuoteScreen({
 											placed.length === 1 ? t.planner.unit : t.planner.units,
 									})}
 								</p>
-								<p className="text-[#5c574e] text-[12px]">
+								<p className="text-[#5c574e] text-[12px] max-[760px]:text-[13px]">
 									{finishLabel} · {frontLabel}
 								</p>
 							</div>
