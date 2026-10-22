@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { testCompany } from "@/lib/company/__tests__/company.fixture";
 import { companyDetailsSchema } from "@/lib/company/details";
-import { fieldErrors, gdexNotice, placeFields, readPin } from "../form";
+import {
+	addressNeedsPin,
+	fieldErrors,
+	gdexNotice,
+	placeFields,
+	readPin,
+} from "../form";
 
 describe("readPin", () => {
 	it("reads latitude, longitude", () =>
@@ -72,4 +78,12 @@ describe("gdexNotice", () => {
 		}));
 	it("only reminds when they agree", () =>
 		expect(gdexNotice(true, "43800", "43800")).toEqual({ kind: "reminder" }));
+});
+
+describe("addressNeedsPin", () => {
+	it("asks for a pin only when the address changed and the pin was not confirmed", () => {
+		expect(addressNeedsPin("Lot 5", "Lot 9", false)).toBe(true);
+		expect(addressNeedsPin("Lot 5", " Lot 5 ", false)).toBe(false);
+		expect(addressNeedsPin("Lot 5", "Lot 9", true)).toBe(false);
+	});
 });

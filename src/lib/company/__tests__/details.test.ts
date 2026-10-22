@@ -114,6 +114,15 @@ describe("sellerLine", () => {
 		expect(sellerLine(testCompany({ ssmNumber: "202301012345" }))).toBe(
 			"EzCabinet Sdn Bhd (202301012345), Lot 5, Jalan Kilang 2, 43800 Dengkil, Selangor",
 		));
+	it("keeps the SSM number when the address already starts with the name", () =>
+		expect(
+			sellerLine(
+				testCompany({
+					address: "EzCabinet Sdn Bhd, Lot 5, Dengkil",
+					ssmNumber: "202301012345",
+				}),
+			),
+		).toBe("EzCabinet Sdn Bhd (202301012345), Lot 5, Dengkil"));
 	it("does not repeat the name when the address already starts with it", () =>
 		expect(
 			sellerLine({

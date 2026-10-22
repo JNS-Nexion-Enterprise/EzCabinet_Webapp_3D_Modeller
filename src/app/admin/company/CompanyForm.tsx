@@ -12,7 +12,13 @@ import {
 import type { MoveJob, MovePlan } from "@/lib/company/save";
 import type { GeocodeResult } from "@/lib/logistics/geocode";
 import { MALAYSIAN_STATES } from "@/lib/logistics/malaysia";
-import { fieldErrors, gdexNotice, placeFields, readPin } from "./form";
+import {
+	addressNeedsPin,
+	fieldErrors,
+	gdexNotice,
+	placeFields,
+	readPin,
+} from "./form";
 
 const INPUT = "min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px]";
 const MAP_DOWN =
@@ -106,6 +112,10 @@ export function CompanyForm({
 		ssmNumber: initial.ssmNumber ?? "",
 	});
 	const [pinText, setPinText] = useState(`${initial.lat}, ${initial.lng}`);
+	// Pin and postcode start as the saved workshop's; a new address is not
+	// saved on top of them until the pin is found or retyped.
+	const [pinConfirmed, setPinConfirmed] = useState(true);
+	const [pinNote, setPinNote] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Errors>({});
 	const [finding, setFinding] = useState(false);
 	const [mapNote, setMapNote] = useState<string | null>(null);
@@ -144,6 +154,8 @@ export function CompanyForm({
 		const f = data.found;
 		setV((s) => ({ ...s, ...placeFields(f) }));
 		setPinText(`${f.lat}, ${f.lng}`);
+		setPinConfirmed(true);
+		setPinNote(null);
 		setErrors((er) => ({
 			...er,
 			postcode: undefined,
@@ -176,6 +188,8 @@ export function CompanyForm({
 	function saved(details: CompanyDetails, repointed: number) {
 		// Show what was stored: "po" reads "PO", an account number loses its spaces.
 		setV({ ...details, ssmNumber: details.ssmNumber ?? "" });
+		setPinConfirmed(true);
+		setPinNote(null);
 		setMessage(
 			repointed > 0
 				? `Saved. ${repointed} ${repointed === 1 ? "delivery now leaves" : "deliveries now leave"} from the new address.`
@@ -196,7 +210,14 @@ export function CompanyForm({
 			setErrors(fieldErrors(parsed.error));
 			return;
 		}
+		if (addressNeedsPin(initial.address, parsed.data.address, pinConfirmed)) {
+			setPinNote(
+				"You changed the address. Press Find on map, or retype the pin to confirm it.",
+			);
+			return;
+		}
 		setErrors({});
+		setPinNote(null);
 		const details = parsed.data;
 
 		setSaving(true);
@@ -271,7 +292,10 @@ export function CompanyForm({
 							<input
 								{...c}
 								value={v.address}
-								onChange={set("address")}
+								onChange={(e) => {
+									set("address")(e);
+									setPinConfirmed(false);
+								}}
 								className={`${INPUT} min-w-0 flex-1`}
 							/>
 							<button
@@ -311,7 +335,11 @@ export function CompanyForm({
 				</Field>
 				<Field
 					label="Map pin"
-					error={pin.ok ? (errors.lat ?? errors.lng) : pin.message}
+					error={
+						pin.ok
+							? (errors.lat ?? errors.lng ?? pinNote ?? undefined)
+							: pin.message
+					}
 					hint={
 						pin.ok && (
 							<a
@@ -331,6 +359,8 @@ export function CompanyForm({
 							value={pinText}
 							onChange={(e) => {
 								setPinText(e.target.value);
+								setPinConfirmed(true);
+								setPinNote(null);
 								clearPinErrors();
 							}}
 							className={INPUT}

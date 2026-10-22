@@ -2,9 +2,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const planFindMany = vi.hoisted(() => vi.fn());
 const companyCreate = vi.hoisted(() => vi.fn());
-const txFindMany = vi.hoisted(() => vi.fn());
-const updateMany = vi.hoisted(() => vi.fn());
-const eventCreate = vi.hoisted(() => vi.fn());
+const updateManyAndReturn = vi.hoisted(() => vi.fn());
+const eventCreateMany = vi.hoisted(() => vi.fn());
 const readCompany = vi.hoisted(() => vi.fn());
 const revalidateTag = vi.hoisted(() => vi.fn());
 const revalidatePath = vi.hoisted(() => vi.fn());
@@ -13,8 +12,8 @@ const queueBankChangeMail = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/catalogue/db", () => {
 	const tx = {
 		companyDetails: { create: companyCreate },
-		delivery: { findMany: txFindMany, updateMany },
-		deliveryEvent: { create: eventCreate },
+		delivery: { updateManyAndReturn },
+		deliveryEvent: { createMany: eventCreateMany },
 	};
 	return {
 		prisma: {
@@ -52,7 +51,7 @@ beforeEach(() => {
 		savedByName: null,
 	});
 	planFindMany.mockResolvedValue([]);
-	txFindMany.mockResolvedValue([]);
+	updateManyAndReturn.mockResolvedValue([]);
 });
 
 describe("saveCompany", () => {
@@ -68,7 +67,7 @@ describe("saveCompany", () => {
 				savedByName: "Aisyah",
 			},
 		});
-		expect(txFindMany).not.toHaveBeenCalled();
+		expect(updateManyAndReturn).not.toHaveBeenCalled();
 		expect(revalidateTag).toHaveBeenCalledWith("company", { expire: 0 });
 		expect(revalidatePath).toHaveBeenCalledWith("/", "layout");
 	});
@@ -101,48 +100,37 @@ describe("saveCompany", () => {
 		);
 	});
 
-	it("on confirm, moves every unbooked workshop delivery with the workshop and records it", async () => {
-		txFindMany.mockResolvedValue([{ id: "d1" }]);
-		updateMany.mockResolvedValue({ count: 1 });
+	it("on confirm, moves every unbooked workshop delivery in one write and records each", async () => {
+		updateManyAndReturn.mockResolvedValue([{ id: "d1" }, { id: "d2" }]);
 		expect(await saveCompany(moved, actor, true)).toEqual({
 			ok: true,
-			repointed: 1,
+			repointed: 2,
 		});
-		expect(txFindMany).toHaveBeenCalledWith({
+		expect(updateManyAndReturn).toHaveBeenCalledWith({
 			where: { fromWorkshop: true, status: { in: ["DRAFT", "QUOTED"] } },
+			data: workshopColumns(moved),
 			select: { id: true },
 		});
-		expect(updateMany).toHaveBeenCalledWith({
-			where: {
-				id: "d1",
-				fromWorkshop: true,
-				status: { in: ["DRAFT", "QUOTED"] },
-			},
-			data: workshopColumns(moved),
-		});
-		expect(eventCreate).toHaveBeenCalledWith({
-			data: {
-				deliveryId: "d1",
-				source: "ADMIN",
-				actor: "Aisyah",
-				message: `Pickup moved with the workshop: ${prev.address} → ${moved.address}`,
-			},
+		const message = `Pickup moved with the workshop: ${prev.address} → ${moved.address}`;
+		expect(eventCreateMany).toHaveBeenCalledWith({
+			data: [
+				{ deliveryId: "d1", source: "ADMIN", actor: "Aisyah", message },
+				{ deliveryId: "d2", source: "ADMIN", actor: "Aisyah", message },
+			],
 		});
 	});
 
-	it("leaves a delivery booked between the question and the save where it is", async () => {
-		txFindMany.mockResolvedValue([{ id: "d1" }]);
-		updateMany.mockResolvedValue({ count: 0 });
+	it("records nothing when every job was booked in between", async () => {
+		updateManyAndReturn.mockResolvedValue([]);
 		expect(await saveCompany(moved, actor, true)).toEqual({
 			ok: true,
 			repointed: 0,
 		});
-		expect(eventCreate).not.toHaveBeenCalled();
+		expect(eventCreateMany).not.toHaveBeenCalled();
 	});
 
 	it("moves without asking when no delivery is affected", async () => {
 		planFindMany.mockResolvedValue([]);
-		txFindMany.mockResolvedValue([]);
 		expect(await saveCompany(moved, actor, false)).toEqual({
 			ok: true,
 			repointed: 0,
@@ -152,8 +140,8 @@ describe("saveCompany", () => {
 
 	it("touches no delivery when confirmed but the workshop did not move", async () => {
 		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, true);
-		expect(txFindMany).not.toHaveBeenCalled();
-		expect(updateMany).not.toHaveBeenCalled();
+		expect(updateManyAndReturn).not.toHaveBeenCalled();
+		expect(eventCreateMany).not.toHaveBeenCalled();
 	});
 
 	it("announces a changed bank account, and only then", async () => {

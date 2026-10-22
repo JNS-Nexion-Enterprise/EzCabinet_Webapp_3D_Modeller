@@ -27,10 +27,12 @@ export async function sendBankChange(
 		when: when(at),
 		before: {
 			bankName: previous.bankName,
+			accountName: previous.bankAccountName,
 			last4: lastFour(previous.bankAccountNumber),
 		},
 		after: {
 			bankName: next.bankName,
+			accountName: next.bankAccountName,
 			last4: lastFour(next.bankAccountNumber),
 		},
 	});

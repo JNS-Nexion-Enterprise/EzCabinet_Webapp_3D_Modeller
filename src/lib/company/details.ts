@@ -97,7 +97,10 @@ export function seedCompany(): CompanyDetails {
 export function sellerLine(
 	c: Pick<CompanyDetails, "legalName" | "ssmNumber" | "address">,
 ): string {
-	if (c.address.startsWith(c.legalName)) return c.address;
+	if (c.address.startsWith(c.legalName))
+		return c.ssmNumber
+			? `${c.legalName} (${c.ssmNumber})${c.address.slice(c.legalName.length)}`
+			: c.address;
 	const name = c.ssmNumber ? `${c.legalName} (${c.ssmNumber})` : c.legalName;
 	return `${name}, ${c.address}`;
 }

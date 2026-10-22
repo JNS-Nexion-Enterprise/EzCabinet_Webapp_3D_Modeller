@@ -67,8 +67,16 @@ describe("bankChange", () => {
 		company: testCompany(),
 		actorName: "Aisyah",
 		when: "21 Oct 2026, 3:04 pm (Malaysia time)",
-		before: { bankName: "Maybank", last4: "6789" },
-		after: { bankName: "CIMB", last4: "1222" },
+		before: {
+			bankName: "Maybank",
+			accountName: "EzCabinet Sdn Bhd",
+			last4: "6789",
+		},
+		after: {
+			bankName: "CIMB",
+			accountName: "EzCabinet Sdn Bhd",
+			last4: "1222",
+		},
 	};
 
 	it("names who, when, and the last four of each account", () => {
@@ -78,16 +86,32 @@ describe("bankChange", () => {
 		);
 		expect(mail.text).toContain("Aisyah");
 		expect(mail.text).toContain(input.when);
-		expect(mail.text).toContain("Maybank, account ending 6789");
-		expect(mail.text).toContain("CIMB, account ending 1222");
+		expect(mail.text).toContain(
+			"Maybank, EzCabinet Sdn Bhd, account ending 6789",
+		);
+		expect(mail.text).toContain("CIMB, EzCabinet Sdn Bhd, account ending 1222");
 	});
 
 	it("says so when there was no account number", () => {
 		const mail = bankChange({
 			...input,
-			before: { bankName: "Maybank", last4: "" },
+			before: {
+				bankName: "Maybank",
+				accountName: "EzCabinet Sdn Bhd",
+				last4: "",
+			},
 		});
 		expect(mail.text).toContain("no account number");
+	});
+
+	it("shows both payee names when only the account name changed", () => {
+		const mail = bankChange({
+			...input,
+			before: { bankName: "Maybank", accountName: "Old Payee", last4: "6789" },
+			after: { bankName: "Maybank", accountName: "New Payee", last4: "6789" },
+		});
+		expect(mail.text).toContain("Maybank, Old Payee, account ending 6789");
+		expect(mail.text).toContain("Maybank, New Payee, account ending 6789");
 	});
 
 	it("never prints the full number and carries no link", () => {

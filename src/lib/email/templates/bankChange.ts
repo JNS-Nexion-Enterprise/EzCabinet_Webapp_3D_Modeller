@@ -1,9 +1,9 @@
 import { type MailCompany, renderEmail } from "../layout";
 
-type Account = { bankName: string; last4: string };
+type Account = { bankName: string; accountName: string; last4: string };
 
 const show = (a: Account) =>
-	`${a.bankName}, ${a.last4 ? `account ending ${a.last4}` : "no account number"}`;
+	`${a.bankName}, ${a.accountName}, ${a.last4 ? `account ending ${a.last4}` : "no account number"}`;
 
 /**
  * English only, to every superadmin. Nothing to click, for the reason

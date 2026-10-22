@@ -86,6 +86,19 @@ export function placeFields(found: {
 	};
 }
 
+/**
+ * The pin and postcode are pre-filled with the current workshop's, so a new
+ * address saved untouched would carry the old place. A typo fix is one pin
+ * retype away, never blocked.
+ */
+export function addressNeedsPin(
+	savedAddress: string,
+	typedAddress: string,
+	pinConfirmed: boolean,
+): boolean {
+	return typedAddress.trim() !== savedAddress.trim() && !pinConfirmed;
+}
+
 export type GdexNotice =
 	| null
 	| { kind: "reminder" }

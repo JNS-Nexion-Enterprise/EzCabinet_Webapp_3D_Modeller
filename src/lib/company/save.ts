@@ -31,7 +31,7 @@ const BOOKED = ["BOOKED", "DRIVER_ASSIGNED"] as const;
  *
  * The admin is asked first when a move touches any of them; the answer is
  * `confirmMove`. The re-point acts on what is unbooked at commit, not on what
- * the question showed, and each write is conditional, so a booking that has
+ * the question showed, and the write is conditional, so a booking that has
  * finished in between is skipped rather than overwritten. One still in flight
  * at the carrier is not seen: its status has not changed yet.
  *
@@ -68,40 +68,33 @@ export async function saveCompany(
 		}
 	}
 
-	// The loop costs two round trips a delivery; a far database would time out
-	// the default 5 s on every retry.
-	const repointed = await prisma.$transaction(
-		async (tx) => {
-			await tx.companyDetails.create({
-				data: { ...next, savedById: actor.id, savedByName: actor.name },
-			});
-			if (!moved) return 0;
+	const repointed = await prisma.$transaction(async (tx) => {
+		await tx.companyDetails.create({
+			data: { ...next, savedById: actor.id, savedByName: actor.name },
+		});
+		if (!moved) return 0;
 
-			const open = await tx.delivery.findMany({
-				where: { fromWorkshop: true, status: { in: [...UNBOOKED] } },
-				select: { id: true },
+		// One conditional UPDATE is as race-safe as per-row writes: a row booked
+		// before it runs no longer matches, so it acts on what is unbooked at
+		// commit. Round trips stay constant however many jobs are open.
+		const movedJobs = await tx.delivery.updateManyAndReturn({
+			where: { fromWorkshop: true, status: { in: [...UNBOOKED] } },
+			data: workshopColumns(next),
+			select: { id: true },
+		});
+		if (movedJobs.length > 0) {
+			const message = `Pickup moved with the workshop: ${previous.address} → ${next.address}`;
+			await tx.deliveryEvent.createMany({
+				data: movedJobs.map(({ id }) => ({
+					deliveryId: id,
+					source: "ADMIN" as const,
+					actor: actor.name,
+					message,
+				})),
 			});
-			let count = 0;
-			for (const { id } of open) {
-				const done = await tx.delivery.updateMany({
-					where: { id, fromWorkshop: true, status: { in: [...UNBOOKED] } },
-					data: workshopColumns(next),
-				});
-				if (done.count !== 1) continue;
-				count++;
-				await tx.deliveryEvent.create({
-					data: {
-						deliveryId: id,
-						source: "ADMIN",
-						actor: actor.name,
-						message: `Pickup moved with the workshop: ${previous.address} → ${next.address}`,
-					},
-				});
-			}
-			return count;
-		},
-		{ timeout: 25_000 },
-	);
+		}
+		return movedJobs.length;
+	});
 
 	revalidateTag(COMPANY_CACHE_TAG, { expire: 0 });
 	// The tag covers `getCompany` readers; the landing and terms pages are
