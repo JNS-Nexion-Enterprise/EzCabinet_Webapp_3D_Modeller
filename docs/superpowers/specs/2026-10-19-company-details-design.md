@@ -1,6 +1,6 @@
 # Company details, edited by the client
 
-Status: design, 2026-10-19. Not built.
+Status: built 2026-10-22 (plan docs/superpowers/plans/2026-10-21-company-details.md).
 
 ## Why
 

@@ -100,7 +100,9 @@ mails, the accent colour and `mode` are untouched. See
       email, order reference prefix, workshop details, bank details, accent
       colour, passkey and 2FA names, the Meta verification token, and the
       legal parameters.
-- [ ] Point `WORKSHOP_*` and `BANK_TRANSFER` at the tenant file.
+- [x] `WORKSHOP_*` and `BANK_TRANSFER` left the tenant file for `/admin/company`
+      (docs/superpowers/plans/2026-10-21-company-details.md); the tenant file
+      seeds them for a new company's first run.
 - [ ] Replace the literal brand name in about 30 source files and the four
       copy dictionaries with the `{brand}` placeholder.
 - [ ] A guard test that fails on `ezcabinet` under `src/` outside `tenants/`.

@@ -16,7 +16,7 @@ The wardrobe survives only as a seed family (`id: "wardrobe"`) in `lib/planner/c
 
 ## Status
 
-Phase 0 (catalogue + pricing spec with client) not yet complete — see Open questions. The engine, the planner UI, and the admin catalogue surface are built. `/admin/cabinet-designs` is the one catalogue screen: each uploaded design is one cabinet, filed under the rooms that offer it, and `POST /api/admin/cabinet-designs/publish` rebuilds the catalogue from the design rows (`lib/catalogue/buildCatalogue.ts`). Customers can check out: `POST /api/orders` re-validates and re-prices the design and stores an `Order` (manual bank transfer until a gateway is chosen), `/admin/orders` marks it paid, and **Create delivery** opens the logistics form pre-filled from the design (`lib/orders`). Customers get updates for the order, each admin-advanced production stage and the delivery: by WhatsApp when they opted in (`lib/whatsapp`, Meta Cloud API; go-live waits on EzCabinet — see Open questions), and by email (`lib/email`, Resend) — receipts always, the rest when WhatsApp is off. Share links are the remaining Phase 3 work.
+Phase 0 (catalogue + pricing spec with client) not yet complete — see Open questions. The engine, the planner UI, and the admin catalogue surface are built. `/admin/cabinet-designs` is the one catalogue screen: each uploaded design is one cabinet, filed under the rooms that offer it, and `POST /api/admin/cabinet-designs/publish` rebuilds the catalogue from the design rows (`lib/catalogue/buildCatalogue.ts`). Customers can check out: `POST /api/orders` re-validates and re-prices the design and stores an `Order` (manual bank transfer until a gateway is chosen), `/admin/orders` marks it paid, and **Create delivery** opens the logistics form pre-filled from the design (`lib/orders`). Customers get updates for the order, each admin-advanced production stage and the delivery: by WhatsApp when they opted in (`lib/whatsapp`, Meta Cloud API; go-live waits on EzCabinet — see Open questions), and by email (`lib/email`, Resend) — receipts always, the rest when WhatsApp is off. The company's own details — brand, legal name, SSM number, contact, workshop address and pin, courier close time, bank account, order prefix — are a superadmin's to edit at `/admin/company` (`lib/company`), not constants. Share links are the remaining Phase 3 work.
 
 **Confirmed client requirement (resolved):** EzCabinet designs in SketchUp and asked for "upload SketchUp designs so we can maintain new configurations." It is resolved the literal way: the planner **renders the model they drew** — see [3D](#3d). This reversed an earlier decision to rebuild each cabinet procedurally from extracted numbers; that section carries the measurements that changed it.
 
@@ -212,6 +212,11 @@ src/
     copy.ts              ← mail wording, en / ms / zh; server-side, never in the site dictionary
     templates/           ← one pure function per mail; order.ts holds the eight order mails
     orderMail.ts         ← an outbox row → its order → a sent mail
+  lib/company/           ← who the company is: an append-only CompanyDetails table
+    details.ts           ← schema, the seed from lib/tenant, seller line, change checks
+    store.ts             ← getCompany (cached until a save), readCompany, reserved brands
+    save.ts              ← append a row; a workshop move re-points unbooked deliveries
+    bankMail.ts          ← every superadmin is mailed when the bank account changes
   lib/mesh/              ← reads an OBJ export into catalogue data
     archive.ts           ← unzip; the .obj text and the texture filenames
     objRead.ts           ← OBJ parse: named boxes in the file's own units
@@ -798,7 +803,7 @@ a missing key there logs an error naming neither the code nor the address.
 Mail delivery is now checkout-critical: a customer without Google cannot
 order if their code does not arrive.
 
-`lib/auth/permissions.ts` is the whole access model: ten permissions and a
+`lib/auth/permissions.ts` is the whole access model: eleven permissions and a
 `Role → Permission[]` constant, with a table-driven test that is its
 specification. The permission names outlive the roles that motivated them —
 `SALES` and `CATALOGUE` were specified and dropped, and reinstating either is
@@ -852,8 +857,9 @@ password. Both Reset 2FA and Remove password log the actor's and target's ids.
 
 **Actions that move money or access ask twice, and ask for a passkey.**
 Cancel order, mark paid, refund through the gateway, mark refunded, invite or
-promote a staff member, change a role, delete user, reset passkey, reset 2FA
-and remove password open a confirmation dialog
+promote a staff member, change a role, delete user, reset passkey, reset 2FA,
+remove password and save the company's details (`company:manage`, superadmin
+only) open a confirmation dialog
 (`components/admin/ConfirmDialog.tsx`); suspend and restore are one click
 with no dialog. All of their routes pass
 `{ stepUp: true }` to `withAuth`: the session must have passed a passkey
@@ -1045,6 +1051,9 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
     feature's threat (someone holding only the sign-in), recorded so
     it is not mistaken for covered.
 17. **Order mail has no bounce handling and no second chance on a dead WhatsApp.** Resend accepting a mail is recorded as sent; a mailbox that then rejects it is never seen. A customer with WhatsApp on gets no stage or delivery mail even when their WhatsApp sends are failing. A mail Resend refuses is retried five times, then shown as failed on the order's Messages card, where staff can resend it; a bad key, a rate limit, a 5xx or a timeout (`deliverEmail` → `unavailable`) uses up no try and holds the channel's rows until it answers, as a dead WhatsApp token does. `flush` reads each channel on its own, so one channel's backlog never takes the other's place. Order mail also needs `BETTER_AUTH_URL`: its links are built from it, and without it mail waits in the queue. `pnpm email:preview <dir>` writes every mail in every language for a read-through.
+18. **A workshop move that commits while a carrier booking is in flight can book from the old pickup.** `saveCompany` re-points unbooked `DRAFT`/`QUOTED` deliveries that leave from the workshop; one an admin is booking at that moment is re-pointed after the carrier call has read the old address. The window is one carrier call and is accepted; the admin sees the delivery's new pickup on the next load.
+19. **Two superadmins saving company details at the same instant both read the previous details outside the transaction.** A move's event text can then cite a stale "from" address, and the newest row may not match the deliveries that were re-pointed. The upgrade path is an advisory lock around the read and the append; with a handful of superadmins it has not been worth it.
+20. **Two company facts are read from the seed, not the saved row, by design.** The passkey `rpName` is the seed brand, because Better Auth copies its options at construction and there is no database at module load (the authenticator issuer for TOTP is sent live from the setup screen). And an order or delivery with a `null` `refPrefix` — one placed before company details existed — reads as the seed prefix, resolved only in `orderRef`/`deliveryRef`, so changing the saved prefix never renames an old reference.
 
 ## Open questions — resolve before trusting pricing.ts
 
@@ -1072,17 +1081,15 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   the convention would be reading handedness into what may only be position.
   Their answer decides whether a single door's drawn name can seed its swing.
 - **Design-intake cadence.** How often do new exports arrive, and will the panel naming (`G-UEnd_(L)`, `G-Door(R)`, …) stay stable? Extraction depends on it, so a change in their drawing habits is a change to `lib/mesh`.
-- **The workshop's real street address and phone.** `WORKSHOP_ADDRESS` is
-  `"EzCabinet Sdn Bhd, Klang Valley, Selangor"`, which does not geocode
-  to a pin, so Lalamove cannot price a pickup from it — every delivery would be
-  quoted from wherever that phrase happens to resolve to. `WORKSHOP_PHONE` is a
-  placeholder, and it is the number a Lalamove driver rings from the loading bay.
-  `WORKSHOP_POSTCODE`, `WORKSHOP_CITY` and `WORKSHOP_STATE` are placeholders
-  derived from `WORKSHOP_PIN`, and EasyParcel prices the origin zone off them —
-  a wrong postcode there is a wrong price on every parcel quote. FedEx takes
-  the shipper and pickup address from the same constants (GDEX avoided this
-  with its account profile; FedEx cannot), plus `WORKSHOP_CLOSE_TIME`, also a
-  placeholder.
+- **The workshop's real street address, pin, phone and close time.** EzCabinet
+  enters them at `/admin/company`; until it does, the seed's placeholders stand.
+  The seed address does not geocode to a pin, so Lalamove cannot price a pickup
+  from it — every delivery would be quoted from wherever that phrase happens to
+  resolve to. The phone is the number a Lalamove driver rings from the loading
+  bay. EasyParcel prices the origin zone off the postcode, city and state, and
+  a wrong postcode is a wrong price on every parcel quote. FedEx takes the
+  shipper and pickup address and the courier close time from the same details
+  (GDEX avoided this with its account profile; FedEx cannot).
 - **Does EzCabinet's FedEx account sell `FEDEX_PRIORITY` domestically, and in
   MYR?** The adapter prefers it and falls back to the cheapest service
   offered; a non-MYR price is refused rather than shown as RM. Only production
@@ -1103,7 +1110,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   names like "Ad Minh". If a real customer's name is still caught, narrow
   `posesAsBusiness` (`lib/auth/customerName.ts`).
 - **WhatsApp go-live is waiting on EzCabinet.** Meta Business verification, a dedicated number, a system-user token, a payment method, 24 template approvals, the factory's real stage names, the sales number and counsel's privacy sign-off. Checklist and template copy: `docs/ops/whatsapp-ezcabinet-setup.md`.
-- **Which Malaysian payment gateway?** Stripe is wired as the sandbox-test gateway, chosen by the `payment-gateway` Vercel flag (`src/flags.ts`: Stripe on development and preview, manual on production); Fiuu is the likely production one, account in progress. Both are adapters behind `lib/payments` — swap plan in `STRIPE_INTEGRATION_TODO.md`. Only the verified webhook marks an order paid, never the customer's return. Online payment can go off without any error: when Vercel Flags cannot answer, the flag answers `PAYMENT_GATEWAY_FALLBACK` (unset means `manual`), so every environment that sells through a gateway must set it to that gateway — locally too, where an expired `VERCEL_OIDC_TOKEN` is the usual cause; and when the flag names a gateway whose keys are missing, `activeGateway` logs "Online payment is off" and customers see bank transfer. Going live on a gateway is therefore three things in production: the flag, the gateway's keys, and `PAYMENT_GATEWAY_FALLBACK`. With no gateway set, orders fall back to manual bank transfer, and `BANK_TRANSFER` in `lib/orders/payment.ts` is still a placeholder account the confirmation page shows customers.
+- **Which Malaysian payment gateway?** Stripe is wired as the sandbox-test gateway, chosen by the `payment-gateway` Vercel flag (`src/flags.ts`: Stripe on development and preview, manual on production); Fiuu is the likely production one, account in progress. Both are adapters behind `lib/payments` — swap plan in `STRIPE_INTEGRATION_TODO.md`. Only the verified webhook marks an order paid, never the customer's return. Online payment can go off without any error: when Vercel Flags cannot answer, the flag answers `PAYMENT_GATEWAY_FALLBACK` (unset means `manual`), so every environment that sells through a gateway must set it to that gateway — locally too, where an expired `VERCEL_OIDC_TOKEN` is the usual cause; and when the flag names a gateway whose keys are missing, `activeGateway` logs "Online payment is off" and customers see bank transfer. Going live on a gateway is therefore three things in production: the flag, the gateway's keys, and `PAYMENT_GATEWAY_FALLBACK`. With no gateway set, orders fall back to manual bank transfer, and the bank account the confirmation page shows customers is the one EzCabinet enters at `/admin/company` (a placeholder until it does).
 - **The delivery fee.** `RATES.deliveryFlatRm` is `85`, the figure from the client's Order Confirmation design; set the real one in the catalogue settings. It is flat — one fee whatever the load or the distance.
 - **What happens when a paid design changes at re-measure?** The customer pays full price up front; the app refunds a whole cancelled order and nothing else, so there is no partial refund or top-up flow, and a re-measure that changes the cabinets is handled outside the app today.
 - **Weights.** Parcel partners price by the kilogram. A design row's optional weight pre-fills its delivery rows; every design without one leaves the admin typing it per delivery.
@@ -1117,8 +1124,9 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   estimate (4 to 6 weeks from re-measure) are our defaults; whether the price
   carries SST, and the company's SSM registration number for the seller
   block, are theirs to supply.
-  The seller block on the terms page and at checkout reads
-  `WORKSHOP_ADDRESS` and `WORKSHOP_PHONE`, both still placeholders — the
+  The seller block on the terms page and at checkout reads the saved
+  company's legal name, SSM number, address and phone, which EzCabinet enters
+  at `/admin/company` and which stay placeholders until it does — the
   Consumer Protection (Electronic Trade Transactions) Regulations 2024 want
   the registered address there, and the Malay page is the one the law reads. GDPR was checked and does not apply: an
   EU-hosted processor does not bring a Malaysian seller under it.
@@ -1139,7 +1147,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   written-contract requirement comes from commentary on the 2015 Standards,
   and the s.4 wording from an unofficial 2010 copy of the Act. Counsel
   confirms both.
-- **Order emails print placeholders.** `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` and `BANK_TRANSFER` now appear in mail a customer keeps, and "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads. The ms and zh mail wording (`lib/email/copy.ts`) needs a native read, as the WhatsApp templates do. The privacy notice's "Email and WhatsApp updates are optional" is no longer exact — order emails are not optional — and goes to counsel with the new "Order emails" paragraph.
+- **Order emails print placeholders.** The workshop address and phone and the bank account now appear in mail a customer keeps, and until EzCabinet enters them at `/admin/company` they are placeholders; "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads. The ms and zh mail wording (`lib/email/copy.ts`) needs a native read, as the WhatsApp templates do. The privacy notice's "Email and WhatsApp updates are optional" is no longer exact — order emails are not optional — and goes to counsel with the new "Order emails" paragraph.
 
 ## Conventions
 
