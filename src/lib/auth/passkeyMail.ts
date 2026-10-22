@@ -1,18 +1,17 @@
 import "server-only";
 import { after } from "next/server";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { sendEmail } from "@/lib/email";
-import { BRAND } from "@/lib/email/copy";
 import {
 	type PasskeyChange,
 	passkeyChange,
 } from "@/lib/email/templates/passkeyChange";
-import { WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 
 export type { PasskeyChange };
 
 /** As a customer in Malaysia would read it, wherever the server runs. */
-function when(at: Date): string {
+export function when(at: Date): string {
 	const stamp = at.toLocaleString("en-MY", {
 		dateStyle: "medium",
 		timeStyle: "short",
@@ -26,11 +25,11 @@ function when(at: Date): string {
  * link: this mail carries nothing to click, so a forged copy has nothing to
  * phish with.
  */
-function contact(): string {
+function contact(company: { brand: string; phone: string }): string {
 	const sales = (process.env.WHATSAPP_SALES_NUMBER ?? "").replace(/\D/g, "");
 	return sales
-		? `message ${BRAND} on WhatsApp at +${sales}`
-		: `call ${BRAND} on ${WORKSHOP_PHONE}`;
+		? `message ${company.brand} on WhatsApp at +${sales}`
+		: `call ${company.brand} on ${company.phone}`;
 }
 
 /**
@@ -49,13 +48,15 @@ export async function sendPasskeyChange(
 		select: { email: true, name: true },
 	});
 	if (!row) return;
+	const company = await getCompany();
 	await sendEmail({
 		to: row.email,
 		...passkeyChange({
+			company,
 			change,
 			name: row.name,
 			when: when(at),
-			contact: contact(),
+			contact: contact(company),
 		}),
 	});
 }

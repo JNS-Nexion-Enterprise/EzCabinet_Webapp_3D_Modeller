@@ -69,7 +69,7 @@ export type CompanyDetails = z.output<typeof companyDetailsSchema>;
 
 /**
  * What an unsaved company reads: this deployment's tenant values. The bank
- * fields are the old `BANK_TRANSFER` placeholders, so nothing a customer sees
+ * fields are the old bank-transfer placeholders, so nothing a customer sees
  * changes before the first save.
  */
 export function seedCompany(): CompanyDetails {

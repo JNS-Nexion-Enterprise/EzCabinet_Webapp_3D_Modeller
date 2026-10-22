@@ -1,34 +1,36 @@
-import { BRAND } from "../copy";
-import { renderEmail } from "../layout";
+import { type MailCompany, renderEmail } from "../layout";
 
 export type PasskeyChange = "added" | "removed" | "reset";
 
-const WHAT: Record<
+const WHAT = (
+	brand: string,
+): Record<
 	PasskeyChange,
 	{ subject: string; heading: string; line: string }
-> = {
+> => ({
 	added: {
-		subject: `A passkey was added to your ${BRAND} account`,
+		subject: `A passkey was added to your ${brand} account`,
 		heading: "Passkey added",
-		line: `A passkey was added to your ${BRAND} account`,
+		line: `A passkey was added to your ${brand} account`,
 	},
 	removed: {
-		subject: `A passkey was removed from your ${BRAND} account`,
+		subject: `A passkey was removed from your ${brand} account`,
 		heading: "Passkey removed",
-		line: `A passkey was removed from your ${BRAND} account`,
+		line: `A passkey was removed from your ${brand} account`,
 	},
 	reset: {
-		subject: `Your ${BRAND} passkeys were reset`,
+		subject: `Your ${brand} passkeys were reset`,
 		heading: "Passkeys reset",
-		line: `${BRAND} staff removed every passkey from your ${BRAND} account, and signed it out everywhere`,
+		line: `${brand} staff removed every passkey from your ${brand} account, and signed it out everywhere`,
 	},
-};
+});
 
 /**
  * English only, every role. Nothing to click: a forged copy of this mail has
  * nothing to phish with, so `contact` is a number written out, never a link.
  */
 export function passkeyChange(input: {
+	company: MailCompany;
 	change: PasskeyChange;
 	name: string;
 	/** When it happened, already worded for the reader. */
@@ -36,12 +38,13 @@ export function passkeyChange(input: {
 	/** How to reach us, as the middle of a sentence: "call the company on …". */
 	contact: string;
 }) {
-	const { subject, heading, line } = WHAT[input.change];
+	const { subject, heading, line } = WHAT(input.company.brand)[input.change];
 	const name = input.name.trim();
 	return {
 		subject,
 		...renderEmail({
 			locale: "en",
+			company: input.company,
 			about: "account",
 			preheader: subject,
 			heading,

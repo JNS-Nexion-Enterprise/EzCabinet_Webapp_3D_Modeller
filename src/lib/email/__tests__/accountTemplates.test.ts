@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
 import { signInCode } from "../templates/signInCode";
 import { staffInvite } from "../templates/staffInvite";
 import { staffReset } from "../templates/staffReset";
 
 describe("staffReset", () => {
 	const mail = staffReset({
+		company: testCompany(),
 		name: "Ali",
 		link: "https://x.test/admin/reset-password?token=abc",
 	});
@@ -27,6 +29,7 @@ describe("staffReset", () => {
 
 describe("staffInvite", () => {
 	const input = {
+		company: testCompany(),
 		name: "Ali",
 		inviterName: "Jack",
 		role: "Admin",
@@ -43,6 +46,14 @@ describe("staffInvite", () => {
 		expect(mail.html).toContain('href="https://x.test/admin/login"');
 	});
 
+	it("signs with the saved brand", () => {
+		const mail = staffInvite({
+			...input,
+			company: testCompany({ brand: "Kabinet Baru" }),
+		});
+		expect(mail.subject).toBe("You've been invited to Kabinet Baru Admin");
+	});
+
 	it("does not mention a password to a Google-only account", () => {
 		const mail = staffInvite({ ...input, hasPassword: false });
 		expect(mail.text).not.toContain("password");
@@ -54,7 +65,12 @@ describe("signInCode", () => {
 	it.each(["en", "ms", "zh"] as const)(
 		"%s: shows the code, no link, nothing unfilled",
 		(locale) => {
-			const mail = signInCode({ locale, code: "482916", minutes: 10 });
+			const mail = signInCode({
+				company: testCompany(),
+				locale,
+				code: "482916",
+				minutes: 10,
+			});
 			expect(mail.subject).toContain("482916");
 			expect(mail.text).toContain("482916");
 			expect(mail.html).toContain("482916");

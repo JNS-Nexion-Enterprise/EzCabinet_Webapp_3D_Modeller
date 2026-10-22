@@ -1,7 +1,7 @@
+import { type CompanyDetails, sellerLine } from "@/lib/company/details";
 import { fill } from "@/lib/copy/fill";
 import type { Locale } from "@/lib/copy/locales";
-import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
-import { BRAND, EMAIL_COPY } from "./copy";
+import { EMAIL_COPY } from "./copy";
 
 /**
  * The one look every email shares, and the plain-text part beside it.
@@ -20,8 +20,15 @@ export type Block =
 	  }
 	| { type: "button"; label: string; href: string };
 
+/** What a mail signs with: the saved company, not a constant. */
+export type MailCompany = Pick<
+	CompanyDetails,
+	"brand" | "legalName" | "ssmNumber" | "address" | "phone"
+>;
+
 export type EmailContent = {
 	locale: Locale;
+	company: MailCompany;
 	/** Picks the footer: an order mail also says how to reach us. */
 	about: "account" | "order";
 	preheader: string;
@@ -163,15 +170,18 @@ export function renderEmail(content: EmailContent): {
 		content.about === "order" ? shared.serviceOrder : shared.serviceAccount;
 	const questions =
 		content.about === "order"
-			? fill(shared.questions, { phone: WORKSHOP_PHONE })
+			? fill(shared.questions, { phone: content.company.phone })
 			: null;
+
+	const seller = sellerLine(content.company);
+	const { brand } = content.company;
 
 	const text = [
 		content.heading,
 		...content.blocks.map(blockText),
 		content.footnote,
 		questions,
-		WORKSHOP_ADDRESS,
+		seller,
 	]
 		.filter(Boolean)
 		.join("\n\n");
@@ -206,8 +216,8 @@ ${DARK_CSS}
 <table role="presentation" class="wrap" width="600" cellpadding="0" cellspacing="0" border="0" style="width:600px;max-width:600px;">
 <tr><td class="pad" style="padding:0 40px 24px 40px;" align="left">
 <table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
-<td class="logo" width="32" height="32" align="center" bgcolor="${C.hero}" style="width:32px;height:32px;background-color:${C.hero};border-radius:6px;${FONT}font-size:15px;font-weight:bold;color:#FFFFFF;">${BRAND[0]}</td>
-<td class="ink" style="padding-left:10px;${FONT}font-size:18px;font-weight:bold;color:${C.ink};">${BRAND}</td>
+<td class="logo" width="32" height="32" align="center" bgcolor="${C.hero}" style="width:32px;height:32px;background-color:${C.hero};border-radius:6px;${FONT}font-size:15px;font-weight:bold;color:#FFFFFF;">${esc([...brand][0] ?? "")}</td>
+<td class="ink" style="padding-left:10px;${FONT}font-size:18px;font-weight:bold;color:${C.ink};">${esc(brand)}</td>
 </tr></table>
 </td></tr>
 <tr><td bgcolor="${C.hero}" style="background-color:${C.hero};border-radius:8px 8px 0 0;">
@@ -225,7 +235,7 @@ ${footnote}
 </table>
 </td></tr>
 <tr><td class="pad muted" style="padding:24px 40px 0 40px;${FONT}font-size:12px;line-height:18px;mso-line-height-rule:exactly;color:${C.muted};" align="left">
-${esc(WORKSHOP_ADDRESS)}<br>
+${esc(seller)}<br>
 ${esc([service, questions].filter(Boolean).join(" "))}
 </td></tr>
 </table>

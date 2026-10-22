@@ -4,6 +4,7 @@ import type {
 	ProductionStage,
 } from "@/generated/prisma/enums";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { isLocale } from "@/lib/copy/locales";
 import { deliverEmail, type EmailOutcome } from "@/lib/email";
@@ -58,6 +59,7 @@ export async function sendOrderEmail(
 	const locale = isLocale(row.locale) ? row.locale : "en";
 	const t = await getDictionary(locale);
 	const mail = orderEmail({
+		company: await getCompany(),
 		kind: row.kind,
 		locale,
 		base: base.replace(/\/+$/, ""),

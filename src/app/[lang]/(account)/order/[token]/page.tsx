@@ -8,6 +8,7 @@ import {
 import { WhatsAppHelp } from "@/components/WhatsAppHelp";
 import { authEnabled } from "@/lib/auth/enabled";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
 import { isLocale } from "@/lib/copy/locales";
@@ -123,7 +124,9 @@ export default async function OrderPage({
 	// The active gateway when there is one, bank transfer when there is not.
 	const payOnline = awaiting && !settling && (await activeGateway()) !== null;
 	const pay =
-		awaiting && !settling && !payOnline ? paymentInstructions(order) : null;
+		awaiting && !settling && !payOnline
+			? paymentInstructions(order, await getCompany())
+			: null;
 	const [heading, body] =
 		order.status === "PAID"
 			? [o.headingPaid, o.bodyPaid]

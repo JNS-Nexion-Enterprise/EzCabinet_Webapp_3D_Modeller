@@ -1,6 +1,7 @@
 import "server-only";
 import { canEmailReset } from "@/lib/auth/twoFactor";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { sendEmail } from "@/lib/email";
 import { staffReset } from "@/lib/email/templates/staffReset";
 
@@ -65,7 +66,7 @@ export async function sendStaffReset(
 
 	await sendEmail({
 		to: row.email,
-		...staffReset({ name: row.name, link: url }),
+		...staffReset({ company: await getCompany(), name: row.name, link: url }),
 	});
 }
 

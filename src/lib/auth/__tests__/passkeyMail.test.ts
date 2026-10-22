@@ -9,6 +9,13 @@ const sendEmail = vi.hoisted(() =>
 );
 const after = vi.hoisted(() => vi.fn());
 
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
+
+vi.mock("@/lib/company/store", () => ({
+	getCompany: vi.fn(async () =>
+		testCompany({ brand: "Kabinet Baru", phone: "03-5555 1234" }),
+	),
+}));
 vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { findUnique } } }));
 vi.mock("@/lib/email", () => ({ sendEmail }));
 vi.mock("next/server", () => ({ after }));
@@ -32,9 +39,9 @@ afterEach(() => {
 
 describe("sendPasskeyChange", () => {
 	it.each([
-		["added", "A passkey was added to your EzCabinet account"],
-		["removed", "A passkey was removed from your EzCabinet account"],
-		["reset", "EzCabinet staff removed every passkey"],
+		["added", "A passkey was added to your Kabinet Baru account"],
+		["removed", "A passkey was removed from your Kabinet Baru account"],
+		["reset", "Kabinet Baru staff removed every passkey"],
 	] as const)(
 		"%s: says what and when, to the account's own address",
 		async (change, what) => {
@@ -61,14 +68,16 @@ describe("sendPasskeyChange", () => {
 		vi.stubEnv("WHATSAPP_SALES_NUMBER", "+60 12-345 6789");
 		await sendPasskeyChange("u1", "added", AT);
 		expect(sendEmail.mock.calls[0][0].text).toContain(
-			"message EzCabinet on WhatsApp at +60123456789",
+			"message Kabinet Baru on WhatsApp at +60123456789",
 		);
 	});
 
 	it("gives the workshop phone when there is no sales number", async () => {
 		vi.stubEnv("WHATSAPP_SALES_NUMBER", "");
 		await sendPasskeyChange("u1", "added", AT);
-		expect(sendEmail.mock.calls[0][0].text).toMatch(/call EzCabinet on \S+/);
+		expect(sendEmail.mock.calls[0][0].text).toContain(
+			"call Kabinet Baru on 03-5555 1234",
+		);
 	});
 
 	it("escapes the name in the HTML, and leaves it as typed in the text", async () => {
