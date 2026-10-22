@@ -26,6 +26,7 @@ export const PERMISSIONS = [
 	"logistics:book",
 	"content:write",
 	"users:manage",
+	"company:manage",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
@@ -34,10 +35,14 @@ export const ROLES = ["SUPERADMIN", "ADMIN", "CUSTOMER"] as const;
 
 export type Role = (typeof ROLES)[number];
 
-/** Managing people, and sending money back out, stay with a superadmin. */
+/**
+ * Managing people, sending money back out, and saying who the company is and
+ * where its bank account is, stay with a superadmin.
+ */
 const SUPERADMIN_ONLY: readonly Permission[] = [
 	"users:manage",
 	"orders:refund",
+	"company:manage",
 ];
 
 const ADMIN_PERMISSIONS = PERMISSIONS.filter(

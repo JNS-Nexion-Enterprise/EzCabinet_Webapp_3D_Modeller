@@ -30,8 +30,14 @@ describe("can", () => {
 		}
 	});
 
+	it("is the only role that manages the company", () => {
+		for (const role of ROLES) {
+			expect(can(role, "company:manage")).toBe(role === "SUPERADMIN");
+		}
+	});
+
 	it("gives ADMIN everything except managing users and refunding", () => {
-		const superadminOnly = ["users:manage", "orders:refund"];
+		const superadminOnly = ["users:manage", "orders:refund", "company:manage"];
 		for (const permission of ROLE_PERMISSIONS.SUPERADMIN) {
 			expect(can("ADMIN", permission)).toBe(
 				!superadminOnly.includes(permission),
