@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { testCompany } from "@/lib/company/__tests__/company.fixture";
+import { bankChange } from "../templates/bankChange";
 import { signInCode } from "../templates/signInCode";
 import { staffInvite } from "../templates/staffInvite";
 import { staffReset } from "../templates/staffReset";
@@ -58,6 +59,42 @@ describe("staffInvite", () => {
 		const mail = staffInvite({ ...input, hasPassword: false });
 		expect(mail.text).not.toContain("password");
 		expect(mail.html).not.toContain("password");
+	});
+});
+
+describe("bankChange", () => {
+	const input = {
+		company: testCompany(),
+		actorName: "Aisyah",
+		when: "21 Oct 2026, 3:04 pm (Malaysia time)",
+		before: { bankName: "Maybank", last4: "6789" },
+		after: { bankName: "CIMB", last4: "1222" },
+	};
+
+	it("names who, when, and the last four of each account", () => {
+		const mail = bankChange(input);
+		expect(mail.subject).toBe(
+			"The bank account for customer payments was changed",
+		);
+		expect(mail.text).toContain("Aisyah");
+		expect(mail.text).toContain(input.when);
+		expect(mail.text).toContain("Maybank, account ending 6789");
+		expect(mail.text).toContain("CIMB, account ending 1222");
+	});
+
+	it("says so when there was no account number", () => {
+		const mail = bankChange({
+			...input,
+			before: { bankName: "Maybank", last4: "" },
+		});
+		expect(mail.text).toContain("no account number");
+	});
+
+	it("never prints the full number and carries no link", () => {
+		const mail = bankChange(input);
+		expect(mail.text).not.toContain("562123456789");
+		expect(mail.html).not.toContain("562123456789");
+		expect(mail.html).not.toContain("href");
 	});
 });
 

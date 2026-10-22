@@ -36,7 +36,7 @@ describe("can", () => {
 		}
 	});
 
-	it("gives ADMIN everything except managing users and refunding", () => {
+	it("gives ADMIN everything except managing users, the company and refunding", () => {
 		const superadminOnly = ["users:manage", "orders:refund", "company:manage"];
 		for (const permission of ROLE_PERMISSIONS.SUPERADMIN) {
 			expect(can("ADMIN", permission)).toBe(

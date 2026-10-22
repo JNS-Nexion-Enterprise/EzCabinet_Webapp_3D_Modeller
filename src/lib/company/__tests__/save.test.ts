@@ -8,6 +8,7 @@ const eventCreate = vi.hoisted(() => vi.fn());
 const readCompany = vi.hoisted(() => vi.fn());
 const revalidateTag = vi.hoisted(() => vi.fn());
 const revalidatePath = vi.hoisted(() => vi.fn());
+const queueBankChangeMail = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/catalogue/db", () => {
 	const tx = {
@@ -26,6 +27,7 @@ vi.mock("@/lib/company/store", () => ({
 	readCompany,
 	COMPANY_CACHE_TAG: "company",
 }));
+vi.mock("@/lib/company/bankMail", () => ({ queueBankChangeMail }));
 vi.mock("next/cache", () => ({ revalidateTag, revalidatePath }));
 
 const { testCompany } = await import("./company.fixture");
@@ -86,6 +88,9 @@ describe("saveCompany", () => {
 			},
 		});
 		expect(companyCreate).not.toHaveBeenCalled();
+		expect(revalidateTag).not.toHaveBeenCalled();
+		expect(revalidatePath).not.toHaveBeenCalled();
+		expect(queueBankChangeMail).not.toHaveBeenCalled();
 		expect(planFindMany).toHaveBeenCalledWith(
 			expect.objectContaining({
 				where: {
@@ -143,5 +148,21 @@ describe("saveCompany", () => {
 			repointed: 0,
 		});
 		expect(companyCreate).toHaveBeenCalled();
+	});
+
+	it("touches no delivery when confirmed but the workshop did not move", async () => {
+		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, true);
+		expect(txFindMany).not.toHaveBeenCalled();
+		expect(updateMany).not.toHaveBeenCalled();
+	});
+
+	it("announces a changed bank account, and only then", async () => {
+		const next = { ...prev, bankAccountNumber: "111122223333" };
+		await saveCompany(next, actor, false);
+		expect(queueBankChangeMail).toHaveBeenCalledWith(prev, next, "Aisyah");
+
+		queueBankChangeMail.mockClear();
+		await saveCompany({ ...prev, phone: "03-5555 1234" }, actor, false);
+		expect(queueBankChangeMail).not.toHaveBeenCalled();
 	});
 });
