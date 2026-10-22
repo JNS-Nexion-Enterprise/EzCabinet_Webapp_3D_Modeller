@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
-import { pickupPin } from "@/lib/logistics/carriers";
+import { getCompany } from "@/lib/company/store";
+import { workshopPickup } from "@/lib/logistics/carriers";
 import { pinFor } from "@/lib/logistics/coords";
 import { resolveCoordinates } from "@/lib/logistics/geocode";
 import { totalVolumeM3, totalWeightKg } from "@/lib/logistics/measure";
@@ -80,7 +81,10 @@ export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 					: null,
 			pickupPinStored: [existing.pickupLat, existing.pickupLng],
 		});
-		const [site, pickup] = await Promise.all([
+		const company = await getCompany();
+		const given = pinFor(pickupLat, pickupLng, rest.pickupAddress);
+		const workshop = workshopPickup(rest.pickupAddress, given, company);
+		const [site, geocoded] = await Promise.all([
 			resolveCoordinates(
 				rest.siteAddress,
 				{
@@ -93,24 +97,34 @@ export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 				},
 				pinFor(siteLat, siteLng, rest.siteAddress),
 			),
-			resolveCoordinates(
-				rest.pickupAddress,
-				{
-					lat: existing.pickupLat,
-					lng: existing.pickupLng,
-					geocodedFor: existing.pickupGeocodedFor,
-					postcode: existing.pickupPostcode,
-					city: existing.pickupCity,
-					state: existing.pickupState,
-				},
-				pickupPin(rest.pickupAddress, pickupLat, pickupLng),
-			),
+			workshop
+				? null
+				: resolveCoordinates(
+						rest.pickupAddress,
+						{
+							lat: existing.pickupLat,
+							lng: existing.pickupLng,
+							geocodedFor: existing.pickupGeocodedFor,
+							postcode: existing.pickupPostcode,
+							city: existing.pickupCity,
+							state: existing.pickupState,
+						},
+						given,
+					),
 		]);
+		const pickup = workshop ?? {
+			pickupLat: geocoded?.lat ?? null,
+			pickupLng: geocoded?.lng ?? null,
+			pickupGeocodedFor: geocoded?.geocodedFor ?? null,
+			pickupPostcode: geocoded?.postcode ?? null,
+			pickupCity: geocoded?.city ?? null,
+			pickupState: geocoded?.state ?? null,
+		};
 
 		trace("save.resolved", {
 			what: "edit",
 			site: [site.lat, site.lng],
-			pickup: [pickup.lat, pickup.lng],
+			pickup: [pickup.pickupLat, pickup.pickupLng],
 		});
 
 		const delivery = await prisma.delivery.update({
@@ -124,12 +138,8 @@ export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 				sitePostcode: site.postcode,
 				siteCity: site.city,
 				siteState: site.state,
-				pickupLat: pickup.lat,
-				pickupLng: pickup.lng,
-				pickupGeocodedFor: pickup.geocodedFor,
-				pickupPostcode: pickup.postcode,
-				pickupCity: pickup.city,
-				pickupState: pickup.state,
+				...pickup,
+				fromWorkshop: workshop !== null,
 				scheduledAt: scheduledAt === null ? null : new Date(scheduledAt),
 				totalVolumeM3: totalVolumeM3(items),
 				totalWeightKg: totalWeightKg(items),

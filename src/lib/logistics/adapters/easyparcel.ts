@@ -317,9 +317,9 @@ export function submitBody(job: DeliveryJob, serviceId: string) {
 		shipment: [
 			{
 				// Ours, echoed back on the shipment and on every webhook — the
-				// fastest way to tie an EasyParcel shipment to a job number staff
-				// say aloud.
-				reference: `Delivery ${job.number}`,
+				// fastest way to tie an EasyParcel shipment to the job reference
+				// staff say aloud, under the prefix the job was made with.
+				reference: job.ref,
 				service_id: serviceId,
 				collection_date: collectionDate(job.scheduledAt),
 				weight: parcel.weight,

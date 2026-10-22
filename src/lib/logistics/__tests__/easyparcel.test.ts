@@ -400,7 +400,7 @@ describe("submitBody", () => {
 	});
 
 	it("references the job number the staff say out loud", () => {
-		expect(body().shipment[0].reference).toContain("41");
+		expect(body().shipment[0].reference).toBe(job().ref);
 	});
 
 	it("refuses a phone number no courier can call", () => {

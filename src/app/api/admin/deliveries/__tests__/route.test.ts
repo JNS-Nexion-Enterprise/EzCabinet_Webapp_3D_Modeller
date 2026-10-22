@@ -32,6 +32,7 @@ vi.mock("@/lib/logistics/geocode", () => ({
 	refreshGeocoderHealth: vi.fn(),
 }));
 
+const { testCompany } = await import("@/lib/company/__tests__/company.fixture");
 const { POST } = await import("../route");
 
 const body = {
@@ -71,6 +72,23 @@ describe("POST /api/admin/deliveries", () => {
 	it("stamps the delivery with the prefix live when it is made", async () => {
 		await call();
 		expect(create.mock.calls[0][0].data.refPrefix).toBe("PO");
+	});
+
+	it("writes the workshop's pickup without geocoding it", async () => {
+		const workshop = testCompany();
+		await call({ pickupAddress: workshop.address });
+		const data = create.mock.calls[0][0].data;
+		expect(data.fromWorkshop).toBe(true);
+		expect(data.pickupLat).toBe(workshop.lat);
+		expect(data.pickupPostcode).toBe(workshop.postcode);
+		// The site only.
+		expect(resolveCoordinates).toHaveBeenCalledTimes(1);
+	});
+
+	it("geocodes any other pickup and does not mark it from the workshop", async () => {
+		await call();
+		expect(create.mock.calls[0][0].data.fromWorkshop).toBe(false);
+		expect(resolveCoordinates).toHaveBeenCalledTimes(2);
 	});
 
 	it("creates a paid order's delivery, re-checking the order as it writes", async () => {

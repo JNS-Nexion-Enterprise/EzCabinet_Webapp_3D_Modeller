@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
 import { getCompany } from "@/lib/company/store";
-import { pickupPin, WORKSHOP_ADDRESS } from "@/lib/logistics/carriers";
+import { workshopPickup } from "@/lib/logistics/carriers";
 import { pinFor } from "@/lib/logistics/coords";
 import {
 	refreshGeocoderHealth,
@@ -23,9 +23,10 @@ export const GET = withAuth("logistics:read", async () => {
 	const deliveries = await prisma.delivery.findMany({
 		orderBy: { number: "desc" },
 	});
+	const company = await getCompany();
 	return NextResponse.json({
 		deliveries,
-		workshopAddress: WORKSHOP_ADDRESS,
+		workshopAddress: company.address,
 		geocodingConfigured: (await refreshGeocoderHealth()).ok,
 	});
 });
@@ -84,23 +85,32 @@ export const POST = withAuth("logistics:book", async (request) => {
 		pickupPinGiven:
 			pickupLat !== null && pickupLng !== null ? [pickupLat, pickupLng] : null,
 	});
-	const [site, pickup] = await Promise.all([
+	// A job from the workshop is written with the company's own pin and place,
+	// so there is nothing to geocode and nothing to match at quote time.
+	const company = await getCompany();
+	const given = pinFor(pickupLat, pickupLng, rest.pickupAddress);
+	const workshop = workshopPickup(rest.pickupAddress, given, company);
+	const [site, geocoded] = await Promise.all([
 		resolveCoordinates(
 			rest.siteAddress,
 			blank,
 			pinFor(siteLat, siteLng, rest.siteAddress),
 		),
-		resolveCoordinates(
-			rest.pickupAddress,
-			blank,
-			pickupPin(rest.pickupAddress, pickupLat, pickupLng),
-		),
+		workshop ? null : resolveCoordinates(rest.pickupAddress, blank, given),
 	]);
+	const pickup = workshop ?? {
+		pickupLat: geocoded?.lat ?? null,
+		pickupLng: geocoded?.lng ?? null,
+		pickupGeocodedFor: geocoded?.geocodedFor ?? null,
+		pickupPostcode: geocoded?.postcode ?? null,
+		pickupCity: geocoded?.city ?? null,
+		pickupState: geocoded?.state ?? null,
+	};
 
 	trace("save.resolved", {
 		what: "create",
 		site: [site.lat, site.lng],
-		pickup: [pickup.lat, pickup.lng],
+		pickup: [pickup.pickupLat, pickup.pickupLng],
 	});
 
 	// The order was paid when this request arrived, but geocoding is a network
@@ -110,7 +120,7 @@ export const POST = withAuth("logistics:book", async (request) => {
 	// starts inside this short transaction can still get through; that
 	// window is a few milliseconds and is accepted.
 	const orderId = rest.orderId;
-	const { orderPrefix } = await getCompany();
+	const { orderPrefix } = company;
 	const delivery = await prisma.$transaction(async (tx) => {
 		if (orderId !== null) {
 			const { count } = await tx.order.updateMany({
@@ -130,12 +140,8 @@ export const POST = withAuth("logistics:book", async (request) => {
 				sitePostcode: site.postcode,
 				siteCity: site.city,
 				siteState: site.state,
-				pickupLat: pickup.lat,
-				pickupLng: pickup.lng,
-				pickupGeocodedFor: pickup.geocodedFor,
-				pickupPostcode: pickup.postcode,
-				pickupCity: pickup.city,
-				pickupState: pickup.state,
+				...pickup,
+				fromWorkshop: workshop !== null,
 				scheduledAt: scheduledAt === null ? null : new Date(scheduledAt),
 				// Derived on write so the carrier payload builders and the list can
 				// read them without recomputing, and so a later change to the maths
