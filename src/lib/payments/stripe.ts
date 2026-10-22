@@ -1,6 +1,5 @@
 import "server-only";
 import Stripe from "stripe";
-import { tenant } from "@/lib/tenant";
 import {
 	BadSignature,
 	type PaymentEvent,
@@ -77,7 +76,7 @@ export function stripeGateway(): PaymentGateway | null {
 					amount,
 					currency: "myr",
 					payment_method_types: STRIPE_METHODS,
-					description: `${tenant.brand} order ${order.ref}`,
+					description: `${order.brand} order ${order.ref}`,
 					receipt_email: order.customerEmail ?? undefined,
 					metadata,
 				},

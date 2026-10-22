@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { orderRef } from "@/lib/orders/ref";
 import { activeGateway } from "./registry";
 import { PaymentInProgress, type PaymentStart } from "./types";
@@ -60,6 +61,7 @@ export async function startPayment(
 			{
 				...order,
 				ref: orderRef(order),
+				brand: (await getCompany()).brand,
 				previousRef:
 					order.paymentProvider === gateway.id ? order.paymentRef : null,
 			},

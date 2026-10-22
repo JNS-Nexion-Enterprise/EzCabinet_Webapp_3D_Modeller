@@ -14,6 +14,8 @@ export type PaymentOrder = {
 	id: string;
 	/** Human order reference (`IC-20260926-015`), shown on the gateway's page. */
 	ref: string;
+	/** The saved company name, for the gateway's own description line. */
+	brand: string;
 	totalRm: number;
 	customerName: string;
 	customerEmail: string | null;

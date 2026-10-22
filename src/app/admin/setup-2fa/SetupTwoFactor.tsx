@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { renderSVG } from "uqr";
+import { useAdminBrand } from "@/app/admin/AdminUserContext";
 import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 import { secretOf } from "./totpSecret";
@@ -19,6 +20,7 @@ const PRIMARY =
  * codes for an enrolment that never completed would be a false comfort.
  */
 export function SetupTwoFactor() {
+	const brand = useAdminBrand();
 	const [step, setStep] = useState<Step>("password");
 	const [password, setPassword] = useState("");
 	const [totpURI, setTotpURI] = useState("");
@@ -33,6 +35,7 @@ export function SetupTwoFactor() {
 		setError(null);
 		const { data, error: failure } = await authClient.twoFactor.enable({
 			password,
+			issuer: `${brand} Admin`,
 		});
 		setBusy(false);
 		// The result is a union ({ method: "otp" } is the emailed-code flavour),

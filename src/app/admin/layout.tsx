@@ -5,7 +5,7 @@ import { authEnabled } from "@/lib/auth/enabled";
 import { BYPASS_USER } from "@/lib/auth/requireAuth";
 import { currentUser } from "@/lib/auth/session";
 import "../globals.css";
-import { tenant } from "@/lib/tenant";
+import { getCompany } from "@/lib/company/store";
 
 const geistSans = Geist({
 	variable: "--font-geist-sans",
@@ -21,10 +21,12 @@ const geistMono = Geist_Mono({
 // the catalogue, tutorials or deliveries into a static page.
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-	title: `${tenant.brand} · Admin`,
-	description: "Internal catalogue, design and site-content admin.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+	return {
+		title: `${(await getCompany()).brand} · Admin`,
+		description: "Internal catalogue, design and site-content admin.",
+	};
+}
 
 export default async function AdminRootLayout({
 	children,
@@ -37,6 +39,7 @@ export default async function AdminRootLayout({
 	// like for itself; `POST /api/orders` (a later task) reads the same
 	// `authEnabled()` and chooses `null` instead.
 	const user = authEnabled() ? await currentUser() : BYPASS_USER;
+	const { brand } = await getCompany();
 
 	return (
 		<html
@@ -44,7 +47,11 @@ export default async function AdminRootLayout({
 			className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
 		>
 			<body className="flex min-h-full flex-col font-sans">
-				<AdminUserProvider name={user?.name ?? null} role={user?.role ?? null}>
+				<AdminUserProvider
+					name={user?.name ?? null}
+					role={user?.role ?? null}
+					brand={brand}
+				>
 					{children}
 				</AdminUserProvider>
 			</body>

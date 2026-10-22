@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AdminSignOut } from "@/app/admin/AdminSignOut";
 import {
+	useAdminBrand,
 	useAdminUserName,
 	useAdminUserRole,
 } from "@/app/admin/AdminUserContext";
-import { tenant } from "@/lib/tenant";
 
 /**
  * The admin chrome: a breadcrumb row over a tab bar.
@@ -46,6 +46,7 @@ export function AdminHeader({
 	trail?: { label: string; href?: string }[];
 }) {
 	const pathname = usePathname();
+	const brand = useAdminBrand();
 	const name = useAdminUserName();
 	const role = useAdminUserRole();
 	const tabs = role === "SUPERADMIN" ? [...TABS, ...SUPERADMIN_TABS] : TABS;
@@ -59,7 +60,7 @@ export function AdminHeader({
 						target="_blank"
 						className="px-1 py-1.5 text-neutral-400 hover:text-neutral-600"
 					>
-						{tenant.brand}
+						{brand}
 					</Link>
 					{trail.map((crumb, i) => (
 						<span key={crumb.label} className="flex items-center gap-1.5">
