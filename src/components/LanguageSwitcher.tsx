@@ -33,6 +33,7 @@ export function LanguageSwitcher({
 	current,
 	label,
 	inline = false,
+	tall = false,
 }: {
 	current: Locale;
 	/** The nav's `aria-label`, in the current locale's own word for "Language". */
@@ -43,6 +44,8 @@ export function LanguageSwitcher({
 	 * strip hides itself there instead of stacking two language rows.
 	 */
 	inline?: boolean;
+	/** 44 px targets, for a row a thumb has to hit (the phone start screen). */
+	tall?: boolean;
 }) {
 	const pathname = usePathname();
 	const searchParams = useSearchParams();
@@ -65,7 +68,10 @@ export function LanguageSwitcher({
 			className={
 				inline
 					? "flex shrink-0 items-center gap-2 text-[12px]"
-					: "flex h-9 shrink-0 items-center justify-end gap-4 border-neutral-200 border-b bg-white px-5 text-[12px]"
+					: // The planner's phone layout carries its own language row.
+						`flex h-9 shrink-0 items-center justify-end gap-4 border-neutral-200 border-b bg-white px-5 text-[12px] ${
+							tail.startsWith("planner") ? "max-[760px]:hidden" : ""
+						}`
 			}
 		>
 			{LOCALES.map((locale) => (
@@ -75,10 +81,14 @@ export function LanguageSwitcher({
 					hrefLang={htmlLang(locale)}
 					aria-label={inline ? ENDONYM[locale] : undefined}
 					aria-current={locale === current ? "true" : undefined}
-					className={`${inline ? "inline-flex min-h-9 items-center px-1" : ""} ${
+					className={`${
+						inline
+							? `inline-flex items-center ${tall ? "min-h-11 min-w-11 justify-center px-2.5" : "min-h-9 px-1"}`
+							: ""
+					} ${
 						locale === current
-							? "font-semibold text-neutral-900"
-							: "text-neutral-400 transition-colors hover:text-neutral-600"
+							? `font-semibold ${tall ? "text-[#171717]" : "text-neutral-900"}`
+							: `${tall ? "text-[#666]" : "text-neutral-400"} transition-colors hover:text-neutral-600`
 					}`}
 				>
 					{inline ? SHORT[locale] : ENDONYM[locale]}
