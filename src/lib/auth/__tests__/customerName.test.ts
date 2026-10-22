@@ -5,6 +5,8 @@ import {
 	parseCustomerName,
 } from "@/lib/auth/customerName";
 
+const BRANDS = ["EzCabinet"];
+
 describe("parseCustomerName", () => {
 	it.each([
 		["a plain name", "Aiman bin Ali", "Aiman bin Ali"],
@@ -33,7 +35,7 @@ describe("parseCustomerName", () => {
 			"Aiman \u2764\ufe0f",
 		],
 	])("accepts %s, stored as typed and trimmed", (_label, typed, stored) => {
-		expect(parseCustomerName(typed)).toEqual({ name: stored });
+		expect(parseCustomerName(typed, BRANDS)).toEqual({ name: stored });
 	});
 
 	// Invisible characters ride along on a paste from a chat app or a contact
@@ -47,21 +49,23 @@ describe("parseCustomerName", () => {
 		["a directional isolate", "Aiman \u2066Ali\u2069", "Aiman Ali"],
 		["a soft hyphen", "Ai\u00adman", "Aiman"],
 	])("removes %s and accepts the rest", (_label, typed, stored) => {
-		expect(parseCustomerName(typed)).toEqual({ name: stored });
+		expect(parseCustomerName(typed, BRANDS)).toEqual({ name: stored });
 	});
 
 	// The zero-width non-joiner spells words in Persian and several Indian
 	// scripts, so it stays, as the joiner does.
 	it("keeps a zero-width non-joiner", () => {
 		expect(
-			parseCustomerName("\u0639\u0644\u06cc\u200c\u0631\u0636\u0627"),
+			parseCustomerName("\u0639\u0644\u06cc\u200c\u0631\u0636\u0627", BRANDS),
 		).toEqual({
 			name: "\u0639\u0644\u06cc\u200c\u0631\u0636\u0627",
 		});
 	});
 
 	it("counts the length after removing them", () => {
-		expect(parseCustomerName("A\u200b")).toEqual({ error: "name_required" });
+		expect(parseCustomerName("A\u200b", BRANDS)).toEqual({
+			error: "name_required",
+		});
 	});
 
 	it.each([
@@ -86,7 +90,9 @@ describe("parseCustomerName", () => {
 		["only half-width Hangul fillers", "\uffa0\uffa0"],
 		["a filler and a dot", "\u3164."],
 	])("asks for a name when given %s", (_label, typed) => {
-		expect(parseCustomerName(typed)).toEqual({ error: "name_required" });
+		expect(parseCustomerName(typed, BRANDS)).toEqual({
+			error: "name_required",
+		});
 	});
 
 	it.each([
@@ -126,12 +132,28 @@ describe("parseCustomerName", () => {
 		["admin split by a hair space", "ad\u200amin"],
 		["admin split by a zero-width non-joiner", "ad\u200cmin"],
 	])("refuses %s", (_label, typed) => {
-		expect(parseCustomerName(typed)).toEqual({ error: "name_refused" });
+		expect(parseCustomerName(typed, BRANDS)).toEqual({ error: "name_refused" });
+	});
+
+	it("refuses a brand the company used before, and only the brands given", () => {
+		const brands = ["EzCabinet", "Kabinet Baru"];
+		expect(parseCustomerName("Kabinet Baru Sales", brands)).toEqual({
+			error: "name_refused",
+		});
+		expect(
+			parseCustomerName("Ezcabinet Fan", ["JNS Nexion Enterprise"]),
+		).toEqual({
+			name: "Ezcabinet Fan",
+		});
+	});
+
+	it("ignores a brand that folds to nothing", () => {
+		expect(parseCustomerName("Aiman", ["!!", ""])).toEqual({ name: "Aiman" });
 	});
 
 	it("is the schema's own verdict", () => {
-		expect(customerNameSchema.safeParse(" Aiman ").data).toBe("Aiman");
-		expect(customerNameSchema.safeParse("A").success).toBe(false);
+		expect(customerNameSchema(BRANDS).safeParse(" Aiman ").data).toBe("Aiman");
+		expect(customerNameSchema(BRANDS).safeParse("A").success).toBe(false);
 	});
 });
 

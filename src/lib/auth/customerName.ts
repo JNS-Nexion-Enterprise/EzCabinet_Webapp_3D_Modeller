@@ -1,6 +1,5 @@
 import { z } from "zod";
 import type { Role } from "@/lib/auth/permissions";
-import { tenant } from "@/lib/tenant";
 
 /**
  * The Hangul fillers. Unicode files them as letters and they draw nothing,
@@ -50,11 +49,12 @@ const fold = (text: string): string =>
 
 /**
  * A name that would read as the business on a staff screen or in a mail:
- * anything containing "ezcabinet" or this deployment's brand, or whose first word starts with "admin"
- * or "support".
+ * anything containing the current brand or any brand saved before it
+ * (`getReservedBrands`), or whose first word starts with "admin" or
+ * "support".
  *
  * Both are tested folded; only this check folds, and what is stored is the
- * name as typed. "ezcabinet" is looked for in the whole name, spaces and all.
+ * name as typed. A brand is looked for in the whole name, spaces and all.
  * The prefix is looked for in the first word only, or real names whose
  * opening letters spell it across a space are refused ("Ad Minh", "Sup
  * Port"). A word ends at an ordinary space and nothing else — a hair space
@@ -63,15 +63,15 @@ const fold = (text: string): string =>
  * dash. Look-alike letters from another script (Cyrillic "а", Greek "ο")
  * are not unified: out of scope.
  */
-/** This deployment's company, and EzCabinet's, folded like the name. */
-const BUSINESS_NAMES = [...new Set(["ezcabinet", fold(tenant.brand)])];
-
-function posesAsBusiness(name: string): boolean {
+function posesAsBusiness(name: string, brands: readonly string[]): boolean {
 	const first = name.split(" ").map(fold).find(Boolean) ?? "";
 	const folded = fold(name);
 	return (
-		BUSINESS_NAMES.some((business) => folded.includes(business)) ||
-		/^(admin|support)/.test(first)
+		// A brand that folds to nothing ("!!") would match every name.
+		brands.some((brand) => {
+			const business = fold(brand);
+			return business !== "" && folded.includes(business);
+		}) || /^(admin|support)/.test(first)
 	);
 }
 
@@ -81,18 +81,19 @@ function posesAsBusiness(name: string): boolean {
  * never identifies a caller. Any script is fine — it is stored as typed,
  * trimmed, with invisible format characters removed.
  */
-export const customerNameSchema = z
-	.string()
-	.transform((typed) => typed.replace(INVISIBLE, ""))
-	.pipe(
-		z
-			.string()
-			.trim()
-			.min(2)
-			.max(80)
-			.refine(hasLetter, { message: NO_LETTER })
-			.refine((name) => !HIDDEN.test(name) && !posesAsBusiness(name)),
-	);
+export const customerNameSchema = (brands: readonly string[]) =>
+	z
+		.string()
+		.transform((typed) => typed.replace(INVISIBLE, ""))
+		.pipe(
+			z
+				.string()
+				.trim()
+				.min(2)
+				.max(80)
+				.refine(hasLetter, { message: NO_LETTER })
+				.refine((name) => !HIDDEN.test(name) && !posesAsBusiness(name, brands)),
+		);
 
 /**
  * The schema's verdict as the two answers the customer can be given:
@@ -101,8 +102,9 @@ export const customerNameSchema = z
  */
 export function parseCustomerName(
 	input: unknown,
+	brands: readonly string[],
 ): { name: string } | { error: "name_required" | "name_refused" } {
-	const parsed = customerNameSchema.safeParse(input);
+	const parsed = customerNameSchema(brands).safeParse(input);
 	if (parsed.success) return { name: parsed.data };
 	const short = parsed.error.issues.some(
 		(issue) =>
