@@ -33,7 +33,10 @@ const TABS = [
 	{ label: "Tutorials", href: "/admin/tutorials" },
 ];
 
-const SUPERADMIN_TABS = [{ label: "People", href: "/admin/users" }];
+const SUPERADMIN_TABS = [
+	{ label: "Company", href: "/admin/company" },
+	{ label: "People", href: "/admin/users" },
+];
 
 /**
  * `trail` is where a page sits under "EzCabinet /" — a delivery's own
