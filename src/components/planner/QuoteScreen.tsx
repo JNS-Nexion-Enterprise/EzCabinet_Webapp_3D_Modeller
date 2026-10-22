@@ -798,7 +798,7 @@ export function QuoteScreen({
 											placed.length === 1 ? t.planner.unit : t.planner.units,
 									})}
 								</p>
-								<p className="text-[#5c574e] text-[12px] max-[760px]:text-[13px]">
+								<p className="text-[#5c574e] text-[12px] max-[760px]:text-[#666] max-[760px]:text-[13px]">
 									{finishLabel} · {frontLabel}
 								</p>
 							</div>

@@ -158,7 +158,9 @@ export function PhoneStudio({
 								})}
 								className={`${canvasButton} ${canvasButtonOff}`}
 							>
-								◫
+								<Glyph>
+									<path d="M5 3h14v18H5zM12 3v18M10 12h0M14 12h0" />
+								</Glyph>
 							</button>
 						</div>
 						<button
