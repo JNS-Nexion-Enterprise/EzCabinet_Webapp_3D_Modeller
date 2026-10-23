@@ -11,7 +11,6 @@ filling a five-rung ladder means five uploads that must all land on the same
 family.
 
 Most of that loop already exists and is not the problem:
-
 - `/admin/cabinet-designs` already accepts multiple files in one drop
   (`page.tsx:450` loops them; the input carries `multiple`)
 - `POST /api/admin/cabinet-designs/publish` already takes an array of ids and
@@ -22,7 +21,7 @@ Most of that loop already exists and is not the problem:
 (`mergeIntoCatalogue.ts:115-132`) infers the target from shape — `kind`,
 `drawers`, height, depth, floor height, and shelves/leaves where known. Width is
 deliberately excluded, which is exactly why a ladder collapses onto one family.
-But nothing lets an admin *say* which family, there is no entry point from the
+But nothing lets an admin _say_ which family, there is no entry point from the
 catalogue screen, and a design that measures 10mm off silently forks a duplicate
 family instead of joining the ladder it belongs to.
 
@@ -40,7 +39,6 @@ exists.
 `familySchema.category`, an optional enum of the library's five values. Optional
 so every already-published catalogue keeps validating — the escape hatch
 `geometry` already uses.
-
 - `mergeIntoCatalogue` writes it when it creates a family, from the design's
   category.
 - After that it is a dropdown on the family card, beside Type, and the admin
@@ -57,11 +55,11 @@ side effect of a filing correction would move a customer's price. Category,
 per placed module, and those documents back the public share links customers
 receive over WhatsApp. Re-homing a rung onto a different family would break
 every link that placed it — the exact failure `schemaVersion` exists to prevent.
-So a relabel changes what the family is *called and grouped as*: same
+So a relabel changes what the family is _called and grouped as_: same
 `familyId`, same rungs, same prices, same links.
 
 **Routing gets more precise, carefully.** `matchesFamily` also compares
-`category` — but only when *both* sides carry one, mirroring the existing
+`category` — but only when _both_ sides carry one, mirroring the existing
 `g === undefined` clause that stops pre-`geometry` families forking. Without
 that guard every family in the live catalogue forks on the next upload.
 
@@ -80,12 +78,12 @@ anyway, since a batch inherits its category from the target family.
 
 "Add designs to this ladder", on the card itself. What each file needs:
 
-| Field | Source |
-| --- | --- |
-| width, height, depth | measured from the OBJ by `measureDesign` |
-| category, room | inherited from the family dropped on |
-| SKU | prefilled from the filename (`BC 900mm.obj` → `BC-900`), editable |
-| price | typed in the row, or left blank |
+| Field                | Source                                                            |
+| -------------------- | ----------------------------------------------------------------- |
+| width, height, depth | measured from the OBJ by `measureDesign`                          |
+| category, room       | inherited from the family dropped on                              |
+| SKU                  | prefilled from the filename (`BC 900mm.obj` → `BC-900`), editable |
+| price                | typed in the row, or left blank                                   |
 
 **Price matters here.** `design.priceRm` becomes the rung's price
 (`publishDesigns.ts:217` → `mergeIntoCatalogue.ts:248`), and the merge never
@@ -118,7 +116,6 @@ read 5 files → 4 rungs, 1 needs you
 ### 3. One new argument on the server
 
 `publishDesigns(ids, { targetFamilyId, forced })`.
-
 - `targetFamilyId` overrides `matchesFamily` entirely. Dropping on a card is an
   explicit instruction; inference has nothing to add to it.
 - `forced` carries the per-design "anyway" decisions.

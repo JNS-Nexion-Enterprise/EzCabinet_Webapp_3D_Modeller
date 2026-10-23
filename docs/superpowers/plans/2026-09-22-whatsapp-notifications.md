@@ -29,22 +29,22 @@
 
 ## File structure
 
-| File | Responsibility |
-| --- | --- |
-| `prisma/schema.prisma` | `Order` fields, `Notification`, `WhatsappAutoReply`, three enums |
-| `prisma/migrations/20260922000000_whatsapp_notifications/migration.sql` | hand-written migration (Known issue 12: `migrate dev` cannot run non-interactively) |
-| `src/lib/orders/stage.ts` | stage order, next stage, refusal rule, reached — pure |
-| `src/lib/whatsapp/templates.ts` | which event becomes which row (`draftFor`), row → Meta payload — pure |
-| `src/lib/whatsapp/send.ts` | one Cloud API call, error classification, the row's next state |
-| `src/lib/whatsapp/outbox.ts` | `enqueue`, `flush`, `flushSoon`, `autoReply` — the DB side |
-| `src/lib/whatsapp/webhook.ts` | signature check, payload parse, status ordering — pure |
-| `src/app/api/whatsapp/webhook/route.ts` | Meta's GET handshake + signed POST |
-| `src/app/api/admin/orders/[id]/stage/route.ts` | advance production stage |
-| `src/app/api/admin/orders/[id]/notifications/[notificationId]/resend/route.ts` | requeue a failed message |
-| `src/lib/copy/{en,zh,ms}.ts` | opt-in label, stage names, auto-reply, privacy paragraph |
-| existing: `src/app/api/orders/route.ts`, `…/paid/route.ts`, `…/deliveries/[id]/book/route.ts`, `src/lib/logistics/store.ts`, `src/app/api/cron/track-deliveries/route.ts` | triggers + retry |
-| existing: `src/components/planner/QuoteScreen.tsx`, `src/app/[lang]/order/[token]/page.tsx`, `src/app/admin/orders/[id]/{page,OrderDetail}.tsx`, `src/app/[lang]/privacy/page.tsx` | UI |
-| `scripts/whatsapp-ping.mjs` | real-API smoke test, not in CI |
+| File                                                                                                                                                                               | Responsibility                                                                      |
+| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `prisma/schema.prisma`                                                                                                                                                             | `Order` fields, `Notification`, `WhatsappAutoReply`, three enums                    |
+| `prisma/migrations/20260922000000_whatsapp_notifications/migration.sql`                                                                                                            | hand-written migration (Known issue 12: `migrate dev` cannot run non-interactively) |
+| `src/lib/orders/stage.ts`                                                                                                                                                          | stage order, next stage, refusal rule, reached — pure                               |
+| `src/lib/whatsapp/templates.ts`                                                                                                                                                    | which event becomes which row (`draftFor`), row → Meta payload — pure               |
+| `src/lib/whatsapp/send.ts`                                                                                                                                                         | one Cloud API call, error classification, the row's next state                      |
+| `src/lib/whatsapp/outbox.ts`                                                                                                                                                       | `enqueue`, `flush`, `flushSoon`, `autoReply` — the DB side                          |
+| `src/lib/whatsapp/webhook.ts`                                                                                                                                                      | signature check, payload parse, status ordering — pure                              |
+| `src/app/api/whatsapp/webhook/route.ts`                                                                                                                                            | Meta's GET handshake + signed POST                                                  |
+| `src/app/api/admin/orders/[id]/stage/route.ts`                                                                                                                                     | advance production stage                                                            |
+| `src/app/api/admin/orders/[id]/notifications/[notificationId]/resend/route.ts`                                                                                                     | requeue a failed message                                                            |
+| `src/lib/copy/{en,zh,ms}.ts`                                                                                                                                                       | opt-in label, stage names, auto-reply, privacy paragraph                            |
+| existing: `src/app/api/orders/route.ts`, `…/paid/route.ts`, `…/deliveries/[id]/book/route.ts`, `src/lib/logistics/store.ts`, `src/app/api/cron/track-deliveries/route.ts`          | triggers + retry                                                                    |
+| existing: `src/components/planner/QuoteScreen.tsx`, `src/app/[lang]/order/[token]/page.tsx`, `src/app/admin/orders/[id]/{page,OrderDetail}.tsx`, `src/app/[lang]/privacy/page.tsx` | UI                                                                                  |
+| `scripts/whatsapp-ping.mjs`                                                                                                                                                        | real-API smoke test, not in CI                                                      |
 
 ---
 
@@ -229,12 +229,10 @@ pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.pris
 ```
 
 Expected: `migrate deploy` applies `20260922000000_whatsapp_notifications`; `migrate diff` prints an empty migration (`-- This is an empty migration.`). Any SQL in the diff output means the hand-written file and the schema disagree — fix the SQL file until it is empty.
-
 - [ ] **Step 5: Regenerate the client and typecheck.**
 
 Run: `pnpm prisma generate && pnpm typecheck`
 Expected: both pass.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -387,12 +385,10 @@ with (temporary — Task 9 replaces it with the full stage strip):
 ```
 
 Run `grep -rn "stageMeasure\b\|stageBuild\b" src` — expected: no matches.
-
 - [ ] **Step 5: Run the dictionary tests and typecheck.**
 
 Run: `pnpm vitest run src/lib/copy && pnpm typecheck`
 Expected: PASS. A failure listing a path means a key is missing or left in English in one locale — fix that locale.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -475,7 +471,6 @@ describe("production stages", () => {
 
 Run: `pnpm vitest run src/lib/orders/__tests__/stage.test.ts`
 Expected: FAIL — cannot resolve `../stage`.
-
 - [ ] **Step 3: Implement** — `src/lib/orders/stage.ts`:
 
 ```ts
@@ -526,7 +521,6 @@ export const stageReached = (
 
 Run: `pnpm vitest run src/lib/orders/__tests__/stage.test.ts`
 Expected: PASS (6 tests).
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -723,7 +717,6 @@ describe("payloads", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/templates.test.ts`
 Expected: FAIL — cannot resolve `../templates`.
-
 - [ ] **Step 3: Implement** — `src/lib/whatsapp/templates.ts`:
 
 ```ts
@@ -945,12 +938,10 @@ export const textPayload = (to: string, body: string) => ({
 ```
 
 Note: `LABEL` in `carriers.ts` is `Record<string, string>`, so `?? carrierId` is the fallback for an id not in the list.
-
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/templates.test.ts`
 Expected: PASS. If the `IC-20260826-014` assertion fails, check `orderRef` — `2026-08-26T04:00:00Z` is noon in Kuala Lumpur, so the date is the 26th.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1103,7 +1094,6 @@ describe("nextState", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/send.test.ts`
 Expected: FAIL — cannot resolve `../send`.
-
 - [ ] **Step 3: Implement** — `src/lib/whatsapp/send.ts`:
 
 ```ts
@@ -1207,7 +1197,6 @@ export function nextState(result: SendResult, attempts: number, now: Date) {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/send.test.ts`
 Expected: PASS.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1232,7 +1221,6 @@ git commit -m "feat(whatsapp): Cloud API send and error classification"
   - `autoReply(phone: string): Promise<void>` — used by Task 10
 
 This module is all database I/O; its decisions are the pure functions tested in Tasks 4 and 5. It is exercised end to end in Task 11's manual check.
-
 - [ ] **Step 1: Implement** — `src/lib/whatsapp/outbox.ts`:
 
 ```ts
@@ -1402,14 +1390,16 @@ export async function autoReply(phone: string): Promise<void> {
 	);
 	if (!result.ok) {
 		console.error(
-			JSON.stringify({ type: "WHATSAPP_AUTOREPLY_FAILED", message: result.error }),
+			JSON.stringify({
+				type: "WHATSAPP_AUTOREPLY_FAILED",
+				message: result.error,
+			}),
 		);
 	}
 }
 ```
 
 Check `fill`'s signature before using it: `sed -n 1,17p src/lib/copy/fill.ts`. It takes `(template: string, values: Record<string, string | number>)` — if it differs, adapt the two call sites in this file.
-
 - [ ] **Step 2: Retry from the tracking cron.** In `src/app/api/cron/track-deliveries/route.ts`, add the import
 
 ```ts
@@ -1437,12 +1427,10 @@ with
 ```
 
 Also update the file's doc comment: after the paragraph starting "Webhooks are the fast path", add one line: `It also retries pending WhatsApp messages — lib/whatsapp/outbox.ts.`
-
 - [ ] **Step 3: Typecheck and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: pass. If `createManyAndReturn` is flagged as not existing, run `pnpm prisma generate` (Task 1) first.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1484,8 +1472,8 @@ In `orderInputSchema`, after `remeasureAccepted: z.literal(true),` add:
 Change `const { roomId, finishId, layout, customer } = parsed.data;` to
 
 ```ts
-	const { roomId, finishId, layout, customer, whatsappOptIn, locale } =
-		parsed.data;
+const { roomId, finishId, layout, customer, whatsappOptIn, locale } =
+	parsed.data;
 ```
 
 Replace the whole `const order = await prisma.order.create({ … });` statement and the `return` after it with:
@@ -1527,21 +1515,20 @@ Replace the whole `const order = await prisma.order.create({ … });` statement 
 ```
 
 (The existing `const price = priceOrder(…)` line moves inside this replacement — make sure it appears once.)
-
 - [ ] **Step 2: The checkbox.** In `src/components/planner/QuoteScreen.tsx`, directly after the re-measure `<label className="mt-1 flex items-start gap-2">…</label>` block, add:
 
 ```tsx
-						<label className="flex items-start gap-2">
-							<input
-								name="whatsappOptIn"
-								type="checkbox"
-								disabled={busy}
-								className="mt-0.5"
-							/>
-							<span className="text-[12px] text-neutral-500 leading-4">
-								{t.quote.whatsappOptIn}
-							</span>
-						</label>
+<label className="flex items-start gap-2">
+	<input
+		name="whatsappOptIn"
+		type="checkbox"
+		disabled={busy}
+		className="mt-0.5"
+	/>
+	<span className="text-[12px] text-neutral-500 leading-4">
+		{t.quote.whatsappOptIn}
+	</span>
+</label>;
 ```
 
 In `placeOrder`, the body currently ends with `remeasureAccepted: true,`. After it add:
@@ -1552,7 +1539,6 @@ In `placeOrder`, the body currently ends with `remeasureAccepted: true,`. After 
 ```
 
 (`locale` is already in scope from `const locale = useLocale();`.)
-
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -1565,7 +1551,6 @@ pnpm prisma studio
 ```
 
 Expected: the order has `whatsappOptIn = true`, `locale` = the URL's language, and one `Notification` row `ORDER_PLACED`, `PENDING` (no token locally, so it stays pending). Place a second order unticked: no `Notification` row.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1643,41 +1628,41 @@ import { draftFor, NOTIFY_ORDER_SELECT } from "@/lib/whatsapp/templates";
 Directly after the `const booked = await prisma.delivery.update({ … });` statement and before `return NextResponse.json({ delivery: booked }, { status: 201 });`, add:
 
 ```ts
-			// Deliberately not in the booking write's transaction: that write
-			// records money already spent at the carrier, and a failed insert here
-			// must never roll it back — the row would look unbooked and a retry
-			// would buy a second lorry.
-			if (booked.orderId) {
-				try {
-					const ids = await prisma.$transaction(async (tx) => {
-						const order = await tx.order.findUniqueOrThrow({
-							where: { id: booked.orderId as string },
-							select: NOTIFY_ORDER_SELECT,
-						});
-						return enqueue(tx, [
-							draftFor({
-								kind: "DELIVERY_BOOKED",
-								order,
-								delivery: {
-									id: booked.id,
-									publicToken: booked.publicToken,
-									carrierId,
-									carrierOrderId: booking.carrierOrderId,
-								},
-							}),
-						]);
-					});
-					flushSoon(ids);
-				} catch (error) {
-					console.error(
-						JSON.stringify({
-							type: "WHATSAPP_ENQUEUE_FAILED",
-							deliveryId: booked.id,
-							message: (error as Error).message,
-						}),
-					);
-				}
-			}
+// Deliberately not in the booking write's transaction: that write
+// records money already spent at the carrier, and a failed insert here
+// must never roll it back — the row would look unbooked and a retry
+// would buy a second lorry.
+if (booked.orderId) {
+	try {
+		const ids = await prisma.$transaction(async (tx) => {
+			const order = await tx.order.findUniqueOrThrow({
+				where: { id: booked.orderId as string },
+				select: NOTIFY_ORDER_SELECT,
+			});
+			return enqueue(tx, [
+				draftFor({
+					kind: "DELIVERY_BOOKED",
+					order,
+					delivery: {
+						id: booked.id,
+						publicToken: booked.publicToken,
+						carrierId,
+						carrierOrderId: booking.carrierOrderId,
+					},
+				}),
+			]);
+		});
+		flushSoon(ids);
+	} catch (error) {
+		console.error(
+			JSON.stringify({
+				type: "WHATSAPP_ENQUEUE_FAILED",
+				deliveryId: booked.id,
+				message: (error as Error).message,
+			}),
+		);
+	}
+}
 ```
 
 - [ ] **Step 3: Delivery progress.** In `src/lib/logistics/store.ts` add imports:
@@ -1694,17 +1679,17 @@ import {
 In `applyTrackingUpdate`, change the read to include the order:
 
 ```ts
-	const current = await prisma.delivery.findUniqueOrThrow({
-		where: { id: deliveryId },
-		include: { order: { select: NOTIFY_ORDER_SELECT } },
-	});
+const current = await prisma.delivery.findUniqueOrThrow({
+	where: { id: deliveryId },
+	include: { order: { select: NOTIFY_ORDER_SELECT } },
+});
 ```
 
 After the `const moves = …;` statement add:
 
 ```ts
-	// `moves` already proved `next` is a status; TypeScript cannot see that.
-	const kind = moves ? deliveryKindFor(next as DeliveryStatusName) : null;
+// `moves` already proved `next` is a status; TypeScript cannot see that.
+const kind = moves ? deliveryKindFor(next as DeliveryStatusName) : null;
 ```
 
 Replace `const [row] = await prisma.$transaction([ …delivery.update…, …deliveryEvent.create… ]);` with an interactive transaction that keeps both writes byte-for-byte and adds the enqueue:
@@ -1737,14 +1722,12 @@ Replace `const [row] = await prisma.$transaction([ …delivery.update…, …del
 ```
 
 When editing, move the existing `where:`/`data:` object literals into the two `/* … */` slots exactly as they are; only `prisma.` becomes `tx.`.
-
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass (logistics tests do not touch `applyTrackingUpdate`'s DB path).
 
 Manual (local, no token): mark the opted-in order from Task 7 paid at `/admin/orders/[id]` → a `PAYMENT_CONFIRMED` row. Create a delivery from it and book with the `manual` carrier → a `DELIVERY_BOOKED` row. Advance it via the delivery page's manual status control to picked up, then picked up again (or poll twice) → exactly one `PICKED_UP` row.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1885,7 +1868,7 @@ export const POST = withAuth<{
 ```
 
 - [ ] **Step 3: Auth coverage.** Run: `pnpm vitest run src/lib/auth`
-Expected: PASS — both new routes export only `withAuth`-wrapped `POST`.
+  Expected: PASS — both new routes export only `withAuth`-wrapped `POST`.
 
 - [ ] **Step 4: Admin page data.** In `src/app/admin/orders/[id]/page.tsx`, extend the `include` of `prisma.order.findUnique` with:
 
@@ -1931,16 +1914,17 @@ import { nextStage } from "@/lib/orders/stage";
 Add to `OrderView`:
 
 ```ts
-	productionStage: ProductionStage | null;
-	whatsappOptIn: boolean;
-	notifications: {
-		id: string;
-		kind: NotificationKind;
-		stage: ProductionStage | null;
-		status: NotificationStatus;
-		lastError: string | null;
-		createdAt: string;
-	}[];
+productionStage: ProductionStage | null;
+whatsappOptIn: boolean;
+notifications: {
+	id: string;
+	kind: NotificationKind;
+	stage: ProductionStage | null;
+	status: NotificationStatus;
+	lastError: string | null;
+	createdAt: string;
+}
+[];
 ```
 
 Add constants below `PRIMARY`:
@@ -1970,120 +1954,119 @@ const MESSAGE_STATUS: Record<NotificationStatus, string> = {
 Widen `busy`'s type to `useState<string | null>(null)` and add two handlers below `act`:
 
 ```tsx
-	async function post(url: string, body: unknown, key: string) {
-		setBusy(key);
-		setError(null);
-		const res = await fetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body),
-		});
-		setBusy(null);
-		if (!res.ok) {
-			const payload = await res.json().catch(() => null);
-			setError(
-				payload?.error === "not_next_stage"
-					? "Someone else moved this order on. Reload to see where it is."
-					: "Could not update this order.",
-			);
-			return;
-		}
-		router.refresh();
+async function post(url: string, body: unknown, key: string) {
+	setBusy(key);
+	setError(null);
+	const res = await fetch(url, {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify(body),
+	});
+	setBusy(null);
+	if (!res.ok) {
+		const payload = await res.json().catch(() => null);
+		setError(
+			payload?.error === "not_next_stage"
+				? "Someone else moved this order on. Reload to see where it is."
+				: "Could not update this order.",
+		);
+		return;
 	}
+	router.refresh();
+}
 
-	const upcoming = nextStage(order.productionStage);
+const upcoming = nextStage(order.productionStage);
 ```
 
 In the JSX, directly after the Payment `</section>`, add the Production card:
 
 ```tsx
-					{paid && (
-						<section className={CARD}>
-							<h2 className={EYEBROW}>Production</h2>
-							<p className="text-[13px] text-neutral-600">
-								{order.productionStage
-									? `Now at: ${STAGE_LABEL[order.productionStage]}`
-									: "Not started."}
-								{order.whatsappOptIn
-									? " Each step is sent to the customer on WhatsApp."
-									: ""}
-							</p>
-							{upcoming && (
-								<button
-									type="button"
-									className={PRIMARY}
-									disabled={busy !== null}
-									onClick={() =>
-										post(
-											`/api/admin/orders/${order.id}/stage`,
-											{ stage: upcoming },
-											"stage",
-										)
-									}
-								>
-									{busy === "stage"
-										? "Saving…"
-										: `Advance to: ${STAGE_LABEL[upcoming]}`}
-								</button>
-							)}
-						</section>
-					)}
+{
+	paid && (
+		<section className={CARD}>
+			<h2 className={EYEBROW}>Production</h2>
+			<p className="text-[13px] text-neutral-600">
+				{order.productionStage
+					? `Now at: ${STAGE_LABEL[order.productionStage]}`
+					: "Not started."}
+				{order.whatsappOptIn
+					? " Each step is sent to the customer on WhatsApp."
+					: ""}
+			</p>
+			{upcoming && (
+				<button
+					type="button"
+					className={PRIMARY}
+					disabled={busy !== null}
+					onClick={() =>
+						post(
+							`/api/admin/orders/${order.id}/stage`,
+							{ stage: upcoming },
+							"stage",
+						)
+					}
+				>
+					{busy === "stage"
+						? "Saving…"
+						: `Advance to: ${STAGE_LABEL[upcoming]}`}
+				</button>
+			)}
+		</section>
+	);
+}
 ```
 
 In the `<aside>`, after the Customer `</section>`, add the WhatsApp card:
 
 ```tsx
-					<section className={CARD}>
-						<h2 className={EYEBROW}>WhatsApp</h2>
-						{!order.whatsappOptIn ? (
-							<p className="text-[12px] text-neutral-500">
-								Customer did not opt in to WhatsApp.
-							</p>
-						) : order.notifications.length === 0 ? (
-							<p className="text-[12px] text-neutral-500">No messages yet.</p>
-						) : (
-							<ul className="flex flex-col gap-2">
-								{order.notifications.map((n) => (
-									<li key={n.id} className="flex flex-col gap-0.5 text-[12px]">
-										<span className="text-neutral-700">
-											{KIND_LABEL[n.kind]}
-											{n.stage ? ` · ${STAGE_LABEL[n.stage]}` : ""}
-										</span>
-										<span
-											className={
-												n.status === "FAILED"
-													? "text-[#7a2c1c]"
-													: "text-[#8a857c]"
-											}
-										>
-											{MESSAGE_STATUS[n.status]} · {shortTime(n.createdAt)}
-											{n.lastError ? ` · ${n.lastError}` : ""}
-										</span>
-										{n.status === "FAILED" && (
-											<button
-												type="button"
-												className={`${CHIP} self-start`}
-												disabled={busy !== null}
-												onClick={() =>
-													post(
-														`/api/admin/orders/${order.id}/notifications/${n.id}/resend`,
-														{},
-														n.id,
-													)
-												}
-											>
-												{busy === n.id ? "Resending…" : "Resend"}
-											</button>
-										)}
-									</li>
-								))}
-							</ul>
-						)}
-					</section>
+<section className={CARD}>
+	<h2 className={EYEBROW}>WhatsApp</h2>
+	{!order.whatsappOptIn ? (
+		<p className="text-[12px] text-neutral-500">
+			Customer did not opt in to WhatsApp.
+		</p>
+	) : order.notifications.length === 0 ? (
+		<p className="text-[12px] text-neutral-500">No messages yet.</p>
+	) : (
+		<ul className="flex flex-col gap-2">
+			{order.notifications.map((n) => (
+				<li key={n.id} className="flex flex-col gap-0.5 text-[12px]">
+					<span className="text-neutral-700">
+						{KIND_LABEL[n.kind]}
+						{n.stage ? ` · ${STAGE_LABEL[n.stage]}` : ""}
+					</span>
+					<span
+						className={
+							n.status === "FAILED" ? "text-[#7a2c1c]" : "text-[#8a857c]"
+						}
+					>
+						{MESSAGE_STATUS[n.status]} · {shortTime(n.createdAt)}
+						{n.lastError ? ` · ${n.lastError}` : ""}
+					</span>
+					{n.status === "FAILED" && (
+						<button
+							type="button"
+							className={`${CHIP} self-start`}
+							disabled={busy !== null}
+							onClick={() =>
+								post(
+									`/api/admin/orders/${order.id}/notifications/${n.id}/resend`,
+									{},
+									n.id,
+								)
+							}
+						>
+							{busy === n.id ? "Resending…" : "Resend"}
+						</button>
+					)}
+				</li>
+			))}
+		</ul>
+	)}
+</section>;
 ```
 
 Update the component's doc comment: "its admin moves — mark it paid, advance production, create its delivery".
-
 - [ ] **Step 6: Customer order page stage strip.** In `src/app/[lang]/order/[token]/page.tsx`:
 
 Add import:
@@ -2115,7 +2098,6 @@ Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass.
 
 Manual: on the paid, opted-in order: "Advance to: Site re-measure" → card shows "Now at: Site re-measure", WhatsApp card lists "Production step · Site re-measure · Queued". Open two tabs, advance in one, then click in the other → "Someone else moved this order on." The customer page `/en/order/<token>` ticks Payment received and Site re-measure. In Prisma Studio set one notification to `FAILED` → Resend button appears; pressing it returns it to Queued.
-
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -2238,7 +2220,6 @@ describe("statusAdvances", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/webhook.test.ts`
 Expected: FAIL — cannot resolve `../webhook`.
-
 - [ ] **Step 3: Implement** — `src/lib/whatsapp/webhook.ts`:
 
 ```ts
@@ -2311,7 +2292,9 @@ export function parseWebhook(body: unknown): {
 } {
 	const parsed = payloadSchema.safeParse(body);
 	if (!parsed.success) return { statuses: [], senders: [] };
-	const values = parsed.data.entry.flatMap((e) => e.changes.map((c) => c.value));
+	const values = parsed.data.entry.flatMap((e) =>
+		e.changes.map((c) => c.value),
+	);
 
 	const statuses = values.flatMap((value) =>
 		(value.statuses ?? []).flatMap((s) => {
@@ -2329,7 +2312,9 @@ export function parseWebhook(body: unknown): {
 	);
 	const senders = [
 		...new Set(
-			values.flatMap((value) => (value.messages ?? []).map((m) => `+${m.from}`)),
+			values.flatMap((value) =>
+				(value.messages ?? []).map((m) => `+${m.from}`),
+			),
 		),
 	];
 	return { statuses, senders };
@@ -2361,7 +2346,6 @@ export function statusAdvances(
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/webhook.test.ts`
 Expected: PASS.
-
 - [ ] **Step 5: The route** — `src/app/api/whatsapp/webhook/route.ts`:
 
 ```ts
@@ -2452,7 +2436,6 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:3000/api/whats
 ```
 
 Then run: `pnpm typecheck && pnpm lint && pnpm test` — expected: pass.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -2551,14 +2534,12 @@ In `package.json` `scripts`, after `"gdex:ping": …,` add:
 and under `lib/orders/` add a line `    stage.ts             ← production stages, forward-only, one at a time`.
 3. **Non-negotiables** — add: "- **A WhatsApp message is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey` — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. Preview deployments never get `WHATSAPP_TOKEN`."
 4. **Phasing** row 4: append "Factory Tracker pushes production stages onto `POST /api/admin/orders/[id]/stage` (today an admin presses it)."
-
 - [ ] **Step 4: Spec status.** In the spec, change `Status: approved in brainstorming, awaiting spec review` to `Status: implemented — go-live waits on docs/ops/whatsapp-ezcabinet-setup.md`.
 
 - [ ] **Step 5: Final gate**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`
 Expected: all pass. (`pnpm build` needs `BETTER_AUTH_SECRET` in the environment — set any value locally.)
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -2570,12 +2551,12 @@ git commit -m "docs(whatsapp): privacy paragraph, ping script, architecture note
 
 ## Environment (set in Vercel **Production only** once EzCabinet delivers item 3 of the checklist)
 
-| Variable | Source |
-| --- | --- |
-| `WHATSAPP_TOKEN` | EzCabinet's system-user permanent token |
-| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Manager → phone number → ID |
-| `WHATSAPP_APP_SECRET` | Meta app → Settings → Basic |
-| `WHATSAPP_VERIFY_TOKEN` | generate: `openssl rand -hex 24` |
-| `WHATSAPP_SALES_NUMBER` | EzCabinet sales, E.164 |
+| Variable                   | Source                                  |
+| -------------------------- | --------------------------------------- |
+| `WHATSAPP_TOKEN`           | EzCabinet's system-user permanent token |
+| `WHATSAPP_PHONE_NUMBER_ID` | WhatsApp Manager → phone number → ID    |
+| `WHATSAPP_APP_SECRET`      | Meta app → Settings → Basic             |
+| `WHATSAPP_VERIFY_TOKEN`    | generate: `openssl rand -hex 24`        |
+| `WHATSAPP_SALES_NUMBER`    | EzCabinet sales, E.164                  |
 
 Then subscribe the webhook in the Meta app (Callback URL `https://<prod domain>/api/whatsapp/webhook`, the verify token above, field `messages`).

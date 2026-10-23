@@ -1,5 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { orderRef } from "@/lib/orders/ref";
 import { activeGateway } from "./registry";
 import { PaymentInProgress, type PaymentStart } from "./types";
@@ -36,6 +37,7 @@ export async function startPayment(
 		where: { publicToken: token },
 		select: {
 			id: true,
+			refPrefix: true,
 			number: true,
 			createdAt: true,
 			status: true,
@@ -58,7 +60,8 @@ export async function startPayment(
 		start = await gateway.start(
 			{
 				...order,
-				ref: orderRef(order.number, order.createdAt),
+				ref: orderRef(order),
+				brand: (await getCompany()).brand,
 				previousRef:
 					order.paymentProvider === gateway.id ? order.paymentRef : null,
 			},

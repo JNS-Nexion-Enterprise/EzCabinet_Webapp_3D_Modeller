@@ -1,7 +1,7 @@
 import type { NotificationKind } from "@/generated/prisma/enums";
+import type { CompanyDetails } from "@/lib/company/details";
 import { fill } from "@/lib/copy/fill";
 import type { Locale } from "@/lib/copy/locales";
-import { BANK_TRANSFER } from "@/lib/orders/payment";
 import { orderRef } from "@/lib/orders/ref";
 import { summaryExtras, summaryLines } from "@/lib/orders/summary";
 import { EMAIL_COPY } from "../copy";
@@ -12,11 +12,13 @@ import { type Block, renderEmail } from "../layout";
  * loaded by `orderMail.ts`, and whether a mail is owed at all is `draftsFor`.
  */
 export type OrderMailInput = {
+	company: CompanyDetails;
 	kind: NotificationKind;
 	locale: Locale;
 	/** Site origin, no trailing slash. */
 	base: string;
 	order: {
+		refPrefix: string | null;
 		number: number;
 		createdAt: Date;
 		publicToken: string;
@@ -70,7 +72,7 @@ export function orderEmail(input: OrderMailInput): {
 } {
 	const { order, locale } = input;
 	const copy = EMAIL_COPY[locale];
-	const ref = orderRef(order.number, order.createdAt);
+	const ref = orderRef(order);
 	const total = money(order.totalRm);
 	const orderUrl = `${input.base}/${locale}/order/${order.publicToken}`;
 	// A split consumes the delivery row; the order page still shows where it is.
@@ -84,7 +86,10 @@ export function orderEmail(input: OrderMailInput): {
 		siteAddress: order.siteAddress,
 		stage: input.stageLabel ?? "",
 		carrier: input.delivery?.carrierLabel ?? "",
-		...BANK_TRANSFER,
+		brand: input.company.brand,
+		bank: input.company.bankName,
+		accountName: input.company.bankAccountName,
+		accountNumber: input.company.bankAccountNumber,
 	};
 
 	const mail = (
@@ -97,6 +102,7 @@ export function orderEmail(input: OrderMailInput): {
 			subject,
 			...renderEmail({
 				locale,
+				company: input.company,
 				about: "order",
 				preheader: subject,
 				heading: fill(t.heading, vars),

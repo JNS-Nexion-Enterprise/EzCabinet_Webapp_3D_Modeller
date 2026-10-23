@@ -1,7 +1,6 @@
 Create a new [framework] application with Prisma 8, seed it, and run it locally.
 
 If I have not told you which framework, stop and ask before scaffolding. Valid --template values: next, hono, nuxt, astro, nest, svelte, tanstack-start, elysia.
-
 1. Scaffold the app: `npx create-prisma@next create my-app --template [framework] --provider postgres --yes`.
 2. Get a database connection string: use the one I give you, or create a Prisma Postgres database with `npx create-db@latest` and show me the claim URL it prints. Export it as `DATABASE_URL` in the shell and write it to `.env` in the project directory; the generated scripts read the environment variable, and the deploy step reads `.env`.
 3. From the project directory, apply the starter contract: `npm run db:init`. Sample users are seeded automatically on the app's first query; there is no separate seed script.

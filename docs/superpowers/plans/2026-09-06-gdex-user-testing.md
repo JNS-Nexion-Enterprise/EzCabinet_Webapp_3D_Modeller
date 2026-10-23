@@ -4,7 +4,7 @@
 
 **Goal:** A booking made in the admin lands in GDEX's portal as a real collection, and the admin can see that it did — without leaving the app or logging into GDEX.
 
-**Architecture:** The GDEX adapter already quotes, books, tracks and cancels against the live sandbox (`f324a29`…`f9c8322`, verified end to end on 2026-09-06: quote RM 9.40 → book `TCN170001587` → track → cancel → wallet refunded). What is missing is everything that tells a *tester* it worked. Three unused GDEX operations close that gap, and none of them needs a Prisma migration: `GetPickUpDateListing` (the days GDEX will actually collect), `CheckeWalletBalance` (the likeliest booking failure), and `GetUpcomingPickUpDetails` + `GetPickUpReference` (proof the collection reached GDEX's board).
+**Architecture:** The GDEX adapter already quotes, books, tracks and cancels against the live sandbox (`f324a29`…`f9c8322`, verified end to end on 2026-09-06: quote RM 9.40 → book `TCN170001587` → track → cancel → wallet refunded). What is missing is everything that tells a _tester_ it worked. Three unused GDEX operations close that gap, and none of them needs a Prisma migration: `GetPickUpDateListing` (the days GDEX will actually collect), `CheckeWalletBalance` (the likeliest booking failure), and `GetUpcomingPickUpDetails` + `GetPickUpReference` (proof the collection reached GDEX's board).
 
 **Tech stack:** TypeScript, Zod v4, Vitest 4, Next.js App Router, Prisma. No new dependencies.
 
@@ -20,18 +20,17 @@ GDEX works. The problem is that nothing on screen distinguishes "GDEX has this c
 
 Three failures already hit in one afternoon, all of which a tester will hit again:
 
-| What happened | Why it was invisible |
-| --- | --- |
-| Booking refused with `Pick Up Day Unavailable` | The job was scheduled 6 days out. GDEX collects within 5, and the date field offered every day of the year. |
-| The e-Wallet was at `0.0000` for part of the day | Nothing showed the balance. A booking would have failed with `Insufficient Credit` after the admin had already picked GDEX and typed their name. |
-| A booked consignment could not be confirmed from the app | We never call `GetUpcomingPickUpDetails`. |
+| What happened                                            | Why it was invisible                                                                                                                             |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Booking refused with `Pick Up Day Unavailable`           | The job was scheduled 6 days out. GDEX collects within 5, and the date field offered every day of the year.                                      |
+| The e-Wallet was at `0.0000` for part of the day         | Nothing showed the balance. A booking would have failed with `Insufficient Credit` after the admin had already picked GDEX and typed their name. |
+| A booked consignment could not be confirmed from the app | We never call `GetUpcomingPickUpDetails`.                                                                                                        |
 
 The adapter now refuses a bad day locally (`f9c8322`), which turns the first into a clear message. This plan replaces that guess with GDEX's own answer and closes the other two.
 
 ### Observed API facts this plan depends on
 
 All verified against the sandbox on 2026-09-06. Several contradict or extend the documentation.
-
 - **`GET /GetPickUpDateListing?PostCode=<sender postcode>`** → `data: ["2026-09-07T00:00:00", … 5 entries]`. Naive Malaysian local, always midnight. Requires the postcode; without it, 400 `"Please Provide PostCode"`. This is the authoritative list — the documented "5 days" is a coincidence of the day it was asked, and weekends and holidays are already excluded.
 - **`GET /CheckeWalletBalance`** → `data` is a bare number (`1020.0000`). Cancelling a consignment refunds it.
 - **`GET /GetUpcomingPickUpDetails`** → `data: []` when nothing is scheduled. **Its populated shape has never been observed** — Task 3 observes it before parsing it.
@@ -55,16 +54,16 @@ All verified against the sandbox on 2026-09-06. Several contradict or extend the
 
 ## File structure
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| `src/lib/logistics/adapters/gdex.ts` | modify | Three new reads: `pickupDays`, `walletBalance`, `pickupConfirmation`. |
-| `src/lib/logistics/__tests__/gdex.test.ts` | modify | Their tests, over stubbed fetch. |
-| `src/lib/logistics/types.ts` | modify | `CarrierQuote.warning?`, and the `pickupDays` shape on the quote. |
-| `src/app/api/admin/deliveries/[id]/quotes/route.ts` | modify | Carry the warning and the days through. |
-| `src/app/api/admin/deliveries/[id]/pickup/route.ts` | **create** | The "is it on GDEX's board" read, for the booked view. |
-| `src/app/admin/logistics/LogisticsManager.tsx` | modify | Grouped comparison, wallet warning, pickup confirmation, journey note. |
-| `src/app/admin/logistics/tracking.ts` | modify | A journey that omits the stop a parcel network never reports. |
-| `docs/superpowers/plans/…-gdex-user-testing.md` | this file | The user-testing script lives in Task 6. |
+| File                                                | Status     | Responsibility                                                         |
+| --------------------------------------------------- | ---------- | ---------------------------------------------------------------------- |
+| `src/lib/logistics/adapters/gdex.ts`                | modify     | Three new reads: `pickupDays`, `walletBalance`, `pickupConfirmation`.  |
+| `src/lib/logistics/__tests__/gdex.test.ts`          | modify     | Their tests, over stubbed fetch.                                       |
+| `src/lib/logistics/types.ts`                        | modify     | `CarrierQuote.warning?`, and the `pickupDays` shape on the quote.      |
+| `src/app/api/admin/deliveries/[id]/quotes/route.ts` | modify     | Carry the warning and the days through.                                |
+| `src/app/api/admin/deliveries/[id]/pickup/route.ts` | **create** | The "is it on GDEX's board" read, for the booked view.                 |
+| `src/app/admin/logistics/LogisticsManager.tsx`      | modify     | Grouped comparison, wallet warning, pickup confirmation, journey note. |
+| `src/app/admin/logistics/tracking.ts`               | modify     | A journey that omits the stop a parcel network never reports.          |
+| `docs/superpowers/plans/…-gdex-user-testing.md`     | this file  | The user-testing script lives in Task 6.                               |
 
 ---
 
@@ -120,7 +119,6 @@ pnpm vitest run src/lib/logistics/__tests__/gdex.test.ts -t pickupDays
 ```
 
 Expected: FAIL — `pickupDays` is not exported.
-
 - [ ] **Step 3: Implement**
 
 ```ts
@@ -222,10 +220,16 @@ describe("gdexAdapter.quote wallet warning", () => {
 	it("still returns the price when the balance cannot be read", async () => {
 		const fetchMock = vi.fn();
 		fetchMock.mockResolvedValueOnce(
-			new Response(JSON.stringify(userDetailsResponse), { status: 200, headers: { "content-type": "application/json" } }),
+			new Response(JSON.stringify(userDetailsResponse), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			}),
 		);
 		fetchMock.mockResolvedValueOnce(
-			new Response(JSON.stringify(rateResponse), { status: 200, headers: { "content-type": "application/json" } }),
+			new Response(JSON.stringify(rateResponse), {
+				status: 200,
+				headers: { "content-type": "application/json" },
+			}),
 		);
 		fetchMock.mockResolvedValueOnce(new Response("nope", { status: 500 }));
 		vi.stubGlobal("fetch", fetchMock);
@@ -262,25 +266,27 @@ export async function walletBalance(): Promise<number | null> {
 In `quote()`, after the price is known:
 
 ```ts
-	// Advisory, not a refusal: GDEX decides whether it will take the booking,
-	// and a stale balance must never hide a price. `CreateConsignment` debits
-	// the wallet, so "Insufficient Credit" is the likeliest booking failure —
-	// and the one thing the admin can fix before spending their time on it.
-	const balance = await walletBalance();
-	const warning =
-		balance !== null && priceRm !== null && balance < priceRm
-			? `GDEX's wallet holds RM ${balance.toFixed(2)}, less than this booking — top it up or the booking will be refused`
-			: undefined;
+// Advisory, not a refusal: GDEX decides whether it will take the booking,
+// and a stale balance must never hide a price. `CreateConsignment` debits
+// the wallet, so "Insufficient Credit" is the likeliest booking failure —
+// and the one thing the admin can fix before spending their time on it.
+const balance = await walletBalance();
+const warning =
+	balance !== null && priceRm !== null && balance < priceRm
+		? `GDEX's wallet holds RM ${balance.toFixed(2)}, less than this booking — top it up or the booking will be refused`
+		: undefined;
 ```
 
 - [ ] **Step 4: Show it** — in `LogisticsManager.tsx`'s quote row, beneath `quote.notes`:
 
 ```tsx
-										{quote.warning && (
-											<span className="pl-[18px] text-[11px] text-[#8a6d1f]">
-												{quote.warning}
-											</span>
-										)}
+{
+	quote.warning && (
+		<span className="pl-[18px] text-[11px] text-[#8a6d1f]">
+			{quote.warning}
+		</span>
+	);
+}
 ```
 
 - [ ] **Step 5: Run everything, then commit**
@@ -315,7 +321,6 @@ console.log(await (await fetch(`${B}/GetUpcomingPickUpDetails`,{headers:H})).tex
 ```
 
 **Write the observed JSON into `src/lib/logistics/__tests__/fixtures/gdex.ts` verbatim.** Do not invent this shape — the `IsValid` field on `GetLastShipmentStatus` is not in the documentation either, and reading a status off a row that did not exist reported a phantom parcel as booked.
-
 - [ ] **Step 2: Implement against what you observed**
 
 ```ts
@@ -350,10 +355,9 @@ export async function pickupConfirmation(
 From the Compare partners artboard. A 500 kg cabinet must not read as a plausible parcel next to a lorry quote 16× cheaper.
 
 **Files:** `src/app/admin/logistics/LogisticsManager.tsx`, `src/app/admin/logistics/tracking.ts`
-
 - [ ] **Step 1:** Split the quote list by `KIND[carrierId]` (`carriers.ts` already carries it) into "Vehicle partners" and "Parcel partners", each with the one-line explanation from the artboard.
 - [ ] **Step 2:** Restate the job above the list — items, total weight, longest edge, destination.
-- [ ] **Step 3:** Give the three failure kinds three looks, as designed: dashed grey for *no credentials, nothing was asked*; amber for *this job is wrong for this carrier* (a `GdexNotDeliverable` / `EasyParcelNotDeliverable` message, which the admin can act on); red for *the carrier refused*.
+- [ ] **Step 3:** Give the three failure kinds three looks, as designed: dashed grey for _no credentials, nothing was asked_; amber for _this job is wrong for this carrier_ (a `GdexNotDeliverable` / `EasyParcelNotDeliverable` message, which the admin can act on); red for _the carrier refused_.
 - [ ] **Step 4:** Test `tracking.ts`'s grouping helper, run everything, commit.
 
 ---
@@ -363,7 +367,6 @@ From the Compare partners artboard. A 500 kg cabinet must not read as a plausibl
 **Files:** `src/app/admin/logistics/tracking.ts`, `src/app/admin/logistics/LogisticsManager.tsx`
 
 `JOURNEY` is a module constant of five states including `DRIVER_ASSIGNED`. A GDEX job can never reach it, so the tracker always shows one dead stop.
-
 - [ ] **Step 1:** Write the failing test — `journeySteps` for a GDEX job returns four stops, for a Lalamove job five.
 - [ ] **Step 2:** Take the carrier id as an argument and drop `DRIVER_ASSIGNED` when the carrier's status table has no entry mapping to it. Derived from `CARRIER_STATUS_MAPS`, not hardcoded per carrier — a partner that starts reporting drivers gets the stop back for free.
 - [ ] **Step 3:** Add the explanatory line from the artboard, so the absence reads as a fact about parcel networks rather than a missing feature.
@@ -374,16 +377,13 @@ From the Compare partners artboard. A 500 kg cabinet must not read as a plausibl
 ## Task 6: The user-testing script
 
 Not code. This is what a tester follows, and what "it works" means.
-
 - [ ] **Step 1: Write `docs/gdex-user-testing.md`** containing exactly this run-through:
 
 **Before starting**
-
 1. `pnpm gdex:ping` — expect `GetUserTokenValidity` 200, a wallet balance, and a rate in RM. Any 401 stops the test: the message names which credential and which portal.
 2. Confirm the wallet covers a few bookings. It reached `0.0000` once already.
 
 **The run**
-
 3. Create a delivery to a real Klang Valley address. Give at least one item a weight — GDEX cannot quote without one.
 4. Save it. Confirm the job shows a postcode; without `GOOGLE_GEOCODING_API_KEY` it will not, and both parcel partners refuse.
 5. Set the scheduled date to a day GDEX offers (the pickup step lists them).
@@ -395,7 +395,6 @@ Not code. This is what a tester follows, and what "it works" means.
 11. Cancel the job. The wallet balance returns to what it was — cancelling refunds, and it cancels the collection too.
 
 **What is not a bug**
-
 - No driver is ever named on a GDEX job. Use Lalamove when a named driver matters.
 - Status updates lag up to ten minutes; the cron polls on that interval. "Refresh from carrier" is immediate.
 

@@ -49,6 +49,7 @@ import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
 import { DimensionField } from "./DimensionField";
 import { peekDesignMesh } from "./designMesh";
+import { PhoneStudio, views } from "./PhoneStudio";
 import { PlannerHeader } from "./PlannerHeader";
 import type { PlannerView } from "./PlannerScene";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
@@ -57,12 +58,20 @@ import { CabinetMenu } from "./studio/CabinetMenu";
 import { thumb } from "./studio/chrome";
 import { DesignRecap } from "./studio/DesignRecap";
 import { PriceFooter } from "./studio/PriceFooter";
+import {
+	type DoorView,
+	initialPhoneTab,
+	nextDoorView,
+	type PhoneTab,
+	tabAfterSelection,
+} from "./studio/phoneStudio";
 import { RoomPanel } from "./studio/RoomPanel";
 import { RunList } from "./studio/RunList";
 import { SelectionPanel, type SelectionVerb } from "./studio/SelectionPanel";
 import { PanelOption, PanelToggle, StudioPanel } from "./studio/StudioPanel";
 import { type StudioTool, ToolRail } from "./studio/ToolRail";
 import { FamilyThumb } from "./thumbs";
+import { usePhone } from "./usePhone";
 
 /** Where a family with no library category is shelved in the add menu. */
 const KIND_CATEGORY = {
@@ -85,13 +94,6 @@ const PlannerScene = dynamic(() => import("./PlannerScene"), {
 	loading: () => <ScenePlaceholder />,
 });
 
-/** Labels for the view toggle, in the order a fitter reads them. */
-const views = (t: Dictionary): { id: PlannerView; label: string }[] => [
-	{ id: "3d", label: t.planner.view.threeD },
-	{ id: "elevation", label: t.planner.view.elevation },
-	{ id: "plan", label: t.planner.view.plan },
-];
-
 /** Hung at a set height, or run up to the ceiling. The stored hang height
  *  survives the switch, so this is a mode and not a destructive edit. */
 const wallModes = (t: Dictionary): { toCeiling: boolean; label: string }[] => [
@@ -105,20 +107,6 @@ const baseModes = (t: Dictionary): { skirted: boolean; label: string }[] => [
 	{ skirted: true, label: t.planner.room.skirted },
 	{ skirted: false, label: t.planner.room.legsShown },
 ];
-
-/** Doors shut, or swung open so the customer can see the inside they are
- *  buying. View state, never on the layout — see `openIds`. */
-/**
- * How the run shows its fronts.
- *
- * `hidden` exists because `open` cannot answer "show me every interior". Two
- * cabinets whose doors hinge on the same shared stile cannot both be open —
- * not here and not in a real kitchen — so swinging them all at once stacks
- * two leaves into the same space whatever angle they stop at. Taking the
- * fronts away is the honest way to show the whole run at once, and it is what
- * this toggle was specified as from the start.
- */
-type DoorView = "closed" | "open" | "hidden";
 
 const doorModes = (t: Dictionary): { id: DoorView; label: string }[] => [
 	{ id: "closed", label: t.planner.room.doorsClosed },
@@ -320,6 +308,16 @@ export function StudioScreen({
 	const [tool, setTool] = useState<StudioTool>(() =>
 		allPositions(layout).length === 0 ? "room" : "select",
 	);
+	// Below 760px the studio is a scrolling page with four tabs in place of the
+	// rail's panels (`PhoneStudio`). Both pieces of state live here, whichever
+	// layout is showing, so crossing 760px mid-edit loses nothing.
+	const phone = usePhone();
+	const [tab, setTab] = useState<PhoneTab>(() =>
+		initialPhoneTab(allPositions(layout).length),
+	);
+	useEffect(() => {
+		setTab((current) => tabAfterSelection(current, selectedIds.length));
+	}, [selectedIds]);
 	const panel = tool === "select" || tool === "measure" ? null : tool;
 	const measureMode = tool === "measure";
 	const [measurePoints, setMeasurePoints] = useState<SnapPoint[]>([]);
@@ -419,6 +417,16 @@ export function StudioScreen({
 		: anyOpen
 			? "open"
 			: "closed";
+	// The Doors panel's options and the phone's one Doors button.
+	const applyDoorView = (mode: DoorView) => {
+		track("doors_toggled", { scope: "all", mode });
+		setDoorsHidden(mode === "hidden");
+		setOpenIds(
+			mode === "open"
+				? new Set(withDoors.map((position) => position.placed.id))
+				: new Set(),
+		);
+	};
 	const selection = placed.filter((position) =>
 		selectedSet.has(position.placed.id),
 	);
@@ -496,17 +504,21 @@ export function StudioScreen({
 
 	const canFlush = placed.some((position) => position.family.kind === "tall");
 
+	const roomOpen = phone ? tab === "room" : panel === "room";
+	const toAdd = () => (phone ? setTab("add") : setTool("add"));
+	const pickView = (next: PlannerView) => {
+		track("view_changed", { view: next });
+		setView(next);
+	};
 	// Twelve `setWallLength` bisections per wall, so only while the Room panel
 	// is open — otherwise every pointer move of a drag would pay for them. The
 	// panel body (and its three `setShape` probes) is built only then too.
 	const wallRanges = useMemo(
 		() =>
-			panel === "room"
-				? layout.runs.map((_, i) => wallLengthRangeMm(layout, i))
-				: [],
-		[panel, layout, wallLengthRangeMm],
+			roomOpen ? layout.runs.map((_, i) => wallLengthRangeMm(layout, i)) : [],
+		[roomOpen, layout, wallLengthRangeMm],
 	);
-	const roomBody = panel === "room" && (
+	const roomBody = roomOpen && (
 		<RoomPanel
 			catalogue={catalogue}
 			roomId={roomId}
@@ -556,8 +568,9 @@ export function StudioScreen({
 			onCeilingAction={(mm) =>
 				setLayoutAction((prev) => setCeilingHeight(prev, mm))
 			}
-			onOpenDefaultsAction={() => setTool("defaults")}
-			onNextAction={placed.length === 0 ? () => setTool("add") : undefined}
+			// On a phone the defaults sit right under the room, in the same tab.
+			onOpenDefaultsAction={phone ? undefined : () => setTool("defaults")}
+			onNextAction={placed.length === 0 ? toAdd : undefined}
 		/>
 	);
 
@@ -674,10 +687,7 @@ export function StudioScreen({
 								: t.planner.panel.planHint
 					}
 					pressed={view === option.id}
-					onPressAction={() => {
-						track("view_changed", { view: option.id });
-						setView(option.id);
-					}}
+					onPressAction={() => pickView(option.id)}
 				/>
 			))}
 			<PanelOption
@@ -702,15 +712,7 @@ export function StudioScreen({
 								: t.planner.room.openDoorsNote
 					}
 					pressed={doorView === mode.id}
-					onPressAction={() => {
-						track("doors_toggled", { scope: "all", mode: mode.id });
-						setDoorsHidden(mode.id === "hidden");
-						setOpenIds(
-							mode.id === "open"
-								? new Set(withDoors.map((position) => position.placed.id))
-								: new Set(),
-						);
-					}}
+					onPressAction={() => applyDoorView(mode.id)}
 				/>
 			))}
 		</div>
@@ -767,7 +769,7 @@ export function StudioScreen({
 				type="button"
 				onClick={() => setLayoutAction((prev) => flushWallToTallTops(prev))}
 				disabled={!canFlush}
-				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
+				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center"
 			>
 				{canFlush
 					? t.planner.room.flushWallUnitTops
@@ -778,7 +780,7 @@ export function StudioScreen({
 				type="button"
 				onClick={() => setLayoutAction((prev) => closeGaps(prev))}
 				disabled={gapCount === 0}
-				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
+				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline max-[760px]:inline-flex max-[760px]:min-h-11 max-[760px]:items-center"
 			>
 				{gapCount > 0
 					? fill(t.planner.run.closeGapsCount, { n: gapCount })
@@ -786,6 +788,471 @@ export function StudioScreen({
 			</button>
 		</div>
 	);
+
+	// Built once and placed by whichever layout is showing: the desktop studio
+	// below, or the phone's.
+	const scene = (
+		<PlannerScene
+			layout={layout}
+			finish={finish}
+			finishTextures={finishTextures}
+			selectedIds={selectedSet}
+			openIds={openIds}
+			doorsHidden={doorsHidden}
+			doorTargetId={null}
+			measureMode={measureMode}
+			measurePoints={measurePoints}
+			measureAxis={measureAxis}
+			positionMode={verb === "move"}
+			view={view}
+			refitKey={refitKey}
+			targetRun={run}
+			showWallNumbers={roomOpen}
+			showPanPuck={!roomOpen}
+			onLayoutChangeAction={setLayoutAction}
+			onSelectAction={select}
+			onMeasurePickAction={onMeasurePick}
+			onWallPickAction={pickWall}
+			onRetargetAction={setTargetRun}
+			wallLit={wallLit}
+			onWallLengthAction={(wall, mm) =>
+				setLayoutAction((prev) => setWallLength(prev, wall, mm))
+			}
+			pickerRef={pickerRef}
+			hitTestRef={hitTestRef}
+		/>
+	);
+
+	const axisChips = (
+		<fieldset className="flex items-center gap-0.5">
+			<legend className="sr-only">{t.planner.measure.constrainLabel}</legend>
+			{MEASURE_AXES.map((axis) => (
+				<button
+					key={axis}
+					type="button"
+					onClick={() => setMeasureAxis(axis)}
+					aria-pressed={measureAxis === axis}
+					className={`rounded px-1.5 py-0.5 text-[11px] transition max-[760px]:min-h-11 max-[760px]:min-w-11 max-[760px]:px-3 max-[760px]:text-[14px] ${
+						measureAxis === axis
+							? "bg-neutral-900 text-white"
+							: "text-neutral-500 hover:bg-neutral-100"
+					}`}
+				>
+					{AXIS_LABEL[axis]}
+				</button>
+			))}
+		</fieldset>
+	);
+
+	const measureLine = measurement ? (
+		<span className="flex items-center gap-2 text-[12px] text-neutral-800">
+			<span>{Math.round(measurement.distanceMm)}mm</span>
+			<DimChip
+				axis="x"
+				valueMm={measurement.widthMm}
+				maxAxisMm={maxMeasuredAxisMm}
+			/>
+			<DimChip
+				axis="y"
+				valueMm={measurement.heightMm}
+				maxAxisMm={maxMeasuredAxisMm}
+			/>
+			<DimChip
+				axis="z"
+				valueMm={measurement.depthMm}
+				maxAxisMm={maxMeasuredAxisMm}
+			/>
+		</span>
+	) : (
+		<span className="text-[12px] text-neutral-500">
+			{measurePoints.length === 0
+				? t.planner.measure.clickToStart
+				: t.planner.measure.clickSecondPoint}
+		</span>
+	);
+
+	const clearButton = measurePoints.length > 0 && (
+		<button
+			type="button"
+			onClick={() => setMeasurePoints([])}
+			className="text-[12px] text-[#1f5138] hover:underline max-[760px]:min-h-11 max-[760px]:px-3 max-[760px]:text-[14px]"
+		>
+			{t.planner.clear}
+		</button>
+	);
+
+	// What each end actually landed on. The glyph in the scene says the
+	// same thing, but a marker seen edge-on is easy to misread and a
+	// wrong snap is a wrong number.
+	const snapNote = measurePoints.length > 0 && (
+		<p className="text-[11px] text-neutral-400">
+			{measurePoints.map((snap) => SNAP_LABEL[snap.kind]).join(" → ")}
+		</p>
+	);
+
+	const measureReadout = (
+		<>
+			{axisChips}
+			<div className="flex items-center gap-2">
+				{measureLine}
+				{clearButton}
+			</div>
+			{snapNote}
+		</>
+	);
+
+	const selectionBody =
+		selection.length === 0 ? (
+			<DesignRecap
+				rows={[
+					{ label: t.planner.design.room, value: room.label },
+					{
+						label: t.planner.design.wall,
+						value: `${(targetView.wallWidthMm / 1000).toFixed(2)} m · ${(
+							layout.ceilingHeightMm / 1000
+						).toFixed(2)} m`,
+					},
+					{
+						label: t.planner.design.run,
+						value: `${runMetres} · ${
+							placed.length
+						} ${placed.length === 1 ? t.planner.unit : t.planner.units}`,
+					},
+					{
+						label: t.planner.design.wallFree,
+						value:
+							freeMm < 0
+								? fill(t.planner.design.overBy, { mm: -freeMm })
+								: `${freeMm} mm`,
+					},
+					// No Finish row: the swatches directly beneath this block
+					// already show it, name it, and let you change it. Two
+					// copies of one fact, forty pixels apart, in a column
+					// where a 900px laptop could only show one of seven
+					// cabinets in the run below.
+				]}
+				onAddAction={toAdd}
+			/>
+		) : selected ? (
+			<SelectionPanel
+				catalogue={catalogue}
+				layout={layout}
+				// A free cabinet's turn lives on its row, not in the
+				// run-of-one view `allPositions` draws it from.
+				selected={
+					selectedFree
+						? {
+								...selected,
+								placed: {
+									...selected.placed,
+									rotationDeg: selectedFree.rotationDeg,
+								},
+							}
+						: selected
+				}
+				free={selectedFree !== undefined}
+				verb={verb}
+				onVerbAction={setVerb}
+				widthOptions={widthOptionsFor(layout, selected.placed.id)}
+				replaceOptions={replaceOptionsFor(selected)}
+				doorsOpen={openIds.has(selected.placed.id)}
+				hingeOptions={hingeSides(t)}
+				leaves={leavesOn(selected, construction)}
+				priceLabel={formatRm(
+					price.cabinets.find((l) => l.id === selected.placed.id)?.amountRm ??
+						0,
+					{ maximumFractionDigits: 0 },
+				)}
+				onWidthAction={(widthMm) => {
+					track("cabinet_resized", {
+						family: selected.family.id,
+						widthMm,
+					});
+					setLayoutAction((prev) =>
+						setWidth(prev, selected.placed.id, widthMm),
+					);
+				}}
+				onReplaceAction={(familyId) => {
+					track("cabinet_replaced", { family: familyId });
+					setLayoutAction((prev) =>
+						replaceFamily(prev, selected.placed.id, familyId),
+					);
+				}}
+				offsets={offsetsOf(layout, selected.placed.id)}
+				onGapAction={(side, mm) =>
+					setLayoutAction((prev) => setGap(prev, selected.placed.id, side, mm))
+				}
+				onSwapAction={(direction) =>
+					setLayoutAction((prev) =>
+						swapWithNeighbour(prev, selected.placed.id, direction),
+					)
+				}
+				canSwap={neighboursOf(selected)}
+				onHangAtAction={(mm) =>
+					setLayoutAction((prev) => setHangAt(prev, selected.placed.id, mm))
+				}
+				onRotationAction={(deg) =>
+					setLayoutAction((prev) =>
+						selectedFree
+							? rotateFree(prev, selected.placed.id, deg)
+							: setRotation(prev, selected.placed.id, deg),
+					)
+				}
+				onToggleDoorAction={() => {
+					track("doors_toggled", { scope: "one" });
+					setOpenIds((prev) => {
+						const next = new Set(prev);
+						if (!next.delete(selected.placed.id)) {
+							next.add(selected.placed.id);
+						}
+						return next;
+					});
+				}}
+				onHingeAction={(side) =>
+					setLayoutAction((prev) => setHinge(prev, selected.placed.id, side))
+				}
+				onDoorStyleAction={(doorStyleId) => {
+					track("door_style_changed", { doorStyle: doorStyleId });
+					setLayoutAction((prev) =>
+						setDoors(prev, [selected.placed.id], doorStyleId),
+					);
+				}}
+				canDuplicate={duplicateModule(layout, selected.placed.id) !== layout}
+				onDuplicateAction={() =>
+					setLayoutAction((prev) => duplicateModule(prev, selected.placed.id))
+				}
+				onRemoveAction={removeSelected}
+			/>
+		) : (
+			<div className="p-4">
+				<p className="font-semibold text-[11px] text-[#1f5138] uppercase tracking-[0.06em]">
+					{fill(t.planner.selection.nSelected, {
+						n: selection.length,
+					})}
+				</p>
+				<div className="mt-3 flex flex-col gap-2.5">
+					<div>
+						<p className="mb-1.5 font-medium text-[11px] text-neutral-600">
+							{t.planner.selection.front}
+						</p>
+						<div className="flex flex-wrap gap-1.5">
+							{catalogue.doorStyles.map((style) => (
+								<button
+									key={style.id}
+									type="button"
+									onClick={() => {
+										track("door_style_changed", {
+											doorStyle: style.id,
+										});
+										setLayoutAction((prev) =>
+											setDoors(prev, selectedIds, style.id),
+										);
+									}}
+									className="rounded-md bg-white px-2.5 py-1 text-[12px] max-[760px]:min-h-11 max-[760px]:px-4 max-[760px]:text-[14px] text-neutral-700 shadow-[inset_0_0_0_1px_#d4d4d4] transition hover:shadow-[inset_0_0_0_1px_#a3a3a3]"
+								>
+									{style.label}
+								</button>
+							))}
+						</div>
+					</div>
+
+					<div className="flex gap-3">
+						<button
+							type="button"
+							onClick={removeSelected}
+							className="rounded-full bg-neutral-900 px-3 py-1 text-[12px] text-white max-[760px]:min-h-11 max-[760px]:px-4 max-[760px]:text-[14px]"
+						>
+							{fill(t.planner.selection.removeAll, {
+								n: selection.length,
+							})}
+						</button>
+						<button
+							type="button"
+							onClick={() => setSelectedIdsAction([])}
+							className="text-[12px] text-neutral-500 hover:text-neutral-900 max-[760px]:min-h-11 max-[760px]:px-3 max-[760px]:text-[14px]"
+						>
+							{t.planner.clear}
+						</button>
+					</div>
+				</div>
+			</div>
+		);
+
+	const runList = (
+		<RunList
+			placed={placed}
+			selectedIds={selectedSet}
+			gapCount={gapCount}
+			priceLabels={Object.fromEntries(
+				price.cabinets.map((line) => [
+					line.id,
+					formatRm(line.amountRm, { maximumFractionDigits: 0 }),
+				]),
+			)}
+			onSelectAction={select}
+			onCloseGapsAction={() => setLayoutAction((prev) => closeGaps(prev))}
+			onResetAction={() => {
+				// There is no undo, and this takes the room's shape and
+				// paint with the cabinets — so an empty room resets
+				// freely and a furnished one asks first.
+				if (placed.length > 0 && !window.confirm(t.planner.run.resetConfirm))
+					return;
+				setLayoutAction(emptyRoom(room.defaultWallWidthMm));
+				setSelectedIdsAction([]);
+			}}
+		/>
+	);
+
+	const finishBody = (
+		<>
+			<p className="mb-2 font-semibold text-[11px] text-neutral-600 uppercase tracking-wide">
+				{t.planner.finish.heading}
+			</p>
+			<div className="flex gap-1.5 max-[760px]:flex-wrap max-[760px]:gap-3 max-[760px]:p-1">
+				{catalogue.finishes.map((option) => (
+					<button
+						key={option.id}
+						type="button"
+						onClick={() => setFinishAction(option.id)}
+						aria-pressed={option.id === finish}
+						title={option.label}
+						className={`${thumb} h-[26px] w-[26px] max-[760px]:size-11 max-[760px]:rounded-[10px] rounded-md bg-center bg-cover`}
+						style={{
+							backgroundColor: option.hex,
+							// The board itself where the client has one. Without it
+							// the chip showed the catalogue hex while the door beside
+							// it rendered the real scan — and a finish added from a
+							// supplier sheet keeps the picker's #cccccc default until
+							// somebody remembers to correct it, so the chip was
+							// grey for a walnut.
+							...(finishTextures[option.id] && {
+								backgroundImage: `url(${finishTextures[option.id]})`,
+							}),
+							boxShadow:
+								option.id === finish
+									? "0 0 0 2px #171717, 0 0 0 3px #fff"
+									: option.hex === "#ffffff"
+										? "inset 0 0 0 1px #d4d4d4"
+										: "none",
+						}}
+					/>
+				))}
+			</div>
+			<p className="mt-2 text-[12px] text-neutral-500">
+				{fill(t.planner.finish.currentLabel, {
+					label: catalogue.finishes.find((f) => f.id === finish)?.label ?? "",
+				})}
+			</p>
+		</>
+	);
+
+	const chip = (
+		<>
+			{fill(t.planner.canvas.runOfWall, {
+				// The targeted wall's run, from its corner: the chip names the
+				// targeted wall's length, and the sidebar lists every run.
+				run: (runExtentMm(layout, run) / 1000).toFixed(2),
+				wall: (targetView.wallWidthMm / 1000).toFixed(2),
+			})}{" "}
+			· {placed.length} {placed.length === 1 ? t.planner.unit : t.planner.units}
+		</>
+	);
+
+	const priceFooter = {
+		lines: price.categories.map((line) => ({
+			id: line.id,
+			label: priceLineLabel(t, line),
+			detail: priceLineDetail(t, line),
+			amount: rm(line.amountRm),
+		})),
+		coverNote:
+			coverPieces.length > 0
+				? `${coverPieces.join(` ${t.planner.price.and} `)} ${
+						coverPieces.length === 1
+							? t.planner.price.includedAboveSingular
+							: t.planner.price.includedAbovePlural
+					}`
+				: null,
+		totalLabel: formatRm(price.totalRm, { maximumFractionDigits: 0 }),
+		ctaDisabled: placed.length === 0,
+		onQuoteAction: onGoToQuoteAction,
+	};
+
+	if (phone) {
+		// The panels below were drawn for the sidebar and carry their own 16px
+		// sides; `-mx-4` lets them use the body's instead of doubling it.
+		const body = {
+			selected: (
+				<>
+					<div className="-mx-4">{selectionBody}</div>
+					<div className="mt-4 border-[#f0efec] border-t pt-4">
+						{finishBody}
+					</div>
+				</>
+			),
+			add: addBody,
+			room: (
+				<>
+					{roomBody}
+					<div className="mt-4 border-[#f0efec] border-t pt-4">
+						{defaultsBody}
+					</div>
+				</>
+			),
+			// The bar has no room for the sign-in nudge, so it follows the run.
+			run: (
+				<>
+					<div className="-mx-4">{runList}</div>
+					<SignInNudge cabinetCount={placed.length} />
+				</>
+			),
+		}[tab];
+
+		return (
+			<PhoneStudio
+				roomLabel={room.label}
+				wallMetres={(targetView.wallWidthMm / 1000).toFixed(2)}
+				onBackAction={onBackToStartAction}
+				view={view}
+				onViewAction={pickView}
+				scene={scene}
+				chip={chip}
+				footnote={
+					measureMode ? (
+						<div className="rounded-lg bg-white/92 px-2.5 py-1.5 shadow-sm">
+							{measureLine}
+						</div>
+					) : selection.length === 0 ? (
+						t.planner.phone.tapHint
+					) : null
+				}
+				measureControls={
+					measureMode ? (
+						<div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1">
+							{axisChips}
+							{clearButton}
+							{snapNote}
+						</div>
+					) : null
+				}
+				doors={{
+					view: doorView,
+					onCycleAction: () => applyDoorView(nextDoorView(doorView)),
+					// Measuring shut every door (`pressTool`); opening one now would
+					// put a wrong number on screen, as the desktop's shared `tool`
+					// already prevents.
+					disabled: withDoors.length === 0 || measureMode,
+				}}
+				measuring={measureMode}
+				onMeasureAction={() => pressTool("measure")}
+				onResetViewAction={() => setRefitKey((key) => key + 1)}
+				tab={tab}
+				onTabAction={setTab}
+				body={body}
+				bar={<PriceFooter variant="bar" {...priceFooter} />}
+			/>
+		);
+	}
 
 	return (
 		// Viewport less the language strip's `h-9` above it: a bare `h-screen`
@@ -884,35 +1351,7 @@ export function StudioScreen({
 						</StudioPanel>
 					)}
 
-					<PlannerScene
-						layout={layout}
-						finish={finish}
-						finishTextures={finishTextures}
-						selectedIds={selectedSet}
-						openIds={openIds}
-						doorsHidden={doorsHidden}
-						doorTargetId={null}
-						measureMode={measureMode}
-						measurePoints={measurePoints}
-						measureAxis={measureAxis}
-						positionMode={verb === "move"}
-						view={view}
-						refitKey={refitKey}
-						targetRun={run}
-						showWallNumbers={tool === "room"}
-						showPanPuck={tool !== "room"}
-						onLayoutChangeAction={setLayoutAction}
-						onSelectAction={select}
-						onMeasurePickAction={onMeasurePick}
-						onWallPickAction={pickWall}
-						onRetargetAction={setTargetRun}
-						wallLit={wallLit}
-						onWallLengthAction={(wall, mm) =>
-							setLayoutAction((prev) => setWallLength(prev, wall, mm))
-						}
-						pickerRef={pickerRef}
-						hitTestRef={hitTestRef}
-					/>
+					{scene}
 
 					{menu && (
 						<CabinetMenu
@@ -973,14 +1412,7 @@ export function StudioScreen({
 
 					<div className="absolute top-3 left-3.5 z-[6] flex flex-wrap items-center gap-2">
 						<span className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-neutral-700 shadow-[0_1px_2px_rgba(0,0,0,.04)]">
-							{fill(t.planner.canvas.runOfWall, {
-								// The targeted wall's run, from its corner: the chip names
-								// the targeted wall's length, and the sidebar lists every run.
-								run: (runExtentMm(layout, run) / 1000).toFixed(2),
-								wall: (targetView.wallWidthMm / 1000).toFixed(2),
-							})}{" "}
-							· {placed.length}{" "}
-							{placed.length === 1 ? t.planner.unit : t.planner.units}
+							{chip}
 						</span>
 						<span className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-[#8a857c] shadow-[0_1px_2px_rgba(0,0,0,.04)]">
 							{views(t).find((option) => option.id === view)?.label}
@@ -989,75 +1421,7 @@ export function StudioScreen({
 
 					{measureMode && (
 						<div className="absolute top-3.5 right-3.5 flex flex-col items-end gap-1.5 rounded-lg bg-white/92 px-2.5 py-2 shadow-sm backdrop-blur">
-							<fieldset className="flex items-center gap-0.5">
-								<legend className="sr-only">
-									{t.planner.measure.constrainLabel}
-								</legend>
-								{MEASURE_AXES.map((axis) => (
-									<button
-										key={axis}
-										type="button"
-										onClick={() => setMeasureAxis(axis)}
-										aria-pressed={measureAxis === axis}
-										className={`rounded px-1.5 py-0.5 text-[11px] transition ${
-											measureAxis === axis
-												? "bg-neutral-900 text-white"
-												: "text-neutral-500 hover:bg-neutral-100"
-										}`}
-									>
-										{AXIS_LABEL[axis]}
-									</button>
-								))}
-							</fieldset>
-
-							<div className="flex items-center gap-2">
-								{measurement ? (
-									<span className="flex items-center gap-2 text-[12px] text-neutral-800">
-										<span>{Math.round(measurement.distanceMm)}mm</span>
-										<DimChip
-											axis="x"
-											valueMm={measurement.widthMm}
-											maxAxisMm={maxMeasuredAxisMm}
-										/>
-										<DimChip
-											axis="y"
-											valueMm={measurement.heightMm}
-											maxAxisMm={maxMeasuredAxisMm}
-										/>
-										<DimChip
-											axis="z"
-											valueMm={measurement.depthMm}
-											maxAxisMm={maxMeasuredAxisMm}
-										/>
-									</span>
-								) : (
-									<span className="text-[12px] text-neutral-500">
-										{measurePoints.length === 0
-											? t.planner.measure.clickToStart
-											: t.planner.measure.clickSecondPoint}
-									</span>
-								)}
-								{measurePoints.length > 0 && (
-									<button
-										type="button"
-										onClick={() => setMeasurePoints([])}
-										className="text-[12px] text-[#1f5138] hover:underline"
-									>
-										{t.planner.clear}
-									</button>
-								)}
-							</div>
-
-							{/* What each end actually landed on. The glyph in the scene
-							    says the same thing, but a marker seen edge-on is easy to
-							    misread and a wrong snap is a wrong number. */}
-							{measurePoints.length > 0 && (
-								<p className="text-[11px] text-neutral-400">
-									{measurePoints
-										.map((snap) => SNAP_LABEL[snap.kind])
-										.join(" → ")}
-								</p>
-							)}
+							{measureReadout}
 						</div>
 					)}
 
@@ -1090,219 +1454,9 @@ export function StudioScreen({
 						className="flex min-h-0 flex-1 flex-col max-lg:overflow-y-auto"
 					>
 						<div className="max-lg:shrink-0 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-							{selection.length === 0 ? (
-								<DesignRecap
-									rows={[
-										{ label: t.planner.design.room, value: room.label },
-										{
-											label: t.planner.design.wall,
-											value: `${(targetView.wallWidthMm / 1000).toFixed(2)} m · ${(
-												layout.ceilingHeightMm / 1000
-											).toFixed(2)} m`,
-										},
-										{
-											label: t.planner.design.run,
-											value: `${runMetres} · ${
-												placed.length
-											} ${placed.length === 1 ? t.planner.unit : t.planner.units}`,
-										},
-										{
-											label: t.planner.design.wallFree,
-											value:
-												freeMm < 0
-													? fill(t.planner.design.overBy, { mm: -freeMm })
-													: `${freeMm} mm`,
-										},
-										// No Finish row: the swatches directly beneath this block
-										// already show it, name it, and let you change it. Two
-										// copies of one fact, forty pixels apart, in a column
-										// where a 900px laptop could only show one of seven
-										// cabinets in the run below.
-									]}
-									onAddAction={() => setTool("add")}
-								/>
-							) : selected ? (
-								<SelectionPanel
-									catalogue={catalogue}
-									layout={layout}
-									// A free cabinet's turn lives on its row, not in the
-									// run-of-one view `allPositions` draws it from.
-									selected={
-										selectedFree
-											? {
-													...selected,
-													placed: {
-														...selected.placed,
-														rotationDeg: selectedFree.rotationDeg,
-													},
-												}
-											: selected
-									}
-									free={selectedFree !== undefined}
-									verb={verb}
-									onVerbAction={setVerb}
-									widthOptions={widthOptionsFor(layout, selected.placed.id)}
-									replaceOptions={replaceOptionsFor(selected)}
-									doorsOpen={openIds.has(selected.placed.id)}
-									hingeOptions={hingeSides(t)}
-									leaves={leavesOn(selected, construction)}
-									priceLabel={formatRm(
-										price.cabinets.find((l) => l.id === selected.placed.id)
-											?.amountRm ?? 0,
-										{ maximumFractionDigits: 0 },
-									)}
-									onWidthAction={(widthMm) => {
-										track("cabinet_resized", {
-											family: selected.family.id,
-											widthMm,
-										});
-										setLayoutAction((prev) =>
-											setWidth(prev, selected.placed.id, widthMm),
-										);
-									}}
-									onReplaceAction={(familyId) => {
-										track("cabinet_replaced", { family: familyId });
-										setLayoutAction((prev) =>
-											replaceFamily(prev, selected.placed.id, familyId),
-										);
-									}}
-									offsets={offsetsOf(layout, selected.placed.id)}
-									onGapAction={(side, mm) =>
-										setLayoutAction((prev) =>
-											setGap(prev, selected.placed.id, side, mm),
-										)
-									}
-									onSwapAction={(direction) =>
-										setLayoutAction((prev) =>
-											swapWithNeighbour(prev, selected.placed.id, direction),
-										)
-									}
-									canSwap={neighboursOf(selected)}
-									onHangAtAction={(mm) =>
-										setLayoutAction((prev) =>
-											setHangAt(prev, selected.placed.id, mm),
-										)
-									}
-									onRotationAction={(deg) =>
-										setLayoutAction((prev) =>
-											selectedFree
-												? rotateFree(prev, selected.placed.id, deg)
-												: setRotation(prev, selected.placed.id, deg),
-										)
-									}
-									onToggleDoorAction={() => {
-										track("doors_toggled", { scope: "one" });
-										setOpenIds((prev) => {
-											const next = new Set(prev);
-											if (!next.delete(selected.placed.id)) {
-												next.add(selected.placed.id);
-											}
-											return next;
-										});
-									}}
-									onHingeAction={(side) =>
-										setLayoutAction((prev) =>
-											setHinge(prev, selected.placed.id, side),
-										)
-									}
-									onDoorStyleAction={(doorStyleId) => {
-										track("door_style_changed", { doorStyle: doorStyleId });
-										setLayoutAction((prev) =>
-											setDoors(prev, [selected.placed.id], doorStyleId),
-										);
-									}}
-									canDuplicate={
-										duplicateModule(layout, selected.placed.id) !== layout
-									}
-									onDuplicateAction={() =>
-										setLayoutAction((prev) =>
-											duplicateModule(prev, selected.placed.id),
-										)
-									}
-									onRemoveAction={removeSelected}
-								/>
-							) : (
-								<div className="p-4">
-									<p className="font-semibold text-[11px] text-[#1f5138] uppercase tracking-[0.06em]">
-										{fill(t.planner.selection.nSelected, {
-											n: selection.length,
-										})}
-									</p>
-									<div className="mt-3 flex flex-col gap-2.5">
-										<div>
-											<p className="mb-1.5 font-medium text-[11px] text-neutral-600">
-												{t.planner.selection.front}
-											</p>
-											<div className="flex flex-wrap gap-1.5">
-												{catalogue.doorStyles.map((style) => (
-													<button
-														key={style.id}
-														type="button"
-														onClick={() => {
-															track("door_style_changed", {
-																doorStyle: style.id,
-															});
-															setLayoutAction((prev) =>
-																setDoors(prev, selectedIds, style.id),
-															);
-														}}
-														className="rounded-md bg-white px-2.5 py-1 text-[12px] text-neutral-700 shadow-[inset_0_0_0_1px_#d4d4d4] transition hover:shadow-[inset_0_0_0_1px_#a3a3a3]"
-													>
-														{style.label}
-													</button>
-												))}
-											</div>
-										</div>
+							{selectionBody}
 
-										<div className="flex gap-3">
-											<button
-												type="button"
-												onClick={removeSelected}
-												className="rounded-full bg-neutral-900 px-3 py-1 text-[12px] text-white"
-											>
-												{fill(t.planner.selection.removeAll, {
-													n: selection.length,
-												})}
-											</button>
-											<button
-												type="button"
-												onClick={() => setSelectedIdsAction([])}
-												className="text-[12px] text-neutral-500 hover:text-neutral-900"
-											>
-												{t.planner.clear}
-											</button>
-										</div>
-									</div>
-								</div>
-							)}
-
-							<RunList
-								placed={placed}
-								selectedIds={selectedSet}
-								gapCount={gapCount}
-								priceLabels={Object.fromEntries(
-									price.cabinets.map((line) => [
-										line.id,
-										formatRm(line.amountRm, { maximumFractionDigits: 0 }),
-									]),
-								)}
-								onSelectAction={select}
-								onCloseGapsAction={() =>
-									setLayoutAction((prev) => closeGaps(prev))
-								}
-								onResetAction={() => {
-									// There is no undo, and this takes the room's shape and
-									// paint with the cabinets — so an empty room resets
-									// freely and a furnished one asks first.
-									if (
-										placed.length > 0 &&
-										!window.confirm(t.planner.run.resetConfirm)
-									)
-										return;
-									setLayoutAction(emptyRoom(room.defaultWallWidthMm));
-									setSelectedIdsAction([]);
-								}}
-							/>
+							{runList}
 						</div>
 
 						<div
@@ -1310,67 +1464,12 @@ export function StudioScreen({
 								selection.length === 0 ? "max-lg:order-first" : ""
 							}`}
 						>
-							<p className="mb-2 font-semibold text-[11px] text-neutral-600 uppercase tracking-wide">
-								{t.planner.finish.heading}
-							</p>
-							<div className="flex gap-1.5">
-								{catalogue.finishes.map((option) => (
-									<button
-										key={option.id}
-										type="button"
-										onClick={() => setFinishAction(option.id)}
-										aria-pressed={option.id === finish}
-										title={option.label}
-										className={`${thumb} h-[26px] w-[26px] rounded-md bg-center bg-cover`}
-										style={{
-											backgroundColor: option.hex,
-											// The board itself where the client has one. Without it
-											// the chip showed the catalogue hex while the door beside
-											// it rendered the real scan — and a finish added from a
-											// supplier sheet keeps the picker's #cccccc default until
-											// somebody remembers to correct it, so the chip was
-											// grey for a walnut.
-											...(finishTextures[option.id] && {
-												backgroundImage: `url(${finishTextures[option.id]})`,
-											}),
-											boxShadow:
-												option.id === finish
-													? "0 0 0 2px #171717, 0 0 0 3px #fff"
-													: option.hex === "#ffffff"
-														? "inset 0 0 0 1px #d4d4d4"
-														: "none",
-										}}
-									/>
-								))}
-							</div>
-							<p className="mt-2 text-[12px] text-neutral-500">
-								{fill(t.planner.finish.currentLabel, {
-									label:
-										catalogue.finishes.find((f) => f.id === finish)?.label ??
-										"",
-								})}
-							</p>
+							{finishBody}
 						</div>
 					</div>
 
 					<PriceFooter
-						lines={price.categories.map((line) => ({
-							id: line.id,
-							label: priceLineLabel(t, line),
-							detail: priceLineDetail(t, line),
-							amount: rm(line.amountRm),
-						}))}
-						coverNote={
-							coverPieces.length > 0
-								? `${coverPieces.join(` ${t.planner.price.and} `)} ${
-										coverPieces.length === 1
-											? t.planner.price.includedAboveSingular
-											: t.planner.price.includedAbovePlural
-									}`
-								: null
-						}
-						totalLabel={formatRm(price.totalRm, { maximumFractionDigits: 0 })}
-						ctaDisabled={placed.length === 0}
+						{...priceFooter}
 						notice={
 							// Not while a cabinet is selected on a phone: its controls
 							// need the height more than the reminder does.
@@ -1378,7 +1477,6 @@ export function StudioScreen({
 								<SignInNudge cabinetCount={placed.length} />
 							</div>
 						}
-						onQuoteAction={onGoToQuoteAction}
 					/>
 				</aside>
 			</div>

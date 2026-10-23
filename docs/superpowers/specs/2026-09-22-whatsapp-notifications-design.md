@@ -13,16 +13,16 @@ points anyone who replies at EzCabinet's sales team.
 
 ## Decisions
 
-| Question | Decision |
-| --- | --- |
-| Provider | **Meta WhatsApp Cloud API, direct.** No BSP, no SDK — plain HTTPS through `lib/logistics/http.ts`. |
+| Question                       | Decision                                                                                                                                                          |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Provider                       | **Meta WhatsApp Cloud API, direct.** No BSP, no SDK — plain HTTPS through `lib/logistics/http.ts`.                                                                |
 | Where factory stages come from | **An admin advances them on `/admin/orders/[id]`.** Factory Tracker is not integrated; the stage enum is shaped so it can push onto the same endpoint in Phase 4. |
-| Stage vocabulary | **Fixed enum in code**, forward-only. |
-| Triggers | Order placed, payment confirmed, each production stage, delivery booked, picked up, delivered, failed/cancelled. |
-| Consent | **Unticked checkbox at checkout**, stored with a timestamp. No opt-in, no message. |
-| Language | **The customer's site language** (en / zh / ms), captured at checkout. |
-| Inbound replies | **Auto-reply with the sales contact**, at most once per 24 h per number. |
-| Delivery mechanism | **Outbox table + immediate send + retry on the existing cron.** |
+| Stage vocabulary               | **Fixed enum in code**, forward-only.                                                                                                                             |
+| Triggers                       | Order placed, payment confirmed, each production stage, delivery booked, picked up, delivered, failed/cancelled.                                                  |
+| Consent                        | **Unticked checkbox at checkout**, stored with a timestamp. No opt-in, no message.                                                                                |
+| Language                       | **The customer's site language** (en / zh / ms), captured at checkout.                                                                                            |
+| Inbound replies                | **Auto-reply with the sales contact**, at most once per 24 h per number.                                                                                          |
+| Delivery mechanism             | **Outbox table + immediate send + retry on the existing cron.**                                                                                                   |
 
 Rejected mechanisms: sending inline in the request (a slow or down Meta blocks
 the admin, and a failure loses the message with no record); Vercel Queues or
@@ -141,13 +141,13 @@ inbound message need not belong to any order.
 
 ### Dedupe keys
 
-| Kind | Key |
-| --- | --- |
-| `ORDER_PLACED` | `order:<orderId>:placed` |
-| `PAYMENT_CONFIRMED` | `order:<orderId>:paid` |
-| `STAGE` | `order:<orderId>:stage:<STAGE>` |
-| `DELIVERY_BOOKED` | `delivery:<deliveryId>:booked` |
-| `PICKED_UP` / `DELIVERED` / `DELIVERY_FAILED` | `delivery:<deliveryId>:<kind>` |
+| Kind                                          | Key                             |
+| --------------------------------------------- | ------------------------------- |
+| `ORDER_PLACED`                                | `order:<orderId>:placed`        |
+| `PAYMENT_CONFIRMED`                           | `order:<orderId>:paid`          |
+| `STAGE`                                       | `order:<orderId>:stage:<STAGE>` |
+| `DELIVERY_BOOKED`                             | `delivery:<deliveryId>:booked`  |
+| `PICKED_UP` / `DELIVERED` / `DELIVERY_FAILED` | `delivery:<deliveryId>:<kind>`  |
 
 This is what makes duplicate carrier readings safe: `applyTrackingUpdate`
 already receives the same status from both the webhook and the cron poll by
@@ -166,16 +166,15 @@ unbooked, and a retry would buy a second lorry. So that route enqueues after the
 booking write commits, in its own `try`, and logs a failure instead of
 propagating it.
 
-| Event | Write site | Template variables | Button link |
-| --- | --- | --- | --- |
-| Order placed | `POST /api/orders` | name, order ref (`IC-YYYYMMDD-NNN`), total RM | `/order/{publicToken}` |
-| Payment confirmed | `POST /api/admin/orders/[id]/paid` | order ref | `/order/{publicToken}` |
-| Stage advanced | **new** `POST /api/admin/orders/[id]/stage` | order ref, localized stage name | `/order/{publicToken}` |
-| Delivery booked | `POST /api/admin/deliveries/[id]/book` | order ref, carrier name, tracking no. (`carrierOrderId`) | `/track/{publicToken}` |
-| Picked up / delivered / failed or cancelled | `applyTrackingUpdate` (`lib/logistics/store.ts`) and the admin status route `POST /api/admin/deliveries/[id]/advance` — the only way the `manual` carrier moves | order ref | `/track/{publicToken}` |
+| Event                                       | Write site                                                                                                                                                      | Template variables                                       | Button link            |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------- | ---------------------- |
+| Order placed                                | `POST /api/orders`                                                                                                                                              | name, order ref (`IC-YYYYMMDD-NNN`), total RM            | `/order/{publicToken}` |
+| Payment confirmed                           | `POST /api/admin/orders/[id]/paid`                                                                                                                              | order ref                                                | `/order/{publicToken}` |
+| Stage advanced                              | **new** `POST /api/admin/orders/[id]/stage`                                                                                                                     | order ref, localized stage name                          | `/order/{publicToken}` |
+| Delivery booked                             | `POST /api/admin/deliveries/[id]/book`                                                                                                                          | order ref, carrier name, tracking no. (`carrierOrderId`) | `/track/{publicToken}` |
+| Picked up / delivered / failed or cancelled | `applyTrackingUpdate` (`lib/logistics/store.ts`) and the admin status route `POST /api/admin/deliveries/[id]/advance` — the only way the `manual` carrier moves | order ref                                                | `/track/{publicToken}` |
 
 Rules:
-
 - **No opt-in, no row.** `enqueue` checks `order.whatsappOptIn` and returns.
 - **A delivery with no `orderId`** (a job an admin made by hand) sends nothing —
   there is no consent record for its phone.
@@ -191,7 +190,6 @@ Rules:
 ## Module: `src/lib/whatsapp/`
 
 Server-only, like `lib/logistics`.
-
 - **`templates.ts`** — pure. `(kind, vars, locale, stage?) → Meta template
   payload`. One table holds each kind's template name and variable order;
   stage names come from the site dictionaries. The template wording itself is in
@@ -216,12 +214,12 @@ Server-only, like `lib/logistics`.
 
 ### Error handling
 
-| Error | Outcome |
-| --- | --- |
-| 429, 5xx, timeout, Meta rate-limit codes | Stays `PENDING`; `attempts` + 1, `lastError` set. After 5 attempts, `FAILED`. |
-| Meta permanent error — recipient not on WhatsApp, template paused or rejected, user blocked the business | `FAILED`, never retried, error shown to the admin. |
-| Row queued more than 48 h ago and never sent | `FAILED` with `lastError: "expired"`. A three-day-late "your cabinet is in assembly" is worse than none. |
-| `WHATSAPP_TOKEN` unset | Rows stay `PENDING`, one log line, nothing throws. |
+| Error                                                                                                    | Outcome                                                                                                  |
+| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| 429, 5xx, timeout, Meta rate-limit codes                                                                 | Stays `PENDING`; `attempts` + 1, `lastError` set. After 5 attempts, `FAILED`.                            |
+| Meta permanent error — recipient not on WhatsApp, template paused or rejected, user blocked the business | `FAILED`, never retried, error shown to the admin.                                                       |
+| Row queued more than 48 h ago and never sent                                                             | `FAILED` with `lastError: "expired"`. A three-day-late "your cabinet is in assembly" is worse than none. |
+| `WHATSAPP_TOKEN` unset                                                                                   | Rows stay `PENDING`, one log line, nothing throws.                                                       |
 
 `FAILED` is terminal: only an admin's Resend (which resets `attempts` and
 `queuedAt`) puts a row back in the queue. Each send first claims the row with a
@@ -235,7 +233,6 @@ a real customer.
 ## Webhook: `/api/whatsapp/webhook`
 
 Public prefix, so it authenticates itself — `proxy.ts` only gates `/admin`.
-
 - **`GET`** — Meta's subscription handshake: echo `hub.challenge` when
   `hub.verify_token` matches `WHATSAPP_VERIFY_TOKEN` (compared with
   `secretsMatch`).
@@ -281,13 +278,13 @@ Public prefix, so it authenticates itself — `proxy.ts` only gates `/admin`.
 
 ## Environment
 
-| Variable | What |
-| --- | --- |
-| `WHATSAPP_TOKEN` | System-user permanent access token. Production only. |
-| `WHATSAPP_PHONE_NUMBER_ID` | The Cloud API phone number id. |
-| `WHATSAPP_APP_SECRET` | Signs the webhook. |
-| `WHATSAPP_VERIFY_TOKEN` | Our secret for the subscription handshake. |
-| `WHATSAPP_SALES_NUMBER` | E.164, the number the auto-reply points at. |
+| Variable                   | What                                                 |
+| -------------------------- | ---------------------------------------------------- |
+| `WHATSAPP_TOKEN`           | System-user permanent access token. Production only. |
+| `WHATSAPP_PHONE_NUMBER_ID` | The Cloud API phone number id.                       |
+| `WHATSAPP_APP_SECRET`      | Signs the webhook.                                   |
+| `WHATSAPP_VERIFY_TOKEN`    | Our secret for the subscription handshake.           |
+| `WHATSAPP_SALES_NUMBER`    | E.164, the number the auto-reply points at.          |
 
 ## Testing
 
@@ -310,7 +307,6 @@ Public prefix, so it authenticates itself — `proxy.ts` only gates `/admin`.
 These block go-live, not the build. The full checklist, with how-to steps and
 the template copy to submit, is `docs/ops/whatsapp-ezcabinet-setup.md` — that
 file is the source of the approved wording `templates.ts` must match.
-
 1. **Meta Business verification** and a **dedicated phone number** for the
    Cloud API. That number cannot also be used in the WhatsApp phone app.
 2. **Template approval:** 7 templates × 3 languages.

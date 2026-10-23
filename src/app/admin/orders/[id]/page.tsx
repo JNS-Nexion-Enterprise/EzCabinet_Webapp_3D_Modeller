@@ -50,7 +50,7 @@ export default async function OrderAdminPage({
 	]);
 	if (!order) notFound();
 
-	const ref = orderRef(order.number, order.createdAt);
+	const ref = orderRef(order);
 	// Labels from today's catalogue, ids as the fallback: a room or finish can be
 	// renamed or retired after the order, and the order must still read.
 	const roomLabel =

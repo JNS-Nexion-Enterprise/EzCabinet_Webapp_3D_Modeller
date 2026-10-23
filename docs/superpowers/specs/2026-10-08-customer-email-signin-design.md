@@ -14,19 +14,18 @@ design keeps all three properties.
 
 ## Decisions already made
 
-| Question | Decision |
-| --- | --- |
-| How does a non-Google customer prove who they are? | A six-digit code mailed to their address. No password, ever |
-| Same email through two routes? | One account. Linked only when both sides proved the address |
-| What is asked at sign-up? | The email address, then the customer's name once the code is accepted. Phone and address stay at checkout |
-| A unique username? | No. A name labels the account and prefills checkout; a handle would add an "already taken" answer that reveals accounts, and nothing would use it |
-| Facebook? | Dropped (2026-10-09). Not planned; nothing is built for it |
-| Passwords, phone codes, Apple sign-in | Out of scope |
+| Question                                           | Decision                                                                                                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| How does a non-Google customer prove who they are? | A six-digit code mailed to their address. No password, ever                                                                                       |
+| Same email through two routes?                     | One account. Linked only when both sides proved the address                                                                                       |
+| What is asked at sign-up?                          | The email address, then the customer's name once the code is accepted. Phone and address stay at checkout                                         |
+| A unique username?                                 | No. A name labels the account and prefills checkout; a handle would add an "already taken" answer that reveals accounts, and nothing would use it |
+| Facebook?                                          | Dropped (2026-10-09). Not planned; nothing is built for it                                                                                        |
+| Passwords, phone codes, Apple sign-in              | Out of scope                                                                                                                                      |
 
 ## The journey
 
 Aiman has `aiman@outlook.com` and no Google account.
-
 1. He plans and prices anonymously, as today. The design autosaves in his browser (`lib/plannerDraft.ts`).
 2. **Place order** sends him to `/[lang]/sign-in?next=…`. The page offers Google, then "or continue with email".
 3. He types his address and presses **Continue**. The page says a code was sent.
@@ -43,11 +42,13 @@ saved design is absent and passkeys do not work (known issue 15).
 ## Rules
 
 ### Account
+
 - A code sign-in can only ever create or open a `CUSTOMER` row. `role` stays `input: false`; `/sign-up/email` stays in `disabledPaths`.
 - One email is one account. Google links to an existing row only when it reports the email as verified, which is Better Auth's default; no provider is added to `trustedProviders`.
 - The passkey rules are unchanged and apply to every route in. `needsPasskeyCheck` does not learn about sign-in methods.
 
 ### The name
+
 - Asked after the code, never on the first screen: that screen serves new and returning customers alike, and a name field shown only to new ones would reveal which addresses have accounts.
 - Required. A nameless account would be labelled with a random id in the phone's passkey prompt.
 - A row owes the step while it has no name. `viewerOf` sends such a customer to `/[lang]/welcome` before the passkey step, and `POST /api/orders` refuses it, so the step cannot be skipped by URL. Google customers arrive with a name and never owe it.
@@ -56,10 +57,10 @@ saved design is absent and passkeys do not work (known issue 15).
 - Any mail that includes it escapes it, as the staff invite mail does.
 
 ### The owner hears when the lock changes
+
 Before a customer's first passkey, the mailbox is the only lock, and whoever
 reads it can enrol their own. The account's address is therefore told, every
 time, for every role:
-
 - a passkey was added;
 - a passkey was removed;
 - staff reset the account's passkeys.
@@ -70,22 +71,23 @@ phish with. Sent after the change commits, never blocking it; with mail not
 configured, nothing is sent and nothing sensitive is logged.
 
 ### The code
+
 - Six digits, valid 10 minutes, three wrong attempts end it, single use, stored hashed (`storeOTP: "hashed"`).
 - Sent only for sign-in. The mail carries the code, the site name and "if you did not ask for this, ignore it". No link.
 
 ### Staff cannot use it
+
 Staff sign in with a password and an authenticator code, or Google. A mailed
 code would be a way round both.
-
 - Never mailed: a request for a code for an address whose row is not `CUSTOMER` sends nothing, logs nothing, and answers exactly as a customer request does.
 - Never a session: a session born on `/sign-in/email-otp` for a non-`CUSTOMER` user is refused where the session is created, even with a correct code (one may exist from before a promotion). This is the only place a staff code sign-in is stopped.
 - Otherwise treated like any address, so it cannot be told apart: the request is counted against the per-address cap and its stored code dropped past it, the stored code is otherwise kept, and the plugin counts wrong tries against it. Staff are not refused before the plugin runs — that made the fourth wrong guess answer differently for a staff address.
 - Promotion knock-on: promoting an email-code customer to staff leaves them no sign-in, since promotion keeps "the sign-in it already had" and staff cannot use codes. Promotion of a row with no Google account sets an invite password, as a fresh invite does.
 
 ### Plugin surface
+
 Better Auth's `emailOTP` plugin (shipped with 1.7.5, already installed) exposes
 nine routes. Two stay open:
-
 - `/email-otp/send-verification-otp`, for type `sign-in` only
 - `/sign-in/email-otp`
 
@@ -100,13 +102,14 @@ request it does not recognise, the same fail-closed rule the passkey hooks
 follow. A plugin upgrade that adds a route gets a 403 until it is allow-listed.
 
 ### Abuse
+
 - BotID on the send-code request, as on `POST /api/orders`.
 - At most three codes per address per hour and a per-network limit, counted in the database (`rateLimit: { storage: "database" }` and its table). This also closes known issue 14, where the memory-backed limit did not hold across serverless instances.
 - The send-code response is identical for a new address, a known customer, a staff address and a rate-limited one. Timing too: the mail is scheduled with `after()`, not awaited.
 
 ### On Vercel
-Checked against Vercel's documentation on 2026-10-09.
 
+Checked against Vercel's documentation on 2026-10-09.
 - **The visitor's address can be trusted.** Vercel overwrites `x-forwarded-for` and does not forward a client-supplied value, so the per-network limit cannot be dodged by sending a forged header. (A post-deploy check still confirms Better Auth reads it as one address.)
 - **A firewall rule in front of the code route.** A Vercel WAF rate-limit rule on `POST /api/auth/email-otp/send-verification-otp`, keyed by IP, stops a flood before it reaches a function or the database. It is configuration (`vercel firewall rules add … --action rate_limit`), set looser than the app's own limit so it never fires first for a real customer. The app's limits remain the rule; this is the outer wall.
 - **BotID needs both halves.** The path is listed in `instrumentation-client.ts` and checked on the server, at the same level; a path checked on the server but not listed in the client fails every real visitor. Locally `checkBotId` answers "human".
@@ -114,6 +117,7 @@ Checked against Vercel's documentation on 2026-10-09.
 - **Work after the response uses `after()`**, which Vercel keeps the function alive for; the mail is sent there.
 
 ### Mail
+
 - Sent through `lib/email.ts` (Resend). Text and a plain HTML version.
 - With no `RESEND_API_KEY` (local, preview) the code is written to the server log and nothing is mailed. In production it is never logged: a missing key there logs an error line with neither the code nor the address. Preview deployments therefore cannot be used to mail codes to strangers.
 - Before launch EzCabinet's sending domain needs SPF, DKIM and DMARC, or Outlook, Yahoo and iCloud will junk the codes. A junked code is a customer who cannot order.
@@ -123,13 +127,13 @@ Checked against Vercel's documentation on 2026-10-09.
 Rule: customer-facing copy names a provider only on that provider's own button
 and its own error message.
 
-| Where | Change |
-| --- | --- |
-| Sign-in page | Sub-line says any email works. Email form and its messages added |
-| Passkey step, stale session | "sign in with Google again" becomes "sign in again" |
-| Privacy notice, what we collect | Covers both routes: a provider gives name, email and photo; the email route gives only the address |
-| Privacy notice, where data comes from | "from Google" becomes "from the sign-in provider you choose" |
-| Checkout sign-in card, planner sign-in nudge | "Sign in or create an account", no provider named |
+| Where                                        | Change                                                                                             |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Sign-in page                                 | Sub-line says any email works. Email form and its messages added                                   |
+| Passkey step, stale session                  | "sign in with Google again" becomes "sign in again"                                                |
+| Privacy notice, what we collect              | Covers both routes: a provider gives name, email and photo; the email route gives only the address |
+| Privacy notice, where data comes from        | "from Google" becomes "from the sign-in provider you choose"                                       |
+| Checkout sign-in card, planner sign-in nudge | "Sign in or create an account", no provider named                                                  |
 
 Every string in English, Malay and Chinese. The privacy notice change alters
 what the notice says EzCabinet collects, so it goes to their counsel with the
@@ -139,20 +143,20 @@ about Google.
 
 ## Components
 
-| Unit | Purpose |
-| --- | --- |
-| `lib/auth/emailCodeRules.ts` | Pure: may this address be sent a code; may this row sign in by code |
-| `lib/auth/emailCodeHooks.ts` | `hooks.before` for the plugin's routes: allow-list, staff refusal, BotID; the session-create check |
-| `lib/auth/emailCodeMail.ts` | Builds and sends the code mail, or logs it when mail is not configured |
-| `lib/auth.ts` | Wires the plugin, `disabledPaths`, database rate limit |
-| `app/[lang]/sign-in/` | `EmailCodeForm.tsx` (address, then code), provider buttons, page copy |
-| `lib/copy/{en,ms,zh}.ts` | New strings and the de-Googled ones |
-| `prisma/schema.prisma` | The rate-limit table. Codes use the existing `Verification` table |
-| `lib/auth/passkeyMail.ts` | The three "your passkey changed" mails |
-| `lib/auth/customerName.ts` | Pure: the name schema, and whether a row still owes its name |
-| `app/api/account/name/route.ts` | Sets the signed-in customer's own name |
-| `app/[lang]/welcome/` | The one-field name step |
-| `app/api/admin/users/route.ts` | Promotion sets an invite password when the row has no Google account |
+| Unit                            | Purpose                                                                                            |
+| ------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `lib/auth/emailCodeRules.ts`    | Pure: may this address be sent a code; may this row sign in by code                                |
+| `lib/auth/emailCodeHooks.ts`    | `hooks.before` for the plugin's routes: allow-list, staff refusal, BotID; the session-create check |
+| `lib/auth/emailCodeMail.ts`     | Builds and sends the code mail, or logs it when mail is not configured                             |
+| `lib/auth.ts`                   | Wires the plugin, `disabledPaths`, database rate limit                                             |
+| `app/[lang]/sign-in/`           | `EmailCodeForm.tsx` (address, then code), provider buttons, page copy                              |
+| `lib/copy/{en,ms,zh}.ts`        | New strings and the de-Googled ones                                                                |
+| `prisma/schema.prisma`          | The rate-limit table. Codes use the existing `Verification` table                                  |
+| `lib/auth/passkeyMail.ts`       | The three "your passkey changed" mails                                                             |
+| `lib/auth/customerName.ts`      | Pure: the name schema, and whether a row still owes its name                                       |
+| `app/api/account/name/route.ts` | Sets the signed-in customer's own name                                                             |
+| `app/[lang]/welcome/`           | The one-field name step                                                                            |
+| `app/api/admin/users/route.ts`  | Promotion sets an invite password when the row has no Google account                               |
 
 ## Errors the customer can see
 

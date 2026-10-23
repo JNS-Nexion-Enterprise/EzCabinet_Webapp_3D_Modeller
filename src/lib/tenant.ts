@@ -8,6 +8,12 @@ import demo from "../../tenants/demo.json";
  * EzCabinet's values are the defaults, so a deployment with no `TENANT` is
  * EzCabinet's, exactly as before this file existed.
  *
+ * The company facts here (name, address, phone, pin, order prefix) are now
+ * **seed values**: what an unsaved company reads, and the prefix of every order
+ * made before refs were stored. So `orderPrefix` and `workshopAddress` must
+ * never be edited for an existing deployment. Live values come from
+ * `getCompany()`. `heroFrames` and `finishPhotos` remain switches.
+ *
  * ponytail: one extra tenant by static import, which also puts its file in
  * every bundle. Before a second paying company: a zod `tenantSchema`, a
  * `tenants/ezcabinet.json`, and only the selected file loaded. See

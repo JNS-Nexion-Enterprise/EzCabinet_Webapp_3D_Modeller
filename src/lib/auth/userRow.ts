@@ -25,7 +25,12 @@ export const USER_ROW_SELECT = {
 	},
 	_count: { select: { passkeys: true } },
 	orders: {
-		select: { number: true, createdAt: true, customerPhone: true },
+		select: {
+			refPrefix: true,
+			number: true,
+			createdAt: true,
+			customerPhone: true,
+		},
 		orderBy: { createdAt: "desc" },
 		take: 3,
 	},
@@ -35,7 +40,12 @@ export function toUserRow<
 	T extends {
 		accounts: unknown[];
 		_count: { passkeys: number };
-		orders: { number: number; createdAt: Date; customerPhone: string }[];
+		orders: {
+			refPrefix: string | null;
+			number: number;
+			createdAt: Date;
+			customerPhone: string;
+		}[];
 	},
 >(
 	row: T,
@@ -50,7 +60,7 @@ export function toUserRow<
 		hasPassword: accounts.length > 0,
 		passkeyCount: _count.passkeys,
 		recentOrders: orders.map((o) => ({
-			ref: orderRef(o.number, o.createdAt),
+			ref: orderRef(o),
 			phone: o.customerPhone,
 		})),
 	};

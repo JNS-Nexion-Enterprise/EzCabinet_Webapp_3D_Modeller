@@ -24,17 +24,17 @@ and no one else's, whoever holds the link.
   and the admin order screen (`OrderDetail.tsx`); the track link by the
   WhatsApp delivery templates and `DeliveryDetail.tsx`.
 - `permissions.ts` already states the model: a customer's access to their own
-  orders is *ownership*, checked where the rows are read, not a permission.
+  orders is _ownership_, checked where the rows are read, not a permission.
 
 ## Decisions
 
-| Question | Decision |
-| --- | --- |
-| Who may open an order | The signed-in **owner**, or **staff** whose role has `orders:read`. Nobody else, link or not. |
-| Ownerless orders | Not allowed. `Order.userId` becomes `NOT NULL`; checkout requires a signed-in user in every environment. |
-| Existing ownerless rows | **Deleted** by the migration, after a per-environment count has been shown to the user. |
-| Track page | Locked the same way **when the delivery belongs to an order**. A standalone admin-booked delivery (no order) keeps link access — its recipient has no account to sign in with. |
-| Where the check lives | One module, `lib/orders/access.ts`, used by every reader. Not `proxy.ts` (it only redirects, by project rule) and not Postgres RLS (no precedent in the app, needs a per-request session variable). |
+| Question                | Decision                                                                                                                                                                                            |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Who may open an order   | The signed-in **owner**, or **staff** whose role has `orders:read`. Nobody else, link or not.                                                                                                       |
+| Ownerless orders        | Not allowed. `Order.userId` becomes `NOT NULL`; checkout requires a signed-in user in every environment.                                                                                            |
+| Existing ownerless rows | **Deleted** by the migration, after a per-environment count has been shown to the user.                                                                                                             |
+| Track page              | Locked the same way **when the delivery belongs to an order**. A standalone admin-booked delivery (no order) keeps link access — its recipient has no account to sign in with.                      |
+| Where the check lives   | One module, `lib/orders/access.ts`, used by every reader. Not `proxy.ts` (it only redirects, by project rule) and not Postgres RLS (no precedent in the app, needs a per-request session variable). |
 
 ## Access rule
 
@@ -43,9 +43,9 @@ and no one else's, whoever holds the link.
 ```ts
 /** Pure. The whole rule; the table test is its specification. */
 export function canViewOrder(
-  user: Pick<AuthUser, "id" | "role"> | null,
-  order: { userId: string },
-): boolean
+	user: Pick<AuthUser, "id" | "role"> | null,
+	order: { userId: string },
+): boolean;
 // owner: user.id === order.userId
 // staff: can(user.role, "orders:read")
 // else false (including user === null)
@@ -57,10 +57,10 @@ is typed, not verified.
 A server-only helper next to it resolves a page's request into one of three
 outcomes, so each page does not re-derive them:
 
-| Visitor | Outcome |
-| --- | --- |
-| Signed out | `redirect(/[lang]/sign-in?next=<current path>)` — a WhatsApp tap becomes tap → Google → the order |
-| Owner or staff | the row |
+| Visitor                       | Outcome                                                                                                                                            |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Signed out                    | `redirect(/[lang]/sign-in?next=<current path>)` — a WhatsApp tap becomes tap → Google → the order                                                  |
+| Owner or staff                | the row                                                                                                                                            |
 | Anyone else, or unknown token | `notFound()` — identical to a missing token, so the page never confirms an order exists (the `requireAuth` convention: customers get 404, not 403) |
 
 `AUTH_ENABLED=false` makes the helper treat the visitor as `BYPASS_USER`
@@ -81,7 +81,7 @@ The token stays in the URL. It is now an address, not a credential.
 - Each card: order ref (`orderRef`), date, room, total (RM), status —
   awaiting payment / paid / cancelled — or the production stage once started.
   Links to `/[lang]/order/[token]`.
-- Empty: "No orders yet" and a *Start planning* button.
+- Empty: "No orders yet" and a _Start planning_ button.
 - `robots: noindex, nofollow`, like the order page.
 
 ### `/[lang]/order/[token]` (changed)

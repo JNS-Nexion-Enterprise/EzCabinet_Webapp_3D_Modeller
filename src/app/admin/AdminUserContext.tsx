@@ -13,19 +13,23 @@ import type { Role } from "@/lib/auth/permissions";
 const AdminUserContext = createContext<{
 	name: string | null;
 	role: Role | null;
-}>({ name: null, role: null });
+	brand: string;
+}>({ name: null, role: null, brand: "" });
 
 export function AdminUserProvider({
 	name,
 	role,
+	brand,
 	children,
 }: {
 	name: string | null;
 	role: Role | null;
+	/** The saved company name, read in the layout so client chrome can print it. */
+	brand: string;
 	children: React.ReactNode;
 }) {
 	return (
-		<AdminUserContext.Provider value={{ name, role }}>
+		<AdminUserContext.Provider value={{ name, role, brand }}>
 			{children}
 		</AdminUserContext.Provider>
 	);
@@ -33,6 +37,10 @@ export function AdminUserProvider({
 
 export function useAdminUserName(): string | null {
 	return useContext(AdminUserContext).name;
+}
+
+export function useAdminBrand(): string {
+	return useContext(AdminUserContext).brand;
 }
 
 export function useAdminUserRole(): Role | null {

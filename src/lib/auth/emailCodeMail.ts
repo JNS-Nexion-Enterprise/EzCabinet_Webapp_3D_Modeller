@@ -7,9 +7,9 @@ import {
 	withinSendCap,
 } from "@/lib/auth/emailCodeRules";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { sendEmail } from "@/lib/email";
 import { signInCode } from "@/lib/email/templates/signInCode";
-import { tenant } from "@/lib/tenant";
 
 /**
  * Counts this send against the address and says whether it is within the
@@ -97,11 +97,17 @@ export async function sendSignInCode(
 		return;
 	}
 	// English until the send request carries the page's language.
-	const mail = signInCode({ locale: "en", code, minutes: CODE_TTL_S / 60 });
+	const company = await getCompany();
+	const mail = signInCode({
+		company,
+		locale: "en",
+		code,
+		minutes: CODE_TTL_S / 60,
+	});
 	await sendEmail({
 		to: email,
 		// Not the template's subject: that one carries the code.
-		subject: `Your ${tenant.brand} sign-in code`,
+		subject: `Your ${company.brand} sign-in code`,
 		text: mail.text,
 		html: mail.html,
 	});

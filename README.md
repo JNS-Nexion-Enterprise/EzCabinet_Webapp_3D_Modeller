@@ -12,19 +12,19 @@ See [CLAUDE.md](./CLAUDE.md) for architecture, conventions, and the full phase p
 
 Proof of concept.
 
-| Phase | Scope | State |
-|---|---|---|
-| 0 | Catalogue + pricing spec with client | **Not started** |
-| 1 | Layout engine, rules, pricing | Done, tested |
-| 2 | Planner UI + 3D scene | Done |
-| 3 | Lead capture, share links, admin inbox | Admin catalogue + designs done; lead capture not started |
-| 4 | Quote → BOM → Factory Tracker | Not started |
+| Phase | Scope                                  | State                                                    |
+| ----- | -------------------------------------- | -------------------------------------------------------- |
+| 0     | Catalogue + pricing spec with client   | **Not started**                                          |
+| 1     | Layout engine, rules, pricing          | Done, tested                                             |
+| 2     | Planner UI + 3D scene                  | Done                                                     |
+| 3     | Lead capture, share links, admin inbox | Admin catalogue + designs done; lead capture not started |
+| 4     | Quote → BOM → Factory Tracker          | Not started                                              |
 
 > **Prices shown are not real.** Phase 0 hasn't happened, so every figure in
 > `src/lib/planner/catalogue.ts` is a placeholder chosen to exercise the engine.
 > No quote from these numbers is valid until EzCabinet confirms their rates.
 >
-> Kitchen *dimensions* are real — read out of the client's own Mozaik export by
+> Kitchen _dimensions_ are real — read out of the client's own Mozaik export by
 > `lib/skp`. Every other room's dimensions are invented.
 
 ## Getting started
@@ -40,7 +40,6 @@ pnpm dev
 ```
 
 Routes:
-
 - `/` — landing page, prices its hero figure off the live published catalogue.
 - `/planner` — the planner. `?room=kitchen|living|bedroom|foyer`.
 - `/designs` — public gallery of published cabinet designs.
@@ -59,16 +58,16 @@ the box that is `manual` — the company's own lorry, booked by phone and moved
 along its timeline by hand — which is what keeps the screen usable before any
 carrier integration exists.
 
-| Variable | For |
-|---|---|
-| `CRON_SECRET` | The tracking sweep at `/api/cron/track-deliveries`. Vercel sends it as `Authorization: Bearer`; without it the route refuses to run. |
-| `LALAMOVE_API_KEY`, `LALAMOVE_API_SECRET` | Lalamove — vehicle class, the one that moves cabinets. A `pk_test…` key selects the sandbox host, anything else production. |
-| `GOOGLE_GEOCODING_API_KEY` | Turns a delivery's address into the pin Lalamove prices against. Without it no vehicle partner can quote. |
-| `EASYPARCEL_CLIENT_ID`, `EASYPARCEL_CLIENT_SECRET` | EasyParcel — parcels. OAuth app credentials; an admin links an account at `/admin/logistics`. |
-| `GDEX_PRIMARY_API_KEY` | GDEX — the Azure APIM subscription key from the developer portal, sent as the `subscription-key` header. **Not** `Ocp-Apim-Subscription-Key`: GDEX renamed APIM's default, so the standard header is ignored and the gateway reports a missing key while a valid one is being sent. `GDEX_SECONDARY_API_SECRET` is that key's rotation spare, not a signing secret, and nothing reads it. |
-| `GDEX_USER_TOKEN` | GDEX — the myGDEX account's Integration Token, sent as `User-Token`. From the myGDEX **web application** (User Profile → Integration Token), a different system from the developer portal. |
-| `CITYLINK_API_KEY` | City-Link — parcels |
-| `<CARRIER>_WEBHOOK_SECRET` | Verifying callbacks from a partner that signs them |
+| Variable                                           | For                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `CRON_SECRET`                                      | The tracking sweep at `/api/cron/track-deliveries`. Vercel sends it as `Authorization: Bearer`; without it the route refuses to run.                                                                                                                                                                                                                                                      |
+| `LALAMOVE_API_KEY`, `LALAMOVE_API_SECRET`          | Lalamove — vehicle class, the one that moves cabinets. A `pk_test…` key selects the sandbox host, anything else production.                                                                                                                                                                                                                                                               |
+| `GOOGLE_GEOCODING_API_KEY`                         | Turns a delivery's address into the pin Lalamove prices against. Without it no vehicle partner can quote.                                                                                                                                                                                                                                                                                 |
+| `EASYPARCEL_CLIENT_ID`, `EASYPARCEL_CLIENT_SECRET` | EasyParcel — parcels. OAuth app credentials; an admin links an account at `/admin/logistics`.                                                                                                                                                                                                                                                                                             |
+| `GDEX_PRIMARY_API_KEY`                             | GDEX — the Azure APIM subscription key from the developer portal, sent as the `subscription-key` header. **Not** `Ocp-Apim-Subscription-Key`: GDEX renamed APIM's default, so the standard header is ignored and the gateway reports a missing key while a valid one is being sent. `GDEX_SECONDARY_API_SECRET` is that key's rotation spare, not a signing secret, and nothing reads it. |
+| `GDEX_USER_TOKEN`                                  | GDEX — the myGDEX account's Integration Token, sent as `User-Token`. From the myGDEX **web application** (User Profile → Integration Token), a different system from the developer portal.                                                                                                                                                                                                |
+| `CITYLINK_API_KEY`                                 | City-Link — parcels                                                                                                                                                                                                                                                                                                                                                                       |
+| `<CARRIER>_WEBHOOK_SECRET`                         | Verifying callbacks from a partner that signs them                                                                                                                                                                                                                                                                                                                                        |
 
 Lalamove, EasyParcel and GDEX are implemented; City-Link is still a stub, and
 it is a single file plus its statuses in `lib/logistics/status.ts` — nothing
@@ -102,17 +101,17 @@ either way.
 
 ## Scripts
 
-| Command | Does |
-|---|---|
-| `pnpm dev` | Dev server |
-| `pnpm build` | Production build |
-| `pnpm test` | Vitest, engine tests only |
-| `pnpm lint` | Biome check (lint + format) |
-| `pnpm db:up` / `db:down` | Local Postgres via docker compose |
-| `pnpm db:migrate` | `prisma migrate dev` |
-| `pnpm db:seed` | Seed the published catalogue |
-| `pnpm db:studio` | Prisma Studio |
-| `pnpm generate:grain` | Regenerates `public/textures/grain-1k.png` |
+| Command                  | Does                                       |
+| ------------------------ | ------------------------------------------ |
+| `pnpm dev`               | Dev server                                 |
+| `pnpm build`             | Production build                           |
+| `pnpm test`              | Vitest, engine tests only                  |
+| `pnpm lint`              | Biome check (lint + format)                |
+| `pnpm db:up` / `db:down` | Local Postgres via docker compose          |
+| `pnpm db:migrate`        | `prisma migrate dev`                       |
+| `pnpm db:seed`           | Seed the published catalogue               |
+| `pnpm db:studio`         | Prisma Studio                              |
+| `pnpm generate:grain`    | Regenerates `public/textures/grain-1k.png` |
 
 `generate:grain` is a one-off — the PNG is committed. Only rerun it if you change the generator.
 

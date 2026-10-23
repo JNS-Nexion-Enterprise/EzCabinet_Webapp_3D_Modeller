@@ -2,7 +2,7 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { requirePage } from "@/lib/auth/page";
 import { prisma } from "@/lib/catalogue/db";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
-import { WORKSHOP_ADDRESS } from "@/lib/logistics/carriers";
+import { getCompany } from "@/lib/company/store";
 import { geocoderFault, refreshGeocoderHealth } from "@/lib/logistics/geocode";
 import { easyparcelAppConfigured } from "@/lib/logistics/oauth";
 import { hasConnection } from "@/lib/logistics/tokens";
@@ -38,7 +38,10 @@ export default async function LogisticsAdminPage({
 		appConfigured,
 		connected: appConfigured ? await hasConnection("easyparcel") : false,
 	};
-	const prefill = fromOrder ? await prefillFromOrder(fromOrder) : null;
+	const company = await getCompany();
+	const prefill = fromOrder
+		? await prefillFromOrder(fromOrder, company.address)
+		: null;
 
 	return (
 		<div className="flex min-h-screen flex-col bg-[#f4f3f1] text-neutral-900">
@@ -54,7 +57,7 @@ export default async function LogisticsAdminPage({
 				</div>
 				<LogisticsManager
 					initial={JSON.parse(JSON.stringify(deliveries))}
-					workshopAddress={WORKSHOP_ADDRESS}
+					workshopAddress={company.address}
 					geocodingConfigured={geocoder.ok}
 					geocodingFault={geocoderFault()}
 					easyparcel={easyparcel}
@@ -70,7 +73,10 @@ export default async function LogisticsAdminPage({
  * against today's catalogue so a weight added since the order still arrives.
  * Null for an order that is not paid or not there — the list opens as usual.
  */
-async function prefillFromOrder(orderId: string): Promise<FormState | null> {
+async function prefillFromOrder(
+	orderId: string,
+	workshopAddress: string,
+): Promise<FormState | null> {
 	const order = await prisma.order.findUnique({ where: { id: orderId } });
 	if (order?.status !== "PAID") return null;
 	const design = orderDesignSchema.safeParse(order.design);
@@ -78,5 +84,5 @@ async function prefillFromOrder(orderId: string): Promise<FormState | null> {
 	const items = design.success
 		? deliveryItemsFor(design.data.layout, catalogue)
 		: [];
-	return formFromOrder(order, items, WORKSHOP_ADDRESS);
+	return formFromOrder(order, items, workshopAddress);
 }

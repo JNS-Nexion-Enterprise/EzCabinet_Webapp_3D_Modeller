@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAdminBrand } from "@/app/admin/AdminUserContext";
 import { safeNext } from "@/app/admin/login/safeNext";
 import { twoFactorMessage } from "@/app/admin/login/twoFactorMessage";
 import { Spinner } from "@/components/Spinner";
@@ -12,6 +13,7 @@ import { tenant } from "@/lib/tenant";
 
 export default function AdminLoginPage() {
 	const router = useRouter();
+	const brand = useAdminBrand();
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
@@ -132,9 +134,7 @@ export default function AdminLoginPage() {
 								<path d="M6 14V9h4v5" stroke="#fff" strokeWidth="1.3" />
 							</svg>
 						</span>
-						<h1 className="mt-2 font-semibold text-[19px]">
-							{tenant.brand} · Admin
-						</h1>
+						<h1 className="mt-2 font-semibold text-[19px]">{brand} · Admin</h1>
 						<p className="text-neutral-500 text-sm">
 							Staff sign-in. Accounts are created by a superadmin.
 						</p>
@@ -303,7 +303,7 @@ export default function AdminLoginPage() {
 					</Link>
 
 					<p className="text-center text-neutral-400 text-xs">
-						Internal tool · {tenant.brand} staff only
+						Internal tool · {brand} staff only
 					</p>
 				</form>
 			</div>

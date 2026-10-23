@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { seedCompany } from "@/lib/company/details";
 import { PLANNER_CATALOGUE } from "@/lib/planner/catalogue";
 import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
 import {
@@ -170,11 +171,30 @@ describe("plannerLayoutSchema", () => {
 });
 
 describe("orderRef", () => {
-	it("formats the number under the Malaysian date it was placed", () => {
-		expect(orderRef(14, "2026-08-26T07:12:00Z")).toBe("IC-20260826-014");
-		// 17:30 UTC is already the next day in Kuala Lumpur.
-		expect(orderRef(14, "2026-08-26T17:30:00Z")).toBe("IC-20260827-014");
-	});
+	it("prints the prefix the order was placed under", () =>
+		expect(
+			orderRef({
+				refPrefix: "PO",
+				number: 14,
+				createdAt: "2026-08-26T07:12:00Z",
+			}),
+		).toBe("PO-20260826-014"));
+	it("keeps the day in Malaysia", () =>
+		expect(
+			orderRef({
+				refPrefix: "IC",
+				number: 14,
+				createdAt: "2026-08-26T17:30:00Z",
+			}),
+		).toBe("IC-20260827-014"));
+	it("reads an order made before refs were stored under the seed prefix", () =>
+		expect(
+			orderRef({
+				refPrefix: null,
+				number: 14,
+				createdAt: "2026-08-26T07:12:00Z",
+			}),
+		).toBe(`${seedCompany().orderPrefix}-20260826-014`));
 });
 
 describe("an L-shaped order", () => {

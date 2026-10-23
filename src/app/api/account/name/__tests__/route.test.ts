@@ -5,6 +5,9 @@ const currentUser = vi.hoisted(() => vi.fn<() => Promise<AuthUser | null>>());
 const updateMany = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/auth/session", () => ({ currentUser }));
 vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { updateMany } } }));
+vi.mock("@/lib/company/store", () => ({
+	getReservedBrands: vi.fn(async () => ["EzCabinet", "Kabinet Baru"]),
+}));
 
 const { POST } = await import("../route");
 
@@ -115,6 +118,7 @@ describe("POST /api/account/name", () => {
 		["a body that is not JSON", "not json", "name_required"],
 		["a name that is not a string", { name: 42 }, "name_required"],
 		["the business", { name: "EzCabinet Support" }, "name_refused"],
+		["a past brand", { name: "Kabinet Baru" }, "name_refused"],
 		["admin", { name: "admin" }, "name_refused"],
 		["a line break inside", { name: "Aiman\nAli" }, "name_refused"],
 		["81 characters", { name: "a".repeat(81) }, "name_refused"],

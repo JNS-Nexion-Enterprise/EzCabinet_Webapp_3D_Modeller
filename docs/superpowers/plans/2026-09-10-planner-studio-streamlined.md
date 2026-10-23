@@ -49,28 +49,28 @@ Fiber + drei, vitest. Package manager is **pnpm**.
 
 **New — `src/components/planner/studio/`:**
 
-| File | Responsibility |
-| --- | --- |
-| `ToolRail.tsx` | The 60px icon rail. Pure: takes the active tool and a press handler. |
-| `RoomPanel.tsx` | The 236px room column: room chips, three dimension fields, fit line, overhang warning, the button that opens Defaults. |
-| `StudioPanel.tsx` | The 296px overlay panel and its four bodies (Add, View, Doors, Defaults). |
+| File                 | Responsibility                                                                                                                      |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `ToolRail.tsx`       | The 60px icon rail. Pure: takes the active tool and a press handler.                                                                |
+| `RoomPanel.tsx`      | The 236px room column: room chips, three dimension fields, fit line, overhang warning, the button that opens Defaults.              |
+| `StudioPanel.tsx`    | The 296px overlay panel and its four bodies (Add, View, Doors, Defaults).                                                           |
 | `SelectionPanel.tsx` | The right panel's selected state: verbs, the inline resize/replace/move/doors sections, front + hinge, and the multi-select branch. |
-| `DesignRecap.tsx` | The right panel's empty state: recap list, run list, reset, "Add a cabinet". |
-| `PriceFooter.tsx` | Sticky total button + quote CTA + the breakdown modal. |
-| `CabinetMenu.tsx` | The right-click context menu. |
-| `MoveGizmo.tsx` | The arrow cluster drawn over the selected cabinet. |
-| `chrome.ts` | The three shared class-string helpers (`chip`, `listBtn`, `verbBtn`) so twelve call sites cannot drift. |
+| `DesignRecap.tsx`    | The right panel's empty state: recap list, run list, reset, "Add a cabinet".                                                        |
+| `PriceFooter.tsx`    | Sticky total button + quote CTA + the breakdown modal.                                                                              |
+| `CabinetMenu.tsx`    | The right-click context menu.                                                                                                       |
+| `MoveGizmo.tsx`      | The arrow cluster drawn over the selected cabinet.                                                                                  |
+| `chrome.ts`          | The three shared class-string helpers (`chip`, `listBtn`, `verbBtn`) so twelve call sites cannot drift.                             |
 
 **Modified:**
 
-| File | Change |
-| --- | --- |
-| `src/lib/planner/layout.ts` | `replaceFamily`, `setHangAt`, `hangAtMm` on `PlacedModule`, `floorHeightMmOf` honours it |
-| `src/lib/planner/__tests__/layout.test.ts` | tests for both |
-| `src/components/planner/PlannerScene.tsx` | optional `gizmo` prop; contact shadows read `floorHeightMmOf` |
-| `src/components/planner/StudioScreen.tsx` | reduced to state + composition |
-| `src/lib/copy/en.ts`, `zh.ts`, `ms.ts` | the new keys |
-| `src/components/planner/Cabinet.tsx`, `DesignedCabinet.tsx`, `MeasureOverlay.tsx` | accent sweep |
+| File                                                                              | Change                                                                                   |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `src/lib/planner/layout.ts`                                                       | `replaceFamily`, `setHangAt`, `hangAtMm` on `PlacedModule`, `floorHeightMmOf` honours it |
+| `src/lib/planner/__tests__/layout.test.ts`                                        | tests for both                                                                           |
+| `src/components/planner/PlannerScene.tsx`                                         | optional `gizmo` prop; contact shadows read `floorHeightMmOf`                            |
+| `src/components/planner/StudioScreen.tsx`                                         | reduced to state + composition                                                           |
+| `src/lib/copy/en.ts`, `zh.ts`, `ms.ts`                                            | the new keys                                                                             |
+| `src/components/planner/Cabinet.tsx`, `DesignedCabinet.tsx`, `MeasureOverlay.tsx` | accent sweep                                                                             |
 
 ---
 
@@ -152,67 +152,64 @@ describe("replaceFamily", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts -t replaceFamily`
 Expected: FAIL — `replaceFamily is not a function`.
-
 - [ ] **Step 3: Implement it**
 
 In `src/lib/planner/layout.ts`, inside `plannerEngine`, immediately above
 `function starterFor(`:
 
 ```ts
-	/**
-	 * Swap what a cabinet *is* without moving it.
-	 *
-	 * The left edge is the thing the customer is not asking to change, so it
-	 * stays and the new family takes the nearest width its own ladder offers.
-	 * Refused rather than half-applied when the neighbours leave no room —
-	 * same rule as `setWidth`, for the same reason: a swap that silently slid
-	 * the run would move cabinets the customer never touched.
-	 *
-	 * A swap across rows is refused too. The rows are separate arrays and a
-	 * wall cabinet standing where a base unit stood is not a resize, it is a
-	 * different design decision — remove and add is the honest path for that.
-	 */
-	function replaceFamily(
-		layout: PlannerLayout,
-		id: string,
-		familyId: string,
-	): PlannerLayout {
-		const found = find(layout, id);
-		const family = familyIn(catalogue, familyId);
-		if (!found || !family) return layout;
-		if (family.id === found.placed.familyId) return layout;
-		if (rowFor(family.kind) !== found.row) return layout;
+/**
+ * Swap what a cabinet *is* without moving it.
+ *
+ * The left edge is the thing the customer is not asking to change, so it
+ * stays and the new family takes the nearest width its own ladder offers.
+ * Refused rather than half-applied when the neighbours leave no room —
+ * same rule as `setWidth`, for the same reason: a swap that silently slid
+ * the run would move cabinets the customer never touched.
+ *
+ * A swap across rows is refused too. The rows are separate arrays and a
+ * wall cabinet standing where a base unit stood is not a resize, it is a
+ * different design decision — remove and add is the honest path for that.
+ */
+function replaceFamily(
+	layout: PlannerLayout,
+	id: string,
+	familyId: string,
+): PlannerLayout {
+	const found = find(layout, id);
+	const family = familyIn(catalogue, familyId);
+	if (!found || !family) return layout;
+	if (family.id === found.placed.familyId) return layout;
+	if (rowFor(family.kind) !== found.row) return layout;
 
-		const widthMm = family.sizes.reduce(
-			(best, size) =>
-				Math.abs(size.widthMm - found.placed.widthMm) <
-				Math.abs(best - found.placed.widthMm)
-					? size.widthMm
-					: best,
-			family.sizes[0].widthMm,
-		);
+	const widthMm = family.sizes.reduce(
+		(best, size) =>
+			Math.abs(size.widthMm - found.placed.widthMm) <
+			Math.abs(best - found.placed.widthMm)
+				? size.widthMm
+				: best,
+		family.sizes[0].widthMm,
+	);
 
-		const spans = occupiedSpans(layout, found.row, id);
-		if (found.placed.xMm + widthMm > layout.wallWidthMm) return layout;
-		if (overlapsAnything(found.placed.xMm, widthMm, spans)) return layout;
+	const spans = occupiedSpans(layout, found.row, id);
+	if (found.placed.xMm + widthMm > layout.wallWidthMm) return layout;
+	if (overlapsAnything(found.placed.xMm, widthMm, spans)) return layout;
 
-		return {
-			...layout,
-			[found.row]: layout[found.row].map((module) =>
-				module.id === id ? { ...module, familyId, widthMm } : module,
-			),
-		};
-	}
+	return {
+		...layout,
+		[found.row]: layout[found.row].map((module) =>
+			module.id === id ? { ...module, familyId, widthMm } : module,
+		),
+	};
+}
 ```
 
 Then add `replaceFamily,` to the returned object (alphabetical — after
 `removeModules`).
-
 - [ ] **Step 4: Run the tests and watch them pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts`
 Expected: PASS, whole file.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -301,7 +298,6 @@ describe("setHangAt", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts -t setHangAt`
 Expected: FAIL — `setHangAt is not a function`.
-
 - [ ] **Step 3: Add the field**
 
 In `src/lib/planner/layout.ts`, in `type PlacedModule`, after `xMm`:
@@ -325,16 +321,13 @@ In `src/lib/planner/layout.ts`, in `type PlacedModule`, after `xMm`:
 Replace `floorHeightMmOf` in `src/lib/planner/layout.ts`:
 
 ```ts
-	function floorHeightMmOf(
-		position: Positioned,
-		layout: PlannerLayout,
-	): number {
-		if (position.family.kind !== "wall") return position.family.floorHeightMm;
-		// Ceiling mode aligns the tops, so a per-cabinet figure has nothing to
-		// say there.
-		if (layout.wallToCeiling) return hangingHeightMmOf(layout);
-		return position.placed.hangAtMm ?? layout.hangingHeightMm;
-	}
+function floorHeightMmOf(position: Positioned, layout: PlannerLayout): number {
+	if (position.family.kind !== "wall") return position.family.floorHeightMm;
+	// Ceiling mode aligns the tops, so a per-cabinet figure has nothing to
+	// say there.
+	if (layout.wallToCeiling) return hangingHeightMmOf(layout);
+	return position.placed.hangAtMm ?? layout.hangingHeightMm;
+}
 ```
 
 - [ ] **Step 5: Add the setter**
@@ -342,45 +335,43 @@ Replace `floorHeightMmOf` in `src/lib/planner/layout.ts`:
 Inside `plannerEngine`, after `setHangingHeight`:
 
 ```ts
-	/**
-	 * Raise or lower one wall cabinet out of the row. `null` puts it back.
-	 *
-	 * Clamped to the same range the hang slider allows, so a cabinet can never
-	 * be nudged somewhere the slider could not have put the whole row — the
-	 * gizmo is a shortcut, not a second set of rules.
-	 */
-	function setHangAt(
-		layout: PlannerLayout,
-		id: string,
-		hangAtMm: number | null,
-	): PlannerLayout {
-		const found = find(layout, id);
-		if (!found || found.row !== "wall") return layout;
+/**
+ * Raise or lower one wall cabinet out of the row. `null` puts it back.
+ *
+ * Clamped to the same range the hang slider allows, so a cabinet can never
+ * be nudged somewhere the slider could not have put the whole row — the
+ * gizmo is a shortcut, not a second set of rules.
+ */
+function setHangAt(
+	layout: PlannerLayout,
+	id: string,
+	hangAtMm: number | null,
+): PlannerLayout {
+	const found = find(layout, id);
+	if (!found || found.row !== "wall") return layout;
 
-		const next = { ...found.placed };
-		if (hangAtMm === null) {
-			delete next.hangAtMm;
-		} else {
-			next.hangAtMm = Math.max(
-				WALL_HANG_LIMITS.minMm,
-				Math.min(WALL_HANG_LIMITS.maxMm, Math.round(hangAtMm)),
-			);
-		}
-
-		return {
-			...layout,
-			wall: layout.wall.map((module) => (module.id === id ? next : module)),
-		};
+	const next = { ...found.placed };
+	if (hangAtMm === null) {
+		delete next.hangAtMm;
+	} else {
+		next.hangAtMm = Math.max(
+			WALL_HANG_LIMITS.minMm,
+			Math.min(WALL_HANG_LIMITS.maxMm, Math.round(hangAtMm)),
+		);
 	}
+
+	return {
+		...layout,
+		wall: layout.wall.map((module) => (module.id === id ? next : module)),
+	};
+}
 ```
 
 Add `setHangAt,` to the returned object (after `setCeilingHeight`).
-
 - [ ] **Step 6: Run the tests and watch them pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts`
 Expected: PASS.
-
 - [ ] **Step 7: Fix the contact shadows, which read the row height directly**
 
 In `src/components/planner/PlannerScene.tsx`, line 717 destructures
@@ -397,7 +388,6 @@ In `src/components/planner/PlannerScene.tsx`, line 717 destructures
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
-
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -729,7 +719,6 @@ Run: `pnpm vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: PASS. A failure naming a path means that path is missing from one
 locale or is identical to English in another — fix the locale, do not add the
 path to `SHARED`.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -904,50 +893,48 @@ In `src/components/planner/StudioScreen.tsx`, next to the other `useState`
 calls (around line 247):
 
 ```tsx
-	// The rail's active tool. `select` is the resting state; `measure` is the
-	// old `measureMode` under a new name, and the other four open the overlay
-	// panel. One piece of state rather than two, so the rail and the panel can
-	// never disagree about what is open.
-	const [tool, setTool] = useState<StudioTool>("select");
-	const panel: StudioTool | null =
-		tool === "select" || tool === "measure" ? null : tool;
-	const measureMode = tool === "measure";
+// The rail's active tool. `select` is the resting state; `measure` is the
+// old `measureMode` under a new name, and the other four open the overlay
+// panel. One piece of state rather than two, so the rail and the panel can
+// never disagree about what is open.
+const [tool, setTool] = useState<StudioTool>("select");
+const panel: StudioTool | null =
+	tool === "select" || tool === "measure" ? null : tool;
+const measureMode = tool === "measure";
 ```
 
 Delete the `const [measureMode, setMeasureMode] = useState(false);` line and
 replace the header's Measure button handler with:
 
 ```tsx
-	const pressTool = (next: StudioTool) => {
-		setTool((current) => (current === next ? "select" : next));
-		if (next === "measure") {
-			setMeasurePoints([]);
-			// A dimension line taken to a door drawn open is a wrong number shown
-			// to a customer: `snapToCabinet` snaps against the closed geometry
-			// either way. Shut them rather than measure a lie.
-			setOpenIds(new Set());
-		}
-	};
+const pressTool = (next: StudioTool) => {
+	setTool((current) => (current === next ? "select" : next));
+	if (next === "measure") {
+		setMeasurePoints([]);
+		// A dimension line taken to a door drawn open is a wrong number shown
+		// to a customer: `snapToCabinet` snaps against the closed geometry
+		// either way. Shut them rather than measure a lie.
+		setOpenIds(new Set());
+	}
+};
 ```
 
 Render the rail as the first child of the `<div className="flex min-h-0 flex-1 …">`
 row, before the room `<aside>`:
 
 ```tsx
-				<ToolRail active={tool} onPressAction={pressTool} />
+<ToolRail active={tool} onPressAction={pressTool} />;
 ```
 
 Remove the Measure button and the view `<fieldset>` from `PlannerHeader` — both
 move to the rail and its panels in Task 5. Keep the tutorials link, the change-room
 button and `<AdminLink />`.
-
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. `pnpm dev`, open `/en/planner`, choose a room: the rail renders
 on the left, `Measure` lights up and behaves as the old header button did, and
 the other five do nothing yet (the panel arrives next task).
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1100,14 +1087,16 @@ In `StudioScreen.tsx`, inside the canvas `<div className="relative min-h-[45vh] 
 and **before** `<PlannerScene …/>`, add:
 
 ```tsx
-					{panel && (
-						<StudioPanel kind={panel} onCloseAction={() => setTool("select")}>
-							{panel === "add" && addBody}
-							{panel === "view" && viewBody}
-							{panel === "doors" && doorsBody}
-							{panel === "defaults" && defaultsBody}
-						</StudioPanel>
-					)}
+{
+	panel && (
+		<StudioPanel kind={panel} onCloseAction={() => setTool("select")}>
+			{panel === "add" && addBody}
+			{panel === "view" && viewBody}
+			{panel === "doors" && doorsBody}
+			{panel === "defaults" && defaultsBody}
+		</StudioPanel>
+	);
+}
 ```
 
 - [ ] **Step 3: Move the four bodies out of the left rail**
@@ -1118,145 +1107,145 @@ palette markup from lines ~677–728 verbatim — the same `draggable`,
 — re-wrapped as a two-column grid:
 
 ```tsx
-	const addBody = (
-		<div className="grid grid-cols-2 gap-2">
-			{/* …the existing room.familyIds.map(...) block, unchanged… */}
-		</div>
-	);
+const addBody = (
+	<div className="grid grid-cols-2 gap-2">
+		{/* …the existing room.familyIds.map(...) block, unchanged… */}
+	</div>
+);
 
-	const viewBody = (
-		<div className="flex flex-col gap-1.5">
-			{views(t).map((option) => (
-				<PanelOption
-					key={option.id}
-					label={option.label}
-					hint={
-						option.id === "3d"
-							? t.planner.panel.threeDHint
-							: option.id === "elevation"
-								? t.planner.panel.elevationHint
-								: t.planner.panel.planHint
-					}
-					pressed={view === option.id}
-					onPressAction={() => setView(option.id)}
-				/>
-			))}
-		</div>
-	);
+const viewBody = (
+	<div className="flex flex-col gap-1.5">
+		{views(t).map((option) => (
+			<PanelOption
+				key={option.id}
+				label={option.label}
+				hint={
+					option.id === "3d"
+						? t.planner.panel.threeDHint
+						: option.id === "elevation"
+							? t.planner.panel.elevationHint
+							: t.planner.panel.planHint
+				}
+				pressed={view === option.id}
+				onPressAction={() => setView(option.id)}
+			/>
+		))}
+	</div>
+);
 
-	const doorsBody = (
-		<div className="flex flex-col gap-1.5">
-			{doorModes(t).map((mode) => (
-				<PanelOption
-					key={mode.id}
-					label={mode.label}
-					hint={
-						mode.id === "hidden"
-							? t.planner.room.frontsOffNote
-							: mode.id === "open"
-								? t.planner.room.interiorsShownNote
-								: t.planner.room.openDoorsNote
-					}
-					pressed={doorView === mode.id}
-					onPressAction={() => {
-						setDoorsHidden(mode.id === "hidden");
-						setOpenIds(
-							mode.id === "open"
-								? new Set(withDoors.map((p) => p.placed.id))
-								: new Set(),
-						);
-					}}
-				/>
-			))}
-		</div>
-	);
+const doorsBody = (
+	<div className="flex flex-col gap-1.5">
+		{doorModes(t).map((mode) => (
+			<PanelOption
+				key={mode.id}
+				label={mode.label}
+				hint={
+					mode.id === "hidden"
+						? t.planner.room.frontsOffNote
+						: mode.id === "open"
+							? t.planner.room.interiorsShownNote
+							: t.planner.room.openDoorsNote
+				}
+				pressed={doorView === mode.id}
+				onPressAction={() => {
+					setDoorsHidden(mode.id === "hidden");
+					setOpenIds(
+						mode.id === "open"
+							? new Set(withDoors.map((p) => p.placed.id))
+							: new Set(),
+					);
+				}}
+			/>
+		))}
+	</div>
+);
 ```
 
 `defaultsBody` carries everything the design folds in here, plus the three
 things the design has no place for (wall mode, flush tops, close gaps):
 
 ```tsx
-	const defaultsBody = (
-		<div className="flex flex-col gap-4">
-			<PanelToggle
-				label={t.planner.room.baseUnitsAria}
-				hint={
-					layout.baseSkirting
-						? t.planner.room.kickBoardNote
-						: t.planner.room.levellersNote
-				}
-				value={layout.baseSkirting}
-				options={baseModes(t).map((m) => ({ value: m.skirted, label: m.label }))}
-				onPickAction={(skirted) =>
-					setLayoutAction((prev) => setBaseSkirting(prev, skirted))
+const defaultsBody = (
+	<div className="flex flex-col gap-4">
+		<PanelToggle
+			label={t.planner.room.baseUnitsAria}
+			hint={
+				layout.baseSkirting
+					? t.planner.room.kickBoardNote
+					: t.planner.room.levellersNote
+			}
+			value={layout.baseSkirting}
+			options={baseModes(t).map((m) => ({ value: m.skirted, label: m.label }))}
+			onPickAction={(skirted) =>
+				setLayoutAction((prev) => setBaseSkirting(prev, skirted))
+			}
+		/>
+
+		<PanelToggle
+			label={t.planner.room.runAria}
+			hint={
+				layout.wallToWall
+					? t.planner.room.noPanelNeededNote
+					: t.planner.room.panelNeededNote
+			}
+			value={layout.wallToWall}
+			options={runModes(t).map((m) => ({ value: m.toWall, label: m.label }))}
+			onPickAction={(toWall) =>
+				setLayoutAction((prev) => setWallToWall(prev, toWall))
+			}
+		/>
+
+		<PanelToggle
+			label={t.planner.room.wallUnitsAria}
+			hint={fill(t.planner.room.undersidesNote, {
+				height: hangingHeightMmOf(layout),
+			})}
+			value={layout.wallToCeiling}
+			options={wallModes(t).map((m) => ({
+				value: m.toCeiling,
+				label: m.label,
+			}))}
+			onPickAction={(toCeiling) =>
+				setLayoutAction((prev) => setWallToCeiling(prev, toCeiling))
+			}
+		/>
+
+		{!layout.wallToCeiling && (
+			<DimensionField
+				label={t.planner.room.wallUnitsHangAt}
+				valueMm={layout.hangingHeightMm}
+				minMm={WALL_HANG_LIMITS.minMm}
+				maxMm={WALL_HANG_LIMITS.maxMm}
+				stepMm={10}
+				onChangeAction={(mm) =>
+					setLayoutAction((prev) => setHangingHeight(prev, mm))
 				}
 			/>
+		)}
 
-			<PanelToggle
-				label={t.planner.room.runAria}
-				hint={
-					layout.wallToWall
-						? t.planner.room.noPanelNeededNote
-						: t.planner.room.panelNeededNote
-				}
-				value={layout.wallToWall}
-				options={runModes(t).map((m) => ({ value: m.toWall, label: m.label }))}
-				onPickAction={(toWall) =>
-					setLayoutAction((prev) => setWallToWall(prev, toWall))
-				}
-			/>
+		<button
+			type="button"
+			onClick={() => setLayoutAction(flushWallToTallTops(layout))}
+			disabled={!canFlush}
+			className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
+		>
+			{canFlush
+				? t.planner.room.flushWallUnitTops
+				: t.planner.room.addTallFirst}
+		</button>
 
-			<PanelToggle
-				label={t.planner.room.wallUnitsAria}
-				hint={fill(t.planner.room.undersidesNote, {
-					height: hangingHeightMmOf(layout),
-				})}
-				value={layout.wallToCeiling}
-				options={wallModes(t).map((m) => ({
-					value: m.toCeiling,
-					label: m.label,
-				}))}
-				onPickAction={(toCeiling) =>
-					setLayoutAction((prev) => setWallToCeiling(prev, toCeiling))
-				}
-			/>
-
-			{!layout.wallToCeiling && (
-				<DimensionField
-					label={t.planner.room.wallUnitsHangAt}
-					valueMm={layout.hangingHeightMm}
-					minMm={WALL_HANG_LIMITS.minMm}
-					maxMm={WALL_HANG_LIMITS.maxMm}
-					stepMm={10}
-					onChangeAction={(mm) =>
-						setLayoutAction((prev) => setHangingHeight(prev, mm))
-					}
-				/>
-			)}
-
-			<button
-				type="button"
-				onClick={() => setLayoutAction(flushWallToTallTops(layout))}
-				disabled={!canFlush}
-				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
-			>
-				{canFlush
-					? t.planner.room.flushWallUnitTops
-					: t.planner.room.addTallFirst}
-			</button>
-
-			<button
-				type="button"
-				onClick={() => setLayoutAction(closeGaps(layout))}
-				disabled={gapCount === 0}
-				className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
-			>
-				{gapCount > 0
-					? fill(t.planner.run.closeGapsCount, { n: gapCount })
-					: t.planner.run.closeGaps}
-			</button>
-		</div>
-	);
+		<button
+			type="button"
+			onClick={() => setLayoutAction(closeGaps(layout))}
+			disabled={gapCount === 0}
+			className="self-start text-[12px] text-[#1f5138] underline hover:text-[#17402c] disabled:text-neutral-300 disabled:no-underline"
+		>
+			{gapCount > 0
+				? fill(t.planner.run.closeGapsCount, { n: gapCount })
+				: t.planner.run.closeGaps}
+		</button>
+	</div>
+);
 ```
 
 `canFlush` is whatever condition today's flush button uses — read it off
@@ -1267,7 +1256,6 @@ Delete the moved markup from the left `<aside>`: the wall-units fieldset, the
 base fieldset, the run fieldset, the doors fieldset, the flush button and the
 whole "Add cabinets" section. The room card keeps only its heading, the room
 chips and the three `DimensionField`s (Task 6 finishes it).
-
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -1275,7 +1263,6 @@ Expected: pass. In `pnpm dev`: each of Add / View / Doors / Setup opens the
 overlay with the right body; ✕ and pressing the lit tool both close it;
 dragging a card from Add onto the canvas still drops a cabinet; Close gaps and
 Flush tops still work and still disable when they should.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1306,7 +1293,11 @@ overhang warning, and the button that opens Defaults.
 "use client";
 
 import { fill } from "@/lib/copy/fill";
-import { CEILING_LIMITS, ROOM_DEPTH_LIMITS, type RoomTypeId } from "@/lib/planner/catalogue";
+import {
+	CEILING_LIMITS,
+	ROOM_DEPTH_LIMITS,
+	type RoomTypeId,
+} from "@/lib/planner/catalogue";
 import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
 import { type PlannerLayout, WALL_LIMITS } from "@/lib/planner/layout";
 import { useCopy } from "../CopyContext";
@@ -1431,36 +1422,30 @@ export function RoomPanel({
 In `StudioScreen.tsx`, delete the whole left `<aside>` and render instead:
 
 ```tsx
-				<RoomPanel
-					catalogue={catalogue}
-					roomId={roomId}
-					layout={layout}
-					minWallMm={minWallMm}
-					freeMm={layout.wallWidthMm - runExtentMm(layout)}
-					overhangMm={overhang}
-					onChangeRoomAction={onChangeRoomAction}
-					onWallWidthAction={(mm) =>
-						setLayoutAction((prev) => setWallWidth(prev, mm))
-					}
-					onCeilingAction={(mm) =>
-						setLayoutAction((prev) => setCeilingHeight(prev, mm))
-					}
-					onDepthAction={(mm) =>
-						setLayoutAction((prev) => setRoomDepth(prev, mm))
-					}
-					onOpenDefaultsAction={() => setTool("defaults")}
-				/>
+<RoomPanel
+	catalogue={catalogue}
+	roomId={roomId}
+	layout={layout}
+	minWallMm={minWallMm}
+	freeMm={layout.wallWidthMm - runExtentMm(layout)}
+	overhangMm={overhang}
+	onChangeRoomAction={onChangeRoomAction}
+	onWallWidthAction={(mm) => setLayoutAction((prev) => setWallWidth(prev, mm))}
+	onCeilingAction={(mm) =>
+		setLayoutAction((prev) => setCeilingHeight(prev, mm))
+	}
+	onDepthAction={(mm) => setLayoutAction((prev) => setRoomDepth(prev, mm))}
+	onOpenDefaultsAction={() => setTool("defaults")}
+/>;
 ```
 
 Add `runExtentMm` to the `useEngine()` destructure.
-
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. In `pnpm dev`: the three sliders still clamp as before, the fit
 line flips to the over-length sentence when you shorten the wall under the run,
 the overhang warning still appears, and the settings button opens Defaults.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1496,7 +1481,11 @@ open section, then Front, then Swing:
 import { fill } from "@/lib/copy/fill";
 import type { Construction } from "@/lib/planner/catalogue";
 import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
-import type { HingeSide, PlannerLayout, Positioned } from "@/lib/planner/layout";
+import type {
+	HingeSide,
+	PlannerLayout,
+	Positioned,
+} from "@/lib/planner/layout";
 import { useCopy } from "../CopyContext";
 import { chip, verbBtn } from "./chrome";
 
@@ -1530,7 +1519,12 @@ export function SelectionPanel({
 	onVerbAction: (verb: SelectionVerb) => void;
 	widthOptions: { widthMm: number; fits: boolean }[];
 	/** Families in the same row as this cabinet — the only legal swaps. */
-	replaceOptions: { id: string; label: string; meta: string; current: boolean }[];
+	replaceOptions: {
+		id: string;
+		label: string;
+		meta: string;
+		current: boolean;
+	}[];
 	doorsOpen: boolean;
 	hingeOptions: { side: HingeSide; label: string }[];
 	leaves: number;
@@ -1804,7 +1798,6 @@ branch with `<SelectionPanel … />`, passing:
 `rowFor` is exported from `@/lib/planner/layout`; add `replaceFamily` and
 `moveModule` to the `useEngine()` destructure. **Leave the multi-selection
 branch exactly as it is** — it moves nowhere and loses nothing.
-
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -1813,7 +1806,6 @@ with unfittable rungs greyed; Replace lists only floor families and swapping to
 Drawer base keeps the left edge; Move's mm field slides it; Open doors toggles
 and shows the hinge chips for a single-leaf front; Duplicate and Remove work;
 shift-clicking two cabinets still shows the multi-select branch.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1968,46 +1960,43 @@ Replace the right panel's empty branch and the separate run-list block in
 `StudioScreen.tsx` with:
 
 ```tsx
-						<DesignRecap
-							rows={[
-								{ label: t.planner.design.room, value: room.label },
-								{
-									label: t.planner.design.wall,
-									value: `${(layout.wallWidthMm / 1000).toFixed(2)} m · ${(
-										layout.ceilingHeightMm / 1000
-									).toFixed(2)} m`,
-								},
-								{
-									label: t.planner.design.run,
-									value: `${(runExtentMm(layout) / 1000).toFixed(2)} m · ${
-										placed.length
-									} ${placed.length === 1 ? t.planner.unit : t.planner.units}`,
-								},
-								{
-									label: t.planner.design.wallFree,
-									value:
-										freeMm < 0
-											? fill(t.planner.design.overBy, { mm: -freeMm })
-											: `${freeMm} mm`,
-								},
-								{
-									label: t.planner.design.finish,
-									value:
-										catalogue.finishes.find((f) => f.id === finish)?.label ?? "",
-								},
-							]}
-							placed={placed}
-							selectedIds={selectedSet}
-							priceOf={(id) =>
-								price.cabinets.find((l) => l.id === id)?.amountRm ?? 0
-							}
-							onSelectAction={select}
-							onAddAction={() => setTool("add")}
-							onResetAction={() => {
-								setLayoutAction(starterFor(roomId));
-								setSelectedIdsAction([]);
-							}}
-						/>
+<DesignRecap
+	rows={[
+		{ label: t.planner.design.room, value: room.label },
+		{
+			label: t.planner.design.wall,
+			value: `${(layout.wallWidthMm / 1000).toFixed(2)} m · ${(
+				layout.ceilingHeightMm / 1000
+			).toFixed(2)} m`,
+		},
+		{
+			label: t.planner.design.run,
+			value: `${(runExtentMm(layout) / 1000).toFixed(2)} m · ${
+				placed.length
+			} ${placed.length === 1 ? t.planner.unit : t.planner.units}`,
+		},
+		{
+			label: t.planner.design.wallFree,
+			value:
+				freeMm < 0
+					? fill(t.planner.design.overBy, { mm: -freeMm })
+					: `${freeMm} mm`,
+		},
+		{
+			label: t.planner.design.finish,
+			value: catalogue.finishes.find((f) => f.id === finish)?.label ?? "",
+		},
+	]}
+	placed={placed}
+	selectedIds={selectedSet}
+	priceOf={(id) => price.cabinets.find((l) => l.id === id)?.amountRm ?? 0}
+	onSelectAction={select}
+	onAddAction={() => setTool("add")}
+	onResetAction={() => {
+		setLayoutAction(starterFor(roomId));
+		setSelectedIdsAction([]);
+	}}
+/>;
 ```
 
 Lift `const freeMm = layout.wallWidthMm - runExtentMm(layout);` next to
@@ -2015,14 +2004,12 @@ Lift `const freeMm = layout.wallWidthMm - runExtentMm(layout);` next to
 
 The finish swatch row stays where it is, above the footer — the design keeps it
 visible in both states.
-
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. In `pnpm dev`: with nothing selected the recap reads correctly,
 the run list still multi-selects with its checkboxes, reset restores the
 starter, "Add a cabinet" opens the Add panel.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -2181,26 +2168,26 @@ export function PriceFooter({
 Replace the right panel's footer block in `StudioScreen.tsx`:
 
 ```tsx
-					<PriceFooter
-						lines={price.categories.map((line) => ({
-							id: line.id,
-							label: priceLineLabel(t, line),
-							detail: priceLineDetail(t, line),
-							amount: rm(line.amountRm),
-						}))}
-						coverNote={
-							coverPieces.length > 0
-								? `${coverPieces.join(` ${t.planner.price.and} `)} ${
-										coverPieces.length === 1
-											? t.planner.price.includedAboveSingular
-											: t.planner.price.includedAbovePlural
-									}`
-								: null
-						}
-						totalLabel={formatRm(price.totalRm, { maximumFractionDigits: 0 })}
-						ctaDisabled={placed.length === 0}
-						onQuoteAction={onGoToQuoteAction}
-					/>
+<PriceFooter
+	lines={price.categories.map((line) => ({
+		id: line.id,
+		label: priceLineLabel(t, line),
+		detail: priceLineDetail(t, line),
+		amount: rm(line.amountRm),
+	}))}
+	coverNote={
+		coverPieces.length > 0
+			? `${coverPieces.join(` ${t.planner.price.and} `)} ${
+					coverPieces.length === 1
+						? t.planner.price.includedAboveSingular
+						: t.planner.price.includedAbovePlural
+				}`
+			: null
+	}
+	totalLabel={formatRm(price.totalRm, { maximumFractionDigits: 0 })}
+	ctaDisabled={placed.length === 0}
+	onQuoteAction={onGoToQuoteAction}
+/>;
 ```
 
 - [ ] **Step 3: Verify**
@@ -2209,7 +2196,6 @@ Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. In `pnpm dev`: the total matches what the sidebar showed before,
 the modal lists the same categories with the same amounts, ✕ closes it, the CTA
 still lands on the quote screen and is still disabled on an empty wall.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -2290,9 +2276,9 @@ export function CabinetMenu({
 In `StudioScreen.tsx`:
 
 ```tsx
-	const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(
-		null,
-	);
+const [menu, setMenu] = useState<{ x: number; y: number; id: string } | null>(
+	null,
+);
 ```
 
 On the canvas wrapper `<div className="relative min-h-[45vh] flex-1" …>` add:
@@ -2311,78 +2297,79 @@ On the canvas wrapper `<div className="relative min-h-[45vh] flex-1" …>` add:
 and render, inside that wrapper:
 
 ```tsx
-					{menu && (
-						<CabinetMenu
-							x={menu.x}
-							y={menu.y}
-							onDismissAction={() => setMenu(null)}
-							items={[
-								{
-									key: "resize",
-									label: t.planner.selection.verbResize,
-									press: () => setVerb("resize"),
-								},
-								{
-									key: "replace",
-									label: t.planner.selection.verbReplace,
-									press: () => setVerb("replace"),
-								},
-								{
-									key: "move",
-									label: t.planner.selection.verbMove,
-									press: () => setVerb("move"),
-								},
-								{
-									key: "duplicate",
-									label: t.planner.selection.duplicate,
-									press: () =>
-										setLayoutAction((prev) => duplicateModule(prev, menu.id)),
-								},
-								{
-									key: "remove",
-									label: t.planner.selection.remove,
-									danger: true,
-									press: removeSelected,
-								},
-							]}
-						/>
-					)}
+{
+	menu && (
+		<CabinetMenu
+			x={menu.x}
+			y={menu.y}
+			onDismissAction={() => setMenu(null)}
+			items={[
+				{
+					key: "resize",
+					label: t.planner.selection.verbResize,
+					press: () => setVerb("resize"),
+				},
+				{
+					key: "replace",
+					label: t.planner.selection.verbReplace,
+					press: () => setVerb("replace"),
+				},
+				{
+					key: "move",
+					label: t.planner.selection.verbMove,
+					press: () => setVerb("move"),
+				},
+				{
+					key: "duplicate",
+					label: t.planner.selection.duplicate,
+					press: () =>
+						setLayoutAction((prev) => duplicateModule(prev, menu.id)),
+				},
+				{
+					key: "remove",
+					label: t.planner.selection.remove,
+					danger: true,
+					press: removeSelected,
+				},
+			]}
+		/>
+	);
+}
 ```
 
 Each `press` runs before the window listener closes the menu; `setMenu(null)`
 in the dismiss handler covers all of them, so no item needs to close it itself.
-
 - [ ] **Step 3: Add the chips and the hint**
 
 Replace the existing top-left readout with the design's two chips, and add the
 select hint under the canvas when nothing is selected and no panel is open:
 
 ```tsx
-					<div className="absolute top-3 left-3.5 z-[6] flex flex-wrap items-center gap-2">
-						<span className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-neutral-700 shadow-[0_1px_2px_rgba(0,0,0,.04)]">
-							{fill(t.planner.canvas.runOfWall, {
-								run: (runExtentMm(layout) / 1000).toFixed(2),
-								wall: (layout.wallWidthMm / 1000).toFixed(2),
-							})}{" "}
-							· {placed.length}{" "}
-							{placed.length === 1 ? t.planner.unit : t.planner.units}
-						</span>
-						<span className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-[#8a857c] shadow-[0_1px_2px_rgba(0,0,0,.04)]">
-							{views(t).find((v) => v.id === view)?.label}
-						</span>
-					</div>
+<div className="absolute top-3 left-3.5 z-[6] flex flex-wrap items-center gap-2">
+	<span className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-neutral-700 shadow-[0_1px_2px_rgba(0,0,0,.04)]">
+		{fill(t.planner.canvas.runOfWall, {
+			run: (runExtentMm(layout) / 1000).toFixed(2),
+			wall: (layout.wallWidthMm / 1000).toFixed(2),
+		})}{" "}
+		· {placed.length} {placed.length === 1 ? t.planner.unit : t.planner.units}
+	</span>
+	<span className="rounded-lg border border-neutral-200 bg-white px-2.5 py-1.5 text-[12px] text-[#8a857c] shadow-[0_1px_2px_rgba(0,0,0,.04)]">
+		{views(t).find((v) => v.id === view)?.label}
+	</span>
+</div>;
 ```
 
 ```tsx
-					{selection.length === 0 && panel === null && !measureMode && (
-						<p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[12px] text-[#a2998c]">
-							{t.planner.canvas.selectHint}
-						</p>
-					)}
+{
+	selection.length === 0 && panel === null && !measureMode && (
+		<p className="pointer-events-none absolute inset-x-0 bottom-3 text-center text-[12px] text-[#a2998c]">
+			{t.planner.canvas.selectHint}
+		</p>
+	);
+}
 ```
 
 Keep the existing measure overlay block and the measuring hint untouched.
-
 - [ ] **Step 4: Add ⌘D and Esc**
 
 `PlannerApp.tsx` already owns the Delete/Backspace handler. Extend that same
@@ -2402,7 +2389,6 @@ effect rather than adding a second listener — one place, one set of guards:
 ```
 
 Add `duplicateModule` to the `useEngine()` destructure in `PlannerScreens`.
-
 - [ ] **Step 5: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -2411,7 +2397,6 @@ menu at the pointer; picking Resize opens that section in the right panel;
 clicking elsewhere dismisses the menu without leaving a stray selection; ⌘D
 duplicates; Esc clears; Delete still removes; the browser's own context menu
 never appears over a cabinet but still works over the panels.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -2486,7 +2471,9 @@ export function MoveGizmo({
 					onClick={onUpAction}
 					disabled={!vertical}
 					aria-label={t.planner.gizmo.raise}
-					title={vertical ? t.planner.gizmo.vertHint : t.planner.gizmo.vertLocked}
+					title={
+						vertical ? t.planner.gizmo.vertHint : t.planner.gizmo.vertLocked
+					}
 					className={vert}
 				>
 					↑
@@ -2496,7 +2483,9 @@ export function MoveGizmo({
 					onClick={onDownAction}
 					disabled={!vertical}
 					aria-label={t.planner.gizmo.lower}
-					title={vertical ? t.planner.gizmo.vertHint : t.planner.gizmo.vertLocked}
+					title={
+						vertical ? t.planner.gizmo.vertHint : t.planner.gizmo.vertLocked
+					}
 					className={vert}
 				>
 					↓
@@ -2531,19 +2520,21 @@ its type:
 and render it as the last child inside the `<Canvas>`:
 
 ```tsx
-			{gizmo && (
-				<Html
-					position={[
-						m(gizmo.anchorMm[0]),
-						m(gizmo.anchorMm[1]),
-						m(gizmo.anchorMm[2]),
-					]}
-					center
-					zIndexRange={[5, 0]}
-				>
-					{gizmo.node}
-				</Html>
-			)}
+{
+	gizmo && (
+		<Html
+			position={[
+				m(gizmo.anchorMm[0]),
+				m(gizmo.anchorMm[1]),
+				m(gizmo.anchorMm[2]),
+			]}
+			center
+			zIndexRange={[5, 0]}
+		>
+			{gizmo.node}
+		</Html>
+	);
+}
 ```
 
 - [ ] **Step 3: Pass it from the studio**
@@ -2551,57 +2542,56 @@ and render it as the last child inside the `<Canvas>`:
 In `StudioScreen.tsx`, above the return:
 
 ```tsx
-	// The cabinet's own centre, in the same frame `Cabinet` positions itself
-	// in: x is measured from the middle of the run, y from the floor.
-	const gizmo =
-		selected && verb === "move"
-			? {
-					anchorMm: [
-						selected.xMm + selected.widthMm / 2 - layout.wallWidthMm / 2,
-						floorHeightMmOf(selected, layout) + selected.family.heightMm / 2,
-						selected.family.depthMm / 2,
-					] as [number, number, number],
-					node: (
-						<MoveGizmo
-							vertical={selected.family.kind === "wall"}
-							onLeftAction={() =>
-								setLayoutAction((prev) =>
-									moveModule(prev, selected.placed.id, selected.xMm - SNAP_MM),
-								)
-							}
-							onRightAction={() =>
-								setLayoutAction((prev) =>
-									moveModule(prev, selected.placed.id, selected.xMm + SNAP_MM),
-								)
-							}
-							onUpAction={() =>
-								setLayoutAction((prev) =>
-									setHangAt(
-										prev,
-										selected.placed.id,
-										(selected.placed.hangAtMm ?? prev.hangingHeightMm) + 50,
-									),
-								)
-							}
-							onDownAction={() =>
-								setLayoutAction((prev) =>
-									setHangAt(
-										prev,
-										selected.placed.id,
-										(selected.placed.hangAtMm ?? prev.hangingHeightMm) - 50,
-									),
-								)
-							}
-						/>
-					),
-				}
-			: undefined;
+// The cabinet's own centre, in the same frame `Cabinet` positions itself
+// in: x is measured from the middle of the run, y from the floor.
+const gizmo =
+	selected && verb === "move"
+		? {
+				anchorMm: [
+					selected.xMm + selected.widthMm / 2 - layout.wallWidthMm / 2,
+					floorHeightMmOf(selected, layout) + selected.family.heightMm / 2,
+					selected.family.depthMm / 2,
+				] as [number, number, number],
+				node: (
+					<MoveGizmo
+						vertical={selected.family.kind === "wall"}
+						onLeftAction={() =>
+							setLayoutAction((prev) =>
+								moveModule(prev, selected.placed.id, selected.xMm - SNAP_MM),
+							)
+						}
+						onRightAction={() =>
+							setLayoutAction((prev) =>
+								moveModule(prev, selected.placed.id, selected.xMm + SNAP_MM),
+							)
+						}
+						onUpAction={() =>
+							setLayoutAction((prev) =>
+								setHangAt(
+									prev,
+									selected.placed.id,
+									(selected.placed.hangAtMm ?? prev.hangingHeightMm) + 50,
+								),
+							)
+						}
+						onDownAction={() =>
+							setLayoutAction((prev) =>
+								setHangAt(
+									prev,
+									selected.placed.id,
+									(selected.placed.hangAtMm ?? prev.hangingHeightMm) - 50,
+								),
+							)
+						}
+					/>
+				),
+			}
+		: undefined;
 ```
 
 Pass `gizmo={gizmo}` to `<PlannerScene …/>`, and add `floorHeightMmOf`,
 `moveModule` and `setHangAt` to the `useEngine()` destructure. Import `SNAP_MM`
 from `@/lib/planner/layout`.
-
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -2611,7 +2601,6 @@ stop against a neighbour; ↑ ↓ raise and lower that one cabinet between 1200 
 1800mm while its neighbour stays put; on a base cabinet ↑ ↓ are disabled and
 carry the locked tooltip; switching to plan view or clearing the verb removes
 the cluster.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -2637,7 +2626,6 @@ Planner surfaces only — the admin pages keep their own blue links.
 
 Run: `grep -rn '2b6cb0\|f2f6fb' src/components/planner/`
 Expected: the three constants above, plus whatever survived in `StudioScreen`.
-
 - [ ] **Step 2: Change them**
 
 - `Cabinet.tsx:240` — the selected emissive: `"#2b6cb0"` → `"#1f5138"`.
@@ -2653,7 +2641,6 @@ Expected: the three constants above, plus whatever survived in `StudioScreen`.
 
 In `StudioScreen.tsx`, the `<main>` background `bg-[#e9e7e3]` → `bg-[#f4f3f1]`,
 and the canvas wrapper gains `bg-[#faf9f7]`. `PlannerHeader`'s `h-14` → `h-[52px]`.
-
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -2661,7 +2648,6 @@ Expected: pass. In `pnpm dev`: a selected cabinet glows green in 3D and its
 panel row is green-tinted; hovering it in measure mode is still visibly
 distinct from selected; the measure markers and dimension line are green;
 `grep -rn '2b6cb0\|f2f6fb' src/components/planner/` returns nothing.
-
 - [ ] **Step 5: Commit**
 
 ```bash

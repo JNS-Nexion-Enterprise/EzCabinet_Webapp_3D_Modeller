@@ -11,6 +11,13 @@ const sendEmail = vi.hoisted(() =>
 	),
 );
 
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
+
+vi.mock("@/lib/company/store", () => ({
+	getCompany: vi.fn(async () =>
+		testCompany({ brand: "Kabinet Baru", legalName: "Kabinet Baru Sdn Bhd" }),
+	),
+}));
 vi.mock("@/lib/catalogue/db", () => ({
 	prisma: {
 		user: { findUnique },
@@ -53,13 +60,14 @@ describe("sendSignInCode", () => {
 		expect(message.to).toBe("aiman@outlook.com");
 		for (const part of [message.text, message.html ?? ""]) {
 			expect(part).toContain("482913");
-			expect(part).toContain("EzCabinet");
+			expect(part).toContain("Kabinet Baru");
 			expect(part).toMatch(
 				/If you didn(&#39;|')t ask for this, ignore this email\./,
 			);
 			// A scanner that follows links must find nothing to follow.
 			expect(part).not.toMatch(/https?:|href|www\./i);
 		}
+		expect(message.subject).toBe("Your Kabinet Baru sign-in code");
 		expect(message.subject).not.toContain("482913");
 	});
 

@@ -18,11 +18,11 @@ No placeholders remain in code. Set these per environment.
 **Files containing placeholders:**
 - [.env.example](.env.example): copy the names into `.env.local` (local) and the Vercel project (Preview/Production)
 
-| Field | Current Value | What to Set |
-|-------|--------------|-------------|
-| `STRIPE_SECRET_KEY` | *(empty)* | `sk_test_…` from https://dashboard.stripe.com/test/apikeys. Server only. |
-| `STRIPE_PUBLISHABLE_KEY` | *(empty)* | `pk_test_…`. Served to the browser by `GET /api/payments/config`, so no `NEXT_PUBLIC_` prefix is needed. |
-| `STRIPE_WEBHOOK_SECRET` | *(empty)* | `whsec_…` from `stripe listen` locally, or from the Dashboard destination for a deployed URL. |
+| Field                    | Current Value | What to Set                                                                                              |
+| ------------------------ | ------------- | -------------------------------------------------------------------------------------------------------- |
+| `STRIPE_SECRET_KEY`      | _(empty)_     | `sk_test_…` from https://dashboard.stripe.com/test/apikeys. Server only.                                 |
+| `STRIPE_PUBLISHABLE_KEY` | _(empty)_     | `pk_test_…`. Served to the browser by `GET /api/payments/config`, so no `NEXT_PUBLIC_` prefix is needed. |
+| `STRIPE_WEBHOOK_SECRET`  | _(empty)_     | `whsec_…` from `stripe listen` locally, or from the Dashboard destination for a deployed URL.            |
 
 `mode`/`line_items` no longer exist. The PaymentIntent's amount is the
 order's stored `totalRm` in sen, priced on the server by `POST /api/orders`.
@@ -33,25 +33,27 @@ order's stored `totalRm` in sen, priced on the server by `POST /api/orders`.
 - [src/lib/payments/stripe.ts](src/lib/payments/stripe.ts): the PaymentIntent
 - [src/components/planner/StripePayment.tsx](src/components/planner/StripePayment.tsx): Elements and the Payment Element
 
-| Parameter | Value |
-|-----------|-------|
-| PaymentIntent `currency` | `myr` |
-| `payment_method_types` | `fpx`, `grabpay`, `card`. Listed in both files above and must match. |
-| `metadata` | `orderId`, `orderRef`. The webhook finds the order by `orderId`. |
-| `receipt_email` | the order's email (required on the form when paying online) |
-| Payment Element layout | accordion, radios `always` |
-| `fields.billingDetails` | `never` on checkout (name, email, phone and address are passed from our form in `confirmPayment`), `auto` on the order-page retry |
-| `wallets` | Apple Pay / Google Pay `auto`, **Link `never`**, because Link asks for the email and phone again |
-| appearance | `flat`, Geist, `#171717` primary, `#d4d4d4` borders |
+| Parameter                | Value                                                                                                                             |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| PaymentIntent `currency` | `myr`                                                                                                                             |
+| `payment_method_types`   | `fpx`, `grabpay`, `card`. Listed in both files above and must match.                                                              |
+| `metadata`               | `orderId`, `orderRef`. The webhook finds the order by `orderId`.                                                                  |
+| `receipt_email`          | the order's email (required on the form when paying online)                                                                       |
+| Payment Element layout   | accordion, radios `always`                                                                                                        |
+| `fields.billingDetails`  | `never` on checkout (name, email, phone and address are passed from our form in `confirmPayment`), `auto` on the order-page retry |
+| `wallets`                | Apple Pay / Google Pay `auto`, **Link `never`**, because Link asks for the email and phone again                                  |
+| appearance               | `flat`, Geist, `#171717` primary, `#d4d4d4` borders                                                                               |
 
 ## Setup
 
 1. **Stripe Dashboard → Settings → Payment methods:** activate **FPX** (Stripe warns it is shown in test mode but hidden in live mode until activated), **GrabPay** and **Cards**. Alipay and Link can stay on; the code excludes them.
 2. **Which gateway is live** is the `payment-gateway` Vercel flag, not an env var. See [Gateway feature flag](#gateway-feature-flag).
 3. **Local webhooks:**
+
    ```
    stripe listen --events payment_intent.succeeded,payment_intent.processing,payment_intent.payment_failed --forward-to localhost:3000/api/webhooks/payment/stripe
    ```
+
    Put the printed `whsec_…` in `STRIPE_WEBHOOK_SECRET` and restart the dev server.
 4. **Deployed URL:** in the Dashboard, create an event destination → Webhook endpoint → `https://<host>/api/webhooks/payment/stripe`. Select exactly those three `payment_intent.*` events, and put its signing secret in that environment's `STRIPE_WEBHOOK_SECRET`. On a preview URL, deployment protection blocks Stripe's calls unless you add a bypass.
 5. Dependencies: `stripe`, `@stripe/stripe-js`, `@stripe/react-stripe-js`.
@@ -108,12 +110,11 @@ src/app/[lang]/order/[token]/OnlinePayment.tsx    order-page retry
 
 `payment-gateway` (string) on Vercel Flags, declared in [src/flags.ts](src/flags.ts):
 
-| Environment | Serves |
-|-------------|--------|
-| development | `stripe` |
-| preview | `stripe` |
-| production | `manual` (bank transfer) |
-
+| Environment | Serves                   |
+| ----------- | ------------------------ |
+| development | `stripe`                 |
+| preview     | `stripe`                 |
+| production  | `manual` (bank transfer) |
 - **Switch with no redeploy:** `vercel flags set payment-gateway --environment production --variant stripe`, or from the dashboard.
 - **Try before customers:** a team member can override the flag in their own browser from Flags Explorer on a preview deployment.
 - **Safe defaults:** if Vercel Flags cannot answer, the flag serves `manual`. A variant with no adapter, or without keys, also falls back to bank transfer: the quote page shows **Place order** and the order page shows bank details.
@@ -135,7 +136,6 @@ The rules that must not differ live in the webhook route:
 - the return URL is never trusted.
 
 **Adding Fiuu** (once the merchant account exists):
-
 1. `src/lib/payments/fiuu.ts`: `fiuuGateway()` with `client: { kind: "redirect" }`.
    - **`start`** returns `{ kind: "redirect", ref, url, method: "POST", fields }`. The fields are amount, `orderid` = order.id, bill_name / bill_email / bill_mobile, `currency: "MYR"`, `returnurl`, `callbackurl` = `notifyUrl`, and `vcode`. The quote page then shows **Place order** and hands over to the order page, whose `OnlinePayment` renders the signed form. Nothing client-side is Fiuu-specific.
    - **`verify`**: parse the `x-www-form-urlencoded` body. Recompute `skey`; a mismatch throws `BadSignature`. Map status `00` → paid, `11` → failed, `22` → pending.

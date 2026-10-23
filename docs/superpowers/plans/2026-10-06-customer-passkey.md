@@ -39,17 +39,17 @@
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/auth/passkeyRules.ts` (new) | Pure rules: who owes a passkey check; what a session may do to passkeys |
-| `src/lib/auth/passkeyHooks.ts` (new) | Server glue between Better Auth and the rules: request guard, owner check, session stamps |
-| `prisma/schema.prisma`, `prisma/migrations/20261006020000_customer_passkey/` | `passkey` table, `session.passkeyVerified` |
-| `src/lib/auth.ts`, `src/lib/auth/client.ts` | Plugin and hook wiring |
-| `src/lib/auth/session.ts`, `src/lib/orders/access.ts`, `src/app/api/orders/route.ts`, `src/app/api/orders/[token]/pay/route.ts` | The derived flag and its enforcement |
-| `src/app/[lang]/verify/` (new) | Enrol-or-prompt screen |
-| `src/app/[lang]/(account)/passkeys/` (new) | List, add, rename, remove |
-| `src/lib/auth/resetPasskeys.ts` (new), `src/app/api/admin/users/[id]/reset-passkey/route.ts` (new) | Staff reset |
-| `src/lib/copy/{en,zh,ms}.ts`, `src/lib/analytics.ts` | Copy and events |
+| File                                                                                                                            | Responsibility                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `src/lib/auth/passkeyRules.ts` (new)                                                                                            | Pure rules: who owes a passkey check; what a session may do to passkeys                   |
+| `src/lib/auth/passkeyHooks.ts` (new)                                                                                            | Server glue between Better Auth and the rules: request guard, owner check, session stamps |
+| `prisma/schema.prisma`, `prisma/migrations/20261006020000_customer_passkey/`                                                    | `passkey` table, `session.passkeyVerified`                                                |
+| `src/lib/auth.ts`, `src/lib/auth/client.ts`                                                                                     | Plugin and hook wiring                                                                    |
+| `src/lib/auth/session.ts`, `src/lib/orders/access.ts`, `src/app/api/orders/route.ts`, `src/app/api/orders/[token]/pay/route.ts` | The derived flag and its enforcement                                                      |
+| `src/app/[lang]/verify/` (new)                                                                                                  | Enrol-or-prompt screen                                                                    |
+| `src/app/[lang]/(account)/passkeys/` (new)                                                                                      | List, add, rename, remove                                                                 |
+| `src/lib/auth/resetPasskeys.ts` (new), `src/app/api/admin/users/[id]/reset-passkey/route.ts` (new)                              | Staff reset                                                                               |
+| `src/lib/copy/{en,zh,ms}.ts`, `src/lib/analytics.ts`                                                                            | Copy and events                                                                           |
 
 ---
 
@@ -82,17 +82,27 @@ describe("needsPasskeyCheck", () => {
 		["ADMIN", false, false],
 		["SUPERADMIN", false, false],
 	];
-	it.each(cases)("%s, session verified %s → %s", (role, sessionVerified, expected) => {
-		expect(needsPasskeyCheck({ role, sessionVerified })).toBe(expected);
-	});
+	it.each(cases)(
+		"%s, session verified %s → %s",
+		(role, sessionVerified, expected) => {
+			expect(needsPasskeyCheck({ role, sessionVerified })).toBe(expected);
+		},
+	);
 });
 
 describe("passkeyDecision", () => {
 	const base = { signedIn: true, sessionVerified: false, passkeyCount: 0 };
 
 	it("refuses every action when nobody is signed in", () => {
-		for (const action of ["register", "manage", "delete", "authenticate"] as const) {
-			expect(passkeyDecision({ ...base, action, signedIn: false })).toBe("sign_in_required");
+		for (const action of [
+			"register",
+			"manage",
+			"delete",
+			"authenticate",
+		] as const) {
+			expect(passkeyDecision({ ...base, action, signedIn: false })).toBe(
+				"sign_in_required",
+			);
 		}
 	});
 
@@ -102,29 +112,65 @@ describe("passkeyDecision", () => {
 
 	it("refuses a second passkey from a session that has not passed the first", () => {
 		// The attack: whoever holds the Google account adds their own passkey.
-		expect(passkeyDecision({ ...base, action: "register", passkeyCount: 1 })).toBe("verification_required");
+		expect(
+			passkeyDecision({ ...base, action: "register", passkeyCount: 1 }),
+		).toBe("verification_required");
 	});
 
 	it("lets a verified session add another device", () => {
-		expect(passkeyDecision({ ...base, action: "register", passkeyCount: 1, sessionVerified: true })).toBe("allow");
+		expect(
+			passkeyDecision({
+				...base,
+				action: "register",
+				passkeyCount: 1,
+				sessionVerified: true,
+			}),
+		).toBe("allow");
 	});
 
 	it("refuses rename and delete from an unverified session", () => {
-		expect(passkeyDecision({ ...base, action: "manage", passkeyCount: 2 })).toBe("verification_required");
-		expect(passkeyDecision({ ...base, action: "delete", passkeyCount: 2 })).toBe("verification_required");
+		expect(
+			passkeyDecision({ ...base, action: "manage", passkeyCount: 2 }),
+		).toBe("verification_required");
+		expect(
+			passkeyDecision({ ...base, action: "delete", passkeyCount: 2 }),
+		).toBe("verification_required");
 	});
 
 	it("refuses to delete the last passkey even when verified", () => {
-		expect(passkeyDecision({ ...base, action: "delete", passkeyCount: 1, sessionVerified: true })).toBe("last_passkey");
+		expect(
+			passkeyDecision({
+				...base,
+				action: "delete",
+				passkeyCount: 1,
+				sessionVerified: true,
+			}),
+		).toBe("last_passkey");
 	});
 
 	it("lets a verified session delete one of several, and rename", () => {
-		expect(passkeyDecision({ ...base, action: "delete", passkeyCount: 2, sessionVerified: true })).toBe("allow");
-		expect(passkeyDecision({ ...base, action: "manage", passkeyCount: 1, sessionVerified: true })).toBe("allow");
+		expect(
+			passkeyDecision({
+				...base,
+				action: "delete",
+				passkeyCount: 2,
+				sessionVerified: true,
+			}),
+		).toBe("allow");
+		expect(
+			passkeyDecision({
+				...base,
+				action: "manage",
+				passkeyCount: 1,
+				sessionVerified: true,
+			}),
+		).toBe("allow");
 	});
 
 	it("lets a signed-in account answer a passkey prompt", () => {
-		expect(passkeyDecision({ ...base, action: "authenticate", passkeyCount: 1 })).toBe("allow");
+		expect(
+			passkeyDecision({ ...base, action: "authenticate", passkeyCount: 1 }),
+		).toBe("allow");
 	});
 });
 ```
@@ -133,7 +179,6 @@ describe("passkeyDecision", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyRules.test.ts`
 Expected: FAIL — cannot resolve `@/lib/auth/passkeyRules`.
-
 - [ ] **Step 3: Implement**
 
 ```ts
@@ -196,7 +241,6 @@ export function passkeyDecision(s: {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyRules.test.ts`
 Expected: PASS.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -225,7 +269,6 @@ pnpm add @better-auth/passkey@1.7.5
 ```
 
 Pin the exact version: it must match the installed `better-auth` (its peer range is `^1.7.5`).
-
 - [ ] **Step 2: Schema**
 
 In `model User`, after `twoFactors`:
@@ -301,7 +344,6 @@ pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.pris
 ```
 
 Expected: the migration applies; the diff reports no difference and exits 0. Local database only.
-
 - [ ] **Step 4: Failing test for the glue**
 
 ```ts
@@ -319,8 +361,12 @@ vi.mock("@/lib/catalogue/db", () => ({
 	},
 }));
 
-const { actionFor, assertPasskeyOwner, checkPasskeyRequest, markSessionVerified } =
-	await import("@/lib/auth/passkeyHooks");
+const {
+	actionFor,
+	assertPasskeyOwner,
+	checkPasskeyRequest,
+	markSessionVerified,
+} = await import("@/lib/auth/passkeyHooks");
 
 const code = async (run: () => Promise<unknown>) => {
 	try {
@@ -352,43 +398,89 @@ describe("checkPasskeyRequest", () => {
 	const verified = { userId: "u1", verified: true };
 
 	it("ignores paths that are not passkey writes, without a query", async () => {
-		expect(await code(() => checkPasskeyRequest("/sign-in/social", null))).toBe("allowed");
+		expect(await code(() => checkPasskeyRequest("/sign-in/social", null))).toBe(
+			"allowed",
+		);
 		expect(count).not.toHaveBeenCalled();
 	});
 
 	it("refuses every passkey path when signed out", async () => {
-		expect(await code(() => checkPasskeyRequest("/passkey/verify-authentication", null))).toBe("PASSKEY_SIGN_IN_REQUIRED");
-		expect(await code(() => checkPasskeyRequest("/passkey/generate-register-options", null))).toBe("PASSKEY_SIGN_IN_REQUIRED");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/verify-authentication", null),
+			),
+		).toBe("PASSKEY_SIGN_IN_REQUIRED");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/generate-register-options", null),
+			),
+		).toBe("PASSKEY_SIGN_IN_REQUIRED");
 	});
 
 	it("lets an account with no passkey register its first", async () => {
 		count.mockResolvedValue(0);
-		expect(await code(() => checkPasskeyRequest("/passkey/verify-registration", unverified))).toBe("allowed");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/verify-registration", unverified),
+			),
+		).toBe("allowed");
 		expect(count).toHaveBeenCalledWith({ where: { userId: "u1" } });
 	});
 
 	it("refuses a Google-only session adding a passkey beside an existing one", async () => {
 		count.mockResolvedValue(1);
-		expect(await code(() => checkPasskeyRequest("/passkey/generate-register-options", unverified))).toBe("PASSKEY_VERIFICATION_REQUIRED");
-		expect(await code(() => checkPasskeyRequest("/passkey/verify-registration", unverified))).toBe("PASSKEY_VERIFICATION_REQUIRED");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/generate-register-options", unverified),
+			),
+		).toBe("PASSKEY_VERIFICATION_REQUIRED");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/verify-registration", unverified),
+			),
+		).toBe("PASSKEY_VERIFICATION_REQUIRED");
 	});
 
 	it("refuses a Google-only session deleting or renaming", async () => {
 		count.mockResolvedValue(2);
-		expect(await code(() => checkPasskeyRequest("/passkey/delete-passkey", unverified))).toBe("PASSKEY_VERIFICATION_REQUIRED");
-		expect(await code(() => checkPasskeyRequest("/passkey/update-passkey", unverified))).toBe("PASSKEY_VERIFICATION_REQUIRED");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/delete-passkey", unverified),
+			),
+		).toBe("PASSKEY_VERIFICATION_REQUIRED");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/update-passkey", unverified),
+			),
+		).toBe("PASSKEY_VERIFICATION_REQUIRED");
 	});
 
 	it("refuses deleting the last passkey", async () => {
 		count.mockResolvedValue(1);
-		expect(await code(() => checkPasskeyRequest("/passkey/delete-passkey", verified))).toBe("PASSKEY_LAST_ONE");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/delete-passkey", verified),
+			),
+		).toBe("PASSKEY_LAST_ONE");
 	});
 
 	it("lets a verified session add, rename and delete one of several", async () => {
 		count.mockResolvedValue(2);
-		expect(await code(() => checkPasskeyRequest("/passkey/verify-registration", verified))).toBe("allowed");
-		expect(await code(() => checkPasskeyRequest("/passkey/update-passkey", verified))).toBe("allowed");
-		expect(await code(() => checkPasskeyRequest("/passkey/delete-passkey", verified))).toBe("allowed");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/verify-registration", verified),
+			),
+		).toBe("allowed");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/update-passkey", verified),
+			),
+		).toBe("allowed");
+		expect(
+			await code(() =>
+				checkPasskeyRequest("/passkey/delete-passkey", verified),
+			),
+		).toBe("allowed");
 	});
 });
 
@@ -398,36 +490,47 @@ describe("assertPasskeyOwner", () => {
 	it("accepts a passkey that belongs to the signed-in account", async () => {
 		findFirst.mockResolvedValue({ userId: "u1" });
 		expect(await code(() => assertPasskeyOwner("u1", "cred"))).toBe("allowed");
-		expect(findFirst).toHaveBeenCalledWith({ where: { credentialID: "cred" }, select: { userId: true } });
+		expect(findFirst).toHaveBeenCalledWith({
+			where: { credentialID: "cred" },
+			select: { userId: true },
+		});
 	});
 
 	it("refuses another account's passkey — it must not switch who is signed in", async () => {
 		findFirst.mockResolvedValue({ userId: "someone-else" });
-		expect(await code(() => assertPasskeyOwner("u1", "cred"))).toBe("PASSKEY_NOT_YOURS");
+		expect(await code(() => assertPasskeyOwner("u1", "cred"))).toBe(
+			"PASSKEY_NOT_YOURS",
+		);
 	});
 
 	it("refuses when nobody is signed in", async () => {
 		findFirst.mockResolvedValue({ userId: "u1" });
-		expect(await code(() => assertPasskeyOwner(null, "cred"))).toBe("PASSKEY_NOT_YOURS");
+		expect(await code(() => assertPasskeyOwner(null, "cred"))).toBe(
+			"PASSKEY_NOT_YOURS",
+		);
 	});
 
 	it("refuses an unknown credential", async () => {
 		findFirst.mockResolvedValue(null);
-		expect(await code(() => assertPasskeyOwner("u1", "cred"))).toBe("PASSKEY_NOT_YOURS");
+		expect(await code(() => assertPasskeyOwner("u1", "cred"))).toBe(
+			"PASSKEY_NOT_YOURS",
+		);
 	});
 });
 
 describe("markSessionVerified", () => {
 	it("stamps exactly the session named", async () => {
 		await markSessionVerified("tok");
-		expect(sessionUpdate).toHaveBeenCalledWith({ where: { token: "tok" }, data: { passkeyVerified: true } });
+		expect(sessionUpdate).toHaveBeenCalledWith({
+			where: { token: "tok" },
+			data: { passkeyVerified: true },
+		});
 	});
 });
 ```
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyHooks.test.ts`
 Expected: FAIL — module not found.
-
 - [ ] **Step 5: Implement the glue**
 
 ```ts
@@ -451,8 +554,11 @@ export function actionFor(path: string): PasskeyAction | null {
 	return ACTIONS[path] ?? null;
 }
 
-const refuse = (status: "UNAUTHORIZED" | "FORBIDDEN" | "BAD_REQUEST", code: string, message: string) =>
-	new APIError(status, { code, message });
+const refuse = (
+	status: "UNAUTHORIZED" | "FORBIDDEN" | "BAD_REQUEST",
+	code: string,
+	message: string,
+) => new APIError(status, { code, message });
 
 /**
  * Runs before every Better Auth request (`hooks.before` in `lib/auth.ts`)
@@ -480,10 +586,18 @@ export async function checkPasskeyRequest(
 		throw refuse("UNAUTHORIZED", "PASSKEY_SIGN_IN_REQUIRED", "Sign in first");
 	}
 	if (decision === "verification_required") {
-		throw refuse("FORBIDDEN", "PASSKEY_VERIFICATION_REQUIRED", "Confirm with an existing passkey first");
+		throw refuse(
+			"FORBIDDEN",
+			"PASSKEY_VERIFICATION_REQUIRED",
+			"Confirm with an existing passkey first",
+		);
 	}
 	if (decision === "last_passkey") {
-		throw refuse("BAD_REQUEST", "PASSKEY_LAST_ONE", "An account keeps at least one passkey");
+		throw refuse(
+			"BAD_REQUEST",
+			"PASSKEY_LAST_ONE",
+			"An account keeps at least one passkey",
+		);
 	}
 }
 
@@ -502,7 +616,11 @@ export async function assertPasskeyOwner(
 		select: { userId: true },
 	});
 	if (sessionUserId === null || passkey?.userId !== sessionUserId) {
-		throw refuse("UNAUTHORIZED", "PASSKEY_NOT_YOURS", "That passkey is for a different account");
+		throw refuse(
+			"UNAUTHORIZED",
+			"PASSKEY_NOT_YOURS",
+			"That passkey is for a different account",
+		);
 	}
 }
 
@@ -517,15 +635,22 @@ export async function markSessionVerified(token: string): Promise<void> {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyHooks.test.ts`
 Expected: PASS.
-
 - [ ] **Step 6: Wire Better Auth**
 
 `src/lib/auth.ts` — imports:
 
 ```ts
 import { passkey } from "@better-auth/passkey";
-import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
-import { assertPasskeyOwner, checkPasskeyRequest, markSessionVerified } from "@/lib/auth/passkeyHooks";
+import {
+	APIError,
+	createAuthMiddleware,
+	getSessionFromCtx,
+} from "better-auth/api";
+import {
+	assertPasskeyOwner,
+	checkPasskeyRequest,
+	markSessionVerified,
+} from "@/lib/auth/passkeyHooks";
 ```
 
 In `session:` add:
@@ -653,51 +778,75 @@ git commit -m "feat(auth): passkey plugin, table, and the guard around its write
 `src/lib/auth/__tests__/session.test.ts` — `getSession` now returns the session row too. Change every `getSession.mockResolvedValue({ user: { id: "u1" } })` to `getSession.mockResolvedValue({ user: { id: "u1" }, session: { passkeyVerified: false } })`, add `mustVerifyPasskey: false` to the expected `user` constant (the fixture is an `ADMIN`), and add:
 
 ```ts
-	it("asks a customer whose session has not passed a passkey", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" }, session: { passkeyVerified: false } });
-		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
-		await expect(currentUser()).resolves.toMatchObject({ mustVerifyPasskey: true });
+it("asks a customer whose session has not passed a passkey", async () => {
+	getSession.mockResolvedValue({
+		user: { id: "u1" },
+		session: { passkeyVerified: false },
 	});
+	findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+	await expect(currentUser()).resolves.toMatchObject({
+		mustVerifyPasskey: true,
+	});
+});
 
-	it("does not ask once the session is passkey-verified", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" }, session: { passkeyVerified: true } });
-		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
-		await expect(currentUser()).resolves.toMatchObject({ mustVerifyPasskey: false });
+it("does not ask once the session is passkey-verified", async () => {
+	getSession.mockResolvedValue({
+		user: { id: "u1" },
+		session: { passkeyVerified: true },
 	});
+	findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+	await expect(currentUser()).resolves.toMatchObject({
+		mustVerifyPasskey: false,
+	});
+});
 
-	it("treats a null flag as not verified", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" }, session: { passkeyVerified: null } });
-		findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
-		await expect(currentUser()).resolves.toMatchObject({ mustVerifyPasskey: true });
+it("treats a null flag as not verified", async () => {
+	getSession.mockResolvedValue({
+		user: { id: "u1" },
+		session: { passkeyVerified: null },
 	});
+	findUnique.mockResolvedValue({ ...row, role: "CUSTOMER" });
+	await expect(currentUser()).resolves.toMatchObject({
+		mustVerifyPasskey: true,
+	});
+});
 
-	it("never asks staff, whatever the session says", async () => {
-		getSession.mockResolvedValue({ user: { id: "u1" }, session: { passkeyVerified: false } });
-		findUnique.mockResolvedValue(row);
-		await expect(currentUser()).resolves.toMatchObject({ mustVerifyPasskey: false });
+it("never asks staff, whatever the session says", async () => {
+	getSession.mockResolvedValue({
+		user: { id: "u1" },
+		session: { passkeyVerified: false },
 	});
+	findUnique.mockResolvedValue(row);
+	await expect(currentUser()).resolves.toMatchObject({
+		mustVerifyPasskey: false,
+	});
+});
 ```
 
 `src/lib/orders/__tests__/access.test.ts` — add `mustVerifyPasskey: false` to the `user()` factory's defaults, read how the existing `viewerOf` tests switch `AUTH_ENABLED` on and off, and add in the same style:
 
 ```ts
-	it("sends a customer who has not passed a passkey to the verify page, and back", async () => {
-		currentUser.mockResolvedValue(user({ mustVerifyPasskey: true }));
-		await expect(viewerOf("en", "/en/orders")).rejects.toThrow(
-			"REDIRECT:/en/verify?next=%2Fen%2Forders",
-		);
-	});
+it("sends a customer who has not passed a passkey to the verify page, and back", async () => {
+	currentUser.mockResolvedValue(user({ mustVerifyPasskey: true }));
+	await expect(viewerOf("en", "/en/orders")).rejects.toThrow(
+		"REDIRECT:/en/verify?next=%2Fen%2Forders",
+	);
+});
 
-	it("lets a verified customer through", async () => {
-		currentUser.mockResolvedValue(user({}));
-		await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({ id: "u1" });
+it("lets a verified customer through", async () => {
+	currentUser.mockResolvedValue(user({}));
+	await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({
+		id: "u1",
 	});
+});
 
-	it("does not ask for a passkey with AUTH_ENABLED off", async () => {
-		vi.stubEnv("AUTH_ENABLED", "false");
-		currentUser.mockResolvedValue(user({ mustVerifyPasskey: true }));
-		await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({ id: "u1" });
+it("does not ask for a passkey with AUTH_ENABLED off", async () => {
+	vi.stubEnv("AUTH_ENABLED", "false");
+	currentUser.mockResolvedValue(user({ mustVerifyPasskey: true }));
+	await expect(viewerOf("en", "/en/orders")).resolves.toMatchObject({
+		id: "u1",
 	});
+});
 ```
 
 (If that file stubs `VERCEL_ENV` or `AUTH_ENABLED` differently, follow its convention; the three behaviours are what matter.)
@@ -728,7 +877,6 @@ This one passes already (both existing pages call `viewerOf`); it is a guard for
 
 Run: `pnpm vitest run src/lib/auth/__tests__/session.test.ts src/lib/orders/__tests__/access.test.ts src/app/api/orders`
 Expected: FAIL on the new cases.
-
 - [ ] **Step 2: Implement**
 
 `src/lib/auth/session.ts`:
@@ -740,8 +888,8 @@ import { needsPasskeyCheck } from "@/lib/auth/passkeyRules";
 Add to `AuthUser`:
 
 ```ts
-	/** Derived on every read from the session row — see `needsPasskeyCheck`. */
-	mustVerifyPasskey: boolean;
+/** Derived on every read from the session row — see `needsPasskeyCheck`. */
+mustVerifyPasskey: boolean;
 ```
 
 In `currentUser`, add `mustVerifyPasskey` to the returned object:
@@ -758,12 +906,12 @@ In `currentUser`, add `mustVerifyPasskey` to the returned object:
 `src/lib/orders/access.ts` — in `viewerOf`, after the signed-out redirect and before `return user`:
 
 ```ts
-	// A Google session alone is not a signed-in customer: the order's link
-	// travels over WhatsApp, and so, sometimes, does a phone. The verify page
-	// reads `currentUser()` directly, so this cannot loop.
-	if (user.mustVerifyPasskey) {
-		redirect(`/${lang}/verify?next=${encodeURIComponent(path)}`);
-	}
+// A Google session alone is not a signed-in customer: the order's link
+// travels over WhatsApp, and so, sometimes, does a phone. The verify page
+// reads `currentUser()` directly, so this cannot loop.
+if (user.mustVerifyPasskey) {
+	redirect(`/${lang}/verify?next=${encodeURIComponent(path)}`);
+}
 ```
 
 Update the function's doc comment to say so.
@@ -802,7 +950,6 @@ Update the function's doc comment to say so.
 - [ ] **Step 3: Fix every other `AuthUser` the compiler finds**
 
 Run: `pnpm typecheck`. Add `mustVerifyPasskey: false` to each object the compiler reports and nothing else. Expect the same files as the `mustSetupTwoFactor` change: the fixtures under `src/lib/auth/__tests__/`, `src/app/admin/change-password/__tests__/`, `src/app/api/orders/[token]/pay/__tests__/`, `src/app/[lang]/(account)/**/__tests__/`, `src/app/[lang]/track/[token]/__tests__/`, and the route tests under `src/app/api/admin/users/`.
-
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -842,7 +989,9 @@ import { safeCustomerNext } from "@/lib/auth/safeCustomerNext";
 describe("safeCustomerNext", () => {
 	it("keeps a same-site path", () => {
 		expect(safeCustomerNext("/en/order/abc", "en")).toBe("/en/order/abc");
-		expect(safeCustomerNext("/ms/planner/kitchen?step=quote", "ms")).toBe("/ms/planner/kitchen?step=quote");
+		expect(safeCustomerNext("/ms/planner/kitchen?step=quote", "ms")).toBe(
+			"/ms/planner/kitchen?step=quote",
+		);
 	});
 	it.each([
 		["nothing", undefined],
@@ -856,7 +1005,9 @@ describe("safeCustomerNext", () => {
 		expect(safeCustomerNext(next, "zh")).toBe("/zh/orders");
 	});
 	it("never sends the customer back to the verify page itself", () => {
-		expect(safeCustomerNext("/en/verify?next=/en/verify", "en")).toBe("/en/orders");
+		expect(safeCustomerNext("/en/verify?next=/en/verify", "en")).toBe(
+			"/en/orders",
+		);
 	});
 });
 ```
@@ -868,7 +1019,11 @@ import { passkeysSupported } from "../passkeySupport";
 
 describe("passkeysSupported", () => {
 	it("is true where the browser exposes WebAuthn", () => {
-		expect(passkeysSupported({ PublicKeyCredential: function PublicKeyCredential() {} })).toBe(true);
+		expect(
+			passkeysSupported({
+				PublicKeyCredential: function PublicKeyCredential() {},
+			}),
+		).toBe(true);
 	});
 	it("is false in an in-app browser without it", () => {
 		expect(passkeysSupported({})).toBe(false);
@@ -881,7 +1036,6 @@ describe("passkeysSupported", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/safeCustomerNext.test.ts "src/app/[lang]/verify"`
 Expected: FAIL — modules not found.
-
 - [ ] **Step 2: Implement the helpers**
 
 ```ts
@@ -892,7 +1046,10 @@ Expected: FAIL — modules not found.
  * followed. `//host` and `/\host` both leave the site in a browser despite
  * starting with a slash.
  */
-export function safeCustomerNext(next: string | undefined, lang: string): string {
+export function safeCustomerNext(
+	next: string | undefined,
+	lang: string,
+): string {
 	const fallback = `/${lang}/orders`;
 	if (!next?.startsWith("/")) return fallback;
 	if (next.startsWith("//") || next.startsWith("/\\")) return fallback;
@@ -917,7 +1074,6 @@ export function passkeysSupported(
 ```
 
 Run the two test files again. Expected: PASS.
-
 - [ ] **Step 3: Copy, in all three languages**
 
 `src/lib/copy/en.ts` — add a `passkey` section after `signIn`, and `passkeys` to `account`:
@@ -1149,7 +1305,9 @@ export function PasskeyGate({
 			failure = {};
 		}
 		if (failure) {
-			track(mode === "enrol" ? "passkey_enrol_failed" : "passkey_verify_failed");
+			track(
+				mode === "enrol" ? "passkey_enrol_failed" : "passkey_verify_failed",
+			);
 			setError(
 				failure.code === "PASSKEY_NOT_YOURS" ? copy.wrongAccount : copy.failed,
 			);
@@ -1213,11 +1371,9 @@ export function PasskeyGate({
 ```
 
 Read `node_modules/@better-auth/passkey/dist/client.mjs` for what `addPasskey()` and `signIn.passkey()` resolve to on success and on failure in 1.7.5 (for example whether success is `undefined` or `{ data }`, and where the error's `code` sits). Adjust the three lines that read `result` to match, and say what you found in your report. If `track`'s signature requires a second argument, pass `{}`.
-
 - [ ] **Step 6: Check by hand**
 
 With `AUTH_ENABLED=true`, signed in with Google as a customer in Chrome:
-
 1. Open `/en/orders` → redirected to `/en/verify?next=%2Fen%2Forders`.
 2. "Set up passkey" → the browser's passkey sheet. Cancel it → "That didn't work. Try again.", button live again.
 3. Again, complete it → lands on `/en/orders`.
@@ -1328,7 +1484,10 @@ export function PasskeyList({
 	const [editing, setEditing] = useState<string | null>(null);
 	const [name, setName] = useState("");
 
-	async function act(key: string, run: () => Promise<{ error?: unknown } | undefined | null>) {
+	async function act(
+		key: string,
+		run: () => Promise<{ error?: unknown } | undefined | null>,
+	) {
 		setBusy(key);
 		setError(null);
 		let failed = false;
@@ -1352,7 +1511,8 @@ export function PasskeyList({
 	const add = () =>
 		act("add", async () => {
 			const first = await authClient.passkey.addPasskey();
-			const code = (first as { error?: { code?: string } } | undefined)?.error?.code;
+			const code = (first as { error?: { code?: string } } | undefined)?.error
+				?.code;
 			if (code !== "SESSION_NOT_FRESH") return first;
 			const again = await authClient.signIn.passkey();
 			if (again?.error) return again;
@@ -1369,20 +1529,29 @@ export function PasskeyList({
 	return (
 		<div className="mt-5 flex flex-col gap-3">
 			{error && (
-				<p role="alert" className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm">
+				<p
+					role="alert"
+					className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm"
+				>
 					{error}.
 				</p>
 			)}
 			<ul className="divide-y divide-[#f1f0ec] rounded-[10px] border border-[#ecebe7]">
 				{initial.map((p) => (
-					<li key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+					<li
+						key={p.id}
+						className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+					>
 						{editing === p.id ? (
 							<form
 								className="flex flex-1 items-center gap-2"
 								onSubmit={(e) => {
 									e.preventDefault();
 									act(`rename:${p.id}`, () =>
-										authClient.passkey.updatePasskey({ id: p.id, name: name.trim() }),
+										authClient.passkey.updatePasskey({
+											id: p.id,
+											name: name.trim(),
+										}),
 									);
 								}}
 							>
@@ -1396,18 +1565,30 @@ export function PasskeyList({
 									onChange={(e) => setName(e.target.value)}
 									className="min-h-[38px] flex-1 rounded-[9px] border border-[#d4d4d4] px-3 text-[13px]"
 								/>
-								<button type="submit" disabled={busy !== null || !name.trim()} className="font-medium text-[13px] disabled:opacity-60">
+								<button
+									type="submit"
+									disabled={busy !== null || !name.trim()}
+									className="font-medium text-[13px] disabled:opacity-60"
+								>
 									{copy.save}
 								</button>
-								<button type="button" onClick={() => setEditing(null)} className="text-[#5c574e] text-[13px]">
+								<button
+									type="button"
+									onClick={() => setEditing(null)}
+									className="text-[#5c574e] text-[13px]"
+								>
 									{copy.cancel}
 								</button>
 							</form>
 						) : (
 							<>
 								<span className="min-w-0">
-									<span className="block truncate font-medium text-[14px]">{p.name || copy.unnamed}</span>
-									<span className="block text-[#5c574e] text-[12px]">{date(p.createdAt)}</span>
+									<span className="block truncate font-medium text-[14px]">
+										{p.name || copy.unnamed}
+									</span>
+									<span className="block text-[#5c574e] text-[12px]">
+										{date(p.createdAt)}
+									</span>
 								</span>
 								<span className="flex items-center gap-3 text-[13px]">
 									<button
@@ -1425,7 +1606,11 @@ export function PasskeyList({
 										type="button"
 										disabled={busy !== null || initial.length <= 1}
 										title={initial.length <= 1 ? copy.removeLast : undefined}
-										onClick={() => act(`remove:${p.id}`, () => authClient.passkey.deletePasskey({ id: p.id }))}
+										onClick={() =>
+											act(`remove:${p.id}`, () =>
+												authClient.passkey.deletePasskey({ id: p.id }),
+											)
+										}
 										className="text-[#7f1d1d] disabled:opacity-40"
 									>
 										{copy.remove}
@@ -1451,18 +1636,17 @@ export function PasskeyList({
 ```
 
 Biome may reformat long lines; run `pnpm biome check --write` on the two files. As in Task 4, match the client methods' real result shape in 1.7.5.
-
 - [ ] **Step 3: Nav item**
 
 `src/app/[lang]/(account)/layout.tsx` — count passkeys beside orders and add the item:
 
 ```ts
-	const [orders, passkeys] = user
-		? await Promise.all([
-				prisma.order.count({ where: { userId: user.id } }),
-				prisma.passkey.count({ where: { userId: user.id } }),
-			])
-		: [0, 0];
+const [orders, passkeys] = user
+	? await Promise.all([
+			prisma.order.count({ where: { userId: user.id } }),
+			prisma.passkey.count({ where: { userId: user.id } }),
+		])
+	: [0, 0];
 ```
 
 ```tsx
@@ -1475,7 +1659,6 @@ Biome may reformat long lines; run `pnpm biome check --write` on the two files. 
 ```
 
 If `src/app/[lang]/(account)/__tests__/layout.test.ts` mocks `prisma.order.count` only, add `passkey: { count }` to its mock so it keeps passing, and assert the new nav item is rendered with its count.
-
 - [ ] **Step 4: Check by hand**
 
 1. Verified customer → **Your account → Passkeys** shows one row; Remove is disabled with the "at least one" tooltip.
@@ -1537,7 +1720,6 @@ describe("resetPasskeys", () => {
 ```
 
 Run: `pnpm vitest run src/lib/auth/__tests__/resetPasskeys.test.ts` → FAIL, module not found.
-
 - [ ] **Step 2: Implement**
 
 ```ts
@@ -1563,7 +1745,6 @@ export async function resetPasskeys(userId: string): Promise<void> {
 ```
 
 Run again → PASS.
-
 - [ ] **Step 3: Route, test first**
 
 ```ts
@@ -1575,7 +1756,9 @@ const findUnique = vi.hoisted(() => vi.fn());
 const resetPasskeys = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth/requireAuth", async () => {
-	const actual = await vi.importActual<typeof import("@/lib/auth/requireAuth")>("@/lib/auth/requireAuth");
+	const actual = await vi.importActual<typeof import("@/lib/auth/requireAuth")>(
+		"@/lib/auth/requireAuth",
+	);
 	return { ...actual, requireAuth };
 });
 vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { findUnique } } }));
@@ -1585,10 +1768,20 @@ const { POST } = await import("../route");
 const { AuthError } = await import("@/lib/auth/requireAuth");
 
 const superadmin = {
-	id: "boss", email: "boss@x.com", name: "Boss", image: null, role: "SUPERADMIN" as const,
-	disabled: false, mustChangePassword: false, mustSetupTwoFactor: false, mustVerifyPasskey: false,
+	id: "boss",
+	email: "boss@x.com",
+	name: "Boss",
+	image: null,
+	role: "SUPERADMIN" as const,
+	disabled: false,
+	mustChangePassword: false,
+	mustSetupTwoFactor: false,
+	mustVerifyPasskey: false,
 };
-const call = (id: string) => POST(new Request("http://x", { method: "POST" }), { params: Promise.resolve({ id }) });
+const call = (id: string) =>
+	POST(new Request("http://x", { method: "POST" }), {
+		params: Promise.resolve({ id }),
+	});
 
 describe("POST /api/admin/users/[id]/reset-passkey", () => {
 	beforeEach(() => {
@@ -1621,7 +1814,10 @@ describe("POST /api/admin/users/[id]/reset-passkey", () => {
 		findUnique.mockResolvedValue({ id: "c1" });
 		expect((await call("c1")).status).toBe(200);
 		expect(resetPasskeys).toHaveBeenCalledWith("c1");
-		expect(console.info).toHaveBeenCalledWith("Passkeys reset", { actor: "boss", target: "c1" });
+		expect(console.info).toHaveBeenCalledWith("Passkeys reset", {
+			actor: "boss",
+			target: "c1",
+		});
 	});
 });
 ```
@@ -1656,11 +1852,9 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 ```
 
 Run: `pnpm vitest run "src/app/api/admin/users/[id]/reset-passkey" src/lib/auth/__tests__/coverage.test.ts` → PASS.
-
 - [ ] **Step 4: People list**
 
 `src/lib/auth/userRow.ts` currently exports `HAS_PASSWORD_SELECT` and `withHasPassword`. Read it, then extend it so the page and the GET route still share one select and one mapper:
-
 - the select also takes `_count: { select: { passkeys: true } }` and `orders: { select: { number: true, createdAt: true, customerPhone: true }, orderBy: { createdAt: "desc" }, take: 3 }` (the relation on `User` is `orders`, relation name `"OrderCustomer"`);
 - the mapper also returns `passkeyCount: row._count.passkeys` and `recentOrders: row.orders.map((o) => ({ ref: orderRef(o), phone: o.customerPhone }))`, and strips `_count` and `orders` from what reaches the browser. `orderRef` is in `src/lib/orders/ref.ts`; call it the way `src/app/[lang]/(account)/orders/page.tsx` does and select whatever fields it needs.
 
@@ -1733,7 +1927,6 @@ In `## Known issues`, append:
 - [ ] **Step 2: Test checklist**
 
 Append a section "## Customer passkey" to `docs/ops/staff-2fa-test-checklist.md` with checkboxes for: first Google sign-in lands on the verify page and enrols; cancelling the browser sheet leaves a retry; second sign-in prompts and passes; My orders, an order page and an order's tracking page all bounce an unverified session; placing an order from the quote screen while unverified detours through verify and returns with the design intact; Passkeys page lists, renames, adds a second device, refuses to remove the last; the three console attempts (register a second passkey, delete one, both from an unverified session → `403`; delete the last from a verified one → `400`); a passkey from another account on the same device is refused with "belongs to a different account"; Reset passkey on the customer's row signs them out and the next sign-in enrols again; the verify page inside an in-app browser shows the "open in Chrome or Safari" message; zh and ms render translated; a staff account is never sent to the verify page.
-
 - [ ] **Step 3: Commit**
 
 ```bash
@@ -1747,7 +1940,6 @@ git commit -m "docs: customer passkey in the auth notes and test checklist"
 ### Task 8: End-to-end check (controller, not a subagent)
 
 Against a production build on a spare port with `AUTH_ENABLED=true` and `BETTER_AUTH_URL` set to that origin, using a throwaway local `CUSTOMER` created with `auth.api.signUpEmail` (a password session stands in for the Google session — the passkey rules do not care which first step made the session) and Chromium's virtual authenticator (`WebAuthn.addVirtualAuthenticator` over CDP). Remove the account afterwards.
-
 - [ ] Unverified session: `/en/orders` → 307 to `/en/verify?next=%2Fen%2Forders`; `POST /api/orders` → 401 `passkey_required`.
 - [ ] Enrol on the verify page → lands on `/en/orders`; the session row has `passkeyVerified = true`; one `passkey` row.
 - [ ] New unverified session for the same account: `POST /api/auth/passkey/generate-register-options` → 403 `PASSKEY_VERIFICATION_REQUIRED`; `POST /api/auth/passkey/delete-passkey` → 403 (Review Focus 2).

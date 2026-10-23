@@ -226,6 +226,13 @@ model Delivery {
   /// The job number staff say out loud on the phone. Sequential because
   /// "delivery forty-one" is sayable and a cuid is not.
   number            Int            @unique @default(autoincrement())
+  /// The prefix live when the row was made; null on rows made before
+  /// 2026-10-22, which were all made under the seed prefix (`deliveryRef`).
+  refPrefix         String?
+  /// True when the job leaves from the workshop; such a job carries the
+  /// workshop's pin and place, and moves with the workshop until it is booked
+  /// (`lib/company/save.ts`).
+  fromWorkshop      Boolean        @default(false)
   customerName      String
   customerPhone     String
   siteAddress       String
@@ -329,8 +336,11 @@ model Delivery {
 /// their item rows pre-filled from `design` — see `lib/orders`.
 model Order {
   id                 String           @id @default(cuid())
-  /// Printed as `IC-YYYYMMDD-NNN` (`lib/orders/ref.ts`) and said on the phone.
+  /// Printed as `<refPrefix>-YYYYMMDD-NNN` (`lib/orders/ref.ts`) and said on the phone.
   number             Int              @unique @default(autoincrement())
+  /// The prefix live when the row was made; null on rows made before
+  /// 2026-10-22, which were all made under the seed prefix (`orderRef`).
+  refPrefix          String?
   /// The key to the customer's confirmation page, never `number` — same
   /// reasoning as `Delivery.publicToken`.
   publicToken        String           @unique @default(cuid(2))
@@ -678,4 +688,34 @@ model WhatsappAutoReply {
   /// E.164 of whoever messaged us.
   phone     String   @id
   repliedAt DateTime
+}
+
+/// The company's editable facts. Append-only: the newest row is live, and the
+/// history of the address and the bank account *is* this table, the way
+/// `CatalogueVersion` is the price history.
+model CompanyDetails {
+  id                String   @id @default(cuid())
+  brand             String
+  legalName         String
+  ssmNumber         String?
+  contactEmail      String
+  phone             String
+  address           String
+  postcode          String
+  city              String
+  state             String
+  lat               Float
+  lng               Float
+  closeTime         String
+  bankName          String
+  bankAccountName   String
+  bankAccountNumber String
+  orderPrefix       String
+  /// No relation, so deleting a staff row keeps the record; `savedByName`
+  /// stays, like `Order.paidByName`.
+  savedById         String?
+  savedByName       String
+  savedAt           DateTime @default(now())
+
+  @@index([savedAt])
 }

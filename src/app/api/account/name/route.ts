@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { parseCustomerName } from "@/lib/auth/customerName";
 import { currentUser } from "@/lib/auth/session";
 import { prisma } from "@/lib/catalogue/db";
+import { getReservedBrands } from "@/lib/company/store";
 
 export const runtime = "nodejs";
 
@@ -34,7 +35,10 @@ export async function POST(request: Request) {
 		return NextResponse.json({ error: "name_set" }, { status: 409 });
 	}
 	const body: unknown = await request.json().catch(() => null);
-	const parsed = parseCustomerName((body as { name?: unknown } | null)?.name);
+	const parsed = parseCustomerName(
+		(body as { name?: unknown } | null)?.name,
+		await getReservedBrands(),
+	);
 	if ("error" in parsed) {
 		return NextResponse.json({ error: parsed.error }, { status: 400 });
 	}

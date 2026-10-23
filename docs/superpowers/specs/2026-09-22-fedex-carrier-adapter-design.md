@@ -41,7 +41,6 @@ tracking numbers) come from the API reference guide,
 `developer.fedex.com/api/en-my/guides/api-reference.html`.
 
 Facts from those sources this design depends on:
-
 - **Malaysian domestic services:** `FEDEX_PRIORITY` ("Only Malaysia and
   Thailand") for parcels; `FEDEX_PRIORITY_EXPRESS_FREIGHT` (same note) for
   freight. The rest of the APAC list is international.
@@ -70,12 +69,12 @@ Facts from those sources this design depends on:
 
 **Configuration.**
 
-| Variable | Use |
-| --- | --- |
-| `FEDEX_API_KEY` | OAuth `client_id` |
-| `FEDEX_API_PASSWORD` | OAuth `client_secret` |
-| `FEDEX_ACCOUNT_NUMBER` | `accountNumber` on Rate, Ship, Pickup and cancel. **Not yet in `.env.local`.** |
-| `FEDEX_API_URL` | Base URL. Unset → `https://apis-sandbox.fedex.com`, so a missing variable can never book a real shipment. |
+| Variable               | Use                                                                                                       |
+| ---------------------- | --------------------------------------------------------------------------------------------------------- |
+| `FEDEX_API_KEY`        | OAuth `client_id`                                                                                         |
+| `FEDEX_API_PASSWORD`   | OAuth `client_secret`                                                                                     |
+| `FEDEX_ACCOUNT_NUMBER` | `accountNumber` on Rate, Ship, Pickup and cancel. **Not yet in `.env.local`.**                            |
+| `FEDEX_API_URL`        | Base URL. Unset → `https://apis-sandbox.fedex.com`, so a missing variable can never book a real shipment. |
 
 `isConfigured()` is true only when the key, password and account number are
 all set.
@@ -89,7 +88,6 @@ the token; the booking call itself is never retried (see Book).
 
 **Refusals before any call** (`FedexNotDeliverable`, message shown on the
 comparison row, same as `GdexNotDeliverable`):
-
 - no weight on any item;
 - any single package over 68 kg;
 - more than 30 line items;
@@ -100,7 +98,6 @@ comparison row, same as `GdexNotDeliverable`):
 = site place, `pickupType: "CONTACT_FEDEX_TO_SCHEDULE"`,
 `rateRequestType: ["ACCOUNT"]`, `preferredCurrency: "MYR"`, one line item per
 item row (`groupPackageCount` = qty). From the reply:
-
 - choose `FEDEX_PRIORITY`; if absent, the cheapest service returned; if none,
   `FedexNotDeliverable("FedEx priced nothing for this job")`;
 - price = that service's `totalNetCharge`. **If its currency is not `MYR`,
@@ -112,7 +109,6 @@ item row (`groupPackageCount` = qty). From the reply:
   Priority, by Thu 24 Sep`.
 
 **Book.** Two calls, all-or-nothing:
-
 1. `POST /ship/v1/shipments` with `serviceType` from `quoteRef`,
    `packagingType: "YOUR_PACKAGING"`, `pickupType:
    "CONTACT_FEDEX_TO_SCHEDULE"`, `shippingChargesPayment.paymentType:
@@ -138,7 +134,6 @@ failed label capture does not fail the booking: `labelUrl` comes back null
 and the admin prints the label from FedEx Ship Manager.
 
 Returns:
-
 - `carrierOrderId` = `masterTrackingNumber`;
 - `trackingUrl` = `https://www.fedex.com/fedextrack/?trknbr=<number>` (a
   public page, so unlike GDEX the customer gets a link);
@@ -183,14 +178,14 @@ promote it then.
 
 New `fedex` table, keyed on the event code:
 
-| Ours | FedEx codes |
-| --- | --- |
-| `BOOKED` | `OC`, `PD`, `DS` |
-| `PICKED_UP` | `PU`, `DO`, `IP` |
+| Ours         | FedEx codes                        |
+| ------------ | ---------------------------------- |
+| `BOOKED`     | `OC`, `PD`, `DS`                   |
+| `PICKED_UP`  | `PU`, `DO`, `IP`                   |
 | `IN_TRANSIT` | `IT`, `AR`, `AF`, `DP`, `TR`, `OD` |
-| `DELIVERED` | `DL` |
-| `FAILED` | `RS` |
-| `CANCELLED` | `CA` |
+| `DELIVERED`  | `DL`                               |
+| `FAILED`     | `RS`                               |
+| `CANCELLED`  | `CA`                               |
 
 `DE`, `DD`, `SE` (exceptions) and anything else stay unmapped → null → row
 unchanged, per the existing rule in `mapCarrierStatus`.
@@ -224,7 +219,6 @@ recorded fixtures cannot. Run it before any release that touches the adapter.
 
 `src/lib/logistics/__tests__/fedex.test.ts`, stubbed `fetch`, no network,
 following `gdex.test.ts`:
-
 - every refusal above, before any fetch;
 - rate: picks `FEDEX_PRIORITY`, falls back to cheapest, refuses non-MYR,
   refuses empty;

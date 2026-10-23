@@ -85,6 +85,7 @@ export async function requestGatewayRefund(
 	const order = await prisma.order.findUnique({
 		where: { id },
 		select: {
+			refPrefix: true,
 			number: true,
 			createdAt: true,
 			status: true,
@@ -162,7 +163,7 @@ export async function requestGatewayRefund(
 	try {
 		refund = await gateway.refund({
 			id,
-			ref: orderRef(order.number, order.createdAt),
+			ref: orderRef(order),
 			paymentRef,
 			idempotencyKey: `refund-${id}-${requestedAt.getTime()}`,
 		});

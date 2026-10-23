@@ -2,8 +2,6 @@ import "server-only";
 import { put } from "@vercel/blob";
 import { z } from "zod";
 import { prisma } from "@/lib/catalogue/db";
-import { tenant } from "@/lib/tenant";
-import { pickupPlace, WORKSHOP_CLOSE_TIME, WORKSHOP_PHONE } from "../carriers";
 import { CarrierHttpError, carrierFetch } from "../http";
 import { labelPathname } from "../label";
 import { toE164 } from "../phone";
@@ -247,23 +245,17 @@ export function sitePlaceOf(job: DeliveryJob): Place {
 }
 
 /**
- * The pickup's postcode and town, falling back to the workshop's own when the
- * job leaves from the workshop — `pickupPlace` in `carriers.ts` decides that,
- * the same rule EasyParcel prices by.
+ * The pickup's postcode and town, as stored on the job. No fallback: a job
+ * with no postcode is refused, the same rule EasyParcel prices by.
  */
 export function pickupPlaceOf(job: DeliveryJob): Place {
-	const place = pickupPlace(job.pickupAddress, {
-		postcode: job.pickupPostcode,
-		city: job.pickupCity,
-		state: job.pickupState,
-	});
-	const postcode = place?.postcode ?? "";
+	const postcode = job.pickupPostcode ?? "";
 	if (!POSTCODE.test(postcode)) {
 		throw new FedexNotDeliverable(
 			`The pickup address has no five-digit postcode${postcode ? ` (${postcode})` : ""} — fix the pickup address and save again`,
 		);
 	}
-	return { postcode, city: place?.city ?? "" };
+	return { postcode, city: job.pickupCity ?? "" };
 }
 
 /**
@@ -404,9 +396,6 @@ export async function fedexQuote(job: DeliveryJob): Promise<CarrierQuote> {
 	};
 }
 
-/** The shipper and pickup contact FedEx prints on the label. */
-const SHIPPER_NAME = tenant.legalName;
-
 /** FedEx reads at most three street lines of 35 characters each. */
 const LINE_CHARS = 35;
 const MAX_LINES = 3;
@@ -474,8 +463,8 @@ export function shipBody(
 		requestedShipment: {
 			shipper: {
 				contact: {
-					companyName: SHIPPER_NAME,
-					phoneNumber: phoneOrThrow(WORKSHOP_PHONE, "workshop's"),
+					companyName: job.sender.legalName,
+					phoneNumber: phoneOrThrow(job.sender.phone, "workshop's"),
 				},
 				address: {
 					streetLines: streetLines(job.pickupAddress),
@@ -529,8 +518,8 @@ export function pickupBody(job: DeliveryJob, account: string) {
 		originDetail: {
 			pickupLocation: {
 				contact: {
-					companyName: SHIPPER_NAME,
-					phoneNumber: phoneOrThrow(WORKSHOP_PHONE, "workshop's"),
+					companyName: job.sender.legalName,
+					phoneNumber: phoneOrThrow(job.sender.phone, "workshop's"),
 				},
 				address: {
 					streetLines: streetLines(job.pickupAddress),
@@ -538,7 +527,7 @@ export function pickupBody(job: DeliveryJob, account: string) {
 				},
 			},
 			readyDateTimestamp: `${date}T${time}`,
-			customerCloseTime: WORKSHOP_CLOSE_TIME,
+			customerCloseTime: `${job.sender.closeTime}:00`,
 		},
 		carrierCode: "FDXE",
 	};

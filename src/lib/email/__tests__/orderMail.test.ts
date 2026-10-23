@@ -1,4 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
+
+vi.mock("@/lib/company/store", () => ({
+	getCompany: vi.fn(async () => testCompany()),
+}));
 
 const deliverEmail = vi.hoisted(() =>
 	vi.fn(

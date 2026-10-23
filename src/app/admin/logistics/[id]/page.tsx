@@ -26,7 +26,14 @@ export default async function DeliveryPage({
 		where: { id },
 		include: {
 			events: { orderBy: { at: "desc" } },
-			order: { select: { id: true, number: true, createdAt: true } },
+			order: {
+				select: {
+					id: true,
+					refPrefix: true,
+					number: true,
+					createdAt: true,
+				},
+			},
 		},
 	});
 	if (!delivery) notFound();
@@ -51,11 +58,7 @@ export default async function DeliveryPage({
 					appConfigured,
 					connected: appConfigured ? await hasConnection("easyparcel") : false,
 				}}
-				order={
-					order
-						? { id: order.id, ref: orderRef(order.number, order.createdAt) }
-						: null
-				}
+				order={order ? { id: order.id, ref: orderRef(order) } : null}
 			/>
 		</div>
 	);

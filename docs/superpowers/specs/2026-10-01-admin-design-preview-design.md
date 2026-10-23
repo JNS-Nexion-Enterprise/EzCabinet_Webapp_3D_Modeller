@@ -38,7 +38,6 @@ reads, and render the result with the planner's own `DesignedCabinet` inside the
 planner's own `StudioLighting`.
 
 Rejected:
-
 - **Fetch `/api/cabinet-mesh/[id]`.** That mesh only exists after the design is
   saved and converted, so a freshly picked file — the main case — would have
   nothing to show.
@@ -65,9 +64,9 @@ stored file is re-read and re-converted in the browser, not fetched as a mesh.
 
 **Fallback when `buildRenderMesh` returns `null`** (past `MAX_TRIANGLES`, or
 nothing it can read): keep today's grey `OBJLoader` render, and show under it:
-*"Won't convert — the planner will draw this one procedurally."* That is what
+_"Won't convert — the planner will draw this one procedurally."_ That is what
 publish will do with the same file, so the admin learns it before publishing.
-The grey path stays because an admin still needs to see *which* file they
+The grey path stays because an admin still needs to see _which_ file they
 picked even when it will not convert.
 
 ## Scene
@@ -98,11 +97,11 @@ picked even when it will not convert.
 
 A strip directly under the canvas, only when the mesh converted:
 
-| Control | Source | Drives |
-|---|---|---|
-| Finish swatches | `base.finishes` (`id`, `label`, `hex`) | `finishHex`; `finishPhoto` from `finishPhotos["finish:<id>"]` when one is uploaded |
-| Door style chips | `base.doorStyles` | `door` — matters for `glass`, which renders see-through |
-| Doors: Shut / Open / Hidden | local | `open` / `doorsHidden` |
+| Control                     | Source                                 | Drives                                                                             |
+| --------------------------- | -------------------------------------- | ---------------------------------------------------------------------------------- |
+| Finish swatches             | `base.finishes` (`id`, `label`, `hex`) | `finishHex`; `finishPhoto` from `finishPhotos["finish:<id>"]` when one is uploaded |
+| Door style chips            | `base.doorStyles`                      | `door` — matters for `glass`, which renders see-through                            |
+| Doors: Shut / Open / Hidden | local                                  | `open` / `doorsHidden`                                                             |
 
 Defaults: first finish, first door style, shut. Swatches are small round chips
 with the label as `title`/`aria-label`, using the existing `chipClass` styling

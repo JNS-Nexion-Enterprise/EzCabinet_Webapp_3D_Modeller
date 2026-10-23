@@ -33,7 +33,6 @@
 ### What the sandbox can and cannot tell you
 
 FedEx's sandbox answers **only its own canned inputs**. Any request that differs from a documented example (a city, a second package, `CONTACT_FEDEX_TO_SCHEDULE`) returns `SERVICE.PACKAGECOMBINATION.INVALID`, and the canned Malaysian rates come back in **USD**. Tracking returns random canned results (mock `918408715227` answered as a Spanish-language `DE`). So:
-
 - Unit tests use fixtures built from the **structure** of real sandbox replies and the OpenAPI schemas; they cannot prove FedEx accepts our bodies.
 - `scripts/fedex-ping.mjs` (Task 6) is the only check against FedEx's real behaviour, and it is only meaningful against production.
 
@@ -41,22 +40,22 @@ FedEx's sandbox answers **only its own canned inputs**. Any request that differs
 
 ## File structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/logistics/status.ts` | + `fedex` status table |
-| `src/lib/logistics/label.ts` (new) | label blob path + which carriers capture a label, isomorphic |
-| `src/lib/logistics/adapters/gdex.ts` | uses `label.ts` instead of its own `labelPathname` |
-| `src/app/api/admin/deliveries/[id]/label/route.ts` | serves any carrier in `LABEL_FALLBACK` |
-| `src/app/admin/logistics/DeliveryDetail.tsx` | missing-label warning for any capturing carrier |
-| `src/lib/logistics/types.ts` | `CarrierBooking.pickupRef`, `CarrierBooking.note` |
-| `src/app/api/admin/deliveries/[id]/book/route.ts` | appends `booking.note` to the booking event message |
-| `src/lib/logistics/adapters/fedex.ts` (new) | the adapter |
-| `src/lib/logistics/__tests__/fedex.test.ts` (new) | adapter tests |
-| `src/lib/logistics/__tests__/fixtures/fedex.ts` (new) | reply fixtures |
-| `src/lib/logistics/carriers.ts` | FedEx entry, `WORKSHOP_CLOSE_TIME` |
-| `src/lib/logistics/registry.ts` | register `fedexAdapter` |
-| `scripts/fedex-ping.mjs` (new), `package.json` | live shape check |
-| `CLAUDE.md` | directory note, known issue, open question |
+| File                                                  | Responsibility                                               |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
+| `src/lib/logistics/status.ts`                         | + `fedex` status table                                       |
+| `src/lib/logistics/label.ts` (new)                    | label blob path + which carriers capture a label, isomorphic |
+| `src/lib/logistics/adapters/gdex.ts`                  | uses `label.ts` instead of its own `labelPathname`           |
+| `src/app/api/admin/deliveries/[id]/label/route.ts`    | serves any carrier in `LABEL_FALLBACK`                       |
+| `src/app/admin/logistics/DeliveryDetail.tsx`          | missing-label warning for any capturing carrier              |
+| `src/lib/logistics/types.ts`                          | `CarrierBooking.pickupRef`, `CarrierBooking.note`            |
+| `src/app/api/admin/deliveries/[id]/book/route.ts`     | appends `booking.note` to the booking event message          |
+| `src/lib/logistics/adapters/fedex.ts` (new)           | the adapter                                                  |
+| `src/lib/logistics/__tests__/fedex.test.ts` (new)     | adapter tests                                                |
+| `src/lib/logistics/__tests__/fixtures/fedex.ts` (new) | reply fixtures                                               |
+| `src/lib/logistics/carriers.ts`                       | FedEx entry, `WORKSHOP_CLOSE_TIME`                           |
+| `src/lib/logistics/registry.ts`                       | register `fedexAdapter`                                      |
+| `scripts/fedex-ping.mjs` (new), `package.json`        | live shape check                                             |
+| `CLAUDE.md`                                           | directory note, known issue, open question                   |
 
 ---
 
@@ -108,7 +107,6 @@ describe("fedex status table", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/status.test.ts`
 Expected: FAIL — `maps OC to BOOKED` receives `null`.
-
 - [ ] **Step 3: Add the table**
 
 In `src/lib/logistics/status.ts`, inside `CARRIER_STATUS_MAPS`, directly after the closing `},` of the `gdex` table:
@@ -151,7 +149,6 @@ In `src/lib/logistics/status.ts`, inside `CARRIER_STATUS_MAPS`, directly after t
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/status.test.ts`
 Expected: PASS.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -210,7 +207,6 @@ describe("LABEL_FALLBACK", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/label.test.ts`
 Expected: FAIL — cannot resolve `../label`.
-
 - [ ] **Step 3: Create `label.ts`**
 
 Create `src/lib/logistics/label.ts`:
@@ -254,13 +250,11 @@ export function labelPathname(
 - [ ] **Step 4: Point GDEX at it**
 
 In `src/lib/logistics/adapters/gdex.ts`:
-
-1. Delete the whole `labelPathname` function and its docblock (the block starting `* The consignment number is already on the delivery row as \`carrierOrderId\`` and ending `return \`logistics/gdex/${consignmentNumber}.pdf\`;` `}`).
+1. Delete the whole `labelPathname` function and its docblock (the block starting `* The consignment number is already on the delivery row as \`carrierOrderId\``and ending`return \`logistics/gdex/${consignmentNumber}.pdf\`;` `}`).
 2. Add to the imports: `import { labelPathname } from "../label";`
 3. In `storeLabel`, change `await put(labelPathname(consignmentNumber), …` to `await put(labelPathname("gdex", consignmentNumber), …`.
 
 In `src/lib/logistics/__tests__/gdex.test.ts`:
-
 1. Remove `labelPathname,` from the `from "../adapters/gdex"` import list.
 2. Delete the `describe("labelPathname", () => { … });` block (it is covered by `label.test.ts`).
 3. If any other test in the file calls `labelPathname(`, change it to `labelPathname("gdex", …)` and add `import { labelPathname } from "../label";`.
@@ -312,33 +306,33 @@ In the route's docblock, change the paragraph beginning "GDEX only serves the PD
 In `src/app/admin/logistics/DeliveryDetail.tsx`, add `import { LABEL_FALLBACK } from "@/lib/logistics/label";` beside the other `@/lib/logistics` imports, then replace
 
 ```tsx
-									{delivery.carrierId === "gdex" &&
-										delivery.labelUrl === null && (
-											<p className={`${WARN} text-[12px] leading-[18px]`}>
-												The consignment note was not captured when this job was
-												booked, so it cannot be shown here. Print it from the
-												GDEX portal — GDEX only serves the PDF while the
-												shipment is pending.
-											</p>
-										)}
+{
+	delivery.carrierId === "gdex" && delivery.labelUrl === null && (
+		<p className={`${WARN} text-[12px] leading-[18px]`}>
+			The consignment note was not captured when this job was booked, so it
+			cannot be shown here. Print it from the GDEX portal — GDEX only serves the
+			PDF while the shipment is pending.
+		</p>
+	);
+}
 ```
 
 with
 
 ```tsx
-									{delivery.carrierId !== null &&
-										delivery.carrierId in LABEL_FALLBACK &&
-										delivery.labelUrl === null && (
-											<p className={`${WARN} text-[12px] leading-[18px]`}>
-												The consignment note was not captured when this job was
-												booked, so it cannot be shown here.{" "}
-												{LABEL_FALLBACK[delivery.carrierId]}
-											</p>
-										)}
+{
+	delivery.carrierId !== null &&
+		delivery.carrierId in LABEL_FALLBACK &&
+		delivery.labelUrl === null && (
+			<p className={`${WARN} text-[12px] leading-[18px]`}>
+				The consignment note was not captured when this job was booked, so it
+				cannot be shown here. {LABEL_FALLBACK[delivery.carrierId]}
+			</p>
+		);
+}
 ```
 
 (If the `delivery` type there has `carrierId: string | null` under another name, keep the null check; `in` on `null` throws.)
-
 - [ ] **Step 7: Run the tests**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/label.test.ts src/lib/logistics/__tests__/gdex.test.ts`
@@ -346,7 +340,6 @@ Expected: PASS.
 
 Run: `pnpm typecheck`
 Expected: no errors.
-
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -476,7 +469,8 @@ export const cancelPickupReply = {
 	transactionId: "t-cancel-pickup",
 	output: {
 		pickupConfirmationCode: "3001",
-		cancelConfirmationMessage: "Requested pickup has been cancelled Successfully.",
+		cancelConfirmationMessage:
+			"Requested pickup has been cancelled Successfully.",
 	},
 };
 
@@ -703,7 +697,10 @@ describe("packagesOf", () => {
 
 describe("places", () => {
 	it("reads the site postcode and town off the job", () => {
-		expect(sitePlaceOf(job())).toEqual({ postcode: "11950", city: "Bayan Baru" });
+		expect(sitePlaceOf(job())).toEqual({
+			postcode: "11950",
+			city: "Bayan Baru",
+		});
 	});
 
 	it("refuses a site without a five-digit postcode", () => {
@@ -716,7 +713,10 @@ describe("places", () => {
 	});
 
 	it("falls back to the workshop's postcode for a workshop pickup", () => {
-		expect(pickupPlaceOf(job())).toEqual({ postcode: "43800", city: "Dengkil" });
+		expect(pickupPlaceOf(job())).toEqual({
+			postcode: "43800",
+			city: "Dengkil",
+		});
 	});
 
 	it("refuses an edited pickup that was never geocoded", () => {
@@ -893,7 +893,6 @@ describe("fedexQuote", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/fedex.test.ts`
 Expected: FAIL — cannot resolve `../adapters/fedex`.
-
 - [ ] **Step 4: Create the adapter's first half**
 
 Create `src/lib/logistics/adapters/fedex.ts`:
@@ -1295,17 +1294,14 @@ export async function fedexQuote(job: DeliveryJob): Promise<CarrierQuote> {
 ```
 
 Note on `rateBody` when the account is unset: `ACCOUNT()` is `""`, the body is still built so refusals win, and `call` then throws `CarrierNotConfigured` before any fetch. The test "refuses to call at all without an account number" pins that order.
-
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/fedex.test.ts`
 Expected: PASS.
-
 - [ ] **Step 6: Typecheck and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: no errors.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1438,7 +1434,11 @@ describe("shipBody", () => {
 
 	it("refuses a customer number FedEx cannot ring", () => {
 		expect(() =>
-			shipBody(job({ customerPhone: "+65 6123 4567" }), "740561073", "FEDEX_PRIORITY"),
+			shipBody(
+				job({ customerPhone: "+65 6123 4567" }),
+				"740561073",
+				"FEDEX_PRIORITY",
+			),
 		).toThrow(/not a Malaysian number FedEx can call/);
 	});
 });
@@ -1525,7 +1525,10 @@ describe("fedexBook", () => {
 				status: 400,
 				body: {
 					errors: [
-						{ code: "PICKUP.DATE.INVALID", message: "Pickup date is not available" },
+						{
+							code: "PICKUP.DATE.INVALID",
+							message: "Pickup date is not available",
+						},
 					],
 				},
 			},
@@ -1549,7 +1552,10 @@ describe("fedexBook", () => {
 			ok(tokenReply),
 			ok(shipReply),
 			{ status: 400, body: { errors: [{ code: "PICKUP.X", message: "no" }] } },
-			{ status: 400, body: { errors: [{ code: "SHIPMENT.X", message: "no" }] } },
+			{
+				status: 400,
+				body: { errors: [{ code: "SHIPMENT.X", message: "no" }] },
+			},
 		);
 
 		await expect(fedexBook(job(), quote)).rejects.toThrow(
@@ -1594,12 +1600,10 @@ describe("fedexBook", () => {
 ```
 
 (The `pickupBody` expectation of `["EzCabinet Sdn Bhd, Klang Valley,", "Selangor"]` follows from wrapping `WORKSHOP_ADDRESS` at 35 characters by words: "EzCabinet Sdn Bhd, Klang Valley," is 32 characters and adding " Selangor" would make 41.)
-
 - [ ] **Step 3: Run the tests to verify they fail**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/fedex.test.ts`
 Expected: FAIL — `fedexBook` / `shipBody` / `pickupBody` / `streetLines` / `trackingUrlFor` are not exported.
-
 - [ ] **Step 4: Implement booking**
 
 In `src/lib/logistics/adapters/fedex.ts`:
@@ -1675,7 +1679,11 @@ const totalKg = (packages: FedexPackage[]) =>
  * returns every package's label merged into one PDF — one file to print, and
  * one blob to keep.
  */
-export function shipBody(job: DeliveryJob, account: string, serviceType: string) {
+export function shipBody(
+	job: DeliveryJob,
+	account: string,
+	serviceType: string,
+) {
 	const packages = packagesOf(job);
 	return {
 		accountNumber: { value: account },
@@ -1916,8 +1924,9 @@ export async function fedexBook(
 	}
 
 	const labelSource =
-		created.shipmentDocuments?.find((d) => d.contentType === "MERGED_LABELS_ONLY")
-			?.url ??
+		created.shipmentDocuments?.find(
+			(d) => d.contentType === "MERGED_LABELS_ONLY",
+		)?.url ??
 		created.pieceResponses?.[0]?.packageDocuments?.[0]?.url ??
 		null;
 	const stored = await storeLabel(trackingNumber, labelSource);
@@ -1936,12 +1945,10 @@ export async function fedexBook(
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/fedex.test.ts`
 Expected: PASS. If the `pickupBody` street-lines expectation differs, print `streetLines(WORKSHOP_ADDRESS)` and correct the **test** to the wrapped value — the wrapping rule, not the constant, is what is under test.
-
 - [ ] **Step 6: Typecheck and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: no errors.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1972,8 +1979,14 @@ In `src/lib/logistics/__tests__/fedex.test.ts`, extend the `../adapters/fedex` i
 describe("readTracking", () => {
 	it("maps FedEx's code, not its localised description", () => {
 		expect(
-			readTracking(trackReply("794953535000", "DL", "Entregado"), "794953535000"),
-		).toMatchObject({ status: "DELIVERED", message: "FedEx reports Entregado" });
+			readTracking(
+				trackReply("794953535000", "DL", "Entregado"),
+				"794953535000",
+			),
+		).toMatchObject({
+			status: "DELIVERED",
+			message: "FedEx reports Entregado",
+		});
 	});
 
 	it("leaves an exception unmapped, so the row stays where it is", () => {
@@ -2007,7 +2020,9 @@ describe("fedexTrack", () => {
 		);
 		expect(sent(fetchMock, 1)).toEqual({
 			includeDetailedScans: false,
-			trackingInfo: [{ trackingNumberInfo: { trackingNumber: "794953535000" } }],
+			trackingInfo: [
+				{ trackingNumberInfo: { trackingNumber: "794953535000" } },
+			],
 		});
 		expect(update.status).toBe("IN_TRANSIT");
 	});
@@ -2017,9 +2032,9 @@ describe("readPickupRef", () => {
 	const ref = { code: "3001", date: "2026-09-24", location: "KULA" };
 
 	it("reads the collection back out of the booking event", () => {
-		expect(readPickupRef({ booking: { pickupRef: JSON.stringify(ref) } })).toEqual(
-			ref,
-		);
+		expect(
+			readPickupRef({ booking: { pickupRef: JSON.stringify(ref) } }),
+		).toEqual(ref);
 	});
 
 	it("is null for any other event's raw payload", () => {
@@ -2055,7 +2070,9 @@ describe("fedexCancel", () => {
 		expect(findMany.mock.calls[0][0]).toMatchObject({
 			where: { status: "BOOKED", delivery: { carrierOrderId: "794953535000" } },
 		});
-		expect(fetchMock.mock.calls[1][0]).toBe(`${SANDBOX}/pickup/v1/pickups/cancel`);
+		expect(fetchMock.mock.calls[1][0]).toBe(
+			`${SANDBOX}/pickup/v1/pickups/cancel`,
+		);
 		expect(sent(fetchMock, 1)).toEqual({
 			associatedAccountNumber: { value: "740561073" },
 			pickupConfirmationCode: "3001",
@@ -2086,7 +2103,10 @@ describe("fedexCancel", () => {
 			status: 400,
 			body: {
 				errors: [
-					{ code: "SHIPMENT.CANCEL.NOTALLOWED", message: "Shipment already scanned" },
+					{
+						code: "SHIPMENT.CANCEL.NOTALLOWED",
+						message: "Shipment already scanned",
+					},
 				],
 			},
 		});
@@ -2124,7 +2144,6 @@ describe("fedexAdapter", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/fedex.test.ts`
 Expected: FAIL — `readTracking`, `fedexTrack`, `readPickupRef`, `fedexCancel`, `fedexAdapter` not exported.
-
 - [ ] **Step 3: Implement tracking and cancel**
 
 In `src/lib/logistics/adapters/fedex.ts`, add to the imports:
@@ -2307,12 +2326,10 @@ export const fedexAdapter: CarrierAdapter = {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/fedex.test.ts`
 Expected: PASS.
-
 - [ ] **Step 5: Typecheck and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: no errors.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -2364,12 +2381,10 @@ describe("fedex registration", () => {
 ```
 
 (If the existing registry test already mocks modules the registry imports — `tokens.ts` touches Prisma — keep its mocks and only add the `it`.)
-
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/registry.test.ts`
 Expected: FAIL — `CARRIER_IDS` does not contain `"fedex"`.
-
 - [ ] **Step 3: Register the carrier**
 
 In `src/lib/logistics/carriers.ts`, add to `CARRIERS` after the EasyParcel row:
@@ -2379,12 +2394,10 @@ In `src/lib/logistics/carriers.ts`, add to `CARRIERS` after the EasyParcel row:
 ```
 
 In `src/lib/logistics/registry.ts`, add `import { fedexAdapter } from "./adapters/fedex";` in alphabetical order among the adapter imports, and `fedex: fedexAdapter,` to `ADAPTERS` after `easyparcel`.
-
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/registry.test.ts src/lib/logistics/__tests__/status.test.ts`
 Expected: PASS. (`status.test.ts` may assert every carrier id has a table; Task 1 already added one.)
-
 - [ ] **Step 5: Add the ping script**
 
 Create `scripts/fedex-ping.mjs`:
@@ -2510,11 +2523,9 @@ In `package.json` `scripts`, after `"easyparcel:ping"`:
 
 Run: `pnpm fedex:ping`
 Expected (sandbox, and only once `FEDEX_ACCOUNT_NUMBER` is in `.env.local`): `✓ token`, then `✗ rate 400: …SERVICE.PACKAGECOMBINATION.INVALID…` — that is the sandbox's canned-input limit, not a bug — then a `✓ track` line. Without `FEDEX_ACCOUNT_NUMBER` it exits with `✗ FEDEX_ACCOUNT_NUMBER must be set`, which is also correct.
-
 - [ ] **Step 6: Document it in CLAUDE.md**
 
 In `CLAUDE.md`:
-
 1. Directory layout: change `adapters/            ← one file per partner; manual, lalamove and easyparcel are live` to `adapters/            ← one file per partner; manual, lalamove, easyparcel, gdex and fedex are built`, and add `    label.ts             ← captured shipping labels: blob path, and which carriers have one` under `lib/logistics/`.
 2. Known issues: append
 
@@ -2532,7 +2543,6 @@ In `CLAUDE.md`:
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
-
 - [ ] **Step 8: Commit**
 
 ```bash

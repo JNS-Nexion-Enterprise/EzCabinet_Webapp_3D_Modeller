@@ -129,6 +129,22 @@ export const zh: Dictionary = {
 		diyTutorials: "DIY 教学视频",
 		clear: "清除",
 		dimensionAriaSuffix: "{label}（单位：毫米）",
+		phone: {
+			backHome: "首页",
+			backRooms: "房间",
+			backEdit: "编辑",
+			wallSubtitle: "{m} 米墙面",
+			tapHint: "点击柜子即可编辑",
+			tabsLabel: "工作室面板",
+			tabs: {
+				selected: "已选",
+				add: "添加",
+				room: "房间",
+				run: "布局",
+			},
+			doorsAria: "门板：{mode}。点击切换。",
+			quoteCta: "索取报价",
+		},
 		tools: {
 			ariaLabel: "工具",
 			select: "选择",
@@ -393,7 +409,7 @@ export const zh: Dictionary = {
 		termsLink: "销售条款",
 		refundsLink: "退款政策",
 		errorTerms: "请勾选此项以提交订单。",
-		soldBy: "卖方：{address}。联系方式：{email} 或 {phone}。",
+		soldBy: "卖方：{seller}。联系方式：{email} 或 {phone}。",
 		submitting: "正在下单……",
 		descriptionOnline: "设计师会在施工前到现场重新测量。",
 		sectionContact: "联系方式",
@@ -557,7 +573,7 @@ export const zh: Dictionary = {
 	},
 	privacy: {
 		title: "隐私声明",
-		draft: "草稿——须经 {brand} Sdn Bhd 审核后方可生效。",
+		draft: "草稿——须经 {legalName} 审核后方可生效。",
 		intro: "本声明说明您使用 {brand} 设计工具时我们会记录哪些信息，以及原因。",
 		purposeHeading: "目的",
 		purpose: "找出设计工具中令人困惑或出错的地方，并加以修复。",
@@ -609,7 +625,7 @@ export const zh: Dictionary = {
 		intro:
 			"当您通过 {brand} 规划器订购橱柜时，适用以下条款。付款前请连同退款政策一并阅读。",
 		sellerHeading: "卖方",
-		seller: "{address}。电子邮箱 {email}，电话 {phone}。",
+		seller: "{seller}。电子邮箱 {email}，电话 {phone}。",
 		goodsHeading: "您购买的商品",
 		goods:
 			"根据您提交的设计定制的橱柜。3D 视图仅为示意；最终尺寸以我们上门复尺为准。",

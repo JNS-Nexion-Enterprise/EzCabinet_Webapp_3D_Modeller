@@ -3,6 +3,11 @@
 :root {
 	--background: #ffffff;
 	--foreground: #171717;
+	/* The phone layout's fixed bottom bar (`phoneBar`, PhoneChrome.tsx): 12px
+	   padding, one 52px row, 12px padding and a 1px border, before the safe
+	   area. The bar is this tall, and whatever must stay above it offsets by
+	   it, so the two cannot drift apart. */
+	--phone-bar-h: 77px;
 }
 
 @theme inline {

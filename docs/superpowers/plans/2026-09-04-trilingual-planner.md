@@ -26,23 +26,23 @@
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/copy/locales.ts` | The locale vocabulary and `Accept-Language` negotiation. Pure, no React, no Next. |
-| `src/lib/copy/fill.ts` | `{token}` interpolation. Pure. |
-| `src/lib/copy/en.ts` | The English dictionary and the `Dictionary` type others are gated against. |
-| `src/lib/copy/zh.ts` | Simplified Chinese, typed `Dictionary`. |
-| `src/lib/copy/ms.ts` | Bahasa Malaysia, typed `Dictionary`. |
-| `src/lib/copy/dictionary.ts` | `getDictionary(locale)` — server-only dynamic import. |
-| `src/lib/copy/__tests__/` | vitest: negotiation, parity, leakage, fill. |
-| `src/components/planner/CopyContext.tsx` | `CopyProvider` / `useCopy` for the client tree. Mirrors `CatalogueContext.tsx`. |
-| `src/components/LanguageSwitcher.tsx` | Three links, preserving the current path. |
-| `src/app/[lang]/layout.tsx` | Root layout: `<html lang>`, `hreflang` alternates, `generateStaticParams`, per-locale metadata. |
-| `src/app/[lang]/page.tsx` | Landing (moved). |
-| `src/app/[lang]/planner/page.tsx` | Planner (moved). |
-| `src/app/[lang]/tutorials/page.tsx` | Tutorials (moved). |
-| `src/proxy.ts` | Gains locale negotiation alongside the existing admin gate. |
-| `src/app/globals.css` | CJK fallback appended to `--font-sans`. |
+| File                                     | Responsibility                                                                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `src/lib/copy/locales.ts`                | The locale vocabulary and `Accept-Language` negotiation. Pure, no React, no Next.               |
+| `src/lib/copy/fill.ts`                   | `{token}` interpolation. Pure.                                                                  |
+| `src/lib/copy/en.ts`                     | The English dictionary and the `Dictionary` type others are gated against.                      |
+| `src/lib/copy/zh.ts`                     | Simplified Chinese, typed `Dictionary`.                                                         |
+| `src/lib/copy/ms.ts`                     | Bahasa Malaysia, typed `Dictionary`.                                                            |
+| `src/lib/copy/dictionary.ts`             | `getDictionary(locale)` — server-only dynamic import.                                           |
+| `src/lib/copy/__tests__/`                | vitest: negotiation, parity, leakage, fill.                                                     |
+| `src/components/planner/CopyContext.tsx` | `CopyProvider` / `useCopy` for the client tree. Mirrors `CatalogueContext.tsx`.                 |
+| `src/components/LanguageSwitcher.tsx`    | Three links, preserving the current path.                                                       |
+| `src/app/[lang]/layout.tsx`              | Root layout: `<html lang>`, `hreflang` alternates, `generateStaticParams`, per-locale metadata. |
+| `src/app/[lang]/page.tsx`                | Landing (moved).                                                                                |
+| `src/app/[lang]/planner/page.tsx`        | Planner (moved).                                                                                |
+| `src/app/[lang]/tutorials/page.tsx`      | Tutorials (moved).                                                                              |
+| `src/proxy.ts`                           | Gains locale negotiation alongside the existing admin gate.                                     |
+| `src/app/globals.css`                    | CJK fallback appended to `--font-sans`.                                                         |
 
 ---
 
@@ -118,7 +118,6 @@ describe("htmlLang", () => {
 
 Run: `npx vitest run src/lib/copy/__tests__/locales.test.ts`
 Expected: FAIL — cannot resolve `../locales`.
-
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
@@ -158,9 +157,7 @@ export const htmlLang = (locale: Locale): string => HTML_LANG[locale];
  * all land on `zh` — a Traditional-script reader gets Simplified, which is the
  * right call for a Malaysian audience and beats falling back to English.
  */
-export function negotiateLocale(
-	header: string | null | undefined,
-): Locale {
+export function negotiateLocale(header: string | null | undefined): Locale {
 	if (!header) return DEFAULT_LOCALE;
 
 	const ranked = header
@@ -174,7 +171,9 @@ export function negotiateLocale(
 			return { tag: tag.trim().toLowerCase(), q };
 		})
 		// q=0 is the header's way of saying "not this one", so it must not match.
-		.filter((entry) => entry.tag !== "" && Number.isFinite(entry.q) && entry.q > 0)
+		.filter(
+			(entry) => entry.tag !== "" && Number.isFinite(entry.q) && entry.q > 0,
+		)
 		.sort((a, b) => b.q - a.q);
 
 	for (const { tag } of ranked) {
@@ -189,7 +188,6 @@ export function negotiateLocale(
 
 Run: `npx vitest run src/lib/copy/__tests__/locales.test.ts`
 Expected: PASS, 6 tests.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -241,7 +239,6 @@ describe("fill", () => {
 
 Run: `npx vitest run src/lib/copy/__tests__/fill.test.ts`
 Expected: FAIL — cannot resolve `../fill`.
-
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
@@ -270,7 +267,6 @@ export function fill(
 
 Run: `npx vitest run src/lib/copy/__tests__/fill.test.ts`
 Expected: PASS, 4 tests.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -354,7 +350,6 @@ describe("dictionaries", () => {
 
 Run: `npx vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: FAIL — cannot resolve `../en`.
-
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
@@ -384,7 +379,9 @@ export const en = {
 } as const;
 
 export type Dictionary = {
-	readonly [K in keyof typeof en]: { readonly [P in keyof (typeof en)[K]]: string };
+	readonly [K in keyof typeof en]: {
+		readonly [P in keyof (typeof en)[K]]: string;
+	};
 };
 ```
 
@@ -460,11 +457,9 @@ export const getDictionary = (locale: Locale): Promise<Dictionary> =>
 
 Run: `npx vitest run src/lib/copy/__tests__/dictionary.test.ts && npx tsc --noEmit`
 Expected: PASS, and tsc clean.
-
 - [ ] **Step 5: Prove the type gate actually gates**
 
 Temporarily delete the `back` key from `zh.ts`, run `npx tsc --noEmit`, and confirm it errors with "Property 'back' is missing". Restore the key. This is the check that the gate is real rather than decorative.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -500,7 +495,6 @@ git mv src/app/tutorials src/app/\[lang\]/tutorials
 ```
 
 `globals.css` and `favicon.ico` stay at `src/app/`. Fix the stylesheet import in the moved layout to `../globals.css`.
-
 - [ ] **Step 2: Rewrite the root layout**
 
 ```tsx
@@ -513,7 +507,10 @@ import { htmlLang, isLocale, LOCALES } from "@/lib/copy/locales";
 import "../globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
-const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
+const geistMono = Geist_Mono({
+	variable: "--font-geist-mono",
+	subsets: ["latin"],
+});
 
 /** All three locales are prerendered — they are the SEO surface. */
 export function generateStaticParams() {
@@ -593,7 +590,6 @@ Then `npx next dev` and check by hand:
 - View source on `/zh`: `<html lang="zh-Hans">` and three `hreflang` links present
 
 Running dev once here also generates `.next/types/root-params.d.ts`, which is what makes `next/root-params` typed for later tasks.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -662,7 +658,6 @@ describe("needsLocaleRedirect", () => {
 
 Run: `npx vitest run src/lib/copy/__tests__/proxyPaths.test.ts`
 Expected: FAIL — `needsLocaleRedirect` is not exported.
-
 - [ ] **Step 3: Add the predicate to `locales.ts`**
 
 ```ts
@@ -689,7 +684,6 @@ export function needsLocaleRedirect(pathname: string): boolean {
 
 Run: `npx vitest run src/lib/copy/__tests__/proxyPaths.test.ts`
 Expected: PASS, 5 tests.
-
 - [ ] **Step 5: Wire it into the proxy**
 
 The admin branch must run **first and unchanged**. The locale branch only ever sees paths the admin matcher does not claim.
@@ -875,7 +869,6 @@ return (
 
 Run: `npx tsc --noEmit && npx vitest run`
 Expected: tsc clean, 396+ tests pass. Then `npx next dev` and confirm `/en/planner` still works end to end — place a cabinet, open the quote screen.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -910,11 +903,9 @@ console.log([...out].sort().join("\n"));
 ```
 
 Every line of that output becomes a key under `landing` in `en.ts`. Group by section (`hero`, `rooms`, `finishes`, `faq`, `cta`) so the keys read as the page does.
-
 - [ ] **Step 2: Add the `landing` group to all three dictionaries**
 
 `en.ts` first — the strings verbatim as they appear today, so the English page is byte-identical afterwards. Then `zh.ts` and `ms.ts`. `tsc` will not compile until both are complete, which is the gate doing its job.
-
 - [ ] **Step 3: Replace the literals in the page**
 
 ```tsx
@@ -930,8 +921,7 @@ export default async function LandingPage({ params }: PageProps<"/[lang]">) {
 }
 ```
 
-Every internal `<Link href="/planner">` becomes `` href={`/${lang}/planner`} `` — a link that drops the locale silently bounces the reader back through the proxy and can land them in a different language than the one they are reading.
-
+Every internal `<Link href="/planner">` becomes ``href={`/${lang}/planner`}`` — a link that drops the locale silently bounces the reader back through the proxy and can land them in a different language than the one they are reading.
 - [ ] **Step 4: Verify**
 
 ```bash
@@ -941,7 +931,6 @@ npx vitest run src/lib/copy/__tests__/dictionary.test.ts && npx tsc --noEmit
 Expected: parity and no-leakage tests pass — proving no `zh`/`ms` value was left in English — and tsc is clean.
 
 Then `npx next dev` and read `/en`, `/zh`, `/ms` side by side. `/en` must be visually identical to before this task.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -965,7 +954,6 @@ Same method as Task 7, for the client components and the tutorials route.
 Run the Step-1 script from Task 7 against each file in turn.
 
 **Do not translate:** anything read from the catalogue or the database — `family.label`, `doorStyle.label`, `roomType.label`, `finish.label`, and tutorial `title`/`description`/`category`. Those are client-authored rows and are explicitly out of scope. If a string comes from a prop that traces back to `catalogue` or `prisma`, leave it.
-
 - [ ] **Step 2: Add the groups, then swap the literals**
 
 In client components the hook replaces the import:
@@ -980,7 +968,9 @@ For the one-or-many strings, `fill`:
 ```tsx
 import { fill } from "@/lib/copy/fill";
 // en: cabinetCount: "{n} cabinets"
-{fill(t.quote.cabinetCount, { n: modules.length })}
+{
+	fill(t.quote.cabinetCount, { n: modules.length });
+}
 ```
 
 - [ ] **Step 3: Format prices through `Intl`**
@@ -1003,7 +993,6 @@ npx vitest run && npx tsc --noEmit && npx biome check src/
 Expected: all tests pass, tsc clean, biome clean.
 
 Then `npx next dev`: walk the full flow in each locale — pick a room, place cabinets, change a finish, open the quote. Confirm cabinet names and finish names stay in English (they are catalogue rows) while the chrome around them translates.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1052,7 +1041,9 @@ export function LanguageSwitcher({ current }: { current: Locale }) {
 					href={`/${locale}${tail ? `/${tail}` : ""}`}
 					hrefLang={locale}
 					aria-current={locale === current ? "true" : undefined}
-					className={locale === current ? "font-semibold underline" : "opacity-70"}
+					className={
+						locale === current ? "font-semibold underline" : "opacity-70"
+					}
 				>
 					{ENDONYM[locale]}
 				</Link>
@@ -1065,11 +1056,9 @@ export function LanguageSwitcher({ current }: { current: Locale }) {
 - [ ] **Step 2: Place it in the layout**
 
 Render `<LanguageSwitcher current={lang} />` in `src/app/[lang]/layout.tsx`, inside `<body>` above `{children}`.
-
 - [ ] **Step 3: Verify**
 
 `npx next dev`. From `/en/planner?room=living`, switch to 中文: the URL must become `/zh/planner?room=living` — same page, same room, different language. Switching from `/ms/tutorials` must land on `/en/tutorials`, not `/en`.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1089,14 +1078,12 @@ The deliverable that closes the loop with EzCabinet.
 - [ ] **Step 1: Write the review list**
 
 Roughly twenty entries — not all 127. Include every string where register decides whether the page converts:
-
-- Cabinetry trade terms in BM: *kabinet dapur*, *laminat*, *kayu solid*, *pintu*, *laci*
+- Cabinetry trade terms in BM: _kabinet dapur_, _laminat_, _kayu solid_, _pintu_, _laci_
 - The whole `quote` group — this is the money screen
 - Every call to action
 - Anything with a delivery or warranty claim in it
 
 Each entry: the key, the English, the 中文, the BM, and a one-line note on what I was unsure about.
-
 - [ ] **Step 2: Commit**
 
 ```bash

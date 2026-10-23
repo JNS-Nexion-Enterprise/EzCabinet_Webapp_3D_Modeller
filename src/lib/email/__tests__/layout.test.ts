@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
+import { sellerLine } from "@/lib/company/details";
 import { type EmailContent, renderEmail } from "../layout";
 
+const company = testCompany({
+	brand: "Kabinet Baru",
+	ssmNumber: "202301012345",
+});
+
 const base: EmailContent = {
+	company,
 	locale: "en",
 	about: "order",
 	preheader: "Pre",
@@ -71,6 +79,16 @@ describe("renderEmail", () => {
 		expect(renderEmail({ ...base, about: "account" }).text).not.toContain(
 			"Questions?",
 		);
+	});
+
+	it("wears the company's name, seller line and phone", () => {
+		const { html, text } = renderEmail(base);
+		expect(html).toContain(">Kabinet Baru<");
+		expect(html).toContain(">K<");
+		for (const part of [html, text]) {
+			expect(part).toContain(sellerLine(company));
+			expect(part).toContain(company.phone);
+		}
 	});
 
 	it("sets the document language", () => {

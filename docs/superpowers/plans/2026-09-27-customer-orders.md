@@ -20,6 +20,7 @@
 - `lib/planner` untouched. Sentence case in UI copy. Prices in RM. Copy added to `en`, `ms`, `zh` (`ms`/`zh` are typed `Dictionary`, so a missing key fails `tsc`).
 - Migration is hand-written (CLAUDE.md Known issue 12). **Never apply it to preview/production** inside this plan — Task 5 stops and asks the user.
 - Commits end with:
+
   ```
   Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
   Claude-Session: https://claude.ai/code/session_012SCj6darnoxDRCEXATF8rX
@@ -28,7 +29,7 @@
 ## Review Focus
 
 1. **Token of an order that exists, opened by another signed-in customer** → 404 byte-identical in behaviour to an unknown token (no redirect, no different copy). Pinned in Task 3.
-2. **Signed-out visitor from a WhatsApp link** → sign-in, then back to the *same* order URL (`next` is URL-encoded and relative). Pinned in Task 1 (`viewerOf` redirect target) and Task 3.
+2. **Signed-out visitor from a WhatsApp link** → sign-in, then back to the _same_ order URL (`next` is URL-encoded and relative). Pinned in Task 1 (`viewerOf` redirect target) and Task 3.
 3. **Disabled account with a live session** → `currentUser()` returns null → treated as signed out, never as owner. Pinned in Task 1.
 4. **Standalone delivery (`orderId` null) opened signed out** → still renders; no sign-in redirect. Pinned in Task 3.
 5. **`/orders` for a staff user** → only orders whose `userId` is the staff user's own id; never all orders. Pinned in Task 4.
@@ -140,7 +141,6 @@ describe("viewerOf", () => {
 
 Run: `pnpm exec vitest run src/lib/orders/__tests__/access.test.ts`
 Expected: FAIL — cannot resolve `@/lib/orders/access`.
-
 - [ ] **Step 3: Write the implementation**
 
 `src/lib/orders/access.ts`:
@@ -189,7 +189,6 @@ export async function viewerOf(lang: string, path: string): Promise<AuthUser> {
 
 Run: `pnpm exec vitest run src/lib/orders/__tests__/access.test.ts`
 Expected: PASS, 10 tests.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -257,7 +256,6 @@ describe("POST /api/orders without a signed-in user", () => {
 
 Run: `pnpm exec vitest run src/app/api/orders/__tests__/route.test.ts`
 Expected: the `AUTH_ENABLED=false` case FAILS (gets 400 `invalid_body`, not 401). If the import itself fails on another module touching the database at import time, add a `vi.mock` for that module path with an empty object and re-run — do not change the route to suit the test.
-
 - [ ] **Step 3: Make checkout always require a user**
 
 In `src/app/api/orders/route.ts` replace:
@@ -286,12 +284,10 @@ with:
 ```
 
 Replace `userId: user?.id ?? null,` with `userId: user.id,`. Remove the now-unused `import { authEnabled } from "@/lib/auth/enabled";`.
-
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `pnpm exec vitest run src/app/api/orders/__tests__/route.test.ts`
 Expected: PASS, 2 tests.
-
 - [ ] **Step 5: Make `userId` required in the schema**
 
 In `prisma/schema.prisma`, model `Order`, replace:
@@ -353,7 +349,6 @@ CREATE INDEX "Order_userId_createdAt_idx" ON "Order"("userId", "createdAt");
 
 Run: `pnpm exec prisma generate && pnpm typecheck`
 Expected: exit 0. Any error naming `userId` is a caller still passing `null` — fix it to pass a real id (tests: use a fixture id like `"u1"`).
-
 - [ ] **Step 8: Apply locally and verify no drift**
 
 Confirm `DATABASE_URL` in `.env.local` points at the **local/dev** database (print only the host: `node -e 'console.log(new URL(process.env.DATABASE_URL).host)'` with the env loaded). If it is a Vercel/Prisma-hosted preview or production host, STOP and ask the user.
@@ -361,12 +356,10 @@ Confirm `DATABASE_URL` in `.env.local` points at the **local/dev** database (pri
 Run: `pnpm exec prisma migrate deploy`
 Then: `pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`
 Expected: deploy applies `20260927000000_order_owner_required`; the diff prints an empty migration (no statements).
-
 - [ ] **Step 9: Run the full suite**
 
 Run: `pnpm test`
 Expected: all pass.
-
 - [ ] **Step 10: Commit**
 
 ```bash
@@ -478,11 +471,9 @@ describe("order page access", () => {
 
 Run: `pnpm exec vitest run "src/app/[lang]/order/[token]/__tests__/page.test.ts"`
 Expected: FAIL — signed-out and stranger cases render instead of redirecting / 404ing.
-
 - [ ] **Step 3: Gate the order page**
 
 In `src/app/[lang]/order/[token]/page.tsx`:
-
 1. Add imports: `import { canViewOrder, viewerOf } from "@/lib/orders/access";`
 2. Replace the header comment block above `export const metadata` with:
 
@@ -518,14 +509,13 @@ In `src/app/[lang]/order/[token]/page.tsx`:
 (keep the rest of the `select` as is), and replace `if (order === null) notFound();` with:
 
 ```ts
-	if (order === null || !canViewOrder(viewer, order)) notFound();
+if (order === null || !canViewOrder(viewer, order)) notFound();
 ```
 
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `pnpm exec vitest run "src/app/[lang]/order/[token]/__tests__/page.test.ts"`
 Expected: PASS, 4 tests. If "renders for the owner" throws on a missing fixture field, add that field to `ORDER` with a realistic value — do not loosen the page.
-
 - [ ] **Step 5: Write the failing track-page test**
 
 `src/app/[lang]/track/[token]/__tests__/page.test.ts`:
@@ -617,31 +607,27 @@ describe("track page access", () => {
 
 Run: `pnpm exec vitest run "src/app/[lang]/track/[token]/__tests__/page.test.ts"`
 Expected: FAIL — signed-out and stranger cases on an order's delivery render.
-
 - [ ] **Step 7: Gate the track page**
 
 In `src/app/[lang]/track/[token]/page.tsx`:
-
 1. Add imports: `import { canViewOrder, viewerOf } from "@/lib/orders/access";`
-2. Append to the file's header comment: ``` * A delivery that belongs to an order is locked like the order page (`lib/orders/access.ts`); a standalone admin-booked one stays link-access, since its recipient has no account.```
+2. Append to the file's header comment: `` * A delivery that belongs to an order is locked like the order page (`lib/orders/access.ts`); a standalone admin-booked one stays link-access, since its recipient has no account.``
 3. Add to the delivery `select`: `order: { select: { userId: true } },`
 4. Replace `if (delivery === null) notFound();` with:
 
 ```ts
-	if (delivery === null) notFound();
-	if (delivery.order !== null) {
-		const viewer = await viewerOf(lang, `/${lang}/track/${token}`);
-		if (!canViewOrder(viewer, delivery.order)) notFound();
-	}
+if (delivery === null) notFound();
+if (delivery.order !== null) {
+	const viewer = await viewerOf(lang, `/${lang}/track/${token}`);
+	if (!canViewOrder(viewer, delivery.order)) notFound();
+}
 ```
 
-Note the ordering: an unknown token 404s *before* any redirect, so a signed-out stranger learns nothing either; a signed-out owner of a real order-linked delivery is redirected to sign-in.
-
+Note the ordering: an unknown token 404s _before_ any redirect, so a signed-out stranger learns nothing either; a signed-out owner of a real order-linked delivery is redirected to sign-in.
 - [ ] **Step 8: Run to verify it passes**
 
 Run: `pnpm exec vitest run "src/app/[lang]/track/[token]/__tests__/page.test.ts" "src/app/[lang]/order/[token]/__tests__/page.test.ts"`
 Expected: PASS, 8 tests.
-
 - [ ] **Step 9: Typecheck, lint, commit**
 
 Run: `pnpm typecheck && pnpm lint`
@@ -725,7 +711,6 @@ git commit -m "feat(orders): only the owner or staff can open an order or its tr
 
 Run: `pnpm exec tsc --noEmit`
 Expected: exit 0 (a key missing from `ms`/`zh` fails here).
-
 - [ ] **Step 2: Write the failing page test**
 
 `src/app/[lang]/orders/__tests__/page.test.ts`:
@@ -796,7 +781,6 @@ describe("my orders page", () => {
 
 Run: `pnpm exec vitest run "src/app/[lang]/orders/__tests__/page.test.ts"`
 Expected: FAIL — cannot resolve `@/app/[lang]/orders/page`.
-
 - [ ] **Step 4: Write the page**
 
 `src/app/[lang]/orders/page.tsx`:
@@ -938,15 +922,14 @@ export default async function OrdersPage({
 
 Run: `pnpm exec vitest run "src/app/[lang]/orders/__tests__/page.test.ts"`
 Expected: PASS, 3 tests.
-
 - [ ] **Step 6: Add the entry links**
 
 `src/app/[lang]/page.tsx` — after **both** tutorials links (desktop nav ~line 222 and mobile disclosure ~line 284), add:
 
 ```tsx
-						<Link href={`/${lang}/orders`} className={navLink}>
-							{t.landing.nav.myOrders}
-						</Link>
+<Link href={`/${lang}/orders`} className={navLink}>
+	{t.landing.nav.myOrders}
+</Link>;
 ```
 
 `src/app/[lang]/order/[token]/page.tsx` — in the header, replace the breadcrumb `<span>/</span><span …>{o.breadcrumb}</span>` pair with:
@@ -1029,10 +1012,9 @@ Start `pnpm dev` with `AUTH_ENABLED` unset (auth on). Then:
 1. Signed in as account A: place an order; open `/en/orders` → it is listed; click → order page renders.
 2. Copy the order URL. Sign out. Open it → lands on `/en/sign-in?next=%2Fen%2Forder%2F…`; sign in as A → back on the order.
 3. Sign in as account B → open A's order URL → 404 page.
-4. `/en/orders` as B → empty state with *Start planning*.
+4. `/en/orders` as B → empty state with _Start planning_.
 
 Record the result (pass/fail per step) in the final report. If step 3 shows anything but the 404 page, stop — that is the defect this plan exists to prevent.
-
 - [ ] **Step 3: Pre-deploy count — STOP for the user**
 
 The migration deletes ownerless orders and cannot be undone. Do **not** run it against preview or production. Give the user this query to run against each of those databases and report the counts before deploying:

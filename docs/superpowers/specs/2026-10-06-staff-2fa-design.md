@@ -80,7 +80,6 @@ goal; the Google door relies on Google.
 
 Resend is the mail sender. Only staff have passwords, so this is a staff
 feature; customers sign in with Google and have nothing to reset.
-
 - One sender, `src/lib/email.ts` (`server-only`), a single `fetch` to
   Resend's HTTP API — no SDK — reading `RESEND_API_KEY` and `EMAIL_FROM`. The verified sending domain is
   still to be supplied; until both are set the sender logs and sends nothing.

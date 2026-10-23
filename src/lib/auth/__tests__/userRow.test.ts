@@ -9,11 +9,13 @@ describe("toUserRow", () => {
 		_count: { passkeys: 2 },
 		orders: [
 			{
+				refPrefix: "IC",
 				number: 14,
 				createdAt: new Date("2026-08-26T03:00:00Z"),
 				customerPhone: "+60123456789",
 			},
 			{
+				refPrefix: null,
 				number: 9,
 				createdAt: new Date("2026-08-20T03:00:00Z"),
 				customerPhone: "+60198765432",

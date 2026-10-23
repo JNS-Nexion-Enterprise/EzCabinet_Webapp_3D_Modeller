@@ -1,5 +1,6 @@
 import "server-only";
-import { tenant } from "@/lib/tenant";
+import { type CompanyDetails, sellerLine } from "@/lib/company/details";
+import { getCompany } from "@/lib/company/store";
 import type { Dictionary } from "./en";
 import { fill } from "./fill";
 import type { Locale } from "./locales";
@@ -19,43 +20,53 @@ const dictionaries: Record<Locale, () => Promise<Dictionary>> = {
 	ms: () => import("./ms").then((m) => m.ms),
 };
 
-/** `{brand}` and `{orderPrefix}` filled in every string, however deep; other tokens left alone. */
-function branded<T>(node: T): T {
+/** The company tokens filled in every string, however deep; other tokens left alone. */
+function branded<T>(node: T, c: CompanyDetails): T {
 	if (typeof node === "string")
 		return fill(node, {
-			brand: tenant.brand,
-			orderPrefix: tenant.orderPrefix,
+			brand: c.brand,
+			legalName: c.legalName,
+			orderPrefix: c.orderPrefix,
 		}) as T;
-	if (Array.isArray(node)) return node.map(branded) as T;
+	if (Array.isArray(node)) return node.map((n) => branded(n, c)) as T;
 	if (node && typeof node === "object")
 		return Object.fromEntries(
-			Object.entries(node).map(([key, value]) => [key, branded(value)]),
+			Object.entries(node).map(([key, value]) => [key, branded(value, c)]),
 		) as T;
 	return node;
 }
 
-const filled = new Map<Locale, Promise<Dictionary>>();
+// ponytail: one entry per locale per save in a warm instance; evict if saves ever get frequent.
+const filled = new Map<string, Dictionary>();
 
 /**
- * The company's name and contact address come from `lib/tenant`, never from
- * the dictionary files: those say `{brand}`, and this is the one place it is
- * filled, once per locale.
+ * The company's facts come from `getCompany()` (the admin-edited row), never
+ * from the dictionary files: those say `{brand}`, `{seller}` and the like, and
+ * this is the one place they are filled. Memoised on the facts themselves, so
+ * a save shows on the next call.
  */
-export function getDictionary(locale: Locale): Promise<Dictionary> {
-	let dictionary = filled.get(locale);
+export async function getDictionary(locale: Locale): Promise<Dictionary> {
+	const company = await getCompany();
+	const key = `${locale}:${JSON.stringify(company)}`;
+	let dictionary = filled.get(key);
 	if (!dictionary) {
-		dictionary = dictionaries[locale]().then((raw) => {
-			const t = branded(raw);
-			return {
-				...t,
-				common: { ...t.common, brand: tenant.brand },
-				landing: {
-					...t.landing,
-					footer: { ...t.landing.footer, email: tenant.contactEmail },
-				},
-			};
-		});
-		filled.set(locale, dictionary);
+		const t = branded(await dictionaries[locale](), company);
+		const seller = {
+			seller: sellerLine(company),
+			email: company.contactEmail,
+			phone: company.phone,
+		};
+		dictionary = {
+			...t,
+			common: { ...t.common, brand: company.brand },
+			landing: {
+				...t.landing,
+				footer: { ...t.landing.footer, email: company.contactEmail },
+			},
+			quote: { ...t.quote, soldBy: fill(t.quote.soldBy, seller) },
+			terms: { ...t.terms, seller: fill(t.terms.seller, seller) },
+		};
+		filled.set(key, dictionary);
 	}
 	return dictionary;
 }

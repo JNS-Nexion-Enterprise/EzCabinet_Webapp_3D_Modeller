@@ -111,3 +111,33 @@ describe("stripe refund status", () => {
 		expect(retrieve).toHaveBeenLastCalledWith("re_1");
 	});
 });
+
+describe("stripe start", () => {
+	const intents = vi.spyOn(
+		Object.getPrototypeOf(new Stripe("sk_test_x").paymentIntents),
+		"create",
+	);
+
+	it("describes the payment with the order's brand", async () => {
+		intents.mockResolvedValue({ id: "pi_1", client_secret: "cs_1" });
+		await stripeGateway()?.start(
+			{
+				id: "ord1",
+				ref: "IC-20260826-014",
+				brand: "Kabinet Baru",
+				totalRm: 100,
+				customerName: "A",
+				customerEmail: null,
+				customerPhone: "0123456789",
+				previousRef: null,
+			},
+			{ returnUrl: "https://x/r", notifyUrl: "https://x/n" },
+		);
+		expect(intents).toHaveBeenCalledWith(
+			expect.objectContaining({
+				description: "Kabinet Baru order IC-20260826-014",
+			}),
+			expect.anything(),
+		);
+	});
+});

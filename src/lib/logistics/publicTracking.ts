@@ -1,4 +1,4 @@
-import { tenant } from "@/lib/tenant";
+import { seedCompany } from "@/lib/company/details";
 import type { DeliveryItem, DeliveryStatusName } from "./types";
 import { deliveryItemSchema } from "./types";
 
@@ -39,9 +39,16 @@ export function trackingTone(status: DeliveryStatusName): TrackingTone {
 	return "placed";
 }
 
-/** The job number as the customer reads it back over the phone. */
-export const orderRef = (number: number): string =>
-	`${tenant.orderPrefix}-${String(number).padStart(5, "0")}`;
+/**
+ * The job number as the customer reads it back over the phone, under the prefix
+ * stored when the delivery was made. Null is a delivery from before refs were
+ * stored, made under the seed prefix.
+ */
+export const deliveryRef = (delivery: {
+	refPrefix: string | null;
+	number: number;
+}): string =>
+	`${delivery.refPrefix ?? seedCompany().orderPrefix}-${String(delivery.number).padStart(5, "0")}`;
 
 export type PublicEvent = { at: string; status: DeliveryStatusName };
 

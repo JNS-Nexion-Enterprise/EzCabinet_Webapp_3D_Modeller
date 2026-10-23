@@ -32,22 +32,21 @@ is deployed yet.
 
 ## How it works
 
-| Piece | Where | What it does |
-| --- | --- | --- |
-| Tenant values | `src/lib/tenant.ts` | EzCabinet's values are the defaults. `TENANT=demo` spreads `tenants/demo.json` over them. |
-| Demo values | `tenants/demo.json` | Brand, legal name, contact email, workshop address and phone, `heroFrames: false`. `infra/` reads the same file and ignores the keys it does not declare. |
-| Copy | `src/lib/copy/{en,ms,zh}.ts`, `dictionary.ts` | The dictionaries say `{brand}`. `getDictionary()` fills it once per locale and sets `common.brand` and the contact email from the tenant. |
+| Piece                           | Where                                                     | What it does                                                                                                                                                                |
+| ------------------------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tenant values                   | `src/lib/tenant.ts`                                       | EzCabinet's values are the defaults. `TENANT=demo` spreads `tenants/demo.json` over them.                                                                                   |
+| Demo values                     | `tenants/demo.json`                                       | Brand, legal name, contact email, workshop address and phone, `heroFrames: false`. `infra/` reads the same file and ignores the keys it does not declare.                   |
+| Copy                            | `src/lib/copy/{en,ms,zh}.ts`, `dictionary.ts`             | The dictionaries say `{brand}`. `getDictionary()` fills it once per locale and sets `common.brand` and the contact email from the tenant.                                   |
 | Literals outside the dictionary | carriers, payment, email, auth, Stripe, error page, admin | Each reads the tenant: workshop address and phone, bank account name, mail header, sign-in code subject, passkey and 2FA names, Stripe description, admin title and header. |
-| Hero | `src/app/[lang]/page.tsx`, `src/app/admin/login/page.tsx` | The frames are a render of EzCabinet's own cabinet, so they show only when `tenant.heroFrames`. |
-| Browser | `next.config.ts` | `TENANT` is inlined, because the quote screen is a client component and prints the seller. |
-| Builds | `vercel.json`, `scripts/vercel-ignore.sh` | EzCabinet's project: previews of every branch, production skipped, as before. The demo project: production from `feature/demo-tenant` only, no previews. |
-| Deploy by hand | `scripts/deploy-demo.sh` | Needs `DEMO_VERCEL_PROJECT_ID`; refuses to run without it or with EzCabinet's id. For a redeploy without a push. |
-| Guard | `src/lib/copy/__tests__/brand.test.ts` | Fails if the name is typed into a dictionary string or the demo tenant file. |
+| Hero                            | `src/app/[lang]/page.tsx`, `src/app/admin/login/page.tsx` | The frames are a render of EzCabinet's own cabinet, so they show only when `tenant.heroFrames`.                                                                             |
+| Browser                         | `next.config.ts`                                          | `TENANT` is inlined, because the quote screen is a client component and prints the seller.                                                                                  |
+| Builds                          | `vercel.json`, `scripts/vercel-ignore.sh`                 | EzCabinet's project: previews of every branch, production skipped, as before. The demo project: production from `feature/demo-tenant` only, no previews.                    |
+| Deploy by hand                  | `scripts/deploy-demo.sh`                                  | Needs `DEMO_VERCEL_PROJECT_ID`; refuses to run without it or with EzCabinet's id. For a redeploy without a push.                                                            |
+| Guard                           | `src/lib/copy/__tests__/brand.test.ts`                    | Fails if the name is typed into a dictionary string or the demo tenant file.                                                                                                |
 
 ## Status
 
 Done:
-
 - The code above, committed and pushed on `feature/demo-tenant`, no pull
   request.
 - 2026-10-14: Vercel project `planner-demo` created in the JNS team
@@ -57,7 +56,6 @@ Done:
   cabinets (three base, two wall, one tall) for a demo catalogue.
 
 Checked:
-
 - Lint, typecheck and the whole test suite pass.
 - All 32 mails from `pnpm email:preview` are byte-identical to
   `feature/development`'s.
@@ -69,7 +67,6 @@ Checked:
   projects on `main`, `feature/development` and `feature/demo-tenant`.
 
 Not checked:
-
 - How the app looks as "JNS Nexion Enterprise" against a real database, including
   the landing page without its hero image.
 - The demo project's first real production build. The fallback is in step 3
@@ -103,15 +100,15 @@ push to `feature/development` builds a preview on the demo project too.
 Without a `DATABASE_URL` in Preview that build fails at once, harmlessly,
 instead of running development's migrations against the demo database.
 
-| Name | Value |
-| --- | --- |
-| `TENANT` | `demo` |
-| `DATABASE_URL` | the demo database |
-| `BETTER_AUTH_URL`, `APP_URL` | `https://planner-demo.jnsnexion.com.my` |
-| `BETTER_AUTH_SECRET`, `CRON_SECRET`, `FLAGS_SECRET` | fresh random values, not EzCabinet's |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | the demo's client |
-| Stripe keys and webhook secret | the demo sandbox's |
-| `PAYMENT_GATEWAY_FALLBACK` | `stripe` |
+| Name                                                | Value                                   |
+| --------------------------------------------------- | --------------------------------------- |
+| `TENANT`                                            | `demo`                                  |
+| `DATABASE_URL`                                      | the demo database                       |
+| `BETTER_AUTH_URL`, `APP_URL`                        | `https://planner-demo.jnsnexion.com.my` |
+| `BETTER_AUTH_SECRET`, `CRON_SECRET`, `FLAGS_SECRET` | fresh random values, not EzCabinet's    |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`          | the demo's client                       |
+| Stripe keys and webhook secret                      | the demo sandbox's                      |
+| `PAYMENT_GATEWAY_FALLBACK`                          | `stripe`                                |
 
 Leave out `RESEND_API_KEY` and the WhatsApp token. The demo then sends no
 mail and no messages, and sign-in is by Google.
@@ -144,11 +141,11 @@ vercel deploy --prebuilt --prod
 The catalogue settings seed themselves: `scripts/vercel-build.sh` runs
 `prisma/seed.ts` on every build of a project with `TENANT` set. It only
 creates what is missing, and the landing page cannot be built without it.
-
 1. Create the first admin, with the demo database's URL in the environment.
    Vercel will not hand out a sensitive variable, so copy the URL from the
    database's page in the Storage tab. A value already in the environment
    wins over `.env.local`.
+
    ```bash
    DATABASE_URL=... SUPERADMIN_EMAIL=... SUPERADMIN_PASSWORD=... pnpm seed:superadmin
    ```
@@ -180,7 +177,6 @@ Subang Jaya's industrial area) and the bundled images now all come from
 `tenants/demo.json`. The build deletes `public/hero-frames` and
 `public/finishes` when the tenant file turns them off, so they cannot be
 fetched by path either. What is left:
-
 - The six seeded finish names and the kitchen dimensions in `CONSTRUCTION`.
   Rename the finishes by hand in step 4.
 - The browser keys `ezcabinet.planner.*` (draft, sign-in nudge). Only visible

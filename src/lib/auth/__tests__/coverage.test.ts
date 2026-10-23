@@ -93,6 +93,7 @@ describe("every admin surface is gated", () => {
 			["orders/[id]/paid/route.ts", "POST"],
 			["orders/[id]/refunded/route.ts", "POST"],
 			["orders/[id]/refund/route.ts", "POST"],
+			["company/route.ts", "POST"],
 			["users/route.ts", "POST"],
 			["users/[id]/route.ts", "PATCH"],
 			["users/[id]/route.ts", "DELETE"],

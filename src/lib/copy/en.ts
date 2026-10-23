@@ -139,6 +139,23 @@ export const en = {
 		diyTutorials: "DIY tutorials",
 		clear: "Clear",
 		dimensionAriaSuffix: "{label} in millimetres",
+		phone: {
+			backHome: "Home",
+			backRooms: "Rooms",
+			backEdit: "Edit",
+			wallSubtitle: "{m} m wall",
+			tapHint: "Tap a cabinet to edit it",
+			tabsLabel: "Studio panels",
+			tabs: {
+				selected: "Selected",
+				add: "Add",
+				room: "Room",
+				run: "Run",
+			},
+			doorsAria: "Doors: {mode}. Tap to change.",
+			/** `price.cta` cut to fit beside the total in the bar. */
+			quoteCta: "Get a quote",
+		},
 		tools: {
 			ariaLabel: "Tools",
 			select: "Select",
@@ -414,7 +431,7 @@ export const en = {
 		termsLink: "Terms of sale",
 		refundsLink: "Refund policy",
 		errorTerms: "Tick this to place your order.",
-		soldBy: "Sold by {address}. Contact {email} or {phone}.",
+		soldBy: "Sold by {seller}. Contact {email} or {phone}.",
 		submitting: "Placing your order…",
 		descriptionOnline:
 			"A designer re-measures on site before anything is built.",
@@ -608,7 +625,7 @@ export const en = {
 	/** Draft wording — EzCabinet's counsel approves it before production. */
 	privacy: {
 		title: "Privacy notice",
-		draft: "Draft — pending review by {brand} Sdn Bhd before it takes effect.",
+		draft: "Draft — pending review by {legalName} before it takes effect.",
 		intro:
 			"This notice explains what the {brand} planner records when you use it, and why.",
 		purposeHeading: "Why",
@@ -662,7 +679,7 @@ export const en = {
 		intro:
 			"These terms apply when you order cabinets through the {brand} planner. Please read them with the refund policy before you pay.",
 		sellerHeading: "Who you are buying from",
-		seller: "{address}. Email {email}, phone {phone}.",
+		seller: "{seller}. Email {email}, phone {phone}.",
 		goodsHeading: "What you are buying",
 		goods:
 			"Cabinets made to order from the design you submit. The 3D view is an illustration; final dimensions are confirmed when we re-measure your site.",

@@ -13,13 +13,13 @@ U-shape is out of scope, but the data model must admit it without a reshape.
 
 ## Decisions
 
-| Question | Decision |
-| --- | --- |
-| Shapes offered | Straight and L. U later. |
-| What fills the corner | A **corner design** uploaded by the admin, like every other cabinet — categories `CORNER_BASE_CABINET` and `CORNER_WALL_CABINET`. |
-| Corner before one is placed | The square stays reserved and empty; both runs stop at it. The L is usable before any corner design exists. |
-| Model | Runs, each still one-dimensional (approach 1). Rejected: a separate `returnRun` field (branches everywhere, reshapes again for U); free 2D placement (throws away snapping, gaps, worktop spans, exposure). |
-| Mock data | No real corner export exists yet. A script generates mock corner OBJs in the client's part naming, uploaded through the normal admin flow. |
+| Question                    | Decision                                                                                                                                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Shapes offered              | Straight and L. U later.                                                                                                                                                                                    |
+| What fills the corner       | A **corner design** uploaded by the admin, like every other cabinet — categories `CORNER_BASE_CABINET` and `CORNER_WALL_CABINET`.                                                                           |
+| Corner before one is placed | The square stays reserved and empty; both runs stop at it. The L is usable before any corner design exists.                                                                                                 |
+| Model                       | Runs, each still one-dimensional (approach 1). Rejected: a separate `returnRun` field (branches everywhere, reshapes again for U); free 2D placement (throws away snapping, gaps, worktop spans, exposure). |
+| Mock data                   | No real corner export exists yet. A script generates mock corner OBJs in the client's part naming, uploaded through the normal admin flow.                                                                  |
 
 ## 1. Data model
 
@@ -27,14 +27,19 @@ U-shape is out of scope, but the data model must admit it without a reshape.
 type Run = { floor: PlacedModule[]; wall: PlacedModule[] };
 
 type PlannerLayout = {
-  wallWidthMm; roomDepthMm; ceilingHeightMm; hangingHeightMm;
-  wallToCeiling; baseSkirting; wallToWall;      // unchanged, shared by all runs
-  runs: [Run] | [Run, Run];   // [main] = straight, [main, return] = L
-  corner: {
-    side: "left" | "right";   // which end of the main wall the return wall is at
-    floor: PlacedModule | null;
-    wall: PlacedModule | null;
-  } | null;                   // null exactly when runs.length === 1
+	wallWidthMm;
+	roomDepthMm;
+	ceilingHeightMm;
+	hangingHeightMm;
+	wallToCeiling;
+	baseSkirting;
+	wallToWall; // unchanged, shared by all runs
+	runs: [Run] | [Run, Run]; // [main] = straight, [main, return] = L
+	corner: {
+		side: "left" | "right"; // which end of the main wall the return wall is at
+		floor: PlacedModule | null;
+		wall: PlacedModule | null;
+	} | null; // null exactly when runs.length === 1
 };
 ```
 
@@ -51,7 +56,6 @@ Stays framework-free: `(layout, catalogue) => result`.
 
 **Each run is a straight layout.** Engine functions take `(layout, id)` and ids are
 unique across the whole layout, so:
-
 - `runOf(layout, id)` — which run holds this module.
 - `runView(layout, i)` — a single-wall `PlannerLayout` built from the shared
   settings plus that run's rows, `wallWidthMm` set to the run's length.
@@ -64,7 +68,6 @@ are not rewritten.
 **The corner square is a reserved span, not a coordinate shift.** `xMm` stays in
 true wall coordinates on both runs. The square enters each row's
 `occupiedSpans`:
-
 - main run: `[0, d]` when `side` is left, `[W − d, W]` when right;
 - return run: always `[0, d]`.
 
@@ -74,7 +77,6 @@ checked against both rows' corner spans, the same cross-row rule it already has
 against wall units.
 
 **New functions**
-
 - `setShape(layout, "straight" | "L", side?)` — adds an empty return run and an
   empty corner, or removes them. Removing is refused while the return run or the
   corner holds anything.
@@ -114,8 +116,8 @@ against wall units.
   front faces.
 - **Exposure**: a filled corner covers the adjacent run ends; an empty corner
   leaves them exposed and charged. A corner unit is never charged end panels — its
-  ends belong to the design. *Assumption; confirm with EzCabinet (add to CLAUDE.md
-  open questions).*
+  ends belong to the design. _Assumption; confirm with EzCabinet (add to CLAUDE.md
+  open questions)._
 - **Price**: the corner unit is a cabinet line at its design's all-in price, plus
   the door-style surcharge like any other.
 - **Orders**: `validate.ts`, `price.ts` and `items.ts` read `allModules`.
@@ -166,8 +168,8 @@ against wall units.
   one wall's layout — and is what `runView` hands the existing engine. This keeps
   the one-wall engine, its tests, the measuring tool and the scene's `Run`
   unchanged. `roomEngine(catalogue)` is the document-level engine.
-- **Run coordinates.** Every run's `xMm` is left-to-right *as seen facing that
-  wall from inside the room*. So the reserved corner span is: main run `[0, d]`
+- **Run coordinates.** Every run's `xMm` is left-to-right _as seen facing that
+  wall from inside the room_. So the reserved corner span is: main run `[0, d]`
   for a left corner, `[W − d, W]` for a right one; side run `[D − d, D]` for a
   left corner, `[0, d]` for a right one. (Replaces "return run: always `[0, d]`".)
   With this, the side run is drawn by the same `Run` component turned ±90°, with

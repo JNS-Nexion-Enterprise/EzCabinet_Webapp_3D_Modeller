@@ -24,6 +24,7 @@ import { whatsappConfigured } from "./send";
 /** The order fields a message needs. Select exactly these wherever one is built. */
 export const NOTIFY_ORDER_SELECT = {
 	id: true,
+	refPrefix: true,
 	number: true,
 	createdAt: true,
 	publicToken: true,
@@ -38,6 +39,7 @@ export const NOTIFY_ORDER_SELECT = {
 
 export type NotifyOrder = {
 	id: string;
+	refPrefix: string | null;
 	number: number;
 	createdAt: Date;
 	publicToken: string;
@@ -144,7 +146,7 @@ const money = (amount: number) =>
 export function draftFor(event: NotifyEvent): NotificationDraft | null {
 	const { order } = event;
 	if (!order.whatsappOptIn) return null;
-	const ref = orderRef(order.number, order.createdAt);
+	const ref = orderRef(order);
 	const base = {
 		orderId: order.id,
 		deliveryId: null,

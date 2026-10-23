@@ -1,5 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthUser } from "@/lib/auth/session";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
+
+vi.mock("@/lib/company/store", () => ({
+	getCompany: vi.fn(async () => testCompany()),
+}));
 
 const currentUser = vi.hoisted(() => vi.fn<() => Promise<AuthUser | null>>());
 vi.mock("@/lib/auth/session", () => ({ currentUser }));
