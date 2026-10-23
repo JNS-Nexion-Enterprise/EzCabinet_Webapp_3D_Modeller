@@ -1,4 +1,4 @@
-import { renderEmail } from "../layout";
+import { type MailCompany, renderEmail } from "../layout";
 
 /**
  * Tells a new staff member that an account exists and where to sign in. The
@@ -6,6 +6,7 @@ import { renderEmail } from "../layout";
  * themselves, so a mailbox alone never opens a staff account.
  */
 export function staffInvite(input: {
+	company: MailCompany;
 	name: string;
 	inviterName: string;
 	role: string;
@@ -14,7 +15,8 @@ export function staffInvite(input: {
 	to: string;
 	hasPassword: boolean;
 }) {
-	const subject = "You've been invited to EzCabinet Admin";
+	const { brand } = input.company;
+	const subject = `You've been invited to ${brand} Admin`;
 	const how = input.hasPassword
 		? "Sign in with Google using this email address, or with the temporary password they will give you. You will be asked to choose your own password and set up an authenticator app."
 		: "Keep signing in with Google, using this email address.";
@@ -22,14 +24,15 @@ export function staffInvite(input: {
 		subject,
 		...renderEmail({
 			locale: "en",
+			company: input.company,
 			about: "account",
-			preheader: `${input.inviterName} invited you to the EzCabinet admin tool as ${input.role}.`,
+			preheader: `${input.inviterName} invited you to the ${brand} admin tool as ${input.role}.`,
 			heading: subject,
 			blocks: [
 				{ type: "paragraph", text: `Hi ${input.name},` },
 				{
 					type: "paragraph",
-					text: `${input.inviterName} has given you access to the EzCabinet admin tool. ${how}`,
+					text: `${input.inviterName} has given you access to the ${brand} admin tool. ${how}`,
 				},
 				{
 					type: "box",

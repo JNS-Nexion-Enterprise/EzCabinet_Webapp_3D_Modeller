@@ -4,12 +4,12 @@ import { useEffect, useId, useState } from "react";
 import { ImageSlot } from "@/components/admin/ImageSlot";
 import { fieldClass } from "@/components/admin/styles";
 import { finishSlot } from "@/lib/catalogue/siteImages";
+import { BUNDLED_FINISH_TEXTURES } from "@/lib/finishPhotos";
 import { constructionOf, ratesOf, WALL_COLOURS } from "@/lib/planner/catalogue";
 import type {
 	PlannerCatalogue,
 	WallColour,
 } from "@/lib/planner/catalogueSchema";
-import { DEFAULT_FINISH_TEXTURES } from "@/lib/planner/finishTextures";
 
 /**
  * Everything in the planner catalogue that is not a cabinet: door styles and
@@ -380,7 +380,7 @@ export function CatalogueSettings({
 						{draft.finishes.map((finish, i) => {
 							const board =
 								finishPhotos[finishSlot(finish.id)] ??
-								DEFAULT_FINISH_TEXTURES[finish.id] ??
+								BUNDLED_FINISH_TEXTURES[finish.id] ??
 								null;
 							return (
 								<div key={finish.id} className="flex items-center gap-2">

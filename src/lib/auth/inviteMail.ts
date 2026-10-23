@@ -1,5 +1,6 @@
 import "server-only";
 import { ROLE_LABELS, type Role } from "@/lib/auth/permissions";
+import { getCompany } from "@/lib/company/store";
 import { sendEmail } from "@/lib/email";
 import { staffInvite } from "@/lib/email/templates/staffInvite";
 
@@ -22,7 +23,7 @@ const ROLE_DESCRIPTIONS: Partial<Record<Role, string>> = {
  * to set your password" and expiry lines are dropped because an invite here
  * creates the account at once and carries no token.
  */
-export function sendStaffInvite(input: {
+export async function sendStaffInvite(input: {
 	to: string;
 	name: string;
 	inviterName: string;
@@ -30,9 +31,11 @@ export function sendStaffInvite(input: {
 	base: string;
 	hasPassword: boolean;
 }): Promise<boolean> {
+	const company = await getCompany();
 	return sendEmail({
 		to: input.to,
 		...staffInvite({
+			company,
 			name: input.name,
 			inviterName: input.inviterName,
 			role: ROLE_LABELS[input.role],

@@ -1,48 +1,69 @@
+import { Karla } from "next/font/google";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type React from "react";
 import { Suspense } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import HeroBuild from "@/components/landing/HeroBuild";
+import LandingMenu from "@/components/landing/LandingMenu";
 import RevealOnEnter from "@/components/scroll/RevealOnEnter";
-import ScrollSequence from "@/components/scroll/ScrollSequence";
-import ScrollTrack from "@/components/scroll/ScrollTrack";
 import { prisma } from "@/lib/catalogue/db";
-import { finishSlot, roomSlot, siteImageSrc } from "@/lib/catalogue/siteImages";
+import {
+	finishSlot,
+	HERO_SLOT,
+	HOW_SLOT,
+	roomSlot,
+	siteImageSrc,
+} from "@/lib/catalogue/siteImages";
 import { getPublishedPlannerCatalogue } from "@/lib/catalogue/store";
 import { getDictionary } from "@/lib/copy/dictionary";
 import type { Dictionary } from "@/lib/copy/en";
 import { fill } from "@/lib/copy/fill";
 import { isLocale } from "@/lib/copy/locales";
+import { BUNDLED_FINISH_TEXTURES } from "@/lib/finishPhotos";
 import type { RoomTypeId } from "@/lib/planner/catalogue";
-import {
-	DEFAULT_FINISH_TEXTURES,
-	SWATCH_ZOOM,
-} from "@/lib/planner/finishTextures";
-import { HERO_POSTER_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
+import { SWATCH_ZOOM } from "@/lib/planner/finishTextures";
+import { BUILD_QUERY } from "@/lib/scroll/beats";
 
 /**
- * Design tokens for this page, stated once.
- *
- * The base is the incumbent brand: warm paper (`#e9e7e3`), raised warm white
- * (`#fdfcfb`), ink for actions. What was missing was any accent at all — every
- * element was the same neutral, so nothing could be emphasised without making
- * it bigger. `ACCENT` is the one accent on the page and it appears nowhere as
- * decoration: eyebrow, price figure, links, and the closing band. Nothing else.
- *
- * Radius is locked to 12px everywhere — cards, images, buttons — because the
- * page previously mixed six different values.
+ * The page's body face. Latin only: Han falls through to the system CJK fonts
+ * named after it in `FONT_STACK`, as it does everywhere else in the app.
  */
-const ACCENT = "#2c5f47";
-/** `ACCENT` under a hover, at the mockup's own ratio (about 78%). */
-const ACCENT_HOVER = "#224a37";
-const PAPER = "#e9e7e3";
-const RAISED = "#fdfcfb";
-const RULE = "#d9d5cd";
+const karla = Karla({
+	variable: "--font-karla",
+	weight: ["400", "500", "600", "700"],
+	subsets: ["latin"],
+	display: "swap",
+});
+const FONT_STACK = `var(--font-karla), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif`;
+
 /**
- * The menu bar is `RAISED` at 88% over a blur rather than opaque, so the hero
- * photograph moves under it instead of stopping at a hard edge.
+ * Design tokens for this page, stated once, from the "EzCabinet Webpage
+ * Design" Landing file: warm paper, walnut ink, and the brand green as the one
+ * accent — buttons, step numbers, links and the build's progress bar, nothing
+ * else. Set as custom properties so the classes below can reach them.
  */
-const BAR = "rgba(253, 252, 251, 0.88)";
+const TOKENS = {
+	"--paper": "#fbf8f4",
+	"--ink": "#221a13",
+	"--body": "#4a3a2a",
+	"--muted": "#5c4d3c",
+	"--soft": "#6b5a45",
+	"--rule": "#e6dccc",
+	"--eyebrow": "#7a5a3a",
+	"--accent": "#1f5138",
+	"--accent-hover": "#17402c",
+	"--accent-active": "#123322",
+	"--stage": "#e6e3de",
+	"--walnut": "#2c2015",
+	"--oat": "#f2ece1",
+	"--night": "#1c140c",
+} as React.CSSProperties;
+
+/** A 1×1 gif: what a desktop that runs the build loads in place of the hero photo. */
+const BLANK =
+	"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
 const rm = (amount: number) =>
 	amount.toLocaleString("en-MY", {
@@ -50,37 +71,17 @@ const rm = (amount: number) =>
 		maximumFractionDigits: 2,
 	});
 
-const roomSubtitles = (t: Dictionary): Record<RoomTypeId, string> => ({
-	kitchen: t.landing.gallery.roomSubtitle.kitchen,
-	living: t.landing.gallery.roomSubtitle.living,
-	bedroom: t.landing.gallery.roomSubtitle.bedroom,
-	foyer: t.landing.gallery.roomSubtitle.foyer,
-});
-
 /**
- * The tone a room card carries before anyone uploads a photo of it. Kept
- * inside the brand's own neutral band so four unphotographed cards still read
- * as one set rather than four placeholders.
+ * The tone a room row carries before anyone uploads a photo of it. Kept
+ * inside the page's own warm band so four unphotographed rows still read as
+ * one set rather than four placeholders.
  */
 const ROOM_TONE: Record<RoomTypeId, string> = {
-	kitchen: "#cfc6b6",
-	living: "#c7ccc6",
-	bedroom: "#d3cbc2",
-	foyer: "#c3c8cc",
+	kitchen: "#d9cdb9",
+	living: "#cfc8bb",
+	bedroom: "#ddd2c3",
+	foyer: "#cbc4b8",
 };
-
-/**
- * The bento. Four rooms, four cells, eight tracks: the lead room takes a 2x2
- * and the rest tile the remainder exactly, so the grid never ends on a hole.
- * Written out in full because Tailwind only sees class names it can read in
- * the source.
- */
-const ROOM_SPAN = [
-	"min-h-[300px] lg:col-span-2 lg:row-span-2 lg:min-h-0",
-	"min-h-[200px] lg:col-span-2 lg:min-h-0",
-	"min-h-[200px] lg:min-h-0",
-	"min-h-[200px] lg:min-h-0",
-];
 
 const howItWorks = (t: Dictionary) => [
 	{ title: t.landing.how.step1Title, detail: t.landing.how.step1Detail },
@@ -99,35 +100,38 @@ const faqs = (t: Dictionary) => [
 /**
  * A homepage photo, or what stands in until someone drops one on
  * `/admin/site-content`. Every slot is optional, so the page has to look
- * deliberate with no photography at all, which is its state today.
- *
- * `fallbackSrc` lets a slot name a real image that ships in the repo rather
- * than a flat panel. The hero uses it: a photograph of a board the client
- * actually buys beats a tinted rectangle, and a client upload still wins.
+ * deliberate with no photography at all.
  */
 function Photo({
 	url,
 	alt,
 	className = "",
-	fallbackSrc,
 	fallbackStyle,
 }: {
 	url: string | null;
 	alt: string;
 	className?: string;
-	fallbackSrc?: string;
 	fallbackStyle?: React.CSSProperties;
 }) {
-	const src = url ?? fallbackSrc ?? null;
-	if (!src) {
+	if (!url)
 		return <div className={className} style={fallbackStyle} aria-hidden />;
-	}
 	// Plain <img>: the photos live on a Blob host next/image isn't configured
 	// for, and adding a remote pattern for a bucket whose domain varies per
 	// deploy is more moving parts than the optimisation is worth here.
 	// biome-ignore lint/performance/noImgElement: see above
-	return <img src={src} alt={alt} className={`object-cover ${className}`} />;
+	return <img src={url} alt={alt} className={`object-cover ${className}`} />;
 }
+
+const eyebrow =
+	"mb-3 font-bold text-(--eyebrow) text-[12px] uppercase tracking-[0.14em]";
+/** One list item's place in its section's staggered arrival (`globals.css`). */
+const stagger = (i: number) => ({ "--i": i }) as React.CSSProperties;
+const primary =
+	"inline-flex min-h-12 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-7 font-semibold text-[14px] text-white transition-[background-color,translate,scale] duration-500 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:scale-[0.97] active:bg-(--accent-active)";
+const navLink =
+	"inline-flex min-h-9 items-center rounded-lg px-2.5 text-(--body) text-[13px] transition-colors hover:bg-(--oat) hover:text-(--ink)";
+const footerLink =
+	"text-[#d9cdb9] text-[13px] transition-colors hover:text-white";
 
 export default async function Home({
 	params,
@@ -137,8 +141,8 @@ export default async function Home({
 	const { lang } = await params;
 	if (!isLocale(lang)) notFound();
 
-	// Read the live catalogue so the swatch row, the room strip and the hero
-	// price can't drift from what the planner actually offers after a publish.
+	// Read the live catalogue so the board tiles, the room rows and the price
+	// can't drift from what the planner actually offers after a publish.
 	const [{ data: catalogue }, siteImages, t] = await Promise.all([
 		getPublishedPlannerCatalogue(),
 		prisma.siteImage.findMany(),
@@ -148,72 +152,65 @@ export default async function Home({
 		siteImages.map((i) => [i.key, siteImageSrc(i.key, i.updatedAt)]),
 	);
 
-	// The cheapest cabinet a customer can place. Rooms open on an empty wall
-	// now, so there is no starter run to price; this is the one figure true for
-	// every visitor whatever they go on to build. Infinity when nothing is live.
+	// The cheapest cabinet a customer can place: the one figure true for every
+	// visitor whatever they go on to build. The design's "full kitchens from"
+	// would be a number nobody has priced. Infinity when nothing is live.
 	const fromRm = Math.min(
 		...catalogue.families.flatMap((family) =>
 			family.sizes.map((size) => size.priceRm),
 		),
 	);
+	const price = Number.isFinite(fromRm) ? (
+		<>
+			{t.landing.hero.fromLabel}{" "}
+			<strong className="text-(--ink)">RM {rm(fromRm)}</strong>
+		</>
+	) : null;
 
-	/**
-	 * Every figure here is a claim already made in the FAQ or the planner. None
-	 * of it is invented: a fabricated statistic on a fabricator's homepage is
-	 * the one thing their sales team would have to walk back on a call.
-	 */
-	const FACTS = [
-		...(Number.isFinite(fromRm)
-			? [
-					{
-						value: `RM ${rm(fromRm)}`,
-						label: t.landing.facts.cabinetsFromLabel,
-					},
-				]
-			: []),
-		{
-			value: t.landing.facts.typicalDeliveryValue,
-			label: t.landing.facts.typicalDeliveryLabel,
-		},
-		{
-			value: t.landing.facts.warrantyValue,
-			label: t.landing.facts.warrantyLabel,
-		},
-		{
-			value: t.landing.facts.noAccountValue,
-			label: t.landing.facts.noAccountLabel,
-		},
-	];
+	// The supplier's board scan if there is one, otherwise the flat catalogue
+	// colour. Never a generated grain: these tiles are a promise about what the
+	// client will cut, and a finish nobody has photographed is a colour.
+	const boardStyle = (finish: { id: string; hex: string }) => {
+		const board =
+			photo.get(finishSlot(finish.id)) ?? BUNDLED_FINISH_TEXTURES[finish.id];
+		return {
+			backgroundColor: finish.hex,
+			// Zoomed to one door's width of board, the scale the planner draws
+			// it at, so the page and the cabinet look like the same material.
+			...(board && {
+				backgroundImage: `url(${board})`,
+				backgroundSize: SWATCH_ZOOM,
+			}),
+		};
+	};
 
-	/** One row of links, rendered twice: the lg nav and the small-screen menu. */
 	const sections: [string, string][] = [
+		[t.landing.nav.material, "#materials"],
 		[t.landing.nav.howItWorks, "#how"],
 		[t.landing.nav.gallery, "#gallery"],
 		[t.landing.nav.finishes, "#finishes"],
 		[t.landing.nav.faq, "#faq"],
 	];
-	const navLink =
-		"inline-flex min-h-9 items-center rounded-lg px-2.5 text-[13px] text-neutral-600 transition-colors hover:text-neutral-900";
+	const captions = [
+		t.landing.build.step1,
+		t.landing.build.step2,
+		t.landing.build.step3,
+		t.landing.build.step4,
+	];
+	const heroPhoto = photo.get(HERO_SLOT) ?? null;
 
 	return (
 		<div
-			className="flex min-h-screen flex-col text-neutral-900"
-			style={{ backgroundColor: PAPER }}
+			data-landing
+			className={`${karla.variable} flex min-h-screen flex-col bg-(--paper) text-(--ink) antialiased`}
+			style={{ ...TOKENS, fontFamily: FONT_STACK }}
 		>
 			{/* Nav */}
-			<header
-				className="sticky top-0 z-10 border-b backdrop-blur-[8px]"
-				style={{ backgroundColor: BAR, borderColor: RULE }}
-			>
-				<div className="mx-auto flex h-[68px] max-w-[1220px] items-center justify-between gap-6 px-6 sm:px-8">
-					{/* The one serif on the page. A wordmark is the only string here
-					    that is a name rather than a label. */}
+			<header className="sticky top-0 z-20 border-(--rule) border-b bg-[rgba(251,248,244,.88)] backdrop-blur-[8px]">
+				<div className="mx-auto flex h-[68px] max-w-[1220px] items-center justify-between gap-5 px-4 sm:px-8">
 					<span className="shrink-0 font-serif text-[18px] tracking-[-0.01em]">
 						{t.common.brand}
 					</span>
-					{/* Tight gap, padding on each link instead: the tap target is the
-					    padded box, not just the glyphs. Below lg the row moves into
-					    the disclosure — the CTA is what matters on mobile. */}
 					<nav className="hidden items-center gap-1.5 lg:flex">
 						{sections.map(([label, href]) => (
 							<a key={href} href={href} className={navLink}>
@@ -224,10 +221,7 @@ export default async function Home({
 							{t.landing.nav.tutorials}
 						</Link>
 					</nav>
-					<div className="flex shrink-0 items-center gap-4">
-						{/* Inline here rather than the strip above the bar: one row of
-						    chrome, and the language sits where the reader is already
-						    looking for it. `useSearchParams` needs the boundary. */}
+					<div className="flex shrink-0 items-center gap-2 sm:gap-4">
 						<div className="hidden lg:block">
 							<Suspense fallback={null}>
 								<LanguageSwitcher
@@ -238,8 +232,7 @@ export default async function Home({
 							</Suspense>
 						</div>
 						{/* Below sm the row cannot fit it beside the CTA (Malay overflows
-						    360px), so the disclosure carries a My orders link instead —
-						    signed out, that page bounces through sign-in and back. */}
+						    360px), so the disclosure carries a My orders link instead. */}
 						<div className="hidden sm:block">
 							<AccountMenu
 								lang={lang}
@@ -254,62 +247,39 @@ export default async function Home({
 						</div>
 						<Link
 							href={`/${lang}/planner`}
-							className="inline-flex min-h-9 items-center rounded-[9px] bg-[var(--cta)] px-4.5 font-semibold text-[13px] text-white transition-[transform,background-color] hover:bg-[var(--cta-hover)] active:translate-y-px"
-							style={
-								{
-									"--cta": ACCENT,
-									"--cta-hover": ACCENT_HOVER,
-								} as React.CSSProperties
-							}
+							className="inline-flex min-h-11 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-3.5 font-semibold text-[13px] text-white transition-[background-color,translate,scale] duration-500 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:scale-[0.97] active:bg-(--accent-active) sm:px-4.5 lg:min-h-9"
 						>
 							{t.landing.nav.startPlanning}
 						</Link>
-						{/*
-						 * The small-screen menu. `<details>` rather than a client
-						 * component: this page is server-rendered end to end, and a
-						 * disclosure is the one interaction HTML already ships —
-						 * Esc, focus and the toggle come free, with no hydration.
-						 */}
-						<details className="relative lg:hidden">
-							<summary
-								aria-label={t.landing.nav.menu}
-								className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-lg px-2 text-neutral-600 transition-colors marker:content-none hover:text-neutral-900 [&::-webkit-details-marker]:hidden"
-							>
-								<svg
-									width="18"
-									height="18"
-									viewBox="0 0 18 18"
-									fill="none"
-									stroke="currentColor"
-									strokeWidth="1.5"
-									strokeLinecap="round"
-									aria-hidden="true"
-								>
-									<path d="M2 5h14M2 9h14M2 13h14" />
-								</svg>
-							</summary>
-							<div
-								className="absolute right-0 top-[calc(100%+20px)] flex w-56 flex-col rounded-xl border p-2 shadow-lg"
-								style={{ backgroundColor: RAISED, borderColor: RULE }}
+						<div className="flex lg:hidden">
+							<LandingMenu
+								openLabel={t.landing.nav.menu}
+								closeLabel={t.common.close}
 							>
 								{sections.map(([label, href]) => (
-									<a key={href} href={href} className={navLink}>
+									<a
+										key={href}
+										href={href}
+										className="flex min-h-12 items-center border-[#eee6d9] border-b text-(--ink) text-[15px] active:bg-(--oat)"
+									>
 										{label}
 									</a>
 								))}
-								<Link href={`/${lang}/tutorials`} className={navLink}>
+								<Link
+									href={`/${lang}/tutorials`}
+									className="flex min-h-12 items-center border-[#eee6d9] border-b text-(--ink) text-[15px] active:bg-(--oat)"
+								>
 									{t.landing.nav.tutorials}
 								</Link>
+								{/* Below sm the account menu is not in the bar, so My orders
+								    is here instead; signed out, it bounces through sign-in. */}
 								<Link
 									href={`/${lang}/orders`}
-									className={`${navLink} sm:hidden`}
+									className="flex min-h-12 items-center border-[#eee6d9] border-b text-(--ink) text-[15px] active:bg-(--oat) sm:hidden"
 								>
 									{t.account.myOrders}
 								</Link>
-								<div
-									className="mt-1 border-t px-2.5 pt-2 pb-1"
-									style={{ borderColor: RULE }}
-								>
+								<div className="pt-3">
 									<Suspense fallback={null}>
 										<LanguageSwitcher
 											current={lang}
@@ -318,414 +288,458 @@ export default async function Home({
 										/>
 									</Suspense>
 								</div>
-							</div>
-						</details>
+							</LandingMenu>
+						</div>
 					</div>
 				</div>
 			</header>
 
-			{/* Hero — full bleed, and the one place the product argues for itself.
-
-			    It is not a photograph. It is a rendered cabinet coming apart as you
-			    scroll: the carcass, the doors, the hinges, the drawer boxes, drawn
-			    frame by frame off `--p`. A photograph of a finished kitchen says the
-			    same thing every competitor's homepage says; the explosion says the
-			    thing only this company can say, which is that the cabinet is a known
-			    set of parts they can quote you on today.
-
-			    The frames are light grey, so this hero is light — dark ink on paper,
-			    not the white-on-black it was while a photo was behind it.
-
-			    It has to hold up with no sequence at all: `ScrollSequence` refuses to
-			    run under 900px or on reduced motion, and never fetches its 1.7 MB
-			    there. Underneath is a plain `<img>` of frame 0, the cabinet assembled
-			    — which is the honest still, and the LCP element. */}
-			<ScrollTrack viewports={3}>
-				{/* The ground and the stage's mask are both in `globals.css`: they
-				    are shared with the admin sign-in panel, and the ground has to
-				    follow the stage across a breakpoint, which an inline style
-				    cannot express. */}
-				<section
-					data-cabinet-ground="hero"
-					className="relative isolate flex h-full w-full items-center overflow-hidden"
-				>
-					{/* The stage. Full width where the copy sits over it, the right
-					    side of the section once there is room for the two side by
-					    side — the frames are composed tightly enough that a
-					    full-bleed cabinet runs straight through the headline.
-
-					    The box is 16:9 because the frames are, so the picture fills
-					    it exactly and its edge and the box's are the same edge — which
-					    is what lets one mask handle both.
-
-					    The mask on it is structural, not decoration — see
-					    `[data-cabinet-stage]` in `globals.css`. The
-					    poster and the canvas share this one box so the still and the
-					    sequence land in exactly the same place — otherwise the
-					    cabinet would jump the moment the first frame decoded.
-
-					    From 1800px (`3xl`) the stage stops tracking the viewport and anchors
-					    to the page's centre instead: 1240px wide, its middle 260px
-					    right of centre, which is where 68% of a 1440px screen puts
-					    it. Left at 68% of the viewport, a 3440px monitor drew a
-					    2,300px cabinet running far past the menu bar's right edge,
-					    with the headline shrunk to a footnote beside it. The ground
-					    in `globals.css` follows it at the same breakpoint. */}
+			{/* Hero A — the scroll build, wherever motion is allowed. An empty
+			    room fills with a kitchen over five viewports of scroll, with a
+			    caption per stage and an example kitchen's total counting up. The
+			    intro copy is server-rendered and readable before three arrives;
+			    every other overlay starts hidden and only `HeroBuild` shows it.
+			    If WebGL fails, the island swaps this for the photo hero (see
+			    `[data-build-failed]` in `globals.css`). It starts under the
+			    translucent header, as the design's does, which is what the
+			    overlays' top padding is for. Under 760px the copy and captions
+			    move to the top and the total to the bottom, so the room shows
+			    between them. */}
+			<div
+				data-build-track
+				className="relative -mt-[68px] hidden h-[500vh] bg-(--stage) motion-safe:block"
+			>
+				<div className="sticky top-0 h-svh min-h-[480px] overflow-hidden bg-(--stage)">
+					<HeroBuild labelFont={karla.style.fontFamily} />
 					<div
-						data-cabinet-stage
-						className="-z-20 -right-[18%] absolute bottom-[14%] aspect-[16/9] w-[136%] lg:-translate-y-1/2 lg:top-1/2 lg:right-0 lg:bottom-auto lg:w-[68%] 3xl:right-[calc(50%-880px)] 3xl:w-[1240px]"
+						aria-hidden
+						className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(234,230,224,.94)_0%,rgba(234,230,224,.72)_26%,rgba(234,230,224,0)_50%)] min-[760px]:block"
+					/>
+					<div
+						aria-hidden
+						className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(234,230,224,.96)_0%,rgba(234,230,224,.8)_34%,rgba(234,230,224,0)_56%)] min-[760px]:hidden"
+					/>
+
+					<div
+						data-ov="intro"
+						className="pointer-events-none absolute inset-0 flex items-start min-[760px]:items-center"
 					>
-						{/* biome-ignore lint/performance/noImgElement: ships in the repo,
-						    and it has to share a box with a canvas next/image can't size */}
-						<img
-							src={heroFrameSrc(HERO_POSTER_FRAME)}
-							alt={t.landing.hero.alt}
-							className="h-full w-full object-contain"
-						/>
-						<ScrollSequence />
+						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 min-[760px]:pt-[68px]">
+							<div className="pointer-events-auto max-w-[520px]">
+								<p className={eyebrow}>{t.landing.hero.tagline}</p>
+								<h1 className="mb-5 text-balance font-serif text-[clamp(34px,9vw,52px)] leading-[1.08]">
+									{t.landing.hero.title}
+								</h1>
+								<p className="mb-7 max-w-[440px] text-(--body) text-[16px] leading-[26px]">
+									{t.landing.hero.subtitle}
+								</p>
+								<div className="flex flex-wrap items-center gap-5">
+									<Link href={`/${lang}/planner`} className={primary}>
+										{t.landing.hero.cta}
+									</Link>
+									{price && (
+										<span className="text-(--body) text-[13px]">{price}</span>
+									)}
+								</div>
+							</div>
+						</div>
 					</div>
 
-					{/* The right padding reserves the lane the render occupies, rather
-					    than leaving it to each string's own max-width to stay clear of
-					    it.
+					<div className="pointer-events-none absolute inset-x-0 top-[88px] min-[760px]:top-auto min-[760px]:bottom-16">
+						<div className="mx-auto max-w-[1220px] px-5 min-[760px]:px-8">
+							<div className="relative h-24">
+								{captions.map((caption, i) => (
+									<div
+										key={caption}
+										data-ov={`s${i + 1}`}
+										className="invisible absolute bottom-0 left-0 flex flex-col gap-2 opacity-0"
+									>
+										<span className="font-bold text-(--eyebrow) text-[12px] tracking-[0.14em]">
+											{String(i + 1).padStart(2, "0")} /{" "}
+											{String(captions.length).padStart(2, "0")}
+										</span>
+										<span className="font-serif text-[clamp(22px,6vw,30px)] leading-[1.15]">
+											{caption}
+										</span>
+									</div>
+								))}
+							</div>
+						</div>
+					</div>
 
-					    It is capped in pixels as well as a percentage, and the cap is
-					    the whole point: a percentage padding resolves against the
-					    *containing block*, which here is the full-bleed section, not
-					    this box's own 1180px. On an ultrawide 40% is over 1300px of
-					    padding on an 1180px box — and `border-box` cannot shrink a box
-					    below its own padding, so the content column collapsed to zero
-					    and every word in the headline wrapped onto its own line. 472px
-					    is that same 40%, measured against the 1180 the copy actually
-					    gets, so the lane stops growing once the container does.
-					    The headline is capped in `ch`, which is the width of a `0` —
-					    about half an em — so 15ch holds an English line but only about
-					    seven Han characters, each of which is a full em. The Chinese
-					    headline is eleven, overran its cap, and ran under the cabinet.
-					    A reserved lane holds for a language nobody has translated yet;
-					    a per-locale width would not. */}
 					<div
-						data-beat="hero-copy"
-						className="mx-auto flex h-full w-full max-w-[1180px] flex-col justify-start px-6 pt-[7vh] pb-20 sm:px-8 lg:h-auto lg:min-h-[clamp(460px,68vh,640px)] lg:justify-center lg:py-24 lg:pr-[min(40%,472px)]"
+						data-ov="final"
+						className="pointer-events-none invisible absolute inset-0 flex items-start opacity-0 min-[760px]:items-center"
 					>
-						<p className="mb-5 font-semibold text-[11px] text-neutral-500 uppercase tracking-[0.16em]">
-							{t.landing.hero.eyebrow}
+						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 min-[760px]:pt-[68px]">
+							<div className="pointer-events-auto max-w-[440px]">
+								<h2 className="mb-4 text-balance font-serif text-[clamp(30px,8vw,44px)] leading-[1.1]">
+									{t.landing.build.finalTitle}
+								</h2>
+								<p className="mb-7 text-(--body) text-[16px] leading-[26px]">
+									{t.landing.build.finalSubtitle}
+								</p>
+								<div className="flex flex-wrap items-center gap-3">
+									<Link href={`/${lang}/planner`} className={primary}>
+										{t.landing.hero.cta}
+									</Link>
+									{/* Ghost, not a second solid button: the choice we want
+									    is the planner. */}
+									<a
+										href="#how"
+										className="inline-flex min-h-12 items-center whitespace-nowrap rounded-[9px] border border-[#cdbfa8] bg-[rgba(251,248,244,.7)] px-5 font-semibold text-[14px] transition-[background-color,border-color,translate,scale] duration-500 ease-spring hover:border-[#a8977f] hover:bg-(--paper) active:translate-y-px active:scale-[0.97] active:bg-(--oat)"
+									>
+										{t.landing.hero.howItWorks}
+									</a>
+								</div>
+								{price && (
+									<p className="mt-5 text-(--body) text-[13px]">{price}</p>
+								)}
+							</div>
+						</div>
+					</div>
+
+					{/* An example kitchen's total, counting up as each part lands.
+					    The scene is not built from catalogue cabinets, so the figures
+					    are illustrative, and the card says so. */}
+					<div className="pointer-events-none absolute inset-x-0 bottom-5 min-[760px]:top-[92px] min-[760px]:bottom-auto">
+						<div className="mx-auto flex max-w-[1220px] justify-center px-5 min-[760px]:justify-end min-[760px]:px-8">
+							<div
+								data-ov="price"
+								className="invisible flex min-w-[190px] flex-col gap-1 rounded-xl border border-(--rule) bg-[rgba(251,248,244,.92)] px-5 py-3.5 opacity-0 backdrop-blur-[6px]"
+							>
+								<span className="font-bold text-(--eyebrow) text-[11px] uppercase tracking-[0.14em]">
+									{t.landing.build.totalLabel}
+								</span>
+								<span
+									data-price
+									className="whitespace-nowrap font-serif text-[30px] tabular-nums leading-[1.1]"
+								>
+									RM 0
+								</span>
+								<span className="text-(--soft) text-[11px]">
+									{t.landing.build.totalNote}
+								</span>
+							</div>
+						</div>
+					</div>
+
+					<div
+						data-ov="hint"
+						aria-hidden
+						className="pointer-events-none absolute right-0 bottom-[22px] left-0 flex flex-col items-center gap-2"
+					>
+						<span className="font-bold text-(--muted) text-[12px] uppercase tracking-[0.12em]">
+							{t.landing.build.hint}
+						</span>
+						<span className="size-[9px] rotate-45 border-(--muted) border-r-[1.5px] border-b-[1.5px]" />
+					</div>
+
+					<div
+						aria-hidden
+						className="absolute right-0 bottom-0 left-0 h-[3px] bg-[rgba(34,26,19,.08)]"
+					>
+						<div
+							data-ov="bar"
+							className="h-full w-full origin-left scale-x-0 bg-(--accent)"
+						/>
+					</div>
+				</div>
+			</div>
+
+			{/* Hero B — the photo, wherever the build does not run: reduced
+			    motion, and a device whose WebGL fails. The admin's hero photo when
+			    there is one, walnut when there is not; the copy reads on either.
+			    The `<source>` hands a browser that runs the build a 1×1 instead,
+			    so it never downloads a photo it will not show. */}
+			<section
+				data-photo-hero
+				className="relative flex min-h-[92svh] items-center overflow-hidden bg-(--walnut) motion-safe:hidden"
+			>
+				{heroPhoto && (
+					<picture>
+						<source media={BUILD_QUERY} srcSet={BLANK} />
+						<img
+							src={heroPhoto}
+							alt={t.landing.hero.alt}
+							fetchPriority="high"
+							className="absolute inset-0 h-full w-full object-cover"
+						/>
+					</picture>
+				)}
+				<div
+					aria-hidden
+					className="absolute inset-0 bg-[linear-gradient(100deg,rgba(23,16,10,.72)_0%,rgba(23,16,10,.42)_45%,rgba(23,16,10,.12)_75%)]"
+				/>
+				<div className="relative mx-auto w-full max-w-[1220px] px-4 py-20 sm:px-8">
+					<div className="max-w-[560px]">
+						<p className="mb-4 font-bold text-[#e6cfa8] text-[12px] uppercase tracking-[0.14em]">
+							{t.landing.hero.tagline}
 						</p>
-						{/* The accent word is the product, not decoration — the template
-						    this follows colours a noun, and the noun worth colouring
-						    here is the thing nobody else in the market offers. */}
-						<h1 className="max-w-[15ch] text-balance font-bold text-[clamp(38px,6vw,68px)] text-neutral-900 leading-[1.02] tracking-[-0.02em]">
-							{t.landing.hero.titleBeforeAccent}{" "}
-							<span style={{ color: ACCENT }}>
-								{t.landing.hero.titleAccent}
-							</span>
+						<h1 className="mb-5 text-balance font-serif text-[clamp(36px,9vw,52px)] text-white leading-[1.08]">
+							{t.landing.hero.title}
 						</h1>
-						<p className="mt-6 max-w-[42ch] text-[17px] text-neutral-600 leading-7">
+						<p className="mb-8 max-w-[440px] text-[#e8e0d4] text-[16px] leading-[26px]">
 							{t.landing.hero.subtitle}
 						</p>
-						<div className="mt-9 flex flex-wrap items-center gap-3">
-							<Link
-								href={`/${lang}/planner`}
-								className="rounded-xl bg-neutral-900 px-8 py-4 font-semibold text-[15px] text-white transition-transform active:translate-y-px"
-							>
+						<div className="flex flex-wrap items-center gap-5">
+							<Link href={`/${lang}/planner`} className={primary}>
 								{t.landing.hero.cta}
 							</Link>
-							{/* Ghost, not a second solid button: two equal buttons make the
-							    customer choose, and the choice we want is the planner. */}
-							<a
-								href="#how"
-								className="rounded-xl border px-8 py-4 font-medium text-[15px] text-neutral-700 transition-colors hover:border-neutral-500 active:translate-y-px"
-								style={{ borderColor: RULE }}
-							>
-								{t.landing.hero.howItWorks}
-							</a>
+							{Number.isFinite(fromRm) && (
+								<span className="text-[#e8e0d4] text-[13px]">
+									{t.landing.hero.fromLabel}{" "}
+									<strong className="text-white">RM {rm(fromRm)}</strong>
+								</span>
+							)}
+						</div>
+					</div>
+				</div>
+			</section>
+
+			{/* Materials — the walnut band. The live catalogue's own boards, at the
+			    scale a door shows them, not stock close-ups of timber the client
+			    may not cut. */}
+			{catalogue.finishes.length > 0 && (
+				<section
+					id="materials"
+					data-reveal="stagger"
+					className="bg-(--walnut) px-4 pt-[88px] pb-14 sm:px-8"
+				>
+					<div className="mx-auto max-w-[1220px]">
+						<div className="mx-auto mb-12 max-w-[640px] text-center">
+							<p className="mb-3 font-bold text-[#c99f6b] text-[12px] uppercase tracking-[0.14em]">
+								{t.landing.materials.eyebrow}
+							</p>
+							<h2 className="text-balance font-serif text-(--paper) text-[32px]">
+								{t.landing.materials.heading}
+							</h2>
+						</div>
+						<div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
+							{catalogue.finishes.slice(0, 4).map((finish, i) => (
+								<div key={finish.id} data-stagger style={stagger(i)}>
+									<div
+										className="h-[200px] bg-center"
+										style={boardStyle(finish)}
+										aria-hidden
+									/>
+									<p className="mt-2.5 text-[#c9bda8] text-[13px]">
+										{finish.label}
+									</p>
+								</div>
+							))}
 						</div>
 					</div>
 				</section>
-			</ScrollTrack>
+			)}
 
-			{/* Facts — trust strip, under the hero rather than inside it. */}
-			<section
-				data-reveal
-				className="border-y"
-				style={{ backgroundColor: RAISED, borderColor: RULE }}
-			>
-				<dl className="mx-auto grid max-w-[1180px] grid-cols-2 gap-x-6 gap-y-8 px-6 py-10 sm:px-8 lg:grid-cols-4">
-					{FACTS.map((fact) => (
-						<div key={fact.label}>
-							<dt
-								className="font-semibold text-[22px] tracking-tight"
-								style={{ color: ACCENT }}
-							>
-								{fact.value}
-							</dt>
-							<dd className="mt-1 text-[13px] text-neutral-500 leading-5">
-								{fact.label}
-							</dd>
-						</div>
-					))}
-				</dl>
-			</section>
-
-			{/* How it works — no cards. Three uneven columns separated by a rule,
-			    which is what the hairline is for. */}
-			<section
-				id="how"
-				data-reveal
-				className="mx-auto w-full max-w-[1180px] px-6 py-20 sm:px-8"
-			>
-				<h2 className="mb-12 max-w-[520px] font-semibold text-[30px] leading-tight tracking-tight">
-					{t.landing.how.heading}
-				</h2>
-				<div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_1fr_1fr] lg:gap-12">
-					{howItWorks(t).map((step) => (
-						<div
-							key={step.title}
-							className="border-t pt-5"
-							style={{ borderColor: ACCENT }}
-						>
-							<h3 className="mb-2.5 font-semibold text-[18px] tracking-tight">
-								{step.title}
-							</h3>
-							<p className="text-[14px] text-neutral-600 leading-6">
-								{step.detail}
-							</p>
-						</div>
-					))}
-				</div>
-			</section>
-
-			{/* Gallery — bento. Four rooms, four cells, kitchen carries the weight. */}
-			<section
-				id="gallery"
-				data-reveal
-				className="border-y"
-				style={{ backgroundColor: RAISED, borderColor: RULE }}
-			>
-				<div className="mx-auto w-full max-w-[1180px] px-6 py-20 sm:px-8">
-					<h2 className="mb-2 font-semibold text-[30px] leading-tight tracking-tight">
-						{t.landing.gallery.heading}
-					</h2>
-					<p className="mb-10 max-w-[520px] text-[15px] text-neutral-600 leading-6">
-						{t.landing.gallery.subtitle}
-					</p>
-					<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[224px]">
-						{catalogue.roomTypes.map((room, i) => (
-							<Link
-								key={room.id}
-								href={`/${lang}/planner?room=${room.id}`}
-								className={`group relative flex flex-col justify-end overflow-hidden rounded-xl border transition-transform active:translate-y-px ${ROOM_SPAN[i] ?? "min-h-[200px] lg:min-h-0"}`}
-								style={{ borderColor: RULE }}
-							>
-								<Photo
-									url={photo.get(roomSlot(room.id)) ?? null}
-									alt={fill(t.landing.gallery.roomAlt, { room: room.label })}
-									className="absolute inset-0 h-full w-full transition-transform duration-300 group-hover:scale-[1.03]"
-									// Flat tone rather than the grain tile: at card scale the
-									// grain reads as brushed metal stripes, and four large
-									// striped fields fight the photos that will replace them.
-									fallbackStyle={{
-										position: "absolute",
-										inset: 0,
-										backgroundColor: ROOM_TONE[room.id],
-									}}
-								/>
-								<div className="relative bg-gradient-to-t from-black/70 to-transparent px-5 pt-14 pb-4.5">
-									<p className="font-semibold text-[15px] text-white">
-										{room.label}
-									</p>
-									<p className="mt-0.5 text-[12px] text-white/75">
-										{room.familyIds.length === 0
-											? t.common.comingSoon
-											: roomSubtitles(t)[room.id]}
-									</p>
-								</div>
-							</Link>
-						))}
-					</div>
-				</div>
-			</section>
-
-			{/* Finishes */}
-			<section
-				id="finishes"
-				data-reveal
-				className="mx-auto w-full max-w-[1180px] px-6 py-20 sm:px-8"
-			>
-				<h2 className="mb-2 font-semibold text-[30px] leading-tight tracking-tight">
-					{t.landing.finishes.heading}
-				</h2>
-				<p className="mb-10 max-w-[520px] text-[15px] text-neutral-600 leading-6">
-					{t.landing.finishes.subtitle}
-				</p>
-				<div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
-					{catalogue.finishes.map((finish) => {
-						// The supplier's board scan if there is one, otherwise the flat
-						// catalogue colour. Never a generated grain pattern: this strip
-						// is a promise about what the client will cut, and a finish
-						// nobody has photographed is a colour, not a timber.
-						const board =
-							photo.get(finishSlot(finish.id)) ??
-							DEFAULT_FINISH_TEXTURES[finish.id];
-						return (
-							<div key={finish.id}>
-								<div
-									className="mb-2.5 h-24 rounded-xl border bg-center"
-									style={{
-										borderColor: RULE,
-										backgroundColor: finish.hex,
-										// Zoomed to one door's width of board, which is the
-										// scale the planner draws it at — the strip and the
-										// cabinet have to look like the same material.
-										...(board && {
-											backgroundImage: `url(${board})`,
-											backgroundSize: SWATCH_ZOOM,
-										}),
-									}}
-									// Decorative: the label sits right below it in text.
-									aria-hidden
-								/>
-								<p className="text-[12px] text-neutral-600">{finish.label}</p>
-							</div>
-						);
-					})}
-				</div>
-			</section>
-
-			{/* FAQ — sticky headline beside the accordion, so the right column
-			    carries the interaction and the left stays a fixed anchor. */}
-			<section
-				id="faq"
-				data-reveal
-				className="border-y"
-				style={{ backgroundColor: RAISED, borderColor: RULE }}
-			>
-				<div className="mx-auto grid w-full max-w-[1180px] grid-cols-1 gap-10 px-6 py-20 sm:px-8 lg:grid-cols-[1fr_1.6fr] lg:gap-16">
-					<h2 className="font-semibold text-[30px] leading-tight tracking-tight lg:sticky lg:top-28 lg:self-start">
-						{t.landing.faq.heading}
-					</h2>
-					<div className="flex flex-col">
-						{faqs(t).map((item) => (
-							<details
-								key={item.q}
-								className="group border-b py-4.5 [&_summary::-webkit-details-marker]:hidden [&_summary]:list-none"
-								style={{ borderColor: RULE }}
-							>
-								<summary className="flex cursor-pointer items-center justify-between gap-4 font-medium text-[15px]">
-									{item.q}
-									{/* CSS chevron: a rotated corner of a box. No icon library
-									    for one glyph, and no hand-drawn SVG path. */}
-									<span
-										aria-hidden
-										className="mt-[-3px] size-2 shrink-0 rotate-45 border-r-2 border-b-2 transition-transform duration-200 group-open:mt-[3px] group-open:-rotate-135"
-										style={{ borderColor: ACCENT }}
-									/>
-								</summary>
-								<p className="mt-3 max-w-[62ch] text-[14px] text-neutral-600 leading-6">
-									{item.a}
-								</p>
-							</details>
-						))}
-					</div>
-				</div>
-			</section>
-
-			{/* Close. The page previously ended on the FAQ. */}
-			<section style={{ backgroundColor: ACCENT }}>
-				<div className="mx-auto flex max-w-[1180px] flex-col items-start gap-7 px-6 py-16 sm:px-8 lg:flex-row lg:items-center lg:justify-between">
-					<div>
-						<h2 className="max-w-[520px] text-balance font-semibold text-[30px] text-white leading-tight tracking-tight">
-							{t.landing.closing.heading}
-						</h2>
-						<p className="mt-3 max-w-[440px] text-[15px] text-white/70 leading-6">
-							{t.landing.closing.subtitle}
+			{/* How it works — a sticky photo beside the steps on wide screens, above them on phones. */}
+			<section id="how" data-reveal="stagger" className="px-4 py-24 sm:px-8">
+				<div className="mx-auto grid max-w-[1220px] grid-cols-1 items-start gap-10 lg:gap-16 lg:grid-cols-[minmax(260px,360px)_1fr]">
+					<div className="flex flex-col gap-4 lg:sticky lg:top-24">
+						<Photo
+							url={photo.get(HOW_SLOT) ?? null}
+							alt=""
+							className="h-[clamp(260px,60vw,560px)] w-full rounded-[14px]"
+							fallbackStyle={{ backgroundColor: "#e2d7c5" }}
+						/>
+						<p className="max-w-[320px] text-(--soft) text-[13px] leading-5">
+							{t.landing.how.railCaption}
 						</p>
 					</div>
-					<Link
-						href={`/${lang}/planner`}
-						className="shrink-0 rounded-xl bg-white px-7 py-3.5 font-medium text-[14px] text-neutral-900 transition-transform active:translate-y-px"
-					>
-						{t.landing.closing.cta}
-					</Link>
+					<div className="flex flex-col">
+						<h2 className="sr-only">{t.landing.how.heading}</h2>
+						{howItWorks(t).map((step, i, all) => (
+							<div
+								key={step.title}
+								data-stagger
+								style={stagger(i)}
+								className={`border-(--rule) py-14 ${i === 0 ? "pt-8" : ""} ${i < all.length - 1 ? "border-b" : "pb-8"}`}
+							>
+								<div className="mb-5 flex size-10 items-center justify-center rounded-full bg-(--accent) font-serif text-[16px] text-white">
+									{i + 1}
+								</div>
+								<h3 className="mb-2.5 font-serif text-[22px]">{step.title}</h3>
+								<p className="max-w-[460px] text-(--muted) text-[15px] leading-6">
+									{step.detail}
+								</p>
+							</div>
+						))}
+					</div>
+				</div>
+			</section>
+
+			{/* Gallery — one editorial row per room, the photo alternating sides. */}
+			<section
+				id="gallery"
+				data-reveal="stagger"
+				className="border-(--rule) border-t bg-white px-4 pt-20 pb-16 sm:px-8"
+			>
+				<div className="mx-auto mb-14 max-w-[900px] text-center">
+					<p className={eyebrow}>{t.landing.gallery.eyebrow}</p>
+					<h2 className="text-balance font-serif text-[32px]">
+						{t.landing.gallery.heading}
+					</h2>
+				</div>
+				<div className="mx-auto flex max-w-[1220px] flex-col gap-14">
+					{catalogue.roomTypes.map((room, i) => (
+						<div
+							key={room.id}
+							data-stagger
+							style={stagger(i)}
+							className="grid grid-cols-1 items-center md:grid-cols-2"
+						>
+							<Photo
+								url={photo.get(roomSlot(room.id)) ?? null}
+								alt={fill(t.landing.gallery.roomAlt, { room: room.label })}
+								className={`h-[240px] w-full md:h-[360px] ${i % 2 ? "md:order-2" : ""}`}
+								fallbackStyle={{ backgroundColor: ROOM_TONE[room.id] }}
+							/>
+							<div className="pt-6 md:p-10">
+								<h3 className="mb-2.5 font-serif text-[24px]">{room.label}</h3>
+								<p className="mb-5 max-w-[360px] text-(--muted) text-[14px] leading-[22px]">
+									{t.landing.gallery.roomDetail[room.id]}
+								</p>
+								{room.familyIds.length === 0 ? (
+									<span className="font-semibold text-(--soft) text-[13px]">
+										{t.common.comingSoon}
+									</span>
+								) : (
+									<Link
+										href={`/${lang}/planner?room=${room.id}`}
+										className="inline-flex min-h-9 items-center font-semibold text-(--accent) text-[13px] underline decoration-1 underline-offset-4 transition-colors hover:text-(--accent-hover)"
+									>
+										{t.landing.gallery.planLink[room.id]}
+									</Link>
+								)}
+							</div>
+						</div>
+					))}
+				</div>
+			</section>
+
+			{/* Finishes — every finish in the live catalogue, as the swatch the
+			    planner offers. */}
+			<section
+				id="finishes"
+				data-reveal="stagger"
+				className="border-(--rule) border-y bg-(--oat) px-4 py-[88px] sm:px-8"
+			>
+				<div className="mx-auto max-w-[1220px]">
+					<div className="mx-auto mb-12 max-w-[640px] text-center">
+						<p className={eyebrow}>{t.landing.finishes.eyebrow}</p>
+						<h2 className="text-balance font-serif text-[32px]">
+							{t.landing.finishes.heading}
+						</h2>
+					</div>
+					<div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-6">
+						{catalogue.finishes.map((finish, i) => (
+							<div
+								key={finish.id}
+								data-stagger
+								style={stagger(i)}
+								className="text-center"
+							>
+								<div
+									className="mb-2.5 h-[88px] rounded-[10px] border border-(--rule) bg-center"
+									style={boardStyle(finish)}
+									aria-hidden
+								/>
+								<p className="text-(--muted) text-[13px]">{finish.label}</p>
+							</div>
+						))}
+					</div>
+				</div>
+			</section>
+
+			{/* FAQ */}
+			<section
+				id="faq"
+				data-reveal="stagger"
+				className="mx-auto w-full max-w-[760px] px-4 py-[88px] sm:px-8"
+			>
+				<h2 className="mb-10 text-center font-serif text-[32px]">
+					{t.landing.faq.heading}
+				</h2>
+				<div className="flex flex-col gap-3">
+					{faqs(t).map((item, i) => (
+						<details
+							key={item.q}
+							data-stagger
+							style={stagger(i)}
+							className="group rounded-[10px] border border-(--rule) bg-white px-5 py-[18px] transition-colors hover:border-[#cdbfa8] [&_summary::-webkit-details-marker]:hidden [&_summary]:list-none"
+						>
+							<summary className="flex min-h-6 cursor-pointer items-center justify-between gap-4 font-semibold text-[14px]">
+								{item.q}
+								{/* CSS chevron: a rotated corner of a box. */}
+								<span
+									aria-hidden
+									className="mt-[-3px] size-2 shrink-0 rotate-45 border-(--accent) border-r-2 border-b-2 transition-transform duration-200 group-open:mt-[3px] group-open:-rotate-135"
+								/>
+							</summary>
+							<p className="mt-2.5 text-(--muted) text-[13px] leading-5">
+								{item.a}
+							</p>
+						</details>
+					))}
 				</div>
 			</section>
 
 			{/* Footer */}
-			<footer className="mt-auto bg-neutral-900 text-neutral-200">
-				<div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-8 px-6 py-14 sm:grid-cols-[2fr_1fr_1fr] sm:px-8">
+			<footer className="mt-auto bg-(--night) text-(--rule)">
+				<div className="mx-auto grid max-w-[1220px] grid-cols-1 gap-8 px-4 py-14 sm:grid-cols-3 sm:px-8">
 					<div>
-						<p className="mb-2 font-bold text-[15px] text-white">
+						<p className="mb-2 font-serif text-[17px] text-white">
 							{t.common.brand}
 						</p>
-						<p className="max-w-[280px] text-[13px] text-neutral-400 leading-5">
+						<p className="max-w-[280px] text-[#a8977f] text-[13px] leading-5">
 							{t.landing.footer.tagline}
 						</p>
 					</div>
 					<div>
-						<p className="mb-3 font-semibold text-[12px] text-neutral-500 uppercase tracking-[0.06em]">
+						<p className="mb-3 font-bold text-[#a8977f] text-[12px] uppercase tracking-[0.08em]">
 							{t.landing.footer.productHeading}
 						</p>
-						<div className="flex flex-col gap-2.5">
-							<Link
-								href={`/${lang}/planner`}
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
+						<div className="flex flex-col gap-2">
+							<Link href={`/${lang}/planner`} className={footerLink}>
 								{t.landing.footer.startPlanning}
 							</Link>
-							<a
-								href="#gallery"
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
+							<a href="#gallery" className={footerLink}>
 								{t.landing.footer.gallery}
 							</a>
-							<a
-								href="#faq"
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
+							<a href="#faq" className={footerLink}>
 								{t.landing.footer.faq}
 							</a>
-							<Link
-								href={`/${lang}/tutorials`}
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
+							<Link href={`/${lang}/tutorials`} className={footerLink}>
 								{t.landing.footer.tutorials}
 							</Link>
 						</div>
 					</div>
 					<div>
-						<p className="mb-3 font-semibold text-[12px] text-neutral-500 uppercase tracking-[0.06em]">
+						<p className="mb-3 font-bold text-[#a8977f] text-[12px] uppercase tracking-[0.08em]">
 							{t.landing.footer.contactHeading}
 						</p>
-						<div className="flex flex-col gap-2.5">
+						<div className="flex flex-col gap-2">
 							<a
-								href="mailto:hello@ezcabinet.com"
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
+								href={`mailto:${t.landing.footer.email}`}
+								className={footerLink}
 							>
 								{t.landing.footer.email}
 							</a>
-							<Link
-								href={`/${lang}/privacy`}
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
+							<Link href={`/${lang}/privacy`} className={footerLink}>
 								{t.landing.footer.privacy}
 							</Link>
-							<Link
-								href={`/${lang}/terms`}
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
+							<Link href={`/${lang}/terms`} className={footerLink}>
 								{t.landing.footer.terms}
 							</Link>
-							<Link
-								href={`/${lang}/refunds`}
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
+							<Link href={`/${lang}/refunds`} className={footerLink}>
 								{t.landing.footer.refunds}
 							</Link>
 						</div>
 					</div>
 				</div>
-				<div className="border-neutral-800 border-t px-6 py-4.5 text-center sm:px-8">
-					<p className="text-[12px] text-neutral-500">
+				<div className="border-[#322418] border-t px-4 py-[18px] text-center sm:px-8">
+					<p className="text-[#a8977f] text-[12px]">
 						{fill(t.landing.footer.copyright, { brand: t.common.brand })}
 					</p>
 				</div>

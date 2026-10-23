@@ -76,7 +76,7 @@ export function stripeGateway(): PaymentGateway | null {
 					amount,
 					currency: "myr",
 					payment_method_types: STRIPE_METHODS,
-					description: `EzCabinet order ${order.ref}`,
+					description: `${order.brand} order ${order.ref}`,
 					receipt_email: order.customerEmail ?? undefined,
 					metadata,
 				},

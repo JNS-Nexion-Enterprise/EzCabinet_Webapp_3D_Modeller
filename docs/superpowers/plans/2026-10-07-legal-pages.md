@@ -36,18 +36,18 @@
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/components/LegalPage.tsx` (create) | Title, draft banner, intro, heading/paragraph sections. Presentational only. |
-| `src/app/[lang]/privacy/page.tsx` (modify) | Builds privacy sections, renders `LegalPage`. |
-| `src/app/[lang]/terms/page.tsx` (create) | Builds terms sections. |
-| `src/app/[lang]/refunds/page.tsx` (create) | Builds refund sections. |
-| `src/lib/copy/{en,ms,zh}.ts` (modify) | `terms`, `refunds`, new `privacy` keys, footer/sign-in/quote keys. |
-| `src/lib/orders/terms.ts` (create) | `TERMS_VERSION`. |
-| `src/app/api/orders/route.ts` (modify) | `termsAccepted: z.literal(true)`; stamps the order. |
-| `prisma/schema.prisma`, `prisma/migrations/20261007000000_order_terms_acceptance/` | Two nullable columns. |
-| `src/components/planner/QuoteScreen.tsx` (modify) | Checkbox, links, seller line. |
-| `src/app/[lang]/page.tsx`, `src/app/[lang]/sign-in/page.tsx` (modify) | Links. |
+| File                                                                               | Responsibility                                                               |
+| ---------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `src/components/LegalPage.tsx` (create)                                            | Title, draft banner, intro, heading/paragraph sections. Presentational only. |
+| `src/app/[lang]/privacy/page.tsx` (modify)                                         | Builds privacy sections, renders `LegalPage`.                                |
+| `src/app/[lang]/terms/page.tsx` (create)                                           | Builds terms sections.                                                       |
+| `src/app/[lang]/refunds/page.tsx` (create)                                         | Builds refund sections.                                                      |
+| `src/lib/copy/{en,ms,zh}.ts` (modify)                                              | `terms`, `refunds`, new `privacy` keys, footer/sign-in/quote keys.           |
+| `src/lib/orders/terms.ts` (create)                                                 | `TERMS_VERSION`.                                                             |
+| `src/app/api/orders/route.ts` (modify)                                             | `termsAccepted: z.literal(true)`; stamps the order.                          |
+| `prisma/schema.prisma`, `prisma/migrations/20261007000000_order_terms_acceptance/` | Two nullable columns.                                                        |
+| `src/components/planner/QuoteScreen.tsx` (modify)                                  | Checkbox, links, seller line.                                                |
+| `src/app/[lang]/page.tsx`, `src/app/[lang]/sign-in/page.tsx` (modify)              | Links.                                                                       |
 
 ---
 
@@ -142,7 +142,6 @@ Expected: no errors.
 
 Run `pnpm dev`, open `http://localhost:3000/en/privacy`.
 Expected: identical to before — back link, title, amber banner, seven sections.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -480,28 +479,27 @@ After the `privacy` group:
 
 Run: `pnpm vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: PASS. A failure lists the exact key path that is missing or still English — fix that key, do not add it to `SHARED`.
-
 - [ ] **Step 5: Extend the privacy page's sections**
 
 In `src/app/[lang]/privacy/page.tsx`, replace the `sections` array with:
 
 ```tsx
-	const sections = [
-		[p.purposeHeading, p.purpose],
-		[p.collectHeading, p.collect],
-		[p.notCollectHeading, p.notCollect],
-		[p.accountHeading, p.account],
-		[p.ordersHeading, p.orders],
-		[p.whereHeading, p.where],
-		[p.recipientsHeading, p.recipients],
-		[p.whatsappHeading, p.whatsapp],
-		[p.obligatoryHeading, p.obligatory],
-		[p.retentionHeading, p.retention],
-		[p.rightsHeading, p.rights],
-		[p.choiceHeading, p.choice],
-		[p.otherLawsHeading, p.otherLaws],
-		[p.contactHeading, fill(p.contact, { email: t.landing.footer.email })],
-	] as const;
+const sections = [
+	[p.purposeHeading, p.purpose],
+	[p.collectHeading, p.collect],
+	[p.notCollectHeading, p.notCollect],
+	[p.accountHeading, p.account],
+	[p.ordersHeading, p.orders],
+	[p.whereHeading, p.where],
+	[p.recipientsHeading, p.recipients],
+	[p.whatsappHeading, p.whatsapp],
+	[p.obligatoryHeading, p.obligatory],
+	[p.retentionHeading, p.retention],
+	[p.rightsHeading, p.rights],
+	[p.choiceHeading, p.choice],
+	[p.otherLawsHeading, p.otherLaws],
+	[p.contactHeading, fill(p.contact, { email: t.landing.footer.email })],
+] as const;
 ```
 
 - [ ] **Step 6: Create the terms page**
@@ -628,12 +626,12 @@ export default async function RefundsPage({
 In `src/app/[lang]/page.tsx`, find the footer's privacy link:
 
 ```tsx
-							<Link
-								href={`/${lang}/privacy`}
-								className="text-[13px] text-neutral-300 transition-colors hover:text-white"
-							>
-								{t.landing.footer.privacy}
-							</Link>
+<Link
+	href={`/${lang}/privacy`}
+	className="text-[13px] text-neutral-300 transition-colors hover:text-white"
+>
+	{t.landing.footer.privacy}
+</Link>;
 ```
 
 Add directly after it:
@@ -658,12 +656,12 @@ Add directly after it:
 In `src/app/[lang]/sign-in/page.tsx`, directly after the closing `/>` of `<GoogleSignInButton … />`, add:
 
 ```tsx
-				<p className="text-center text-[12px] text-neutral-500 leading-[17px]">
-					{s.privacyNote}{" "}
-					<Link href={`/${lang}/privacy`} className="underline">
-						{t.privacy.title}
-					</Link>
-				</p>
+<p className="text-center text-[12px] text-neutral-500 leading-[17px]">
+	{s.privacyNote}{" "}
+	<Link href={`/${lang}/privacy`} className="underline">
+		{t.privacy.title}
+	</Link>
+</p>;
 ```
 
 - [ ] **Step 10: Verify**
@@ -673,7 +671,6 @@ Expected: no errors, all pass.
 
 With `pnpm dev`, open each of `/en/terms`, `/ms/terms`, `/zh/terms`, `/en/refunds`, `/ms/refunds`, `/zh/refunds`, `/en/privacy`.
 Expected: each renders with the amber draft banner; the terms page's first section shows the workshop address, email and phone with no `{braces}` left; the privacy page has fourteen sections. The landing footer shows three legal links; `/en/sign-in` shows the privacy line under the Google button.
-
 - [ ] **Step 11: Commit**
 
 ```bash
@@ -748,7 +745,6 @@ describe("POST /api/orders terms acceptance", () => {
 
 Run: `pnpm vitest run src/app/api/orders/__tests__/route.test.ts`
 Expected: the first two new tests FAIL (`expected [ … ] to contain 'termsAccepted'`); the third passes already.
-
 - [ ] **Step 3: Create the version constant**
 
 `src/lib/orders/terms.ts`:
@@ -824,7 +820,6 @@ Then confirm the version has exactly one source:
 
 Run: `grep -rn "termsVersion" src --include="*.ts" --include="*.tsx" | grep -v generated`
 Expected: one line, in `src/app/api/orders/route.ts`, reading `TERMS_VERSION`.
-
 - [ ] **Step 7: Regenerate, apply locally, and check the migration against the schema**
 
 Run: `pnpm prisma generate`
@@ -835,12 +830,10 @@ Expected: the two `ADD COLUMN` lines above, plus any migration not yet applied t
 Run: `pnpm prisma migrate deploy`
 Expected: the migration applies. Then re-run the `migrate diff` command.
 Expected: an empty script (`-- This is an empty migration.`).
-
 - [ ] **Step 8: Run the tests**
 
 Run: `pnpm vitest run src/app/api/orders && pnpm typecheck`
 Expected: all PASS, no type errors.
-
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -904,7 +897,6 @@ In each file's `quote` group, directly after the `errorRemeasure` entry.
 
 Run: `pnpm vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: PASS.
-
 - [ ] **Step 2: Add `terms` to the field-error type and the validation**
 
 In `src/components/planner/QuoteScreen.tsx`:
@@ -912,28 +904,28 @@ In `src/components/planner/QuoteScreen.tsx`:
 The field-error record currently reads:
 
 ```ts
-	Record<"name" | "phone" | "email" | "siteAddress" | "remeasure", string>
+Record<"name" | "phone" | "email" | "siteAddress" | "remeasure", string>;
 ```
 
 Change it to:
 
 ```ts
-	Record<
-		"name" | "phone" | "email" | "siteAddress" | "remeasure" | "terms",
-		string
-	>
+Record<
+	"name" | "phone" | "email" | "siteAddress" | "remeasure" | "terms",
+	string
+>;
 ```
 
 Directly after the line
 
 ```ts
-		if (field("remeasure") !== "on") errors.remeasure = t.quote.errorRemeasure;
+if (field("remeasure") !== "on") errors.remeasure = t.quote.errorRemeasure;
 ```
 
 add:
 
 ```ts
-		if (field("terms") !== "on") errors.terms = t.quote.errorTerms;
+if (field("terms") !== "on") errors.terms = t.quote.errorTerms;
 ```
 
 - [ ] **Step 3: Send it**
@@ -954,90 +946,93 @@ import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 ```
 
 `carriers.ts` is isomorphic and holds no secrets (its own header says so), so a client component may import it.
-
 - [ ] **Step 5: Render the checkbox and the seller line**
 
 In `QuoteScreen.tsx`, find the end of the re-measure error block:
 
 ```tsx
-								{fieldErrors.remeasure && (
-									<p
-										id="err-remeasure"
-										role="alert"
-										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
-									>
-										{fieldErrors.remeasure}
-									</p>
-								)}
+{
+	fieldErrors.remeasure && (
+		<p
+			id="err-remeasure"
+			role="alert"
+			className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
+		>
+			{fieldErrors.remeasure}
+		</p>
+	);
+}
 ```
 
 Directly after it, add:
 
 ```tsx
-								<label className="flex min-h-9 cursor-pointer items-start gap-[9px]">
-									<input
-										name="terms"
-										type="checkbox"
-										required
-										disabled={busy}
-										aria-invalid={!!fieldErrors.terms}
-										aria-describedby={describedBy("terms")}
-										className="mt-px h-4 w-4 shrink-0 accent-[#171717]"
-									/>
-									{/* New tabs: the typed form and the design must still be
+<label className="flex min-h-9 cursor-pointer items-start gap-[9px]">
+	<input
+		name="terms"
+		type="checkbox"
+		required
+		disabled={busy}
+		aria-invalid={!!fieldErrors.terms}
+		aria-describedby={describedBy("terms")}
+		className="mt-px h-4 w-4 shrink-0 accent-[#171717]"
+	/>
+	{/* New tabs: the typed form and the design must still be
 									    here when the customer comes back from reading. */}
-									<span className="text-[#5c574e] text-[12px] leading-[17px]">
-										{t.quote.termsAgree}{" "}
-										<a
-											href={`/${locale}/terms`}
-											target="_blank"
-											rel="noopener"
-											className="underline"
-										>
-											{t.quote.termsLink}
-										</a>
-										{" · "}
-										<a
-											href={`/${locale}/refunds`}
-											target="_blank"
-											rel="noopener"
-											className="underline"
-										>
-											{t.quote.refundsLink}
-										</a>
-									</span>
-								</label>
-								{fieldErrors.terms && (
-									<p
-										id="err-terms"
-										role="alert"
-										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
-									>
-										{fieldErrors.terms}
-									</p>
-								)}
-								{/* The seller's name, address and contact, before the button
+	<span className="text-[#5c574e] text-[12px] leading-[17px]">
+		{t.quote.termsAgree}{" "}
+		<a
+			href={`/${locale}/terms`}
+			target="_blank"
+			rel="noopener"
+			className="underline"
+		>
+			{t.quote.termsLink}
+		</a>
+		{" · "}
+		<a
+			href={`/${locale}/refunds`}
+			target="_blank"
+			rel="noopener"
+			className="underline"
+		>
+			{t.quote.refundsLink}
+		</a>
+	</span>
+</label>;
+{
+	fieldErrors.terms && (
+		<p
+			id="err-terms"
+			role="alert"
+			className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px]"
+		>
+			{fieldErrors.terms}
+		</p>
+	);
+}
+{
+	/* The seller's name, address and contact, before the button
 								    rather than one click away — the Consumer Protection
 								    (Electronic Trade Transactions) Regulations 2024 want them
-								    disclosed before purchase. */}
-								<p className="text-[#5c574e] text-[12px] leading-[17px]">
-									{fill(t.quote.soldBy, {
-										address: WORKSHOP_ADDRESS,
-										email: t.landing.footer.email,
-										phone: WORKSHOP_PHONE,
-									})}
-								</p>
+								    disclosed before purchase. */
+}
+<p className="text-[#5c574e] text-[12px] leading-[17px]">
+	{fill(t.quote.soldBy, {
+		address: WORKSHOP_ADDRESS,
+		email: t.landing.footer.email,
+		phone: WORKSHOP_PHONE,
+	})}
+</p>;
 ```
 
 `describedBy`, `fill`, `locale`, `busy` and `fieldErrors` already exist in this component. If `describedBy` is typed to a union of field names, add `"terms"` to that union.
-
 - [ ] **Step 6: Verify in the browser**
 
 Run: `pnpm typecheck && pnpm biome check src/components/planner/QuoteScreen.tsx src/lib/copy`
 Expected: no errors.
 
 With `pnpm dev` and `AUTH_ENABLED=false` in `.env.local`:
-
 1. Open `/en`, pick a room, place a cabinet, continue to checkout.
 2. Fill name, phone and address; tick re-measure; leave the terms box unticked; press the pay / place-order button.
    Expected: no order is created; "Tick this to place your order." appears under the terms box and the box takes focus.
@@ -1114,7 +1109,6 @@ Append at the end of the file:
 
 Three pages are now translated in full and need a native read **and** a legal
 one — these are the words a customer agrees to before paying:
-
 - **Terms of sale** — `/ms/terms`, `/zh/terms`
 - **Refund policy** — `/ms/refunds`, `/zh/refunds`
 - **Privacy notice** — `/ms/privacy`, `/zh/privacy` (seven new sections: your
@@ -1125,21 +1119,20 @@ The English is a draft pending your counsel's review, and the Malay and
 Chinese were drafted from it by AI. Where the three disagree, tell us which
 one says what you mean. Terms worth checking by name:
 
-| English | Malay | Chinese |
-| --- | --- | --- |
-| Terms of sale | Terma jualan | 销售条款 |
-| Refund policy | Polisi bayaran balik | 退款政策 |
-| Re-measure | Ukur semula | 上门复尺 |
-| Made to order | Dibuat mengikut tempahan | 定制 |
-| Tribunal for Consumer Claims Malaysia | Tribunal Tuntutan Pengguna Malaysia | 马来西亚消费者索偿仲裁庭 |
-| Personal Data Protection Act 2010 | Akta Perlindungan Data Peribadi 2010 | 《2010 年个人数据保护法》 |
+| English                               | Malay                                | Chinese                   |
+| ------------------------------------- | ------------------------------------ | ------------------------- |
+| Terms of sale                         | Terma jualan                         | 销售条款                  |
+| Refund policy                         | Polisi bayaran balik                 | 退款政策                  |
+| Re-measure                            | Ukur semula                          | 上门复尺                  |
+| Made to order                         | Dibuat mengikut tempahan             | 定制                      |
+| Tribunal for Consumer Claims Malaysia | Tribunal Tuntutan Pengguna Malaysia  | 马来西亚消费者索偿仲裁庭  |
+| Personal Data Protection Act 2010     | Akta Perlindungan Data Peribadi 2010 | 《2010 年个人数据保护法》 |
 ```
 
 - [ ] **Step 4: Full check**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: all clean, all tests pass.
-
 - [ ] **Step 5: Commit**
 
 ```bash

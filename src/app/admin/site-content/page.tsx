@@ -3,17 +3,21 @@ import { AdminHeader } from "@/components/admin/AdminHeader";
 import { ImageSlot } from "@/components/admin/ImageSlot";
 import { requirePage } from "@/lib/auth/page";
 import { prisma } from "@/lib/catalogue/db";
-import { finishSlot, roomSlot, siteImageSrc } from "@/lib/catalogue/siteImages";
+import {
+	finishSlot,
+	HERO_SLOT,
+	HOW_SLOT,
+	roomSlot,
+	siteImageSrc,
+} from "@/lib/catalogue/siteImages";
 import { readPublishedPlannerCatalogue } from "@/lib/catalogue/store";
 
 /**
  * The photos on the public homepage. No publish step — a dropped photo is
  * live immediately, so the write endpoint purges `/` on the way out.
  *
- * There is no hero slot: the homepage hero is the scroll-scrubbed cabinet
- * sequence in `public/hero-frames`, which is code, not content. `HERO_SLOT`
- * still exists in `siteImages.ts` so any row already uploaded under it stays
- * addressable rather than orphaned.
+ * The hero slot is the photo hero, shown where the 3D build is not: under
+ * reduced motion, or where WebGL fails. The build itself is code, not content.
  *
  * Room and finish slots come from the published catalogue rather than a
  * fixed list: the design mocks six finish slots with invented names, but
@@ -45,6 +49,35 @@ export default async function SiteContentPage() {
 						publish step. Drag an image onto any slot below, or click to browse.
 					</p>
 				</div>
+
+				<section>
+					<p className="mb-1 font-semibold text-[12px] text-neutral-600 uppercase tracking-[0.06em]">
+						Homepage photos
+					</p>
+					<p className="mb-3 text-[12px] text-neutral-500">
+						The hero photo stands in for the 3D build for visitors who turn
+						animation off, or whose device cannot draw it: a finished kitchen,
+						wide. The tall photo goes with the how-it-works steps.
+					</p>
+					<div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+						<div className="col-span-2 sm:col-span-3">
+							<ImageSlot
+								slotKey={HERO_SLOT}
+								label="Hero"
+								placeholder="Finished kitchen, wide"
+								url={urlFor(HERO_SLOT)}
+								height={200}
+							/>
+						</div>
+						<ImageSlot
+							slotKey={HOW_SLOT}
+							label="How it works"
+							placeholder="Tall photo of a board or cabinet"
+							url={urlFor(HOW_SLOT)}
+							height={200}
+						/>
+					</div>
+				</section>
 
 				<section>
 					<p className="mb-1 font-semibold text-[12px] text-neutral-600 uppercase tracking-[0.06em]">

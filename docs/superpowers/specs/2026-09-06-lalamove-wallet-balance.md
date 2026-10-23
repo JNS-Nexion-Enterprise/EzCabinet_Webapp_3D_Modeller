@@ -23,15 +23,15 @@ booking.
 Checked against the v3 API reference and probed against the sandbox with our
 own credentials on 2026-09-06:
 
-| Path tried | Result |
-| --- | --- |
-| `GET /v3/wallets` | 404 page not found |
-| `GET /v3/wallet` | 404 |
-| `GET /v3/citywallets` | 404 |
-| `GET /v3/wallets/balance` | 404 |
-| `GET /v3/wallet/balance` | 404 |
-| `GET /v3/account/wallet` | 404 |
-| `GET /v3/quotations` | **405 Method Not Allowed** |
+| Path tried                | Result                     |
+| ------------------------- | -------------------------- |
+| `GET /v3/wallets`         | 404 page not found         |
+| `GET /v3/wallet`          | 404                        |
+| `GET /v3/citywallets`     | 404                        |
+| `GET /v3/wallets/balance` | 404                        |
+| `GET /v3/wallet/balance`  | 404                        |
+| `GET /v3/account/wallet`  | 404                        |
+| `GET /v3/quotations`      | **405 Method Not Allowed** |
 
 The 405 is the control: signing, market header and routing are all working, so
 the 404s are "no such route", not a rejected request. The published endpoint

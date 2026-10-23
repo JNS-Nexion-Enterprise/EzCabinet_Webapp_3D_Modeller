@@ -88,7 +88,10 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			pickupPostcode: delivery.pickupPostcode,
 			pickupCity: delivery.pickupCity,
 			pickupState: delivery.pickupState,
+			fromWorkshop: delivery.fromWorkshop,
 			scheduledAt: delivery.scheduledAt,
+			// One order's jobs keep one prefix.
+			refPrefix: delivery.refPrefix,
 			splitFromNumber: delivery.number,
 			// Both halves still deliver the same order.
 			orderId: delivery.orderId,

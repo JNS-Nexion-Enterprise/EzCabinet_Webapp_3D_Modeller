@@ -15,16 +15,16 @@ screen still comes from the published catalogue and `computePlannerPrice`.
 
 ## What changes
 
-| Today (`StudioScreen.tsx`, 1296 lines) | Streamlined |
-| --- | --- |
-| Left rail = room card (all toggles inline) + cabinet palette, always open | 60px icon **tool rail** + 236px **room panel** + a 296px **overlay panel** that slides over the canvas for Add / View / Doors / Defaults |
-| View toggle + Measure live in the header | Both are tools on the rail; header keeps breadcrumb, tutorials, admin |
-| Right panel = selection form, finish, run list, full price list | Right panel = **verbs** (Resize · Replace · Move · Open doors · Duplicate · Remove) that expand inline; recap + run list when nothing is selected; sticky footer with the total |
-| Whole price breakdown always visible | Total button opens a **breakdown modal**; the quote CTA still goes to `QuoteScreen` |
-| Selection accent `#2b6cb0` (blue) | Accent `#1f5138` (green), tints `#f2f7f4` / `#e7efe9` |
-| No canvas affordances beyond drag | Right-click **context menu** on a cabinet; on-canvas **arrow gizmo** while the Move verb is on |
-| One hang height for the whole wall row | Per-cabinet hang-height override, driven by the gizmo's ↑ ↓ |
-| No way to swap a cabinet's family | **Replace** verb: swap family, snap to the nearest rung of the new ladder |
+| Today (`StudioScreen.tsx`, 1296 lines)                                    | Streamlined                                                                                                                                                                     |
+| ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Left rail = room card (all toggles inline) + cabinet palette, always open | 60px icon **tool rail** + 236px **room panel** + a 296px **overlay panel** that slides over the canvas for Add / View / Doors / Defaults                                        |
+| View toggle + Measure live in the header                                  | Both are tools on the rail; header keeps breadcrumb, tutorials, admin                                                                                                           |
+| Right panel = selection form, finish, run list, full price list           | Right panel = **verbs** (Resize · Replace · Move · Open doors · Duplicate · Remove) that expand inline; recap + run list when nothing is selected; sticky footer with the total |
+| Whole price breakdown always visible                                      | Total button opens a **breakdown modal**; the quote CTA still goes to `QuoteScreen`                                                                                             |
+| Selection accent `#2b6cb0` (blue)                                         | Accent `#1f5138` (green), tints `#f2f7f4` / `#e7efe9`                                                                                                                           |
+| No canvas affordances beyond drag                                         | Right-click **context menu** on a cabinet; on-canvas **arrow gizmo** while the Move verb is on                                                                                  |
+| One hang height for the whole wall row                                    | Per-cabinet hang-height override, driven by the gizmo's ↑ ↓                                                                                                                     |
+| No way to swap a cabinet's family                                         | **Replace** verb: swap family, snap to the nearest rung of the new ladder                                                                                                       |
 
 ## Decisions taken (asked and answered, 2026-09-10)
 
@@ -40,17 +40,17 @@ screen still comes from the published catalogue and `computePlannerPrice`.
 
 ## Where the re-homed features live
 
-| Feature | New home |
-| --- | --- |
-| Drag a family onto the wall | Add panel — the cards stay `draggable`, the canvas keeps its drop target |
-| Multi-select (shift/⌘-click, checkboxes) | Selection panel's multi branch, unchanged; the run list keeps its checkboxes |
-| Hinge left / right | Inside the **Open doors** verb, beside the open/close button — where it is today, one level deeper |
-| Per-cabinet door style + "No door" | **Front** section of the selection panel, always visible under the verbs |
-| Close gaps (n) | Defaults panel |
-| Run list + reset this room | "This design" panel, under the recap, when nothing is selected |
-| Wall units: Hanging / To ceiling, flush-to-tall | Defaults panel |
-| Overhang warning | Room panel, under the fit line |
-| Measure axis chips, snap labels, clear | Unchanged, still the canvas overlay while the Measure tool is on |
+| Feature                                         | New home                                                                                           |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Drag a family onto the wall                     | Add panel — the cards stay `draggable`, the canvas keeps its drop target                           |
+| Multi-select (shift/⌘-click, checkboxes)        | Selection panel's multi branch, unchanged; the run list keeps its checkboxes                       |
+| Hinge left / right                              | Inside the **Open doors** verb, beside the open/close button — where it is today, one level deeper |
+| Per-cabinet door style + "No door"              | **Front** section of the selection panel, always visible under the verbs                           |
+| Close gaps (n)                                  | Defaults panel                                                                                     |
+| Run list + reset this room                      | "This design" panel, under the recap, when nothing is selected                                     |
+| Wall units: Hanging / To ceiling, flush-to-tall | Defaults panel                                                                                     |
+| Overhang warning                                | Room panel, under the fit line                                                                     |
+| Measure axis chips, snap labels, clear          | Unchanged, still the canvas overlay while the Measure tool is on                                   |
 
 ## Visual tokens (from the design, verbatim)
 

@@ -35,7 +35,6 @@ import {
 	streetLines,
 	trackingUrlFor,
 } from "../adapters/fedex";
-import { WORKSHOP_ADDRESS } from "../carriers";
 import {
 	CarrierNotConfigured,
 	type DeliveryItem,
@@ -93,17 +92,24 @@ const handles: DeliveryItem = {
 const job = (over: Partial<DeliveryJob> = {}): DeliveryJob => ({
 	id: "dlv_1",
 	number: 7,
+	ref: "IC-00007",
+	sender: {
+		brand: "EzCabinet",
+		legalName: "EzCabinet Sdn Bhd",
+		phone: "03-1234 5678",
+		closeTime: "18:00",
+	},
 	customerName: "Chan Kin Kong",
 	customerPhone: "012-345 6789",
 	siteAddress: "No. 45, Persiaran Mahsuri 1/3, 11950 Bayan Baru, Pulau Pinang",
 	sitePostcode: "11950",
 	siteCity: "Bayan Baru",
 	siteState: "MY-07",
-	pickupPostcode: null,
-	pickupCity: null,
-	pickupState: null,
+	pickupPostcode: "43800",
+	pickupCity: "Dengkil",
+	pickupState: "MY-10",
 	addressNotes: "Guard house, ask for block C",
-	pickupAddress: WORKSHOP_ADDRESS,
+	pickupAddress: "Lot 1, Jalan Kilang, 43800 Dengkil, Selangor",
 	siteLat: null,
 	siteLng: null,
 	pickupLat: null,
@@ -207,17 +213,22 @@ describe("places", () => {
 		);
 	});
 
-	it("falls back to the workshop's postcode for a workshop pickup", () => {
+	it("reads the pickup place stored on the job", () => {
 		expect(pickupPlaceOf(job())).toEqual({
 			postcode: "43800",
 			city: "Dengkil",
 		});
 	});
 
-	it("refuses an edited pickup that was never geocoded", () => {
+	it("refuses a pickup that was never geocoded", () => {
 		expect(() =>
-			pickupPlaceOf(job({ pickupAddress: "Lot 5, Jalan Kilang, Shah Alam" })),
-		).toThrow(/pickup address has no five-digit postcode/);
+			pickupPlaceOf(
+				job({
+					pickupAddress: "Lot 5, Jalan Kilang, Shah Alam",
+					pickupPostcode: null,
+				}),
+			),
+		).toThrow(FedexNotDeliverable);
 	});
 });
 
@@ -441,6 +452,25 @@ describe("shipBody", () => {
 		expect(shipment.shipper.contact.companyName).toBe("EzCabinet Sdn Bhd");
 	});
 
+	it("names the shipper from the job", () => {
+		const sender = {
+			brand: "Kabinet Baru",
+			legalName: "Kabinet Baru Sdn Bhd",
+			phone: "03-5555 1234",
+			closeTime: "18:00",
+		};
+		expect(
+			shipBody(job({ sender }), "740561073", "FEDEX_PRIORITY").requestedShipment
+				.shipper.contact.companyName,
+		).toBe("Kabinet Baru Sdn Bhd");
+	});
+
+	it("refuses a pickup with no postcode", () => {
+		expect(() =>
+			shipBody(job({ pickupPostcode: null }), "740561073", "FEDEX_PRIORITY"),
+		).toThrow(FedexNotDeliverable);
+	});
+
 	it("refuses a customer number FedEx cannot ring", () => {
 		expect(() =>
 			shipBody(
@@ -453,6 +483,18 @@ describe("shipBody", () => {
 });
 
 describe("pickupBody", () => {
+	it("closes at the time the company saved", () => {
+		const sender = {
+			brand: "EzCabinet",
+			legalName: "EzCabinet Sdn Bhd",
+			phone: "03-1234 5678",
+			closeTime: "17:30",
+		};
+		expect(
+			pickupBody(job({ sender }), "740561073").originDetail.customerCloseTime,
+		).toBe("17:30:00");
+	});
+
 	it("asks FedEx Express to collect from the workshop at the scheduled time", () => {
 		expect(pickupBody(job(), "740561073")).toEqual({
 			associatedAccountNumber: { value: "740561073" },
@@ -463,7 +505,7 @@ describe("pickupBody", () => {
 						phoneNumber: "60312345678",
 					},
 					address: {
-						streetLines: ["EzCabinet Sdn Bhd, Klang Valley,", "Selangor"],
+						streetLines: ["Lot 1, Jalan Kilang, 43800 Dengkil,", "Selangor"],
 						postalCode: "43800",
 						city: "Dengkil",
 						countryCode: "MY",

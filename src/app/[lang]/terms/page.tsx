@@ -3,7 +3,6 @@ import { LegalPage } from "@/components/LegalPage";
 import { getDictionary } from "@/lib/copy/dictionary";
 import { fill } from "@/lib/copy/fill";
 import { isLocale } from "@/lib/copy/locales";
-import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 
 /**
  * The terms a customer agrees to at checkout (`termsAccepted` on
@@ -14,8 +13,8 @@ import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
  * `lib/orders/terms.ts` must change with it, or an order can no longer be
  * matched to the text its customer agreed to.
  *
- * The seller's address and phone are the same placeholders the logistics
- * adapters use — see Open questions in CLAUDE.md.
+ * The seller's name, address, email and phone come from the company's saved
+ * details (`/admin/company`), filled into `s.seller` by `getDictionary`.
  */
 export default async function TermsPage({
 	params,
@@ -36,14 +35,7 @@ export default async function TermsPage({
 			draft={t.privacy.draft}
 			intro={s.intro}
 			sections={[
-				[
-					s.sellerHeading,
-					fill(s.seller, {
-						address: WORKSHOP_ADDRESS,
-						email,
-						phone: WORKSHOP_PHONE,
-					}),
-				],
+				[s.sellerHeading, s.seller],
 				[s.goodsHeading, s.goods],
 				[s.priceHeading, s.price],
 				[s.paymentHeading, s.payment],

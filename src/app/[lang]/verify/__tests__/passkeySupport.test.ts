@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { passkeysSupported } from "../passkeySupport";
 
+// At module level: inside a function, Biome reads the capitalised key as a
+// React component defined in a render.
+const withWebAuthn = { PublicKeyCredential: () => {} };
+
 describe("passkeysSupported", () => {
 	it("is true where the browser exposes WebAuthn", () => {
-		expect(
-			passkeysSupported({
-				PublicKeyCredential: function PublicKeyCredential() {},
-			}),
-		).toBe(true);
+		expect(passkeysSupported(withWebAuthn)).toBe(true);
 	});
 	it("is false in an in-app browser without it", () => {
 		expect(passkeysSupported({})).toBe(false);

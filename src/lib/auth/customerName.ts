@@ -47,13 +47,17 @@ const fold = (text: string): string =>
 		.toLowerCase()
 		.replace(/[^\p{L}\p{N}]/gu, "");
 
+/** A brand folding shorter than this is matched as a whole word only ("IC" is not in "Alice"). */
+const SHORT_BRAND = 4;
+
 /**
  * A name that would read as the business on a staff screen or in a mail:
- * anything containing "ezcabinet", or whose first word starts with "admin"
- * or "support".
+ * anything containing the current brand or any brand saved before it
+ * (`getReservedBrands`), or whose first word starts with "admin" or
+ * "support".
  *
  * Both are tested folded; only this check folds, and what is stored is the
- * name as typed. "ezcabinet" is looked for in the whole name, spaces and all.
+ * name as typed. A brand is looked for in the whole name, spaces and all (a brand under four characters only as a whole word).
  * The prefix is looked for in the first word only, or real names whose
  * opening letters spell it across a space are refused ("Ad Minh", "Sup
  * Port"). A word ends at an ordinary space and nothing else — a hair space
@@ -62,9 +66,20 @@ const fold = (text: string): string =>
  * dash. Look-alike letters from another script (Cyrillic "а", Greek "ο")
  * are not unified: out of scope.
  */
-function posesAsBusiness(name: string): boolean {
+function posesAsBusiness(name: string, brands: readonly string[]): boolean {
 	const first = name.split(" ").map(fold).find(Boolean) ?? "";
-	return fold(name).includes("ezcabinet") || /^(admin|support)/.test(first);
+	const folded = fold(name);
+	const words = name.split(" ").map(fold);
+	return (
+		// A brand that folds to nothing ("!!") would match every name.
+		brands.some((brand) => {
+			const business = fold(brand);
+			if (business === "") return false;
+			return business.length < SHORT_BRAND
+				? words.includes(business)
+				: folded.includes(business);
+		}) || /^(admin|support)/.test(first)
+	);
 }
 
 /**
@@ -73,18 +88,19 @@ function posesAsBusiness(name: string): boolean {
  * never identifies a caller. Any script is fine — it is stored as typed,
  * trimmed, with invisible format characters removed.
  */
-export const customerNameSchema = z
-	.string()
-	.transform((typed) => typed.replace(INVISIBLE, ""))
-	.pipe(
-		z
-			.string()
-			.trim()
-			.min(2)
-			.max(80)
-			.refine(hasLetter, { message: NO_LETTER })
-			.refine((name) => !HIDDEN.test(name) && !posesAsBusiness(name)),
-	);
+export const customerNameSchema = (brands: readonly string[]) =>
+	z
+		.string()
+		.transform((typed) => typed.replace(INVISIBLE, ""))
+		.pipe(
+			z
+				.string()
+				.trim()
+				.min(2)
+				.max(80)
+				.refine(hasLetter, { message: NO_LETTER })
+				.refine((name) => !HIDDEN.test(name) && !posesAsBusiness(name, brands)),
+		);
 
 /**
  * The schema's verdict as the two answers the customer can be given:
@@ -93,8 +109,9 @@ export const customerNameSchema = z
  */
 export function parseCustomerName(
 	input: unknown,
+	brands: readonly string[],
 ): { name: string } | { error: "name_required" | "name_refused" } {
-	const parsed = customerNameSchema.safeParse(input);
+	const parsed = customerNameSchema(brands).safeParse(input);
 	if (parsed.success) return { name: parsed.data };
 	const short = parsed.error.issues.some(
 		(issue) =>

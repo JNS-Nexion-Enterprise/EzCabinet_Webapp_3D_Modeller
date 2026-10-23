@@ -73,6 +73,18 @@ export const bookInputSchema = z.object({
 export type DeliveryJob = {
 	id: string;
 	number: number;
+	/** The job number as staff say it aloud, under the prefix it was made with. */
+	ref: string;
+	/**
+	 * Who the carrier is told is sending. Read live from the saved company when
+	 * the job is built, so a rename or a new phone reaches every unbooked job.
+	 */
+	sender: {
+		brand: string;
+		legalName: string;
+		phone: string;
+		closeTime: string;
+	};
 	customerName: string;
 	customerPhone: string;
 	siteAddress: string;

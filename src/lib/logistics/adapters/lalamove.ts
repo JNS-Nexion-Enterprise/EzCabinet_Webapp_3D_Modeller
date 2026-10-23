@@ -2,7 +2,6 @@ import "server-only";
 import { createHmac, randomUUID } from "node:crypto";
 import { z } from "zod";
 import { secretsMatch } from "@/lib/secretsMatch";
-import { WORKSHOP_PHONE } from "../carriers";
 import { carrierFetch } from "../http";
 import { suggestVehicle, type VehicleClass } from "../measure";
 import { toE164 } from "../phone";
@@ -180,12 +179,12 @@ export function orderBody(
 			quotationId,
 			sender: {
 				stopId: senderStopId,
-				name: "EzCabinet",
+				name: job.sender.brand,
 				// The workshop's own number. Emphatically not the customer's: this
 				// is the contact a driver rings from the loading bay, and pointing
 				// it at the customer means they get called to explain where their
 				// own cabinets are.
-				phone: phoneOrThrow(WORKSHOP_PHONE, "workshop's"),
+				phone: phoneOrThrow(job.sender.phone, "workshop's"),
 			},
 			recipients: [
 				{

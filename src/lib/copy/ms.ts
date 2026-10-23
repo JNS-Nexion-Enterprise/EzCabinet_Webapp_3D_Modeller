@@ -3,9 +3,9 @@ import type { Dictionary } from "./en";
 /** Bahasa Malaysia. Typed against `Dictionary` for the same reason as `zh`. */
 export const ms: Dictionary = {
 	meta: {
-		title: "EzCabinet · Reka dapur anda dalam 3D",
+		title: "{brand} · Reka dapur anda dalam 3D",
 		description:
-			"Letakkan unit EzCabinet sebenar ke dalam model bilik anda sendiri, lihat dari setiap sudut, dan dapatkan harga serta-merta. Tidak perlu ke bilik pameran.",
+			"Letakkan unit {brand} sebenar ke dalam model bilik anda sendiri, lihat dari setiap sudut, dan dapatkan harga serta-merta. Tidak perlu ke bilik pameran.",
 	},
 	common: {
 		whatsappHelp: "Hubungi kami di WhatsApp",
@@ -19,6 +19,7 @@ export const ms: Dictionary = {
 	},
 	landing: {
 		nav: {
+			material: "Bahan",
 			howItWorks: "Cara ia berfungsi",
 			gallery: "Galeri",
 			finishes: "Kemasan",
@@ -28,52 +29,71 @@ export const ms: Dictionary = {
 			startPlanning: "Mula reka bentuk",
 		},
 		hero: {
+			/** Also the planner's start screen. */
 			eyebrow: "Percuma untuk cuba · tiada akaun diperlukan",
-			titleBeforeAccent: "Reka dapur anda",
-			titleAccent: "dalam 3D",
+			tagline: "Saiz sebenar. Harga sebenar.",
+			title: "Reka dapur anda dalam 3D. Lihat harga semasa anda reka.",
 			subtitle:
-				"Letakkan unit EzCabinet sebenar ke dalam bilik anda sendiri, lihat harga berubah semasa anda reka, dan hantarkan pelan itu terus kepada kami.",
+				"Letakkan unit {brand} sebenar ke dalam model bilik anda, kemudian hantarkan pelan kepada kami apabila ia kelihatan tepat.",
+			fromLabel: "Kabinet dari",
 			cta: "Mula reka bentuk",
 			howItWorks: "Cara ia berfungsi",
-			alt: "Dapur EzCabinet yang telah siap",
+			alt: "Dapur {brand} yang telah siap",
 		},
-		facts: {
-			cabinetsFromLabel: "Kabinet dari",
-			typicalDeliveryValue: "4-6 minggu",
-			typicalDeliveryLabel: "Tempoh penghantaran biasa",
-			warrantyValue: "5 tahun",
-			warrantyLabel: "Waranti perkakasan dan binaan",
-			noAccountValue: "Tiada akaun",
-			noAccountLabel: "Diperlukan untuk reka bentuk dan harga",
+		build: {
+			hint: "Tatal untuk membina",
+			step1: "Kabinet di sepanjang dinding anda",
+			step2: "Permukaan meja, pintu dan laci",
+			step3: "Unit tinggi, unit dinding dan pulau",
+			step4: "Kemasan pilihan anda pada setiap muka",
+			finalTitle: "Reka bilik anda dengan cara yang sama.",
+			finalSubtitle:
+				"Tetapkan panjang dinding, letakkan unit dan lihat harga dikemas kini semasa anda reka.",
+			totalLabel: "Contoh dapur",
+			totalNote: "Harga sekadar ilustrasi",
+		},
+		materials: {
+			eyebrow: "Bahan",
+			heading: "Pilih papan, kemudian lihat pada setiap pintu",
 		},
 		how: {
 			heading: "Tiga langkah dari dinding kosong ke sebut harga",
+			railCaption:
+				"Setiap langkah menggunakan saiz kabinet {brand} sebenar, jadi apa yang anda reka ialah apa yang kami bina.",
 			step1Title: "Pilih bilik anda",
 			step1Detail:
 				"Pilih dapur, ruang tamu, bilik tidur atau anjung, dan tetapkan dimensi dinding sebenar anda.",
 			step2Title: "Susun kabinet, mengikut skala sebenar",
 			step2Detail:
-				"Susun unit EzCabinet sebenar dalam 3D dan tukar kemasan sehingga kelihatan tepat.",
+				"Susun unit {brand} sebenar dalam 3D dan tukar kemasan sehingga kelihatan tepat.",
 			step3Title: "Dapatkan sebut harga serta-merta",
 			step3Detail:
 				"Lihat harga secara langsung semasa anda menyusun, kemudian hantar pelan anda terus kepada pasukan kami.",
 		},
 		gallery: {
-			heading: "Terokai mengikut bilik",
-			subtitle:
-				"Setiap bilik bermula daripada saiz kabinet EzCabinet sebenar dan susun atur yang sedia ada pada dinding anda.",
+			eyebrow: "Mengikut bilik",
+			heading: "Setiap bilik bermula daripada saiz {brand} sebenar",
 			roomAlt: "kabinet {room}",
-			roomSubtitle: {
-				kitchen: "Saiz kabinet EzCabinet sebenar",
-				living: "Rak TV & unit paparan",
-				bedroom: "Almari pakaian",
-				foyer: "Kabinet kasut & bangku",
+			roomDetail: {
+				kitchen:
+					"Kabinet dasar dan dinding, laci dan pulau, disusun mengikut panjang dinding sebenar anda.",
+				living:
+					"Rak TV dan unit paparan, dirancang mengikut dinding yang sedia ada.",
+				bedroom:
+					"Almari pakaian, dirancang mengikut ketinggian siling sebenar anda.",
+				foyer: "Kabinet kasut dan bangku yang dirancang untuk anjung anda.",
+			},
+			planLink: {
+				kitchen: "Reka dapur",
+				living: "Reka ruang tamu",
+				bedroom: "Reka bilik tidur",
+				foyer: "Reka anjung",
 			},
 		},
 		finishes: {
-			heading: "Kemasan & bahan",
-			subtitle:
-				"Tukar kemasan pada mana-mana kabinet terus dalam alat reka bentuk.",
+			eyebrow: "Kemasan & bahan",
+			heading:
+				"Tukar kemasan pada mana-mana kabinet terus dalam alat reka bentuk",
 		},
 		faq: {
 			heading: "Soalan lazim",
@@ -87,12 +107,6 @@ export const ms: Dictionary = {
 			a4: "Perubahan adalah percuma sebelum pengeluaran bermula. Pasukan kami akan sahkan pelan anda terlebih dahulu.",
 			q5: "Adakah anda menawarkan waranti?",
 			a5: "Setiap kabinet disertakan waranti 5 tahun untuk perkakasan dan binaan.",
-		},
-		closing: {
-			heading:
-				"Dinding anda, saiz anda, harga anda. Dalam lebih kurang lima minit.",
-			subtitle: "Tiada apa untuk dipasang dan tiada apa untuk didaftar.",
-			cta: "Mula reka bentuk",
 		},
 		footer: {
 			tagline:
@@ -121,6 +135,22 @@ export const ms: Dictionary = {
 		diyTutorials: "Tutorial DIY",
 		clear: "Kosongkan",
 		dimensionAriaSuffix: "{label} dalam milimeter",
+		phone: {
+			backHome: "Utama",
+			backRooms: "Bilik",
+			backEdit: "Sunting",
+			wallSubtitle: "Dinding {m} m",
+			tapHint: "Ketik kabinet untuk menyuntingnya",
+			tabsLabel: "Panel studio",
+			tabs: {
+				selected: "Dipilih",
+				add: "Tambah",
+				room: "Bilik",
+				run: "Susunan",
+			},
+			doorsAria: "Pintu: {mode}. Ketik untuk tukar.",
+			quoteCta: "Minta sebut harga",
+		},
 		tools: {
 			ariaLabel: "Alat",
 			select: "Pilih",
@@ -160,10 +190,10 @@ export const ms: Dictionary = {
 		start: {
 			heading: "Bilik apa yang anda ingin rancang?",
 			subtitle:
-				"Pilih satu untuk bermula pada dinding kosong dengan saiz EzCabinet sebenar.",
+				"Pilih satu untuk bermula pada dinding kosong dengan saiz {brand} sebenar.",
 			roomIconAlt: "Ikon {room}",
 			roomSubtitle: {
-				kitchen: "Saiz EzCabinet sebenar",
+				kitchen: "Saiz {brand} sebenar",
 				living: "Rak TV & unit paparan",
 				bedroom: "Almari pakaian",
 				foyer: "Kabinet kasut & bangku",
@@ -350,7 +380,7 @@ export const ms: Dictionary = {
 			estimatedTotal: "Jumlah anggaran",
 			estimateBadge: "ANGGARAN",
 			placeholderNote:
-				"Kadar sementara — bukan sebut harga sehingga disahkan oleh EzCabinet.",
+				"Kadar sementara — bukan sebut harga sehingga disahkan oleh {brand}.",
 			cta: "Dapatkan sebut harga untuk reka bentuk ini",
 			lines: {
 				carcasses: "Badan kabinet",
@@ -379,7 +409,7 @@ export const ms: Dictionary = {
 		backToEditing: "Kembali menyunting",
 		savedHeading: "Disimpan — untuk demo sahaja",
 		savedBody:
-			"Ciri penangkapan bakal pelanggan belum disambungkan kepada EzCabinet lagi (itu fasa kemudian projek ini). Tiada apa-apa dihantar.",
+			"Ciri penangkapan bakal pelanggan belum disambungkan kepada {brand} lagi (itu fasa kemudian projek ini). Tiada apa-apa dihantar.",
 		heading: "Pesan {room} ini",
 		description:
 			"Buat pesanan, kemudian bayar melalui pindahan bank. Pereka bentuk akan mengesahkan ukuran anda di tapak sebelum apa-apa dibina.",
@@ -403,7 +433,7 @@ export const ms: Dictionary = {
 		termsLink: "Terma jualan",
 		refundsLink: "Polisi bayaran balik",
 		errorTerms: "Tandakan ini untuk membuat pesanan.",
-		soldBy: "Dijual oleh {address}. Hubungi {email} atau {phone}.",
+		soldBy: "Dijual oleh {seller}. Hubungi {email} atau {phone}.",
 		submitting: "Sedang membuat pesanan…",
 		descriptionOnline:
 			"Pereka akan mengukur semula di tapak sebelum apa-apa dibina.",
@@ -583,9 +613,9 @@ export const ms: Dictionary = {
 	},
 	privacy: {
 		title: "Notis privasi",
-		draft: "Draf — menunggu semakan EzCabinet Sdn Bhd sebelum berkuat kuasa.",
+		draft: "Draf — menunggu semakan {legalName} sebelum berkuat kuasa.",
 		intro:
-			"Notis ini menerangkan apa yang direkod oleh perancang EzCabinet apabila anda menggunakannya, dan sebabnya.",
+			"Notis ini menerangkan apa yang direkod oleh perancang {brand} apabila anda menggunakannya, dan sebabnya.",
 		purposeHeading: "Tujuan",
 		purpose:
 			"Untuk mengenal pasti bahagian perancang yang mengelirukan atau rosak, dan membaikinya.",
@@ -624,7 +654,7 @@ export const ms: Dictionary = {
 			"Anda boleh meminta untuk melihat data peribadi yang kami simpan tentang anda, membetulkannya, menerima salinan dalam bentuk mudah alih, menarik balik persetujuan, atau meminta kami berhenti menggunakannya untuk pemasaran langsung. Tulis kepada alamat hubungan di bawah.",
 		otherLawsHeading: "Undang-undang lain",
 		otherLaws:
-			"Notis ini diberikan di bawah Akta Perlindungan Data Peribadi 2010 Malaysia. Penyedia analitik kami memproses data penggunaan di Kesatuan Eropah di bawah perjanjian pemprosesan datanya sendiri; EzCabinet menjual di Malaysia sahaja.",
+			"Notis ini diberikan di bawah Akta Perlindungan Data Peribadi 2010 Malaysia. Penyedia analitik kami memproses data penggunaan di Kesatuan Eropah di bawah perjanjian pemprosesan datanya sendiri; {brand} menjual di Malaysia sahaja.",
 		choiceHeading: "Pilihan anda",
 		choice:
 			"Jika anda menolak, kami hanya mengira lawatan tanpa kuki atau storan tempatan, dengan pengecam yang ditetapkan semula setiap hari, dan tiada rakaman dibuat. Anda boleh menukar pilihan pada bila-bila masa dengan memadam data laman ini dalam pelayar anda.",
@@ -636,9 +666,9 @@ export const ms: Dictionary = {
 	terms: {
 		title: "Terma jualan",
 		intro:
-			"Terma ini terpakai apabila anda memesan kabinet melalui perancang EzCabinet. Sila baca bersama polisi bayaran balik sebelum membayar.",
+			"Terma ini terpakai apabila anda memesan kabinet melalui perancang {brand}. Sila baca bersama polisi bayaran balik sebelum membayar.",
 		sellerHeading: "Penjual",
-		seller: "{address}. E-mel {email}, telefon {phone}.",
+		seller: "{seller}. E-mel {email}, telefon {phone}.",
 		goodsHeading: "Apa yang anda beli",
 		goods:
 			"Kabinet yang dibuat mengikut tempahan berdasarkan reka bentuk yang anda hantar. Paparan 3D ialah ilustrasi; ukuran akhir disahkan apabila kami mengukur semula tapak anda.",
@@ -687,11 +717,11 @@ export const ms: Dictionary = {
 			"Bayaran balik dikembalikan ke kaedah pembayaran yang anda gunakan, dalam masa 14 hari bekerja selepas kami bersetuju dengan bayaran balik itu.",
 		howToAskHeading: "Cara memohon",
 		howToAsk:
-			"Tulis kepada {email} dengan rujukan pesanan anda, contohnya IC-20261007-001.",
+			"Tulis kepada {email} dengan rujukan pesanan anda, contohnya {orderPrefix}-20261007-001.",
 	},
 	whatsapp: {
 		autoReply:
-			"Nombor ini hanya menghantar kemas kini pesanan EzCabinet. Untuk berbual dengan pasukan kami, hantar mesej ke {number}",
+			"Nombor ini hanya menghantar kemas kini pesanan {brand}. Untuk berbual dengan pasukan kami, hantar mesej ke {number}",
 	},
 	/** The shared header's account menu and the account side nav. */
 	account: {
@@ -780,7 +810,7 @@ export const ms: Dictionary = {
 			"Pelayar ini tidak menyokong kunci laluan. Buka halaman ini dalam Chrome atau Safari.",
 		otherDevice:
 			"Disediakan pada peranti lain? Pilih peranti itu apabila pelayar bertanya, atau log masuk di sana dan tambah peranti ini di bawah Kunci laluan",
-		lostDevice: "Peranti hilang? Hubungi EzCabinet",
+		lostDevice: "Peranti hilang? Hubungi {brand}",
 		checkoutHeading: "Satu langkah lagi sebelum membayar",
 		checkoutBody:
 			"Sahkan ini anda dengan kunci laluan. Ia hanya mengambil beberapa saat dan reka bentuk anda kekal seperti sedia ada.",

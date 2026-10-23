@@ -13,16 +13,16 @@ brings that to the planner.
 
 ## Decisions
 
-| Question | Decision |
-| --- | --- |
-| How free is the outline? | Templates with editable wall lengths. Every corner is 90°. |
-| Which templates ship? | `rect`, and `l` (a notch cut from one front corner, mirrorable). A U-room is one more template later. |
-| Which walls hold cabinets? | Any wall, any number: U and galley kitchens become possible. |
-| Doors and windows? | Later. They will reuse the `reserved` span mechanism. |
-| Where is the shape chosen? | In the studio's room panel. No new screen. |
-| How is the outline stored? | Template + parameters (not a wall list). Closure is guaranteed by construction; an invalid room cannot be represented. |
-| When is a corner square reserved? | Derived, never stored: when both walls meeting at an inside corner hold cabinets, or the corner holds a unit. |
-| Can dimensions change later? | Yes, at any time, with cabinets placed. Clamped by what each wall's cabinets need. |
+| Question                          | Decision                                                                                                               |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| How free is the outline?          | Templates with editable wall lengths. Every corner is 90°.                                                             |
+| Which templates ship?             | `rect`, and `l` (a notch cut from one front corner, mirrorable). A U-room is one more template later.                  |
+| Which walls hold cabinets?        | Any wall, any number: U and galley kitchens become possible.                                                           |
+| Doors and windows?                | Later. They will reuse the `reserved` span mechanism.                                                                  |
+| Where is the shape chosen?        | In the studio's room panel. No new screen.                                                                             |
+| How is the outline stored?        | Template + parameters (not a wall list). Closure is guaranteed by construction; an invalid room cannot be represented. |
+| When is a corner square reserved? | Derived, never stored: when both walls meeting at an inside corner hold cabinets, or the corner holds a unit.          |
+| Can dimensions change later?      | Yes, at any time, with cabinets placed. Clamped by what each wall's cabinets need.                                     |
 
 ## 1. Floor plan — `src/lib/planner/floorplan.ts` (new, pure)
 
@@ -56,10 +56,10 @@ setWallLength(plan, wall, mm): FloorPlan; // maps the wall to its parameter, cla
 - **Wall 0 is the back wall.** A `rect` has four walls, an `l` six. The `l`
   notch is cut from the front-right corner, front-left when `mirror`.
 - **Winding rule (load-bearing).** Facing any wall from inside the room, its
-  start is on the left. So vertex *i* is wall *i*'s right end and wall *i+1*'s
+  start is on the left. So vertex _i_ is wall _i_'s right end and wall _i+1_'s
   left end, and every inside corner is the **left** corner of the wall after it.
   - Corner designs are drawn for the left-hand corner, so a corner unit is
-    always drawn at x = 0 on wall *i+1*, unrotated. The `rotationDeg: 270`
+    always drawn at x = 0 on wall _i+1_, unrotated. The `rotationDeg: 270`
     right-corner case disappears.
   - It matches v2's "left to right, facing the wall from inside", so migrated
     runs keep their `xMm`.
@@ -78,22 +78,24 @@ setWallLength(plan, wall, mm): FloorPlan; // maps the wall to its parameter, cla
 
 ```ts
 type RoomLayout = Settings & {
-  plan: FloorPlan;
-  runs: Run[]; // runs[i] belongs to wall i
-  corners: Record<number, { floor: PlacedModule | null; wall: PlacedModule | null }>; // keyed by vertex
+	plan: FloorPlan;
+	runs: Run[]; // runs[i] belongs to wall i
+	corners: Record<
+		number,
+		{ floor: PlacedModule | null; wall: PlacedModule | null }
+	>; // keyed by vertex
 };
 ```
 
 `Settings` keeps `ceilingHeightMm`, `hangingHeightMm`, `wallToCeiling`,
 `baseSkirting` and `wallToWall`. `wallWidthMm` and `roomDepthMm` leave the
-room document. `runView(room, i)` derives them from wall *i*, so the one-wall
+room document. `runView(room, i)` derives them from wall _i_, so the one-wall
 placement engine in `layout.ts` is unchanged.
 
 ### Active corners
 
-An inside vertex is **active** when walls *i* and *i+1* both hold cabinets, or
+An inside vertex is **active** when walls _i_ and _i+1_ both hold cabinets, or
 the vertex holds a corner unit.
-
 - An active corner reserves the square on both walls: `EMPTY_CORNER_MM`
   (607 floor / 397 wall), or the unit's width when one is placed.
 - Activating it runs today's `cascadeCorner` for that vertex. It slides
@@ -143,11 +145,11 @@ and **EzCabinet should be told** before a re-priced old design surprises them.
   - Corner keys must be inside vertices.
 - v1 and v2 are transformed to v3 on read:
 
-  | Stored | Becomes |
-  | --- | --- |
+  | Stored   | Becomes                                                          |
+  | -------- | ---------------------------------------------------------------- |
   | straight | `rect(wallWidthMm, roomDepthMm)`, run on wall 0, walls 1–3 empty |
-  | L, left | side run on wall 3, corner at vertex 3 |
-  | L, right | side run on wall 1, corner at vertex 0 |
+  | L, left  | side run on wall 3, corner at vertex 3                           |
+  | L, right | side run on wall 1, corner at vertex 0                           |
 
   `xMm` carries over unchanged. A stored `rotationDeg` on a corner unit is
   dropped; it was already never trusted.
@@ -187,7 +189,6 @@ and **EzCabinet should be told** before a re-priced old design surprises them.
 ## Testing
 
 `lib/planner` gets its tests before any caller, per CLAUDE.md:
-
 - **`floorplan.test.ts`:** each template closes; vertex kinds; the winding rule
   (each wall's start is the previous wall's end, inward normals point in);
   `setWallLength` maps and clamps.
@@ -205,7 +206,6 @@ and **EzCabinet should be told** before a re-priced old design surprises them.
   apart from the flush-end panel change above.
 
 Then `pnpm test`, `pnpm lint` and `pnpm typecheck`. In the browser:
-
 1. Pick the L and edit the notch in plan view.
 2. Tap each wall and build a U.
 3. Drag a design in near a side wall.
@@ -216,7 +216,6 @@ Then `pnpm test`, `pnpm lint` and `pnpm typecheck`. In the browser:
 ## Order of work
 
 Each step is its own commit.
-
 1. `floorplan.ts` and its tests.
 2. `reserved` as span lists; `EndWalls` per end.
 3. `room.ts` v3, the order schema v3 and migrations, `validate.ts`,
@@ -233,7 +232,6 @@ flag. Add the last when an open-plan room needs it.
 ## 5. Free-standing cabinets (added 2026-09-19, user decision)
 
 A cabinet can stand anywhere on the floor, not only against a wall.
-
 - **Document:** `RoomLayout.free: FreeModule[]`, where `FreeModule = PlacedModule` with `xMm, zMm` = the centre of its footprint in plan mm, and `rotationDeg` = its yaw relative to the back wall. In zod it is optional and defaults to `[]`, so saved v3 designs still parse with no version bump.
 - **Who may go free:** base and tall units only. Wall-hung units need a wall; corner units need their corner.
 - **Drop rule:** on release, if the cabinet's back edge is within **150 mm** (`SNAP_TO_WALL_MM`) of the nearest wall, it joins that wall's run (the Task 8 `moveToRun` path). Otherwise it becomes, or stays, free at the drop point. A cabinet going from a wall to free keeps facing the way its wall faced it.

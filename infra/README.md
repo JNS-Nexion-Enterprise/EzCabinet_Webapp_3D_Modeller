@@ -8,13 +8,13 @@ are open source and free. `brew install opentofu`.
 
 ## What it creates per company
 
-| | |
-| --- | --- |
-| Vercel project `planner-<slug>` | Not linked to git. The release job deploys it. |
-| Blob store `planner-<slug>` | Private, `sin1`, connected to the project. |
-| Env vars, production only | Config from the tenant file, secrets from `secrets.auto.tfvars`, and five generated here (`BETTER_AUTH_SECRET`, `CRON_SECRET`, `FLAGS_SECRET`, `EASYPARCEL_WEBHOOK_TOKEN`, `WHATSAPP_VERIFY_TOKEN`). |
-| The domain, and its mail DNS records | |
-| Firewall rule on the sign-in code route | 90 an hour per address. |
+|                                         |                                                                                                                                                                                                      |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Vercel project `planner-<slug>`         | Not linked to git. The release job deploys it.                                                                                                                                                       |
+| Blob store `planner-<slug>`             | Private, `sin1`, connected to the project.                                                                                                                                                           |
+| Env vars, production only               | Config from the tenant file, secrets from `secrets.auto.tfvars`, and five generated here (`BETTER_AUTH_SECRET`, `CRON_SECRET`, `FLAGS_SECRET`, `EASYPARCEL_WEBHOOK_TOKEN`, `WHATSAPP_VERIFY_TOKEN`). |
+| The domain, and its mail DNS records    |                                                                                                                                                                                                      |
+| Firewall rule on the sign-in code route | 90 an hour per address.                                                                                                                                                                              |
 
 Plus one 5xx alert covering every company's project.
 

@@ -6,16 +6,16 @@ The code can be built and tested without any of this. None of it can be done
 by us: every item needs EzCabinet's company documents, phone, staff or lawyer.
 Tick items off here as they land.
 
-| # | Item | Owner at EzCabinet | Blocks | Status |
-| --- | --- | --- | --- | --- |
-| 1 | Meta Business verification | Director / admin | Everything | ☐ |
-| 2 | Dedicated WhatsApp number | Admin | Everything | ☐ |
-| 3 | Access for JNS Nexion (system user + token) | Admin | Sending | ☐ |
-| 4 | Payment method on the WhatsApp account | Finance | Sending | ☐ |
-| 5 | Template approval, 7 × 3 languages | Admin, with a zh and a ms speaker | Sending | ☐ |
-| 6 | The factory's real production steps | Factory manager | Stage messages | ☐ |
-| 7 | Sales WhatsApp number for the auto-reply | Sales | Auto-reply | ☐ |
-| 8 | Privacy notice sign-off | Counsel | Public launch | ☐ |
+| #   | Item                                        | Owner at EzCabinet                | Blocks         | Status |
+| --- | ------------------------------------------- | --------------------------------- | -------------- | ------ |
+| 1   | Meta Business verification                  | Director / admin                  | Everything     | ☐      |
+| 2   | Dedicated WhatsApp number                   | Admin                             | Everything     | ☐      |
+| 3   | Access for JNS Nexion (system user + token) | Admin                             | Sending        | ☐      |
+| 4   | Payment method on the WhatsApp account      | Finance                           | Sending        | ☐      |
+| 5   | Template approval, 7 × 3 languages          | Admin, with a zh and a ms speaker | Sending        | ☐      |
+| 6   | The factory's real production steps         | Factory manager                   | Stage messages | ☐      |
+| 7   | Sales WhatsApp number for the auto-reply    | Sales                             | Auto-reply     | ☐      |
+| 8   | Privacy notice sign-off                     | Counsel                           | Public launch  | ☐      |
 
 ---
 
@@ -25,7 +25,6 @@ In **Meta Business Suite** (business.facebook.com), under Security Centre,
 verify the business in **EzCabinet Sdn Bhd's legal name**.
 
 Have ready:
-
 - SSM registration (company certificate / Form 9 or Section 17 equivalent)
 - A utility bill or bank statement showing the registered address
 - A business website on the company's own domain, with the same name and
@@ -42,7 +41,6 @@ customers messaged per day and cannot get a display name approved.
 
 A number used with the Cloud API **cannot also be used in the WhatsApp or
 WhatsApp Business phone app**. Do not use the number sales already chats on.
-
 - A new mobile or landline number EzCabinet owns long-term. It must be able to
   receive one SMS or voice call for the verification code.
 - If the number was ever on WhatsApp, delete that WhatsApp account first.
@@ -54,7 +52,6 @@ WhatsApp Business phone app**. Do not use the number sales already chats on.
 ## 3. Access for JNS Nexion
 
 In Meta Business Suite, under Business settings:
-
 1. Create a **Meta app** (type: Business) and add the **WhatsApp** product to
    it, linked to EzCabinet's WhatsApp Business Account.
 2. Create a **system user** (admin role), assign it the app and the WhatsApp
@@ -64,12 +61,12 @@ In Meta Business Suite, under Business settings:
 3. Send JNS Nexion, **through a password manager or in person — never by
    WhatsApp or email**:
 
-| What | Becomes |
-| --- | --- |
-| The permanent token | `WHATSAPP_TOKEN` |
+| What                                       | Becomes                    |
+| ------------------------------------------ | -------------------------- |
+| The permanent token                        | `WHATSAPP_TOKEN`           |
 | The phone number ID (not the phone number) | `WHATSAPP_PHONE_NUMBER_ID` |
-| The WhatsApp Business Account ID | `WHATSAPP_WABA_ID` |
-| The app secret (App settings → Basic) | `WHATSAPP_APP_SECRET` |
+| The WhatsApp Business Account ID           | `WHATSAPP_WABA_ID`         |
+| The app secret (App settings → Basic)      | `WHATSAPP_APP_SECRET`      |
 
 The 24-hour token on the app's API Setup page is for testing only. If it
 reaches production, it expires the next day: messages then wait in the outbox
@@ -106,16 +103,16 @@ at EzCabinet — keep the same numbered variables in the same meaning.
 Each template has one **URL button** with a dynamic suffix: the base URL is
 fixed at submission and the app appends the private link token.
 
-| Template name | Button | Button URL |
-| --- | --- | --- |
-| `order_placed` | View order | `https://<domain>/order/{{1}}` |
-| `payment_confirmed` | View order | `https://<domain>/order/{{1}}` |
-| `production_stage` | View progress | `https://<domain>/order/{{1}}` |
-| `delivery_booked` | Track delivery | `https://<domain>/track/{{1}}` |
+| Template name        | Button         | Button URL                     |
+| -------------------- | -------------- | ------------------------------ |
+| `order_placed`       | View order     | `https://<domain>/order/{{1}}` |
+| `payment_confirmed`  | View order     | `https://<domain>/order/{{1}}` |
+| `production_stage`   | View progress  | `https://<domain>/order/{{1}}` |
+| `delivery_booked`    | Track delivery | `https://<domain>/track/{{1}}` |
 | `delivery_picked_up` | Track delivery | `https://<domain>/track/{{1}}` |
-| `delivery_delivered` | View delivery | `https://<domain>/track/{{1}}` |
-| `delivery_failed` | View delivery | `https://<domain>/track/{{1}}` |
-| `order_refunded` | View order | `https://<domain>/order/{{1}}` |
+| `delivery_delivered` | View delivery  | `https://<domain>/track/{{1}}` |
+| `delivery_failed`    | View delivery  | `https://<domain>/track/{{1}}` |
+| `order_refunded`     | View order     | `https://<domain>/order/{{1}}` |
 
 **`order_placed`**
 > Hi {{1}}, thank you for your order with EzCabinet. Your order number is
@@ -148,7 +145,6 @@ fixed at submission and the app appends the private link token.
 > It can take a few working days to show in your account.
 
 Tips that get templates approved first time:
-
 - No promotional wording ("discount", "offer", "don't miss") — that moves a
   template into the Marketing category, which costs more and can be refused.
 - Provide sample values when Meta asks for them (e.g. `IC-20260922-001`).
@@ -165,7 +161,6 @@ The design uses placeholders:
 **Site re-measure → Cutting → Edge banding → Assembly → Quality check → Ready for delivery**
 
 EzCabinet's factory manager should confirm:
-
 - The real steps, in order, and what each is called on the floor.
 - What a customer should see for each — the floor's name may not be the right
   customer-facing word.

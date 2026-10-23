@@ -22,6 +22,7 @@
 - The landing page `src/app/[lang]/page.tsx` must not read cookies, headers or the session on the server.
 - No new dependencies. Colours from the design: ink `#171717`, muted `#5c574e`, rule `#e5e5e5`, green `#1f5138`, page `#f4f3f1`.
 - Commits end with:
+
   ```
   Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
   Claude-Session: https://claude.ai/code/session_012SCj6darnoxDRCEXATF8rX
@@ -46,6 +47,7 @@
 **Interfaces:**
 - Consumes: `summaryLines(breakdown: unknown): { name: string; qty: number; amountRm: number }[]` from `@/lib/orders/summary`.
 - Produces:
+
   ```ts
   type CardInput = { status: "AWAITING_PAYMENT" | "PAID" | "CANCELLED"; productionStage: ProductionStage | null; hasDelivery: boolean };
   type OrderCard = {
@@ -69,32 +71,69 @@ import { orderCard, unitCount } from "../card";
 describe("orderCard", () => {
 	it("awaiting payment: pay, nothing in production, no tracking", () => {
 		expect(
-			orderCard({ status: "AWAITING_PAYMENT", productionStage: null, hasDelivery: false }),
-		).toEqual({ badge: "awaiting", stage: { kind: "notStarted" }, canPay: true, canTrack: false });
+			orderCard({
+				status: "AWAITING_PAYMENT",
+				productionStage: null,
+				hasDelivery: false,
+			}),
+		).toEqual({
+			badge: "awaiting",
+			stage: { kind: "notStarted" },
+			canPay: true,
+			canTrack: false,
+		});
 	});
 
 	it("cancelled: no pay, not started", () => {
 		expect(
-			orderCard({ status: "CANCELLED", productionStage: null, hasDelivery: false }),
-		).toEqual({ badge: "cancelled", stage: { kind: "notStarted" }, canPay: false, canTrack: false });
+			orderCard({
+				status: "CANCELLED",
+				productionStage: null,
+				hasDelivery: false,
+			}),
+		).toEqual({
+			badge: "cancelled",
+			stage: { kind: "notStarted" },
+			canPay: false,
+			canTrack: false,
+		});
 	});
 
 	it("paid, not started: payment received", () => {
 		expect(
-			orderCard({ status: "PAID", productionStage: null, hasDelivery: false }).stage,
+			orderCard({ status: "PAID", productionStage: null, hasDelivery: false })
+				.stage,
 		).toEqual({ kind: "paid" });
 	});
 
 	it("paid mid-production: the stage", () => {
 		expect(
-			orderCard({ status: "PAID", productionStage: "CUTTING", hasDelivery: false }),
-		).toEqual({ badge: "paid", stage: { kind: "stage", stage: "CUTTING" }, canPay: false, canTrack: false });
+			orderCard({
+				status: "PAID",
+				productionStage: "CUTTING",
+				hasDelivery: false,
+			}),
+		).toEqual({
+			badge: "paid",
+			stage: { kind: "stage", stage: "CUTTING" },
+			canPay: false,
+			canTrack: false,
+		});
 	});
 
 	it("a delivery wins over the stage and can be tracked", () => {
 		expect(
-			orderCard({ status: "PAID", productionStage: "READY", hasDelivery: true }),
-		).toEqual({ badge: "paid", stage: { kind: "delivery" }, canPay: false, canTrack: true });
+			orderCard({
+				status: "PAID",
+				productionStage: "READY",
+				hasDelivery: true,
+			}),
+		).toEqual({
+			badge: "paid",
+			stage: { kind: "delivery" },
+			canPay: false,
+			canTrack: true,
+		});
 	});
 });
 
@@ -121,7 +160,6 @@ describe("unitCount", () => {
 
 Run: `pnpm exec vitest run src/lib/orders/__tests__/card.test.ts`
 Expected: FAIL — cannot resolve `../card`.
-
 - [ ] **Step 3: Implement**
 
 `src/lib/orders/card.ts`:
@@ -155,7 +193,11 @@ export type OrderCard = {
 export function orderCard(order: CardInput): OrderCard {
 	const paid = order.status === "PAID";
 	return {
-		badge: paid ? "paid" : order.status === "CANCELLED" ? "cancelled" : "awaiting",
+		badge: paid
+			? "paid"
+			: order.status === "CANCELLED"
+				? "cancelled"
+				: "awaiting",
 		stage: !paid
 			? { kind: "notStarted" }
 			: order.hasDelivery
@@ -177,7 +219,6 @@ export const unitCount = (breakdown: unknown): number =>
 
 Run: `pnpm exec vitest run src/lib/orders/__tests__/card.test.ts`
 Expected: PASS, 7 tests. Then `pnpm exec biome check --write src/lib/orders`.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -298,7 +339,6 @@ In `order`, after `trackDelivery`:
 
 Run: `pnpm exec tsc --noEmit && pnpm exec biome check --write src/lib/copy`
 Expected: exit 0.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -346,14 +386,16 @@ describe("initialsOf", () => {
 ```
 
 Run: `pnpm exec vitest run src/lib/__tests__/initials.test.ts` — expected FAIL (module missing).
-
 - [ ] **Step 2: Implement initials**
 
 `src/lib/initials.ts`:
 
 ```ts
 /** Up to two letters for an avatar: first and last word of the name, else the email. */
-export function initialsOf(name: string | null | undefined, email: string): string {
+export function initialsOf(
+	name: string | null | undefined,
+	email: string,
+): string {
 	const words = (name ?? "").trim().split(/\s+/).filter(Boolean);
 	if (words.length === 0) return email.charAt(0).toUpperCase();
 	const first = words[0].charAt(0);
@@ -363,7 +405,6 @@ export function initialsOf(name: string | null | undefined, email: string): stri
 ```
 
 Run the test again — expected PASS, 3 tests.
-
 - [ ] **Step 3: AccountMenu**
 
 `src/components/AccountMenu.tsx`:
@@ -447,7 +488,13 @@ export function AccountMenu({
 					{initialsOf(user.name, user.email)}
 				</span>
 				<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden>
-					<path d="M2.5 4 5 6.5 7.5 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+					<path
+						d="M2.5 4 5 6.5 7.5 4"
+						stroke="currentColor"
+						strokeWidth="1.4"
+						strokeLinecap="round"
+						strokeLinejoin="round"
+					/>
 				</svg>
 			</button>
 			{open && (
@@ -460,7 +507,12 @@ export function AccountMenu({
 						<p className="truncate font-semibold text-[13px]">{user.name}</p>
 						<p className="truncate text-[#5c574e] text-[12px]">{user.email}</p>
 					</div>
-					<Link role="menuitem" href={`/${lang}/orders`} className={item} onClick={() => setOpen(false)}>
+					<Link
+						role="menuitem"
+						href={`/${lang}/orders`}
+						className={item}
+						onClick={() => setOpen(false)}
+					>
 						{labels.myOrders}
 					</Link>
 					<button
@@ -500,7 +552,10 @@ export function SiteHeader({ lang, t }: { lang: string; t: Dictionary }) {
 	return (
 		<header className="relative z-10 flex shrink-0 items-center justify-between gap-4 border-[#e5e5e5] border-b bg-white px-4 py-2.5 sm:px-7">
 			<div className="flex items-center gap-5">
-				<Link href={`/${lang}`} className="px-0.5 py-1.5 font-bold text-[#171717] text-[14px]">
+				<Link
+					href={`/${lang}`}
+					className="px-0.5 py-1.5 font-bold text-[#171717] text-[14px]"
+				>
 					{t.common.brand}
 				</Link>
 				<nav aria-label="Main" className="hidden gap-1 sm:flex">
@@ -531,11 +586,10 @@ export function SiteHeader({ lang, t }: { lang: string; t: Dictionary }) {
 In `src/app/[lang]/track/[token]/page.tsx`, add `import { SiteHeader } from "@/components/SiteHeader";` and replace the page's top `<header …>…</header>` element (the breadcrumb bar) with:
 
 ```tsx
-			<SiteHeader lang={lang} t={t} />
+<SiteHeader lang={lang} t={t} />;
 ```
 
 Leave everything else on the page as it is.
-
 - [ ] **Step 6: Use the menu on the landing page**
 
 In `src/app/[lang]/page.tsx`:
@@ -544,15 +598,15 @@ In `src/app/[lang]/page.tsx`:
 3. In the header's right-hand `<div className="flex shrink-0 items-center gap-4">`, insert before the "Start planning" CTA link:
 
 ```tsx
-						<AccountMenu
-							lang={lang}
-							labels={{
-								signIn: t.account.signIn,
-								signOut: t.account.signOut,
-								myOrders: t.account.myOrders,
-								menu: t.account.menuLabel,
-							}}
-						/>
+<AccountMenu
+	lang={lang}
+	labels={{
+		signIn: t.account.signIn,
+		signOut: t.account.signOut,
+		myOrders: t.account.myOrders,
+		menu: t.account.menuLabel,
+	}}
+/>;
 ```
 
 4. Remove `myOrders` from `landing.nav` in `en.ts`, `ms.ts` and `zh.ts` (grep first: `grep -rn "landing.nav.myOrders" src` must return nothing).
@@ -564,7 +618,6 @@ Expected: exit 0; all tests pass (the track page tests still pass — the header
 
 Run: `pnpm build 2>&1 | grep -E "\[lang\]\s*$|/\[lang\] "`
 Expected: the `/[lang]` route is marked `●` (SSG), not `ƒ` (dynamic). If it shows `ƒ`, something in the landing page now reads request data — fix it before committing.
-
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -600,7 +653,6 @@ Update the two dynamic imports in the moved tests:
 - `(account)/order/[token]/__tests__/page.test.ts`: `await import("@/app/[lang]/(account)/order/[token]/page")`
 
 Run: `pnpm exec vitest run "src/app/[lang]/(account)"` — expected PASS (only paths changed).
-
 - [ ] **Step 2: Failing layout test**
 
 `src/app/[lang]/(account)/__tests__/layout.test.ts`:
@@ -615,7 +667,9 @@ vi.mock("@/lib/auth/session", () => ({ currentUser }));
 const count = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/catalogue/db", () => ({ prisma: { order: { count } } }));
 
-const { default: AccountLayout } = await import("@/app/[lang]/(account)/layout");
+const { default: AccountLayout } = await import(
+	"@/app/[lang]/(account)/layout"
+);
 
 const open = () =>
 	AccountLayout({ children: null, params: Promise.resolve({ lang: "en" }) });
@@ -628,8 +682,13 @@ beforeEach(() => {
 describe("account layout", () => {
 	it("counts only the signed-in account's orders for the side nav", async () => {
 		currentUser.mockResolvedValue({
-			id: "staff-1", email: "s@x.com", name: "S", image: null,
-			role: "ADMIN", disabled: false, mustChangePassword: false,
+			id: "staff-1",
+			email: "s@x.com",
+			name: "S",
+			image: null,
+			role: "ADMIN",
+			disabled: false,
+			mustChangePassword: false,
 		});
 		await open();
 		expect(count).toHaveBeenCalledWith({ where: { userId: "staff-1" } });
@@ -644,7 +703,6 @@ describe("account layout", () => {
 ```
 
 Run it — expected FAIL (layout missing). If, once the layout exists, the import fails because `@/lib/auth/client` cannot load under Node, add `vi.mock("@/lib/auth/client", () => ({ authClient: {} }));` to this test.
-
 - [ ] **Step 3: AccountNav**
 
 `src/app/[lang]/(account)/AccountNav.tsx`:
@@ -665,7 +723,10 @@ export function AccountNav({
 }) {
 	const pathname = usePathname();
 	return (
-		<nav aria-label={heading} className="flex flex-[0_0_200px] flex-col gap-0.5 md:sticky md:top-6">
+		<nav
+			aria-label={heading}
+			className="flex flex-[0_0_200px] flex-col gap-0.5 md:sticky md:top-6"
+		>
 			<p className="mb-2 ml-2.5 font-semibold text-[#5c574e] text-[12px] uppercase tracking-[.06em]">
 				{heading}
 			</p>
@@ -683,7 +744,9 @@ export function AccountNav({
 						}`}
 					>
 						<span>{item.label}</span>
-						<span className="font-medium text-[#5c574e] text-[12px] tabular-nums">{item.count}</span>
+						<span className="font-medium text-[#5c574e] text-[12px] tabular-nums">
+							{item.count}
+						</span>
 					</Link>
 				);
 			})}
@@ -757,12 +820,10 @@ export default async function AccountLayout({
 - [ ] **Step 5: Strip the pages' own frames**
 
 In both moved pages, remove the outer `<div className="flex min-h-screen …">`, its `<header>…</header>` and the `<main …>` wrapper, returning a fragment `<>…</>` of the inner content (Tasks 5 and 6 replace that content; here it only has to render inside the layout). Remove the pages' own `export const metadata` (the layout carries `noindex`).
-
 - [ ] **Step 6: Verify**
 
 Run: `pnpm exec vitest run "src/app/[lang]/(account)" && pnpm exec tsc --noEmit && pnpm exec biome check --write "src/app/[lang]/(account)"`
 Expected: all pass, including the moved access tests unchanged apart from import paths.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -796,9 +857,17 @@ const STYLE: Record<OrderCard["badge"], string> = {
 	cancelled: "bg-[#ecebe7] text-[#5c574e]",
 };
 
-export function PaymentBadge({ badge, label }: { badge: OrderCard["badge"]; label: string }) {
+export function PaymentBadge({
+	badge,
+	label,
+}: {
+	badge: OrderCard["badge"];
+	label: string;
+}) {
 	return (
-		<span className={`inline-flex min-h-6 items-center rounded-full px-2.5 font-semibold text-[12px] ${STYLE[badge]}`}>
+		<span
+			className={`inline-flex min-h-6 items-center rounded-full px-2.5 font-semibold text-[12px] ${STYLE[badge]}`}
+		>
 			{label}
 		</span>
 	);
@@ -833,12 +902,17 @@ const rm = (amount: number) =>
 	`RM ${amount.toLocaleString("en-MY", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // ponytail: room names are the catalogue's English labels; localise when rooms get copy keys.
-const roomLabel = (id: string) => ROOM_TYPES.find((room) => room.id === id)?.label ?? id;
+const roomLabel = (id: string) =>
+	ROOM_TYPES.find((room) => room.id === id)?.label ?? id;
 
 const BUTTON =
 	"flex min-h-9 items-center rounded-lg border border-[#d4d4d4] bg-white px-3.5 font-medium text-[#171717] text-[12px] hover:border-[#a3a3a3] hover:bg-[#faf9f7]";
 
-export default async function OrdersPage({ params }: { params: Promise<{ lang: string }> }) {
+export default async function OrdersPage({
+	params,
+}: {
+	params: Promise<{ lang: string }>;
+}) {
 	const { lang } = await params;
 	if (!isLocale(lang)) notFound();
 	const viewer = await viewerOf(lang, `/${lang}/orders`);
@@ -856,13 +930,21 @@ export default async function OrdersPage({ params }: { params: Promise<{ lang: s
 				totalRm: true,
 				productionStage: true,
 				breakdown: true,
-				deliveries: { select: { publicToken: true }, orderBy: { createdAt: "desc" }, take: 1 },
+				deliveries: {
+					select: { publicToken: true },
+					orderBy: { createdAt: "desc" },
+					take: 1,
+				},
 			},
 		}),
 		getDictionary(lang),
 	]);
 	const s = t.orders;
-	const badgeLabel = { paid: s.statusPaid, awaiting: s.statusAwaiting, cancelled: s.statusCancelled };
+	const badgeLabel = {
+		paid: s.statusPaid,
+		awaiting: s.statusAwaiting,
+		cancelled: s.statusCancelled,
+	};
 
 	return (
 		<>
@@ -870,7 +952,9 @@ export default async function OrdersPage({ params }: { params: Promise<{ lang: s
 			{orders.length === 0 ? (
 				<div className="flex flex-col items-center gap-2.5 rounded-[14px] border border-[#e5e5e5] bg-white px-6 py-10 text-center">
 					<p className="font-semibold text-[15px]">{s.empty}</p>
-					<p className="max-w-[340px] text-[#5c574e] text-[13px] leading-[19px]">{s.emptyBody}</p>
+					<p className="max-w-[340px] text-[#5c574e] text-[13px] leading-[19px]">
+						{s.emptyBody}
+					</p>
 					<Link
 						href={`/${lang}/planner`}
 						className="mt-1.5 flex min-h-[42px] items-center rounded-[10px] bg-[#171717] px-[18px] font-semibold text-[13px] text-white hover:bg-[#262626]"
@@ -891,7 +975,10 @@ export default async function OrdersPage({ params }: { params: Promise<{ lang: s
 					const title =
 						units === 0
 							? room
-							: fill(units === 1 ? s.unitsOne : s.unitsOther, { room, count: units });
+							: fill(units === 1 ? s.unitsOne : s.unitsOther, {
+									room,
+									count: units,
+								});
 					const stage =
 						card.stage.kind === "notStarted"
 							? s.stageNotStarted
@@ -910,17 +997,28 @@ export default async function OrdersPage({ params }: { params: Promise<{ lang: s
 								<div className="min-w-0">
 									<h2 className="font-semibold text-[15px]">{title}</h2>
 									<p className="mt-0.5 text-[#5c574e] text-[12px]">
-										<span className="font-mono">{orderRef(order.number, order.createdAt)}</span>
+										<span className="font-mono">
+											{orderRef(order.number, order.createdAt)}
+										</span>
 										{" · "}
 										{fill(s.orderedOn, {
-											date: order.createdAt.toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" }),
+											date: order.createdAt.toLocaleDateString(lang, {
+												day: "numeric",
+												month: "short",
+												year: "numeric",
+											}),
 										})}
 									</p>
 								</div>
-								<p className="font-semibold text-[16px] tabular-nums">{rm(order.totalRm)}</p>
+								<p className="font-semibold text-[16px] tabular-nums">
+									{rm(order.totalRm)}
+								</p>
 							</div>
 							<div className="flex flex-wrap items-center gap-2">
-								<PaymentBadge badge={card.badge} label={badgeLabel[card.badge]} />
+								<PaymentBadge
+									badge={card.badge}
+									label={badgeLabel[card.badge]}
+								/>
 								<span className="text-[#404040] text-[12px]">{stage}</span>
 							</div>
 							<div className="mt-0.5 flex flex-wrap gap-2">
@@ -936,7 +1034,10 @@ export default async function OrdersPage({ params }: { params: Promise<{ lang: s
 									{s.viewOrder}
 								</Link>
 								{card.canTrack && delivery && (
-									<Link href={`/${lang}/track/${delivery.publicToken}`} className={BUTTON}>
+									<Link
+										href={`/${lang}/track/${delivery.publicToken}`}
+										className={BUTTON}
+									>
 										{t.order.trackDelivery}
 									</Link>
 								)}
@@ -951,12 +1052,10 @@ export default async function OrdersPage({ params }: { params: Promise<{ lang: s
 ```
 
 Remove the now-unused `orders.breadcrumb` and `orders.placedOn` keys from `en.ts`, `ms.ts`, `zh.ts` (confirm with `grep -rn "orders.placedOn\|s.placedOn\|s.breadcrumb" src` first).
-
 - [ ] **Step 3: Verify**
 
 Run: `pnpm exec vitest run "src/app/[lang]/(account)" && pnpm exec tsc --noEmit && pnpm exec biome check --write "src/app/[lang]/(account)" src/lib/copy`
 Expected: pass. The orders page test's `where: { userId }` assertions are unchanged.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -978,39 +1077,46 @@ git commit -m "feat(account): order cards with payment badge, stage and actions"
 - [ ] **Step 1: Keep the data, replace the markup**
 
 Keep everything in `OrderPage` from the top down to and including the `const [heading, body] = …` block unchanged, and add `roomId: true` to the `select`. Then:
-
 1. Add imports: `import { orderCard, unitCount } from "@/lib/orders/card";`, `import { ROOM_TYPES } from "@/lib/planner/catalogue";`, `import { PaymentBadge } from "../../PaymentBadge";`. Remove `CopyOrderId`'s import only if you drop it — keep it (the spec keeps it beside the ref).
 2. Delete the `StatusIcon` function at the bottom of the file.
 3. After the `[heading, body]` block add:
 
 ```tsx
-	const card = orderCard({
-		status: order.status,
-		productionStage: order.productionStage,
-		hasDelivery: delivery !== null,
-	});
-	const units = unitCount(order.breakdown);
-	const room = ROOM_TYPES.find((r) => r.id === order.roomId)?.label ?? order.roomId;
-	const title =
-		units === 0
-			? room
-			: fill(units === 1 ? t.orders.unitsOne : t.orders.unitsOther, { room, count: units });
-	const badgeLabel = {
-		paid: t.orders.statusPaid,
-		awaiting: t.orders.statusAwaiting,
-		cancelled: t.orders.statusCancelled,
-	}[card.badge];
-	const paid = order.status === "PAID";
-	const progress = [
-		{ label: o.stagePaid, detail: undefined as string | undefined, done: paid },
-		...STAGES.map((stage) => ({
-			label: o.stages[stage],
-			detail: stage === "MEASURE" ? o.stageMeasureDetail : undefined,
-			done: paid && stageReached(order.productionStage, stage),
-		})),
-		{ label: o.stageDelivery, detail: undefined as string | undefined, done: false },
-	];
-	const next = progress.findIndex((step) => !step.done);
+const card = orderCard({
+	status: order.status,
+	productionStage: order.productionStage,
+	hasDelivery: delivery !== null,
+});
+const units = unitCount(order.breakdown);
+const room =
+	ROOM_TYPES.find((r) => r.id === order.roomId)?.label ?? order.roomId;
+const title =
+	units === 0
+		? room
+		: fill(units === 1 ? t.orders.unitsOne : t.orders.unitsOther, {
+				room,
+				count: units,
+			});
+const badgeLabel = {
+	paid: t.orders.statusPaid,
+	awaiting: t.orders.statusAwaiting,
+	cancelled: t.orders.statusCancelled,
+}[card.badge];
+const paid = order.status === "PAID";
+const progress = [
+	{ label: o.stagePaid, detail: undefined as string | undefined, done: paid },
+	...STAGES.map((stage) => ({
+		label: o.stages[stage],
+		detail: stage === "MEASURE" ? o.stageMeasureDetail : undefined,
+		done: paid && stageReached(order.productionStage, stage),
+	})),
+	{
+		label: o.stageDelivery,
+		detail: undefined as string | undefined,
+		done: false,
+	},
+];
+const next = progress.findIndex((step) => !step.done);
 ```
 
 4. Replace the whole `return (…)` with:
@@ -1106,14 +1212,11 @@ Keep everything in `OrderPage` from the top down to and including the `const [he
 ```
 
 The three `{/* … */}` markers inside the right column mean: **move the existing JSX blocks there verbatim** — the `{payOnline && (<section …>…</section>)}` block, the `{pay && (<section …>…</section>)}` block, and the body of the existing summary `<section>` (heading, `lines.map`, `extras.map`, subtotal, delivery, total). In the total row change `o.total` to `o.totalDue`. Delete the markers after moving. Everything else from the old return (StatusIcon block, the "What happens next" section, the Back to planner / Back home links) is removed.
-
 5. Remove now-unused copy keys from `en.ts`, `ms.ts`, `zh.ts`, each only after `grep -rn "o\.<key>\|order\.<key>" src` shows no use: `order.breadcrumb`, `order.myOrders`, `order.nextHeading`, `order.backToPlanner`, `order.backHome`, `order.orderId`.
-
 - [ ] **Step 2: Verify**
 
 Run: `pnpm exec vitest run "src/app/[lang]/(account)" && pnpm exec tsc --noEmit && pnpm exec biome check --write "src/app/[lang]/(account)" src/lib/copy && pnpm test`
 Expected: all pass — the order page access tests (redirect, owner, staff, stranger 404) unchanged.
-
 - [ ] **Step 3: Commit**
 
 ```bash
@@ -1147,7 +1250,6 @@ file; customer sign-in stays Google only.
 - [ ] **Step 2: Spec**
 
 In the spec's "Shared header" section replace "The server passes the user (`{ name, email } | null`) in as a prop; no client session fetch." with "`AccountMenu` reads the session in the browser (`authClient.useSession()`), so the statically rendered landing page stays static."
-
 - [ ] **Step 3: Commit docs**
 
 ```bash

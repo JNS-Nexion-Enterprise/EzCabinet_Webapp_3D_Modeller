@@ -9,7 +9,10 @@
  * hand will drift.
  */
 
+/** The photo hero: phones, and anyone who has asked for reduced motion. */
 export const HERO_SLOT = "hero";
+/** The tall photo beside the how-it-works steps. */
+export const HOW_SLOT = "how";
 
 export const roomSlot = (roomId: string) => `room:${roomId}`;
 export const finishSlot = (finishId: string) => `finish:${finishId}`;
@@ -17,7 +20,7 @@ export const finishSlot = (finishId: string) => `finish:${finishId}`;
 /** Only these shapes are accepted — the upload token route and the write
  * endpoint both check against it, so a client can't invent a slot and park
  * arbitrary files in the bucket under an admin session. */
-export const SLOT_KEY = /^(hero|room:[a-z-]+|finish:[a-z0-9-]+)$/;
+export const SLOT_KEY = /^(hero|how|room:[a-z-]+|finish:[a-z0-9-]+)$/;
 
 /** `site/<slot with : swapped for _>/<filename>`. Blob pathnames can contain
  * a colon, but it survives round-tripping through URLs and CLIs badly. */
@@ -28,7 +31,7 @@ export function siteImagePathname(slotKey: string, filename: string): string {
 }
 
 export const SITE_IMAGE_PATHNAME =
-	/^site\/(hero|room_[a-z-]+|finish_[a-z0-9-]+)\/[^/]+$/;
+	/^site\/(hero|how|room_[a-z-]+|finish_[a-z0-9-]+)\/[^/]+$/;
 
 /** What the browser is allowed to upload here. Unlike a design export (which browsers
  * sniff to junk MIME types) these are ordinary web images, so the content

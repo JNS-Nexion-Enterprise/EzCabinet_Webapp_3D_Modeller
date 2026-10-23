@@ -5,7 +5,7 @@ The switch from the shared `ADMIN_PASSWORD` cookie to real accounts
 
 This is a **hard cutover** — there is no dual-running period once the new
 code is live. But the steps below are ordered **expand/contract**, not
-big-bang: the new build ships and is verified *before* the migration drops
+big-bang: the new build ships and is verified _before_ the migration drops
 anything, because the old build is still reading `Order.paidBy` right up
 until the new build replaces it, and Prisma's generated queries name their
 columns explicitly — an old build against a post-migration database 500s on
@@ -17,10 +17,8 @@ is the mistake this runbook exists to prevent.
 
 Do these before the deploy, not during it — all are easy to get wrong quietly,
 and none of them fail loudly at deploy time.
-
 1. **Set all four Better Auth environment variables in the Vercel project —
    not just the two for Google:**
-
    - `BETTER_AUTH_SECRET` — **critical.** Better Auth throws outright in
      production if this is unset or left at its default
      (`node_modules/better-auth/dist/context/create-context.mjs:42`, "You are

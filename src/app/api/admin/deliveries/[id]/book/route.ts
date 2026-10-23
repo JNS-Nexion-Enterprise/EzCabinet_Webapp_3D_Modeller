@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@/lib/auth/route";
 import { prisma } from "@/lib/catalogue/db";
+import { getCompany } from "@/lib/company/store";
 import { getAdapter } from "@/lib/logistics/registry";
 import { toJob } from "@/lib/logistics/store";
 import { bookInputSchema, CarrierNotConfigured } from "@/lib/logistics/types";
@@ -70,7 +71,7 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 			return NextResponse.json({ delivery: existing, alreadyBooked: true });
 		}
 
-		const job = toJob(delivery);
+		const job = toJob(delivery, await getCompany());
 
 		try {
 			const adapter = getAdapter(carrierId);

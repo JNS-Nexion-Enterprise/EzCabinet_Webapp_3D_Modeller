@@ -47,11 +47,11 @@ under "Decisions taken" below, not a separate document.
 
 ## File Structure
 
-| File | Change |
-| --- | --- |
-| `src/lib/planner/layout.ts` | new `dragModule` — the one place that decides which axes a cabinet may move on |
-| `src/lib/planner/__tests__/layout.test.ts` | tests for it |
-| `src/components/planner/PlannerScene.tsx` | ray helper returns a point rather than an x; `dragRef` carries the vertical grab; the drag plane calls `dragModule`; `MoveHandle` rides a wall unit instead of sitting on the floor under it |
+| File                                       | Change                                                                                                                                                                                       |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/planner/layout.ts`                | new `dragModule` — the one place that decides which axes a cabinet may move on                                                                                                               |
+| `src/lib/planner/__tests__/layout.test.ts` | tests for it                                                                                                                                                                                 |
+| `src/components/planner/PlannerScene.tsx`  | ray helper returns a point rather than an x; `dragRef` carries the vertical grab; the drag plane calls `dragModule`; `MoveHandle` rides a wall unit instead of sitting on the floor under it |
 
 ---
 
@@ -132,56 +132,53 @@ describe("dragModule", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts -t dragModule`
 Expected: FAIL — `dragModule is not a function`.
-
 - [ ] **Step 3: Implement it**
 
 In `src/lib/planner/layout.ts`, inside `plannerEngine`, immediately above
 `function starterFor(`:
 
 ```ts
-	/**
-	 * Put a cabinet where a drag has taken it.
-	 *
-	 * Which axes a cabinet may move on is a layout rule, not a scene detail,
-	 * so it is decided here: everything slides along the wall, and only a hung
-	 * cabinet has a height of its own to change. A hang height handed in for a
-	 * floor unit is dropped rather than refused — the pointer moves in two
-	 * dimensions whatever is being dragged, and the caller should not have to
-	 * ask what it is holding.
-	 *
-	 * Ceiling mode ignores the vertical too: lining the tops up is the whole
-	 * point of that mode, and `floorHeightMmOf` would overrule the stored
-	 * figure anyway. Writing it would leave a number that silently reappears
-	 * when the mode is switched off.
-	 */
-	function dragModule(
-		layout: PlannerLayout,
-		id: string,
-		to: { xMm: number; hangAtMm?: number },
-	): PlannerLayout {
-		const found = find(layout, id);
-		if (!found) return layout;
+/**
+ * Put a cabinet where a drag has taken it.
+ *
+ * Which axes a cabinet may move on is a layout rule, not a scene detail,
+ * so it is decided here: everything slides along the wall, and only a hung
+ * cabinet has a height of its own to change. A hang height handed in for a
+ * floor unit is dropped rather than refused — the pointer moves in two
+ * dimensions whatever is being dragged, and the caller should not have to
+ * ask what it is holding.
+ *
+ * Ceiling mode ignores the vertical too: lining the tops up is the whole
+ * point of that mode, and `floorHeightMmOf` would overrule the stored
+ * figure anyway. Writing it would leave a number that silently reappears
+ * when the mode is switched off.
+ */
+function dragModule(
+	layout: PlannerLayout,
+	id: string,
+	to: { xMm: number; hangAtMm?: number },
+): PlannerLayout {
+	const found = find(layout, id);
+	if (!found) return layout;
 
-		const moved = moveModule(layout, id, to.xMm);
-		if (
-			to.hangAtMm === undefined ||
-			found.row !== "wall" ||
-			moved.wallToCeiling
-		) {
-			return moved;
-		}
-		return setHangAt(moved, id, to.hangAtMm);
+	const moved = moveModule(layout, id, to.xMm);
+	if (
+		to.hangAtMm === undefined ||
+		found.row !== "wall" ||
+		moved.wallToCeiling
+	) {
+		return moved;
 	}
+	return setHangAt(moved, id, to.hangAtMm);
+}
 ```
 
 Then add `dragModule,` to the returned object (alphabetical — after
 `dropModule`).
-
 - [ ] **Step 4: Run the tests and watch them pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts`
 Expected: PASS, whole file.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -231,7 +228,8 @@ function runPointFromRay(
 	const { origin, direction } = e.ray;
 	// Looking straight along the wall there is no crossing to find; the last
 	// known position is better than a divide by zero.
-	const t = Math.abs(direction.z) < 1e-6 ? 0 : (planeZ - origin.z) / direction.z;
+	const t =
+		Math.abs(direction.z) < 1e-6 ? 0 : (planeZ - origin.z) / direction.z;
 	return {
 		xMm: (origin.x + direction.x * t) * 1000 + runWidthMm / 2,
 		yMm: (origin.y + direction.y * t) * 1000,
@@ -253,7 +251,6 @@ Expected: all pass, no behaviour change.
 
 In `pnpm dev`: drag a cabinet along the wall and drop a family from the
 palette onto the canvas. Both behave exactly as before.
-
 - [ ] **Step 3: Commit**
 
 ```bash
@@ -280,34 +277,34 @@ vertical for it — so there is no branch in the pointer handler.
 In `Run`, add to the `dragRef` type, next to `grabMm`:
 
 ```tsx
-		/**
-		 * How far above the cabinet's underside the pointer took hold. The
-		 * vertical twin of `grabMm`, and it exists for the same reason: without
-		 * it a wall unit snaps its underside to the cursor the instant you
-		 * touch it.
-		 */
-		grabYMm: number;
+/**
+ * How far above the cabinet's underside the pointer took hold. The
+ * vertical twin of `grabMm`, and it exists for the same reason: without
+ * it a wall unit snaps its underside to the cursor the instant you
+ * touch it.
+ */
+grabYMm: number;
 ```
 
 Add `dragModule` to the engine destructure at the top of `Run`, and widen
 `beginDrag`:
 
 ```tsx
-	const beginDrag = (
-		e: ThreeEvent<PointerEvent>,
-		position: Positioned,
-		planeZ: number,
-	) => {
-		const pointer = runPointFromRay(e, planeZ, runWidthMm);
-		dragRef.current = {
-			id: position.placed.id,
-			grabMm: pointer.xMm - position.xMm,
-			grabYMm: pointer.yMm - floorHeightMmOf(position, layout),
-			planeZ,
-		};
-		setDragging(true);
-		if (controls) controls.enabled = false;
+const beginDrag = (
+	e: ThreeEvent<PointerEvent>,
+	position: Positioned,
+	planeZ: number,
+) => {
+	const pointer = runPointFromRay(e, planeZ, runWidthMm);
+	dragRef.current = {
+		id: position.placed.id,
+		grabMm: pointer.xMm - position.xMm,
+		grabYMm: pointer.yMm - floorHeightMmOf(position, layout),
+		planeZ,
 	};
+	setDragging(true);
+	if (controls) controls.enabled = false;
+};
 ```
 
 - [ ] **Step 2: Apply both axes on every move**
@@ -340,7 +337,6 @@ In the drag plane's `onPointerMove`, replace the body with:
 The vertical needs no re-anchoring: `setHangAt` clamps to a range rather than
 against a neighbour, so the cabinet never lags behind the pointer the way a
 blocked sideways move does.
-
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm test && pnpm exec biome check src/components/planner/`
@@ -411,7 +407,6 @@ function MoveHandle({
 ```
 
 `roomDepthMm` stays a prop; it is still what the world plane is measured from.
-
 - [ ] **Step 2: Stand it up when it hangs**
 
 A handle lying flat on the floor is legible from above; one hanging in the air
@@ -435,34 +430,34 @@ when the cabinet has a vertical to move on, so the handle stops promising
 what a base unit cannot do:
 
 ```tsx
-			{(vertical ? [0, Math.PI / 2, Math.PI, -Math.PI / 2] : [0, Math.PI]).map(
-				(angle) => (
-					<mesh
-						key={angle}
-						position={[
-							Math.cos(angle) * 0.075,
-							Math.sin(angle) * 0.075,
-							0.002,
-						]}
-						rotation={[0, 0, angle - Math.PI / 2]}
-					>
-						<circleGeometry args={[0.022, 3]} />
-						<meshBasicMaterial color="#1f5138" />
-					</mesh>
-				),
-			)}
+{
+	(vertical ? [0, Math.PI / 2, Math.PI, -Math.PI / 2] : [0, Math.PI]).map(
+		(angle) => (
+			<mesh
+				key={angle}
+				position={[Math.cos(angle) * 0.075, Math.sin(angle) * 0.075, 0.002]}
+				rotation={[0, 0, angle - Math.PI / 2]}
+			>
+				<circleGeometry args={[0.022, 3]} />
+				<meshBasicMaterial color="#1f5138" />
+			</mesh>
+		),
+	);
+}
 ```
 
 And draw the upright bar only in the same case — replace the second bar mesh
 with:
 
 ```tsx
-			{vertical && (
-				<mesh position={[0, 0, 0.002]}>
-					<planeGeometry args={[0.014, 0.13]} />
-					<meshBasicMaterial color="#1f5138" />
-				</mesh>
-			)}
+{
+	vertical && (
+		<mesh position={[0, 0, 0.002]}>
+			<planeGeometry args={[0.014, 0.13]} />
+			<meshBasicMaterial color="#1f5138" />
+		</mesh>
+	);
+}
 ```
 
 - [ ] **Step 4: Pass the two new props**
@@ -470,21 +465,19 @@ with:
 At the call site in `Run`:
 
 ```tsx
-						<MoveHandle
-							key={position.placed.id}
-							position={position}
-							runWidthMm={runWidthMm}
-							roomDepthMm={layout.roomDepthMm}
-							floorHeightMm={floorHeightMmOf(position, layout)}
-							vertical={
-								position.family.kind === "wall" && !layout.wallToCeiling
-							}
-							onGrab={(e, planeZ) => {
-								e.stopPropagation();
-								if (measureMode) return;
-								beginDrag(e, position, planeZ);
-							}}
-						/>
+<MoveHandle
+	key={position.placed.id}
+	position={position}
+	runWidthMm={runWidthMm}
+	roomDepthMm={layout.roomDepthMm}
+	floorHeightMm={floorHeightMmOf(position, layout)}
+	vertical={position.family.kind === "wall" && !layout.wallToCeiling}
+	onGrab={(e, planeZ) => {
+		e.stopPropagation();
+		if (measureMode) return;
+		beginDrag(e, position, planeZ);
+	}}
+/>;
 ```
 
 - [ ] **Step 5: Verify**
@@ -518,7 +511,7 @@ git commit -m "feat(planner): the handle rides the cabinet it moves"
   not read, let alone changed.
 - **What is deliberately not here.** Dragging a cabinet between the floor and
   wall rows: a family's `kind` decides its row, and a base cabinet cannot hang.
-  Changing rows means changing what the cabinet *is*, which is the Replace
+  Changing rows means changing what the cabinet _is_, which is the Replace
   verb's job.
 - **Watch on release.** `dropModule` snaps the sideways position flush; there
   is no equivalent snap for the hang height, and there should not be one — the

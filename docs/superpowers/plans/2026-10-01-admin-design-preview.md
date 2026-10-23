@@ -12,14 +12,14 @@
 
 ## Global Constraints
 
-- No change to `src/components/planner/**`, `src/lib/mesh/**` or `src/lib/planner/**` — the preview *consumes* them.
+- No change to `src/components/planner/**`, `src/lib/mesh/**` or `src/lib/planner/**` — the preview _consumes_ them.
 - `DesignViewer` stays imported only by the admin page behind `next/dynamic`; nothing new reaches a customer bundle.
 - Preview controls are local state only — nothing saved, the form's "Front / finish options" chips untouched.
 - `quality="low"`; no `HighQualityEffects`.
 - Preview plan: `{ template: "rect", widthMm: 2000, depthMm: 2000 }`, ceiling `2400` mm.
 - `DesignedCabinet` defaults in the preview: `hinge="left"`, `sheetOffset={0}`, `selected={false}`, `gaps` and `exposed` omitted.
 - UI copy in sentence case. Fallback notice text, verbatim: `Won't convert — the planner will draw this one procedurally.`
-- Commands: `pnpm test`, `pnpm lint`, `pnpm typecheck` (the pre-existing `prisma.config.ts` `defineConfig` error is not ours; any *other* error is).
+- Commands: `pnpm test`, `pnpm lint`, `pnpm typecheck` (the pre-existing `prisma.config.ts` `defineConfig` error is not ours; any _other_ error is).
 
 ## Review Focus
 
@@ -40,6 +40,7 @@
 **Interfaces:**
 - Consumes: nothing.
 - Produces:
+
   ```ts
   export type PreviewFrame = {
     /** Orbit target, metres: the cabinet's mid-height on the origin. */
@@ -86,8 +87,9 @@ describe("previewFrame", () => {
 	it("frames a tall unit by its height, not its width", () => {
 		const base = previewFrame([600, 580, 870]);
 		const tall = previewFrame([600, 580, 2400]);
-		expect(dist(tall.camera, tall.target) / dist(base.camera, base.target))
-			.toBeCloseTo(2400 / 870);
+		expect(
+			dist(tall.camera, tall.target) / dist(base.camera, base.target),
+		).toBeCloseTo(2400 / 870);
 	});
 });
 ```
@@ -96,7 +98,6 @@ describe("previewFrame", () => {
 
 Run: `pnpm vitest run src/components/admin/__tests__/previewFrame.test.ts`
 Expected: FAIL — cannot resolve `../previewFrame`.
-
 - [ ] **Step 3: Write minimal implementation**
 
 `src/components/admin/previewFrame.ts`:
@@ -128,9 +129,7 @@ const DIRECTION = (() => {
 const DISTANCE_PER_M = 2.2;
 
 /** `sizeMm` is `RenderMesh.sizeMm`: `[width, depth, height]`. */
-export function previewFrame(
-	sizeMm: [number, number, number],
-): PreviewFrame {
+export function previewFrame(sizeMm: [number, number, number]): PreviewFrame {
 	const [, , heightMm] = sizeMm;
 	const target: [number, number, number] = [0, heightMm / 2000, 0];
 	const distance = (Math.max(...sizeMm) / 1000) * DISTANCE_PER_M;
@@ -149,7 +148,6 @@ export function previewFrame(
 
 Run: `pnpm vitest run src/components/admin/__tests__/previewFrame.test.ts`
 Expected: PASS, 4 tests.
-
 - [ ] **Step 5: Lint and commit**
 
 ```bash
@@ -179,6 +177,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   - `chipClass(active: boolean): string` — `src/components/admin/styles.ts`.
   - `PLANNER_CATALOGUE` — `src/lib/planner/catalogue.ts` (`.finishes: Finish[]`, `.doorStyles: DoorStyle[]`); and `CabinetDesignsClient`'s existing state `base: PlannerCatalogue | null`, `finishPhotos: Record<string, string>`.
 - Produces:
+
   ```ts
   export function DesignViewer(props: {
     source: File | string | null;
@@ -192,7 +191,6 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   ```
 
 No unit test: the component is R3F rendering, verified in the browser (Step 8), and its one piece of pure logic is Task 1's `previewFrame`.
-
 - [ ] **Step 1: Replace `src/components/admin/DesignViewer.tsx` with:**
 
 ```tsx
@@ -205,10 +203,7 @@ import type { Group } from "three";
 import { Box3, Vector3 } from "three";
 import { DesignedCabinet } from "@/components/planner/DesignedCabinet";
 import { StudioLighting } from "@/components/planner/Lighting";
-import {
-	markShadowsDirty,
-	SHADOW_MAP,
-} from "@/components/planner/lightingRig";
+import { markShadowsDirty, SHADOW_MAP } from "@/components/planner/lightingRig";
 import type { RenderMesh } from "@/lib/mesh/renderMesh";
 import type { DoorStyle, Finish } from "@/lib/planner/catalogueSchema";
 import type { FloorPlan } from "@/lib/planner/floorplan";
@@ -235,7 +230,11 @@ import { chipClass } from "./styles";
 
 /** A room just big enough to light and floor one cabinet. Only the lighting
  * rig's shadow camera reads it. */
-const PREVIEW_PLAN: FloorPlan = { template: "rect", widthMm: 2000, depthMm: 2000 };
+const PREVIEW_PLAN: FloorPlan = {
+	template: "rect",
+	widthMm: 2000,
+	depthMm: 2000,
+};
 const PREVIEW_CEILING_MM = 2400;
 
 /** Fit a non-converting model into a box about this big, whatever units it was
@@ -425,7 +424,10 @@ export function DesignViewer({
 						/>
 						<mesh rotation-x={-Math.PI / 2} receiveShadow>
 							<planeGeometry
-								args={[PREVIEW_PLAN.widthMm / 1000, PREVIEW_PLAN.depthMm / 1000]}
+								args={[
+									PREVIEW_PLAN.widthMm / 1000,
+									PREVIEW_PLAN.depthMm / 1000,
+								]}
 							/>
 							<meshStandardMaterial color="#e9e5de" />
 						</mesh>
@@ -544,8 +546,8 @@ export function DesignViewer({
 						</div>
 					) : (
 						<p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[12px] text-amber-900">
-							No doors or drawer fronts recognised in this file, so the
-							finish reaches nothing. Check the drafter's part names.
+							No doors or drawer fronts recognised in this file, so the finish
+							reaches nothing. Check the drafter's part names.
 						</p>
 					)}
 				</div>
@@ -570,13 +572,10 @@ Replace the existing element:
 ```tsx
 <DesignViewer
 	source={
-		file ??
-		(editingId
-			? `/api/admin/cabinet-designs/${editingId}/file`
-			: null)
+		file ?? (editingId ? `/api/admin/cabinet-designs/${editingId}/file` : null)
 	}
 	className="h-56 w-full lg:h-80"
-/>
+/>;
 ```
 
 with:
@@ -584,10 +583,7 @@ with:
 ```tsx
 <DesignViewer
 	source={
-		file ??
-		(editingId
-			? `/api/admin/cabinet-designs/${editingId}/file`
-			: null)
+		file ?? (editingId ? `/api/admin/cabinet-designs/${editingId}/file` : null)
 	}
 	className="h-56 w-full lg:h-80"
 	// The seed until the published catalogue loads, so the first
@@ -595,7 +591,7 @@ with:
 	finishes={(base ?? PLANNER_CATALOGUE).finishes}
 	doorStyles={(base ?? PLANNER_CATALOGUE).doorStyles}
 	finishPhotos={finishPhotos}
-/>
+/>;
 ```
 
 - [ ] **Step 4: Format, typecheck, lint, test**
@@ -607,12 +603,10 @@ pnpm typecheck 2>&1 | grep "error TS" | grep -v prisma.config.ts
 pnpm lint && pnpm test
 ```
 Expected: the `grep` prints nothing; lint clean; all tests pass, including Task 1's 4.
-
 - [ ] **Step 5: Confirm the planner and engine were not touched**
 
 Run: `git diff --stat src/components/planner src/lib`
 Expected: empty output.
-
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -640,11 +634,9 @@ sed -E 's/(Door|door|DOOR|Drawer|drawer)/Pnl/g' .playwright-mcp/src.bin > .playw
 ```
 
 Get a design id from the page's network panel or `GET /api/admin/cabinet-designs`.
-
 - [ ] **Step 8: Browser verification** (dev server on `http://localhost:3000`, Playwright or Chrome; viewport 2560×1080, then 390×844)
 
 On `/admin/cabinet-designs`:
-
 1. **Edit an existing design** (row → Edit). Expected: preview is painted in the first finish with studio lighting and a floor shadow — not flat grey. Finish swatches, door style chips and a Doors shut / Open / Hidden switch appear under it.
 2. **Switch finishes.** Expected: door and drawer fronts change colour; carcass does not. If a finish has a decor photo uploaded in Site content, its swatch shows the photo and the fronts wear it.
 3. **Pick the glass door style.** Expected: fronts become see-through.

@@ -27,7 +27,6 @@ Design: `docs/superpowers/specs/2026-10-06-staff-2fa-design.md`.
 ## 1. Setup (once)
 
 The local superadmin signs in with Google only, so 2FA does not apply to it. You need a staff account that has a password.
-
 - [ ] Get into `/admin/users`: sign in with Google, or set `AUTH_ENABLED=false` for a moment
 - [ ] Invite a staff member: a second email of yours, role **Superadmin**, a password of 12+ characters
 - [ ] `AUTH_ENABLED=true` again, sign out
@@ -127,7 +126,6 @@ No mail at all? Look at the dev server terminal:
 ## H. Admins cannot do superadmin things
 
 Invite one more account with role **Admin**, enrol it, sign in as it.
-
 - [ ] `/admin/users` → 404
 - [ ] In the console: `fetch("/api/admin/users/ANY_ID/reset-2fa", { method: "POST" }).then((r) => r.status)` → `403`
 
@@ -156,7 +154,6 @@ A customer who signs in with Google must also prove a passkey before their sessi
 ## J. Checkout
 
 Run this section on a Vercel preview — placing an order cannot be tested on a local production build.
-
 - [ ] Signed out, build a design, sign in with Google from the quote screen → back on the quote screen showing the "One more step before you pay" card, not the form
 - [ ] Press **Continue** → `/en/verify`; complete the passkey → back on the quote screen with the design intact and the checkout form showing
 - [ ] Press **Place order** (or **Pay**) → the order is placed and its order page opens
@@ -167,7 +164,6 @@ Run this section on a Vercel preview — placing an order cannot be tested on a 
 ## K. Things that must fail
 
 Run these from the console while signed in as the customer, on any `/en/...` page.
-
 - [ ] Unverified session (Google just done, verify page still showing) that **already has a passkey**, ask for registration options:
 
   ```js
@@ -187,7 +183,7 @@ Run these from the console while signed in as the customer, on any `/en/...` pag
 
   → `403`
 - [ ] Verified session, customer with exactly one passkey, same delete call → `400` ("An account keeps at least one passkey")
-Unknown passkey routes are refused by default; this cannot be provoked by hand and is covered by `src/lib/auth/__tests__/passkeyHooks.test.ts`.
+  Unknown passkey routes are refused by default; this cannot be provoked by hand and is covered by `src/lib/auth/__tests__/passkeyHooks.test.ts`.
 
 - [ ] On a device that holds a passkey for **another** account (second Google account enrolled on the same browser or virtual authenticator), sign in as the first account and press **Use passkey**, choosing the other account's passkey → "That passkey belongs to a different account"; still not verified, still the first account
 
@@ -258,5 +254,5 @@ WHERE "userId" = (SELECT "id" FROM "user" WHERE "email" = 'customer@example.com'
 ## Bugs found
 
 | Step | What happened | Expected |
-| --- | --- | --- |
-|  |  |  |
+| ---- | ------------- | -------- |
+|      |               |          |

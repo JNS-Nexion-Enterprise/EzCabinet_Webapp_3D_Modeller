@@ -11,21 +11,27 @@ import { isLocale, type Locale } from "@/lib/copy/locales";
  * shipping all three full dictionaries into the client for three strings is the
  * wrong trade on a mobile budget.
  */
-const COPY: Record<Locale, { title: string; body: string; retry: string }> = {
+const COPY: Record<
+	Locale,
+	{ title: string; body: string; retry: string; home: string }
+> = {
 	en: {
 		title: "Something went wrong",
 		body: "Please try again. If it keeps happening, reload the page.",
 		retry: "Try again",
+		home: "Home",
 	},
 	zh: {
 		title: "出了点问题",
 		body: "请重试。如果问题持续出现，请重新加载页面。",
 		retry: "重试",
+		home: "首页",
 	},
 	ms: {
 		title: "Ada masalah berlaku",
 		body: "Sila cuba lagi. Jika masalah berterusan, muat semula halaman.",
 		retry: "Cuba lagi",
+		home: "Laman utama",
 	},
 };
 
@@ -60,7 +66,7 @@ export default function LocaleError({
 					href={`/${locale}`}
 					className="rounded-lg border border-neutral-300 px-4 py-2 text-[13px]"
 				>
-					EzCabinet
+					{t.home}
 				</Link>
 			</div>
 		</main>

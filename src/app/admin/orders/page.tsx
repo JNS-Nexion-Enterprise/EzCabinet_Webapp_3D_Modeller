@@ -17,6 +17,7 @@ export default async function OrdersAdminPage() {
 		orderBy: { number: "desc" },
 		select: {
 			id: true,
+			refPrefix: true,
 			number: true,
 			createdAt: true,
 			status: true,
@@ -63,7 +64,7 @@ export default async function OrdersAdminPage() {
 										className="flex flex-wrap items-center gap-3 rounded-xl border border-neutral-200 bg-white px-4 py-3 hover:bg-[#faf9f7] focus-visible:outline-2 focus-visible:outline-neutral-900 focus-visible:outline-offset-2"
 									>
 										<span className="w-[132px] shrink-0 font-medium text-[12px] text-neutral-500 tabular-nums">
-											{orderRef(order.number, order.createdAt)}
+											{orderRef(order)}
 										</span>
 										<span className="min-w-[160px] flex-1">
 											<span className="block font-medium text-[14px]">

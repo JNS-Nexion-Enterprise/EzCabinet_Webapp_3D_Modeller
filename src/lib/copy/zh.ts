@@ -4,9 +4,9 @@ import type { Dictionary } from "./en";
  * a missing key is a compile error rather than a blank on a customer's screen. */
 export const zh: Dictionary = {
 	meta: {
-		title: "EzCabinet · 三维设计您的厨房",
+		title: "{brand} · 三维设计您的厨房",
 		description:
-			"将真实的 EzCabinet 橱柜放入您自己房间的模型中，从各个角度查看，并即时获得报价。无需前往展厅。",
+			"将真实的 {brand} 橱柜放入您自己房间的模型中，从各个角度查看，并即时获得报价。无需前往展厅。",
 	},
 	common: {
 		whatsappHelp: "通过 WhatsApp 联系我们",
@@ -20,6 +20,7 @@ export const zh: Dictionary = {
 	},
 	landing: {
 		nav: {
+			material: "材质",
 			howItWorks: "运作方式",
 			gallery: "作品集",
 			finishes: "板材选择",
@@ -29,49 +30,65 @@ export const zh: Dictionary = {
 			startPlanning: "开始设计",
 		},
 		hero: {
+			/** Also the planner's start screen. */
 			eyebrow: "免费试用 · 无需注册",
-			titleBeforeAccent: "设计您的厨房，尽在",
-			titleAccent: "3D",
+			tagline: "真实尺寸，真实价格。",
+			title: "以 3D 设计您的厨房，边搭配边看价格。",
 			subtitle:
-				"将真实的 EzCabinet 橱柜放入您自己的房间，边搭配边看价格变化，完成后直接把方案发给我们。",
+				"将真实的 {brand} 橱柜放入您房间的模型中，满意后再把方案发给我们。",
+			fromLabel: "橱柜起价",
 			cta: "开始设计",
 			howItWorks: "运作方式",
-			alt: "一间已完工的 EzCabinet 厨房",
+			alt: "一间已完工的 {brand} 厨房",
 		},
-		facts: {
-			cabinetsFromLabel: "橱柜起价",
-			typicalDeliveryValue: "4 至 6 周",
-			typicalDeliveryLabel: "平均交货时间",
-			warrantyValue: "5 年",
-			warrantyLabel: "五金与结构保修",
-			noAccountValue: "无需注册",
-			noAccountLabel: "即可设计与报价",
+		build: {
+			hint: "向下滚动开始搭建",
+			step1: "沿着墙面摆放柜体",
+			step2: "台面、柜门与抽屉",
+			step3: "高柜、吊柜与岛台",
+			step4: "每一扇门板都换上您选的板材",
+			finalTitle: "用同样的方式设计您的空间。",
+			finalSubtitle: "设定墙面长度，放入橱柜，边搭配边看价格更新。",
+			totalLabel: "示例厨房",
+			totalNote: "价格仅供参考",
+		},
+		materials: {
+			eyebrow: "材质",
+			heading: "先选板材，再看它出现在每一扇门上",
 		},
 		how: {
 			heading: "从空白墙面到报价，只需三步",
+			railCaption:
+				"每一步都使用真实的 {brand} 橱柜尺寸，您设计的就是我们制作的。",
 			step1Title: "选择您的房间",
 			step1Detail: "选择厨房、客厅、卧室或玄关，输入您墙面的实际尺寸。",
 			step2Title: "按比例放入橱柜",
 			step2Detail:
-				"在 3D 场景中排列真实的 EzCabinet 橱柜，随意切换板材，直到满意为止。",
+				"在 3D 场景中排列真实的 {brand} 橱柜，随意切换板材，直到满意为止。",
 			step3Title: "即时获取报价",
 			step3Detail:
 				"搭配的同时即可看到实时价格，完成后直接把方案发给我们的团队。",
 		},
 		gallery: {
-			heading: "按房间浏览",
-			subtitle: "每个房间都以真实的 EzCabinet 尺寸和现成的布局开始设计。",
+			eyebrow: "按房间",
+			heading: "每个房间都从真实的 {brand} 尺寸开始",
 			roomAlt: "{room}橱柜",
-			roomSubtitle: {
-				kitchen: "真实的 EzCabinet 尺寸",
-				living: "电视柜与展示柜",
-				bedroom: "衣柜",
-				foyer: "鞋柜与长凳",
+			roomDetail: {
+				kitchen: "地柜、吊柜、抽屉组与岛台，按您墙面的实际长度排列。",
+				living: "电视柜与展示柜，按您现有的墙面来规划。",
+				bedroom: "衣柜，按您房间的实际天花板高度来规划。",
+				foyer: "鞋柜与长凳，为您的玄关量身规划。",
+			},
+			planLink: {
+				kitchen: "设计厨房",
+				living: "设计客厅",
+				bedroom: "设计卧室",
+				foyer: "设计玄关",
 			},
 		},
 		finishes: {
-			heading: "板材与颜色",
-			subtitle: "在设计工具中即可为任何橱柜更换板材。",
+			eyebrow: "板材与颜色",
+			heading: "在设计工具中即可为任何橱柜更换板材",
 		},
 		faq: {
 			heading: "常见问题",
@@ -85,11 +102,6 @@ export const zh: Dictionary = {
 			a4: "只要还没开始生产，修改都是免费的。我们的团队会先与您确认方案。",
 			q5: "有提供保修吗？",
 			a5: "每个橱柜均享有 5 年五金与结构保修。",
-		},
-		closing: {
-			heading: "您的墙面，您的尺寸，您的价格。只需大约五分钟。",
-			subtitle: "无需安装任何软件，也无需注册账号。",
-			cta: "开始设计",
 		},
 		footer: {
 			tagline: "量身定制的橱柜，以 3D 设计，并按您房间的实际尺寸打造。",
@@ -117,6 +129,22 @@ export const zh: Dictionary = {
 		diyTutorials: "DIY 教学视频",
 		clear: "清除",
 		dimensionAriaSuffix: "{label}（单位：毫米）",
+		phone: {
+			backHome: "首页",
+			backRooms: "房间",
+			backEdit: "编辑",
+			wallSubtitle: "{m} 米墙面",
+			tapHint: "点击柜子即可编辑",
+			tabsLabel: "工作室面板",
+			tabs: {
+				selected: "已选",
+				add: "添加",
+				room: "房间",
+				run: "布局",
+			},
+			doorsAria: "门板：{mode}。点击切换。",
+			quoteCta: "索取报价",
+		},
 		tools: {
 			ariaLabel: "工具",
 			select: "选择",
@@ -153,10 +181,10 @@ export const zh: Dictionary = {
 		start: {
 			heading: "您想设计哪个房间？",
 			subtitle:
-				"选择一个房间，即可在空白墙面上使用真实的 EzCabinet 尺寸开始设计。",
+				"选择一个房间，即可在空白墙面上使用真实的 {brand} 尺寸开始设计。",
 			roomIconAlt: "{room}图标",
 			roomSubtitle: {
-				kitchen: "真实的 EzCabinet 尺寸",
+				kitchen: "真实的 {brand} 尺寸",
 				living: "电视柜与展示柜",
 				bedroom: "衣柜",
 				foyer: "鞋柜与长凳",
@@ -329,7 +357,7 @@ export const zh: Dictionary = {
 			includedAbovePlural: "均已计入以上价格。",
 			estimatedTotal: "预估总价",
 			estimateBadge: "预估",
-			placeholderNote: "暂定价格——须经 EzCabinet 确认后方为正式报价。",
+			placeholderNote: "暂定价格——须经 {brand} 确认后方为正式报价。",
 			cta: "为此设计索取报价",
 			lines: {
 				carcasses: "柜体",
@@ -358,7 +386,7 @@ export const zh: Dictionary = {
 		backToEditing: "返回编辑",
 		savedHeading: "已保存——仅供演示",
 		savedBody:
-			"潜在客户功能尚未与 EzCabinet 系统对接（属于本项目后续阶段）。此次操作未发送任何内容。",
+			"潜在客户功能尚未与 {brand} 系统对接（属于本项目后续阶段）。此次操作未发送任何内容。",
 		heading: "订购这间{room}",
 		description: "下单后以银行转账付款。设计师会在制作前到场核实您的尺寸。",
 		fullName: "姓名",
@@ -381,7 +409,7 @@ export const zh: Dictionary = {
 		termsLink: "销售条款",
 		refundsLink: "退款政策",
 		errorTerms: "请勾选此项以提交订单。",
-		soldBy: "卖方：{address}。联系方式：{email} 或 {phone}。",
+		soldBy: "卖方：{seller}。联系方式：{email} 或 {phone}。",
 		submitting: "正在下单……",
 		descriptionOnline: "设计师会在施工前到现场重新测量。",
 		sectionContact: "联系方式",
@@ -545,9 +573,8 @@ export const zh: Dictionary = {
 	},
 	privacy: {
 		title: "隐私声明",
-		draft: "草稿——须经 EzCabinet Sdn Bhd 审核后方可生效。",
-		intro:
-			"本声明说明您使用 EzCabinet 设计工具时我们会记录哪些信息，以及原因。",
+		draft: "草稿——须经 {legalName} 审核后方可生效。",
+		intro: "本声明说明您使用 {brand} 设计工具时我们会记录哪些信息，以及原因。",
 		purposeHeading: "目的",
 		purpose: "找出设计工具中令人困惑或出错的地方，并加以修复。",
 		collectHeading: "我们记录的内容",
@@ -585,7 +612,7 @@ export const zh: Dictionary = {
 			"您可以要求查看我们持有的您的个人数据、更正数据、以可携带的形式获取副本、撤回同意，或要求我们停止将其用于直接营销。请写信至下方的联系地址。",
 		otherLawsHeading: "其他法律",
 		otherLaws:
-			"本声明依据马来西亚《2010 年个人数据保护法》发出。我们的分析服务商依据其自身的数据处理协议在欧盟处理使用数据；EzCabinet 仅在马来西亚销售。",
+			"本声明依据马来西亚《2010 年个人数据保护法》发出。我们的分析服务商依据其自身的数据处理协议在欧盟处理使用数据；{brand} 仅在马来西亚销售。",
 		choiceHeading: "您的选择",
 		choice:
 			"若您拒绝，我们只会在不使用 Cookie 或本地存储的情况下统计访问次数，所用标识每天重置，也不会进行任何录像。您可随时在浏览器中清除本网站的数据以更改选择。",
@@ -596,9 +623,9 @@ export const zh: Dictionary = {
 	terms: {
 		title: "销售条款",
 		intro:
-			"当您通过 EzCabinet 规划器订购橱柜时，适用以下条款。付款前请连同退款政策一并阅读。",
+			"当您通过 {brand} 规划器订购橱柜时，适用以下条款。付款前请连同退款政策一并阅读。",
 		sellerHeading: "卖方",
-		seller: "{address}。电子邮箱 {email}，电话 {phone}。",
+		seller: "{seller}。电子邮箱 {email}，电话 {phone}。",
 		goodsHeading: "您购买的商品",
 		goods:
 			"根据您提交的设计定制的橱柜。3D 视图仅为示意；最终尺寸以我们上门复尺为准。",
@@ -643,11 +670,12 @@ export const zh: Dictionary = {
 		howPaidHeading: "退款方式",
 		howPaid: "退款将在我们同意退款后 14 个工作日内，退回您原来使用的付款方式。",
 		howToAskHeading: "如何申请",
-		howToAsk: "请写信至 {email} 并附上订单编号，格式如 IC-20261007-001。",
+		howToAsk:
+			"请写信至 {email} 并附上订单编号，格式如 {orderPrefix}-20261007-001。",
 	},
 	whatsapp: {
 		autoReply:
-			"此号码仅用于发送 EzCabinet 订单通知。如需与我们的团队联系，请发送信息至 {number}",
+			"此号码仅用于发送 {brand} 订单通知。如需与我们的团队联系，请发送信息至 {number}",
 	},
 	/** The shared header's account menu and the account side nav. */
 	account: {
@@ -729,7 +757,7 @@ export const zh: Dictionary = {
 		unsupported: "此浏览器不支持通行密钥。请在 Chrome 或 Safari 中打开此页面。",
 		otherDevice:
 			"在另一台设备上设置的？请在浏览器询问时选择该设备，或在那台设备上登录后，在“通行密钥”中添加此设备",
-		lostDevice: "设备丢失？请联系 EzCabinet",
+		lostDevice: "设备丢失？请联系 {brand}",
 		checkoutHeading: "付款前还差一步",
 		checkoutBody:
 			"请使用通行密钥确认是您本人。只需几秒钟，您的设计会保持原样。",

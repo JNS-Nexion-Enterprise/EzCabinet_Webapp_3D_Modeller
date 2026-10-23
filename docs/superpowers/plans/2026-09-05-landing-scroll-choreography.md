@@ -26,14 +26,14 @@
 
 ## File Structure
 
-| File | Responsibility |
-| --- | --- |
-| `src/lib/scroll/beats.ts` (create) | Pure scroll math: track progress, sub-range mapping, the enablement predicate. Framework-free, like `lib/planner`. |
-| `src/lib/scroll/__tests__/beats.test.ts` (create) | vitest coverage for every function above. |
-| `src/components/scroll/ScrollTrack.tsx` (create) | The client island. Renders the tall track + sticky stage, publishes `--p`, owns the gate and the `will-change` lifecycle. |
-| `src/components/scroll/RevealOnEnter.tsx` (create) | One `IntersectionObserver` for the whole page; flips `data-revealed` on any `[data-reveal]` element once. |
-| `src/app/globals.css` (modify, currently 27 lines) | The `[data-beats="on"]` and `[data-revealed]` rules that consume the published values. |
-| `src/app/[lang]/page.tsx` (modify, 582 lines) | Wrap the hero section (line 243) in `ScrollTrack`, mount `RevealOnEnter` once, add `data-beat` / `data-reveal` attributes. Stays a server component. |
+| File                                               | Responsibility                                                                                                                                       |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/lib/scroll/beats.ts` (create)                 | Pure scroll math: track progress, sub-range mapping, the enablement predicate. Framework-free, like `lib/planner`.                                   |
+| `src/lib/scroll/__tests__/beats.test.ts` (create)  | vitest coverage for every function above.                                                                                                            |
+| `src/components/scroll/ScrollTrack.tsx` (create)   | The client island. Renders the tall track + sticky stage, publishes `--p`, owns the gate and the `will-change` lifecycle.                            |
+| `src/components/scroll/RevealOnEnter.tsx` (create) | One `IntersectionObserver` for the whole page; flips `data-revealed` on any `[data-reveal]` element once.                                            |
+| `src/app/globals.css` (modify, currently 27 lines) | The `[data-beats="on"]` and `[data-revealed]` rules that consume the published values.                                                               |
+| `src/app/[lang]/page.tsx` (modify, 582 lines)      | Wrap the hero section (line 243) in `ScrollTrack`, mount `RevealOnEnter` once, add `data-beat` / `data-reveal` attributes. Stays a server component. |
 
 ---
 
@@ -48,7 +48,6 @@
 - Produces: `clamp01(v: number): number`, `trackProgress(rectTop: number, trackHeight: number, viewportHeight: number): number`, `beatsEnabled(env: { reducedMotion: boolean; wideEnough: boolean }): boolean`.
 
 Range-slicing a track's progress into individual beats is **not** a function here. The stylesheet does it inline with `clamp(0, calc((var(--p) - start) / (end - start)), 1)`, at the point of use. A TypeScript twin of that arithmetic would have no caller and would drift from the CSS that actually runs.
-
 - [ ] **Step 1: Write the failing test**
 
 Create `src/lib/scroll/__tests__/beats.test.ts`:
@@ -115,7 +114,6 @@ describe("beatsEnabled", () => {
 
 Run: `pnpm vitest run src/lib/scroll`
 Expected: FAIL — `Failed to resolve import "../beats"`.
-
 - [ ] **Step 3: Write the minimal implementation**
 
 Create `src/lib/scroll/beats.ts`:
@@ -181,7 +179,6 @@ export function beatsEnabled(env: {
 
 Run: `pnpm vitest run src/lib/scroll`
 Expected: PASS — 9 tests.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -202,7 +199,6 @@ git commit -m "feat(scroll): pure track-progress and beat maths"
 - Produces: `<ScrollTrack viewports={number} className?: string>{children}</ScrollTrack>` — a default export React client component. It renders a track `div` of height `viewports × 100svh` containing a `position: sticky` stage of `100svh`, sets `--p` on the track element, and sets `data-beats="on"` on it only while active.
 
 The island holds no scroll arithmetic of its own; it wires the DOM to Task 1's functions. It is verified in a browser in Task 4, not by a unit test — `jsdom` is not a declared dependency of this repo and this plan does not add one.
-
 - [ ] **Step 1: Write the island**
 
 Create `src/components/scroll/ScrollTrack.tsx`:
@@ -372,7 +368,8 @@ Append to `src/app/globals.css`:
 [data-reveal-armed] [data-reveal] {
 	opacity: 0;
 	transform: translate3d(0, 18px, 0);
-	transition: opacity 620ms cubic-bezier(0.22, 0.61, 0.36, 1),
+	transition:
+		opacity 620ms cubic-bezier(0.22, 0.61, 0.36, 1),
 		transform 620ms cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
@@ -394,7 +391,6 @@ Append to `src/app/globals.css`:
 
 Run: `pnpm test && pnpm lint && pnpm build`
 Expected: PASS on all three. The island is not referenced yet, so this only proves it compiles and Biome is happy with it.
-
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -414,7 +410,6 @@ git commit -m "feat(scroll): pinned track island publishing progress as a CSS va
 - Produces: `<RevealOnEnter />` — a default export React client component rendering no DOM of its own. Mounted once per page; it sets `data-reveal-armed` on `<body>` and observes every `[data-reveal]` element, setting `data-revealed` on each the first time it enters view.
 
 One observer for the whole page, and it stops observing an element once revealed — the alternative, an observer per card, is the shape that makes a long page stutter.
-
 - [ ] **Step 1: Write the island**
 
 Create `src/components/scroll/RevealOnEnter.tsx`:
@@ -494,7 +489,6 @@ export default function RevealOnEnter() {
 
 Run: `pnpm lint && pnpm build`
 Expected: PASS.
-
 - [ ] **Step 3: Commit**
 
 ```bash
@@ -514,7 +508,6 @@ git commit -m "feat(scroll): one-observer reveal-on-entry island"
 - Produces: nothing for later tasks.
 
 The page stays a **server component**. Only two client islands are introduced, and neither receives any of the page's data — the copy, the prices and the images are still rendered on the server.
-
 - [ ] **Step 1: Import the islands**
 
 At the top of `src/app/[lang]/page.tsx`, alongside the existing imports:
@@ -565,9 +558,7 @@ Wrap that entire `<section>` — through its existing closing tag — in a track
 			    here is the thing nobody else in the market offers. */}
 			<h1 className="max-w-[15ch] text-balance font-bold text-[clamp(38px,6vw,68px)] text-white leading-[1.02] tracking-[-0.02em]">
 				{t.landing.hero.titleBeforeAccent}{" "}
-				<span style={{ color: "#8fc4a8" }}>
-					{t.landing.hero.titleAccent}
-				</span>
+				<span style={{ color: "#8fc4a8" }}>{t.landing.hero.titleAccent}</span>
 			</h1>
 			<p className="mt-6 max-w-[46ch] text-[17px] text-white/75 leading-7">
 				{t.landing.hero.subtitle}
@@ -590,7 +581,7 @@ Wrap that entire `<section>` — through its existing closing tag — in a track
 			</div>
 		</div>
 	</section>
-</ScrollTrack>
+</ScrollTrack>;
 ```
 
 Three things to keep right while editing:
@@ -609,14 +600,13 @@ Add `data-reveal` to the five section elements at lines 311, 334, 360, 408 and 4
 Then mount the observer once, immediately before the closing element of the page's returned tree (after the `<footer>` at line 513):
 
 ```tsx
-<RevealOnEnter />
+<RevealOnEnter />;
 ```
 
 - [ ] **Step 4: Run the checks**
 
 Run: `pnpm test && pnpm lint && pnpm build`
 Expected: PASS on all three.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -629,32 +619,25 @@ git commit -m "feat(landing): pinned hero beat and reveal-on-entry sections"
 ### Task 5: Verify in a browser, at both ends of the contract
 
 **Files:** none modified — this task is the gate.
-
 - [ ] **Step 1: Start the dev server**
 
 Run: `pnpm dev`
 Open `http://localhost:3000/en`.
-
 - [ ] **Step 2: Check the beats land where the plan says**
 
 With the Playwright or Chrome MCP tools, screenshot at five scroll positions through the hero track — 0 %, 25 %, 50 %, 75 %, 100 % of its height. Expected: the eyebrow/headline/subtitle are fully legible at 0 % and stay put until roughly 55 %, then drift up and fade as the track finishes; the photograph's scale eases from 1.08 to 1.00 across 75 %; The headline must be **fully legible in the 0 % screenshot** — it is the LCP element and it starts resolved.
-
 - [ ] **Step 3: Confirm no layout shift**
 
 In DevTools → Performance, record a scroll through the hero. Expected: zero layout-shift entries, and no `Recalculate Style` costing more than a millisecond per frame. If a shift appears, something in the track is animating a layout property — find it and move it onto `transform`.
-
 - [ ] **Step 4: Reduced motion**
 
 Emulate `prefers-reduced-motion: reduce` (DevTools → Rendering). Reload. Expected: the hero renders in its finished state at every scroll position, no `--p` is ever written, `data-beats` never appears on the track in the elements panel, and the sections below still become visible.
-
 - [ ] **Step 5: Narrow viewport**
 
 Resize below 900px and reload. Expected: same as Step 4 — the track pins nothing, no listener is attached. Confirm in DevTools → Event Listeners that no `scroll` listener exists on `window`.
-
 - [ ] **Step 6: No JavaScript**
 
 Disable JavaScript (DevTools → Settings → Debugger → Disable JavaScript) and reload. Expected: **every headline, price, room card, finish swatch and FAQ answer is visible and readable.** No blank hero, no empty sticky void, no invisible sections. This is the check the whole design exists to pass; if it fails, the `[data-beats="on"]` / `[data-reveal-armed]` scoping has been broken somewhere.
-
 - [ ] **Step 7: Commit anything the verification turned up**
 
 ```bash
@@ -677,13 +660,13 @@ git add -A && git commit -m "fix(landing): scroll choreography verification fixe
 Measured in a real browser at 1440×900 and 390×844 against the dev server, not inferred
 from a passing build.
 
-| `--p` | `--beat-exit` | hero copy opacity | photo scale |
-| --- | --- | --- | --- |
-| 0.0000 | 0 | 1 | 1.0800 |
-| 0.1060 | 0 | 1 | 1.0687 |
-| 0.3553 | 0 | 1 | 1.0421 |
-| 0.6060 | 0.1244 | 0.8756 | 1.0154 |
-| 1.0000 | 1 | 1.11e-16 | 1.0000 |
+| `--p`  | `--beat-exit` | hero copy opacity | photo scale |
+| ------ | ------------- | ----------------- | ----------- |
+| 0.0000 | 0             | 1                 | 1.0800      |
+| 0.1060 | 0             | 1                 | 1.0687      |
+| 0.3553 | 0             | 1                 | 1.0421      |
+| 0.6060 | 0.1244        | 0.8756            | 1.0154      |
+| 1.0000 | 1             | 1.11e-16          | 1.0000      |
 
 `--p` first reaches 1.0 at scrollY 805px, at which point the sticky stage still fills the
 viewport (top −6.1px, bottom 990.9px of 997px) — so the copy finishes leaving while the

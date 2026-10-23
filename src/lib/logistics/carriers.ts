@@ -1,3 +1,5 @@
+import type { CompanyDetails } from "@/lib/company/details";
+
 /**
  * The logistics partner vocabulary, in one place.
  *
@@ -52,110 +54,54 @@ export const KIND: Record<string, CarrierKind> = Object.fromEntries(
 );
 
 /**
- * Where every pickup starts unless the admin edits it. A constant rather than
- * a settings row because there is one workshop, and a Settings table for a
- * single string nobody has asked to change twice is a table nobody maintains.
+ * Where a job leaves from, as the columns a delivery row stores.
+ *
+ * The workshop is the company's (`/admin/company`), and a job leaving from it
+ * carries its pin and place on the row. Nothing matches address strings at
+ * quote time: Lalamove prices by the pin and EasyParcel by postcode and
+ * state, and both read them off the job.
  */
-export const WORKSHOP_ADDRESS = "EzCabinet Sdn Bhd, Klang Valley, Selangor";
-
-/**
- * The workshop's pin, as a constant rather than something we look up.
- *
- * Lalamove prices stop to stop by coordinate and reads the address line only
- * as a label for the driver, so this is the field that actually decides where
- * the lorry starts. It never changes, which makes geocoding it on every save
- * a call that can only ever return the same answer — and today returns none at
- * all, because `WORKSHOP_ADDRESS` is a placeholder too vague to place. Every
- * job has therefore been created with an unlocated pickup, and Lalamove
- * refuses a stop without coordinates, so it could not quote a single one.
- *
- * From the client's own Maps link for INFINITE CABINET SDN BHD. Taken off the
- * `!3d`/`!4d` pin in the expanded url, not the `@` viewport centre — those
- * disagree by about 5 km here, and the viewport is only where the map was
- * scrolled to.
- */
-import { pinFor } from "./coords";
-
-export const WORKSHOP_PIN = { lat: 2.9848868, lng: 101.861807 };
-
-/**
- * The pin to send as the pickup override, in precedence order: what the admin
- * typed, then the workshop's own pin when the job leaves from the workshop,
- * then nothing.
- *
- * The address check is what keeps this honest — an admin who edits the pickup
- * to a different address gets a geocode, not the workshop's coordinates
- * silently attached to somewhere else.
- */
-export function pickupPin(
-	address: string,
-	lat: number | null,
-	lng: number | null,
-): { lat: number; lng: number } | null {
-	// `pinFor` also covers coordinates typed into the address box, which is
-	// where an admin's pin lands more often than anyone would guess.
-	const given = pinFor(lat, lng, address);
-	if (given) return given;
-	return address.trim() === WORKSHOP_ADDRESS ? WORKSHOP_PIN : null;
-}
-
-/**
- * The workshop's postcode, town and state.
- *
- * EasyParcel prices by postcode and subdivision rather than by coordinate, so
- * these are to a parcel quote what `WORKSHOP_PIN` is to a Lalamove one: without
- * them the sender half of the request cannot be built at all.
- *
- * ponytail: derived from `WORKSHOP_PIN`, which sits in the Dengkil/Sepang area
- * of Selangor, and placeholders until the client confirms the street address —
- * the same open question `WORKSHOP_ADDRESS` and `WORKSHOP_PHONE` carry. A wrong
- * postcode here is a quote for the wrong origin zone on every parcel job.
- */
-export const WORKSHOP_POSTCODE = "43800";
-export const WORKSHOP_CITY = "Dengkil";
-export const WORKSHOP_STATE = "MY-10";
-
-export type Place = {
-	postcode: string | null;
-	city: string | null;
-	state: string | null;
+export type PickupColumns = {
+	pickupAddress: string;
+	pickupLat: number;
+	pickupLng: number;
+	pickupGeocodedFor: string;
+	pickupPostcode: string;
+	pickupCity: string;
+	pickupState: string;
 };
 
-/**
- * The place to quote a pickup from: what the geocode stored, then the
- * workshop's own, then nothing.
- *
- * Same shape and same reasoning as `pickupPin` — the address check is what
- * keeps an edited pickup from silently inheriting the workshop's postcode.
- */
-export function pickupPlace(address: string, stored: Place): Place | null {
-	if (stored.postcode !== null && stored.state !== null) return stored;
-	return address.trim() === WORKSHOP_ADDRESS
-		? {
-				postcode: WORKSHOP_POSTCODE,
-				city: WORKSHOP_CITY,
-				state: WORKSHOP_STATE,
-			}
-		: null;
+export type Workshop = Pick<
+	CompanyDetails,
+	"address" | "lat" | "lng" | "postcode" | "city" | "state"
+>;
+
+export function workshopColumns(workshop: Workshop): PickupColumns {
+	return {
+		pickupAddress: workshop.address,
+		pickupLat: workshop.lat,
+		pickupLng: workshop.lng,
+		pickupGeocodedFor: workshop.address,
+		pickupPostcode: workshop.postcode,
+		pickupCity: workshop.city,
+		pickupState: workshop.state,
+	};
 }
 
 /**
- * The number a driver rings from the loading bay. Beside the address for the
- * same reason it is: one workshop, one string, no settings table.
+ * The workshop's columns when the job leaves from the workshop, else null so
+ * the caller geocodes.
  *
- * ponytail: a placeholder until the client gives us the real line. It is sent
- * to Lalamove as the pickup contact, so a wrong number here is a driver who
- * cannot reach anyone — see the open question in CLAUDE.md.
+ * The address check keeps this honest: an admin who edits the pickup to
+ * another address gets a geocode, not the workshop's pin silently attached to
+ * somewhere else. A pin the admin typed always wins, so it is left to the
+ * geocoder's override path.
  */
-export const WORKSHOP_PHONE = "03-1234 5678";
-
-/**
- * When the workshop stops handing parcels over, as FedEx's pickup request
- * wants it (`customerCloseTime`, `HH:MM:SS`, Malaysian local time).
- *
- * ponytail: a placeholder until the client confirms their hours — the same
- * open question as `WORKSHOP_ADDRESS` and `WORKSHOP_PHONE`. Too early and
- * FedEx refuses a late-afternoon collection; too late and a courier arrives
- * to a locked gate.
- */
-export const WORKSHOP_CLOSE_TIME = "18:00:00";
+export function workshopPickup(
+	address: string,
+	given: { lat: number; lng: number } | null,
+	workshop: Workshop,
+): PickupColumns | null {
+	if (given) return null;
+	return address.trim() === workshop.address ? workshopColumns(workshop) : null;
+}

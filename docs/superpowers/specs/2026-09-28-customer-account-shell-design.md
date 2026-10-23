@@ -10,13 +10,13 @@ for screenshot capture.
 
 ## Decisions
 
-| Question | Decision |
-| --- | --- |
-| Customer sign-in | **Google only**, unchanged. The design's email/password sign-up, "Forgot password?" and marketing-email opt-in are not built: password sign-up is closed and the app runs no email service. |
-| Scope of this spec | Header account menu, account layout with side nav, richer order cards, order detail inside the layout. |
-| Where the shared header appears | Account pages (My orders, order detail) and the track page. The landing page keeps its marketing header but gets the same avatar menu / Sign in on its right, replacing its plain "My orders" link. The planner keeps its own chrome. |
-| Production stages and order refs | The app's real ones (`lib/orders/stage.ts`, `orderRef` → `IC-YYYYMMDD-NNN`), not the design's placeholder stages and `EZ-` refs. |
-| Unbuilt design parts | Omitted, not stubbed: Saved designs, Profile, Receipt, Reorder, 3D preview images, "See saved designs". |
+| Question                         | Decision                                                                                                                                                                                                                              |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Customer sign-in                 | **Google only**, unchanged. The design's email/password sign-up, "Forgot password?" and marketing-email opt-in are not built: password sign-up is closed and the app runs no email service.                                           |
+| Scope of this spec               | Header account menu, account layout with side nav, richer order cards, order detail inside the layout.                                                                                                                                |
+| Where the shared header appears  | Account pages (My orders, order detail) and the track page. The landing page keeps its marketing header but gets the same avatar menu / Sign in on its right, replacing its plain "My orders" link. The planner keeps its own chrome. |
+| Production stages and order refs | The app's real ones (`lib/orders/stage.ts`, `orderRef` → `IC-YYYYMMDD-NNN`), not the design's placeholder stages and `EZ-` refs.                                                                                                      |
+| Unbuilt design parts             | Omitted, not stubbed: Saved designs, Profile, Receipt, Reorder, 3D preview images, "See saved designs".                                                                                                                               |
 
 ## Structure
 
@@ -26,7 +26,6 @@ A route group `src/app/[lang]/(account)/` holds `orders/` and `order/[token]/`
 buttons, Stripe's `return_url` and the admin "customer view" link keep working.
 
 `(account)/layout.tsx` (server component):
-
 - reads `currentUser()` (nullable) — it does **not** redirect or decide access:
   a layout is not given the current URL, so it cannot build the sign-in `next`;
 - renders `SiteHeader` and, beside the page, the "Your account" side nav;
@@ -44,7 +43,6 @@ unchanged.
 
 Design's header: **EzCabinet** (→ `/[lang]`), **Room planner**
 (→ `/[lang]/planner`), **Tutorials** (→ `/[lang]/tutorials`), and on the right:
-
 - **Signed in:** a round avatar with the user's initials (from `name`, falling
   back to the email's first letter) and a chevron; it opens a menu with the
   name and email, **My orders**, and **Sign out**
@@ -84,7 +82,6 @@ orderCard(order: {
 ```
 
 Card (design layout, no 3D preview box):
-
 - **Title:** `{room label} · {n} units` — room from `ROOM_TYPES`, unit count from
   the stored breakdown's cabinet lines (`summaryLines` quantities summed). No run
   length: a room can have several walls.
@@ -106,7 +103,6 @@ latest delivery's `publicToken` to its `select`.
 ## Order detail — `/[lang]/order/[token]`
 
 Same data and behaviour as today, laid out as the design's detail view:
-
 - **← My orders** button; **title** (as the card), ref and date; payment
   **badge** right.
 - **Status line** under the title: today's heading/body pairs (confirming,

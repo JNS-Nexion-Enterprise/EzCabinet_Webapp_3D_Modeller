@@ -1,9 +1,16 @@
 import { readFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
+import { sellerLine } from "@/lib/company/details";
+import { getCompany } from "@/lib/company/store";
+import { getDictionary } from "../dictionary";
 import { en } from "../en";
 import { LOCALES } from "../locales";
 import { ms } from "../ms";
 import { zh } from "../zh";
+
+vi.mock("@/lib/company/store", () => ({ getCompany: vi.fn() }));
+const getCompanyMock = vi.mocked(getCompany);
 
 /** Every leaf path in a nested dictionary, e.g. "common.back". */
 const paths = (value: unknown, prefix = ""): string[] =>
@@ -102,5 +109,44 @@ describe("dictionaries", () => {
 			"utf8",
 		);
 		expect(notFound).not.toMatch(PROVIDER_NAME);
+	});
+});
+
+describe("getDictionary fills the company's facts", () => {
+	const company = testCompany({
+		brand: "Kabinet Baru",
+		legalName: "Kabinet Baru Sdn Bhd",
+		orderPrefix: "KB",
+		ssmNumber: "202301012345",
+	});
+	beforeEach(() => getCompanyMock.mockResolvedValue(company));
+
+	it("fills the company's facts into the copy", async () => {
+		const t = await getDictionary("en");
+		expect(t.common.brand).toBe("Kabinet Baru");
+		expect(t.landing.footer.email).toBe(company.contactEmail);
+		expect(t.privacy.draft).toContain("Kabinet Baru Sdn Bhd");
+		expect(JSON.stringify(t)).not.toMatch(
+			/\{(brand|legalName|orderPrefix|seller)\}/,
+		);
+	});
+	it.each(["en", "ms", "zh"] as const)(
+		"%s: the seller block names the seller, email and phone",
+		async (locale) => {
+			const t = await getDictionary(locale);
+			for (const line of [t.quote.soldBy, t.terms.seller]) {
+				expect(line).toContain(sellerLine(company));
+				expect(line).toContain(company.contactEmail);
+				expect(line).toContain(company.phone);
+			}
+		},
+	);
+	it("leaves a customer's own {email} for the page to fill", async () => {
+		expect((await getDictionary("en")).signIn.codeSent).toContain("{email}");
+	});
+	it("shows a saved change on the next call", async () => {
+		await getDictionary("en");
+		getCompanyMock.mockResolvedValue({ ...company, brand: "Kabinet Lagi" });
+		expect((await getDictionary("en")).common.brand).toBe("Kabinet Lagi");
 	});
 });

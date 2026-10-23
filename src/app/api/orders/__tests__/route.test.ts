@@ -8,7 +8,45 @@ vi.mock("botid/server", () => ({
 // The 401 must come before any database work: the only prisma call these
 // tests allow is the demo customer's upsert.
 const upsert = vi.hoisted(() => vi.fn());
-vi.mock("@/lib/catalogue/db", () => ({ prisma: { user: { upsert } } }));
+const orderCreate = vi.hoisted(() => vi.fn());
+vi.mock("@/lib/catalogue/db", () => ({
+	prisma: {
+		user: { upsert },
+		$transaction: (run: (tx: unknown) => unknown) =>
+			run({ order: { create: orderCreate } }),
+	},
+}));
+vi.mock("@/lib/company/store", async () => {
+	const { testCompany } = await import(
+		"@/lib/company/__tests__/company.fixture"
+	);
+	return { getCompany: async () => testCompany({ orderPrefix: "PO" }) };
+});
+vi.mock("@/lib/catalogue/store", () => ({
+	readPublishedPlannerCatalogue: async () => ({ id: "v1", data: {} }),
+}));
+vi.mock("@/lib/orders/validate", () => ({
+	validateOrder: () => ({ ok: true }),
+}));
+vi.mock("@/lib/orders/price", () => ({
+	priceOrder: () => ({
+		breakdown: {},
+		cabinetsRm: 1,
+		deliveryRm: 1,
+		totalRm: 2,
+	}),
+}));
+vi.mock("@/lib/orders/layoutSchema", async () => {
+	const { z } = await import("zod");
+	return { ORDER_DESIGN_VERSION: 3, roomLayoutSchema: z.any() };
+});
+vi.mock("@/lib/payments/start", () => ({
+	startPayment: async () => ({ ok: false }),
+}));
+vi.mock("@/lib/whatsapp/outbox", () => ({
+	enqueue: async () => [],
+	flushSoon: () => {},
+}));
 vi.mock("server-only", () => ({}));
 
 const { POST } = await import("@/app/api/orders/route");
@@ -124,5 +162,39 @@ describe("POST /api/orders terms acceptance", () => {
 		// Still 400 — the rest of the body is missing — but not for the terms.
 		expect(response.status).toBe(400);
 		expect(await issuePaths(response)).not.toContain("termsAccepted");
+	});
+});
+
+describe("POST /api/orders reference", () => {
+	it("stamps the order with the prefix live when it is placed", async () => {
+		vi.stubEnv("AUTH_ENABLED", "false");
+		orderCreate.mockResolvedValue({
+			publicToken: "tok",
+			number: 1,
+			totalRm: 2,
+			locale: "en",
+			user: { email: "mei@example.com" },
+			createdAt: new Date(),
+		});
+		const response = await POST(
+			new Request("http://localhost/api/orders", {
+				method: "POST",
+				body: JSON.stringify({
+					roomId: "kitchen",
+					finishId: "f",
+					layout: {},
+					customer: {
+						name: "Mei Ling",
+						phone: "0123456789",
+						email: "mei@example.com",
+						siteAddress: "1 Jalan Satu, Shah Alam",
+					},
+					remeasureAccepted: true,
+					termsAccepted: true,
+				}),
+			}),
+		);
+		expect(response.status).toBe(201);
+		expect(orderCreate.mock.calls[0][0].data.refPrefix).toBe("PO");
 	});
 });

@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 	subsets: ["latin"],
 });
 /**
- * The wordmark, and nothing else. One weight, self-hosted by `next/font`, and
+ * The wordmark, and the landing page's headings. One weight, self-hosted by `next/font`, and
  * `swap` so Georgia paints first — a webfont on the LCP path for a single word
  * only earns its place if it never blocks the render.
  */

@@ -27,6 +27,13 @@ const carcass: DeliveryItem = {
 const job = (over: Partial<DeliveryJob> = {}): DeliveryJob => ({
 	id: "cl_abc",
 	number: 41,
+	ref: "IC-00007",
+	sender: {
+		brand: "EzCabinet",
+		legalName: "EzCabinet Sdn Bhd",
+		phone: "03-1234 5678",
+		closeTime: "18:00",
+	},
 	customerName: "Siti",
 	customerPhone: "012-345 6789",
 	siteAddress: "Jalan PJU 5/20, Kota Damansara",
@@ -160,6 +167,27 @@ describe("orderBody", () => {
 		expect(body.data.metadata).toMatchObject({
 			deliveryId: "cl_abc",
 			deliveryNumber: "41",
+		});
+	});
+
+	it("names the sender from the job, not from a constant", () => {
+		const body = orderBody(
+			job({
+				sender: {
+					brand: "Kabinet Baru",
+					legalName: "Kabinet Baru Sdn Bhd",
+					phone: "03-5555 1234",
+					closeTime: "18:00",
+				},
+			}),
+			"q",
+			"s1",
+			"r1",
+		);
+		expect(body.data.sender).toEqual({
+			stopId: "s1",
+			name: "Kabinet Baru",
+			phone: "+60355551234",
 		});
 	});
 

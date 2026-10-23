@@ -6,7 +6,7 @@
 
 **Goal:** Make GDEX a real logistics partner — quote, book, track, cancel — so it appears in the admin's Compare partners table alongside Lalamove and Own lorry.
 
-**Architecture:** `src/lib/logistics/adapters/gdex.ts` is today a stub that throws `CarrierNotConfigured`. Replacing that one file with a real `CarrierAdapter` is *almost* the whole job: `carriers.ts` already lists GDEX, `registry.ts` already maps it, the quote fan-out, book, track, cron sweep and webhook routes are all carrier-agnostic, and `Delivery.carrierId` is a plain string by design so **no Prisma migration is needed**. Two support pieces are new — a postcode reader, because GDEX prices by postcode and nothing in this app has ever needed one — and one small honesty fix so a GDEX rejection actually reaches the admin's screen.
+**Architecture:** `src/lib/logistics/adapters/gdex.ts` is today a stub that throws `CarrierNotConfigured`. Replacing that one file with a real `CarrierAdapter` is _almost_ the whole job: `carriers.ts` already lists GDEX, `registry.ts` already maps it, the quote fan-out, book, track, cron sweep and webhook routes are all carrier-agnostic, and `Delivery.carrierId` is a plain string by design so **no Prisma migration is needed**. Two support pieces are new — a postcode reader, because GDEX prices by postcode and nothing in this app has ever needed one — and one small honesty fix so a GDEX rejection actually reaches the admin's screen.
 
 **Tech stack:** TypeScript, Zod v4, Vitest, Next.js App Router, Prisma. No new dependencies.
 
@@ -25,7 +25,7 @@ was written and run on 2026-09-06.
 is ignored by GDEX's gateway; the header is `subscription-key`. See the current
 plan's "corrected auth contract".
 
-**Conventions this plan follows**, set by the EasyParcel work: payload fixtures copied verbatim from the vendor's own documented samples into `src/lib/logistics/__tests__/fixtures/<carrier>.ts`; stubbed-`fetch` tests asserting *both* the bytes sent and the reply parsed; a `<carrier>-ping.mjs` smoke script run by a human, never in PR CI.
+**Conventions this plan follows**, set by the EasyParcel work: payload fixtures copied verbatim from the vendor's own documented samples into `src/lib/logistics/__tests__/fixtures/<carrier>.ts`; stubbed-`fetch` tests asserting _both_ the bytes sent and the reply parsed; a `<carrier>-ping.mjs` smoke script run by a human, never in PR CI.
 
 ---
 
@@ -35,17 +35,16 @@ EzCabinet needs a parcel partner. Cabinets travel by lorry (Lalamove), but hardw
 
 Three things about GDEX are structurally different from Lalamove, and every design decision below falls out of them:
 
-| | Lalamove | GDEX |
-| --- | --- | --- |
-| Prices against | pickup/dropoff **coordinates** | **postcode pair + weight in kg** |
-| Status arrives by | webhook **and** poll | **poll only** — the API has no callback operation |
-| Booking is paid by | invoice | **e-Wallet debit at booking time** |
+|                    | Lalamove                       | GDEX                                              |
+| ------------------ | ------------------------------ | ------------------------------------------------- |
+| Prices against     | pickup/dropoff **coordinates** | **postcode pair + weight in kg**                  |
+| Status arrives by  | webhook **and** poll           | **poll only** — the API has no callback operation |
+| Booking is paid by | invoice                        | **e-Wallet debit at booking time**                |
 
 The postcode row is the one that costs work. `Delivery` stores free-text addresses and a geocoded pin; the word "postcode" does not appear anywhere in `src/`. The weight row costs the second-most: `DeliveryItem.weightKg` is nullable and the catalogue carries no weights, so the honest answer for an unweighed job is a refusal that names the fix, not an invented kilogram.
 
 **Decisions taken with the user, 2026-09-06:**
-
-1. **Credentials: one held, one missing.** `GDEX_PRIMARY_API_KEY` is the APIM subscription key and works. The `User-Token` is *not* `GDEX_PUBLIC_KEY`, which the API rejects — it is an Integration Token from the myGDEX web application, and the client has yet to supply it. Every task below reads `GDEX_USER_TOKEN`, so GDEX stays an honest "no credentials" row until it is set.
+1. **Credentials: one held, one missing.** `GDEX_PRIMARY_API_KEY` is the APIM subscription key and works. The `User-Token` is _not_ `GDEX_PUBLIC_KEY`, which the API rejects — it is an Integration Token from the myGDEX web application, and the client has yet to supply it. Every task below reads `GDEX_USER_TOKEN`, so GDEX stays an honest "no credentials" row until it is set.
 2. **Weight is entered by the admin.** The item row already has a Weight kg input (`LogisticsManager.tsx:451-467`); its supporting copy currently tells the admin weight is optional. GDEX refuses to quote without it and says so on its own comparison row.
 3. **Request a pickup.** `CreateConsignment` sends the optional `Pickup` block so a GDEX driver collects from the workshop — the same shape as a Lalamove job. Nobody drives to a branch.
 4. **No e-Wallet UI.** GDEX is the only partner with a balance endpoint; surfacing it would make one carrier's panel look unlike the other four. `Insufficient Credit` reaches the admin as an ordinary booking rejection instead — which is what Task 7 exists to guarantee. (This also avoids re-adding the `CarrierWallet` table that was created and reverted on 2026-09-05, migrations `20260905171501` / `20260905172637`.)
@@ -55,7 +54,6 @@ The postcode row is the one that costs work. `Delivery` stores free-text address
 ## Global constraints
 
 Every task's requirements implicitly include these.
-
 - **Zod is the source of truth for types.** Define the schema, infer the TS type. Validate every payload that arrives from outside the process.
 - **`lib/logistics/adapters/*` is `server-only`.** These modules hold booking credentials and must never be reachable from a client bundle. `carriers.ts` is the isomorphic half; nothing secret goes there.
 - **No Prisma migration.** `Delivery.carrierId` is deliberately a `String?` validated against `CARRIER_IDS`, not an enum — `schema.prisma:245-247` says so explicitly. If a task seems to need a column, stop and re-read this line.
@@ -69,22 +67,22 @@ Every task's requirements implicitly include these.
 
 ## File structure
 
-| File | Status | Responsibility |
-| --- | --- | --- |
-| `scripts/gdex-ping.mjs` | **create** | Talk to GDEX with the app out of the way. Proves which env var is the `User-Token`, which host answers, and what the sandbox's real status words are. Read-only operations only. |
-| `src/lib/logistics/adapters/gdex.ts` | **replace** | The adapter. Pure payload builders + the four `CarrierAdapter` methods. Currently an 18-line stub. |
-| `src/lib/logistics/__tests__/fixtures/gdex.ts` | **create** | Every GDEX payload this integration parses, copied verbatim from Appendix A. One place, so a shape change is one edit. Convention borrowed from the EasyParcel plan. |
-| `src/lib/logistics/__tests__/gdex.test.ts` | **create** | Builders bare, then the network methods with a faked fetch. Mirrors `lalamove.test.ts`. |
-| `src/lib/logistics/status.ts` | modify | Fill `CARRIER_STATUS_MAPS.gdex`, today `{}`. |
-| `src/lib/logistics/__tests__/status.test.ts` | modify | Cover the new table. |
-| `src/app/api/admin/deliveries/[id]/book/route.ts` | modify | Return a `carrier_refused` code so the carrier's own sentence reaches the screen. |
-| `src/app/admin/logistics/errors.ts` | modify | One more entry in `messageFor`. |
-| `src/app/admin/logistics/__tests__/errors.test.ts` | modify | Cover it. |
-| `src/app/admin/logistics/LogisticsManager.tsx` | modify | Weight copy, and show the carrier's message on a failed booking. |
-| `src/lib/logistics/types.ts` | modify | `CarrierBooking.labelUrl` — **only if the EasyParcel work has not already added it.** |
-| `src/app/api/admin/deliveries/[id]/book/route.ts` | modify | Persist `labelUrl`; return `carrier_refused` with the carrier's message. |
-| `README.md` | modify | The env-var table. |
-| `package.json` | modify | One script: `gdex:ping`. |
+| File                                               | Status      | Responsibility                                                                                                                                                                   |
+| -------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scripts/gdex-ping.mjs`                            | **create**  | Talk to GDEX with the app out of the way. Proves which env var is the `User-Token`, which host answers, and what the sandbox's real status words are. Read-only operations only. |
+| `src/lib/logistics/adapters/gdex.ts`               | **replace** | The adapter. Pure payload builders + the four `CarrierAdapter` methods. Currently an 18-line stub.                                                                               |
+| `src/lib/logistics/__tests__/fixtures/gdex.ts`     | **create**  | Every GDEX payload this integration parses, copied verbatim from Appendix A. One place, so a shape change is one edit. Convention borrowed from the EasyParcel plan.             |
+| `src/lib/logistics/__tests__/gdex.test.ts`         | **create**  | Builders bare, then the network methods with a faked fetch. Mirrors `lalamove.test.ts`.                                                                                          |
+| `src/lib/logistics/status.ts`                      | modify      | Fill `CARRIER_STATUS_MAPS.gdex`, today `{}`.                                                                                                                                     |
+| `src/lib/logistics/__tests__/status.test.ts`       | modify      | Cover the new table.                                                                                                                                                             |
+| `src/app/api/admin/deliveries/[id]/book/route.ts`  | modify      | Return a `carrier_refused` code so the carrier's own sentence reaches the screen.                                                                                                |
+| `src/app/admin/logistics/errors.ts`                | modify      | One more entry in `messageFor`.                                                                                                                                                  |
+| `src/app/admin/logistics/__tests__/errors.test.ts` | modify      | Cover it.                                                                                                                                                                        |
+| `src/app/admin/logistics/LogisticsManager.tsx`     | modify      | Weight copy, and show the carrier's message on a failed booking.                                                                                                                 |
+| `src/lib/logistics/types.ts`                       | modify      | `CarrierBooking.labelUrl` — **only if the EasyParcel work has not already added it.**                                                                                            |
+| `src/app/api/admin/deliveries/[id]/book/route.ts`  | modify      | Persist `labelUrl`; return `carrier_refused` with the carrier's message.                                                                                                         |
+| `README.md`                                        | modify      | The env-var table.                                                                                                                                                               |
+| `package.json`                                     | modify      | One script: `gdex:ping`.                                                                                                                                                         |
 
 ---
 
@@ -97,15 +95,14 @@ It never calls `CreateConsignment`.
 **Do not paste a script over it.** The listing that stood here was written
 before the API answered and got the auth wrong. What the real run established:
 
-| Question | Answer |
-| --- | --- |
-| Base URL | `https://myopenapi.gdexpress.com/test/api/MyGDex` — live is the same host without `/test`, and the account has no active live subscription |
-| Subscription header | **`subscription-key`**. `Ocp-Apim-Subscription-Key` is ignored: the gateway answers "missing subscription key" while a valid key is being sent |
-| Subscription key | `GDEX_PRIMARY_API_KEY`, valid for the `myGDEX (Testing)` product |
-| `GDEX_SECONDARY_API_SECRET` | APIM's rotation spare for the primary key. Not a signing secret. Nothing reads it |
-| User token | **Not yet held.** `GDEX_PUBLIC_KEY` returns `{"statusCode":401,"message":"Invalid User Token"}`. The real one is an Integration Token from the myGDEX *web application*, User Profile → Integration Token. Later tasks read `GDEX_USER_TOKEN` |
-| Status words | Unknown until the token lands. Task 6's table is built from the documented copy and must be rebuilt from a real reply |
-
+| Question                    | Answer                                                                                                                                                                                                                                        |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Base URL                    | `https://myopenapi.gdexpress.com/test/api/MyGDex` — live is the same host without `/test`, and the account has no active live subscription                                                                                                    |
+| Subscription header         | **`subscription-key`**.`Ocp-Apim-Subscription-Key` is ignored: the gateway answers "missing subscription key" while a valid key is being sent                                                                                                 |
+| Subscription key            | `GDEX_PRIMARY_API_KEY`, valid for the `myGDEX (Testing)` product                                                                                                                                                                              |
+| `GDEX_SECONDARY_API_SECRET` | APIM's rotation spare for the primary key. Not a signing secret. Nothing reads it                                                                                                                                                             |
+| User token                  | **Not yet held.** `GDEX_PUBLIC_KEY` returns `{"statusCode":401,"message":"Invalid User Token"}`. The real one is an Integration Token from the myGDEX _web application_, User Profile → Integration Token. Later tasks read `GDEX_USER_TOKEN` |
+| Status words                | Unknown until the token lands. Task 6's table is built from the documented copy and must be rebuilt from a real reply                                                                                                                         |
 - [x] Script written, run, and its findings recorded above.
 
 ## Task 2: ~~Read a postcode out of an address~~ — deleted
@@ -123,10 +120,10 @@ pin was derived from.
 
 **So, everywhere the later tasks want a postcode:**
 
-| Want | Read |
-| --- | --- |
-| the destination postcode | `job.sitePostcode` — null when the geocode did not return one |
-| the workshop's postcode | the GDEX account profile's `PostalCode` from `GetUserDetails`, **not** `job.pickupPostcode` — see below |
+| Want                     | Read                                                                                                    |
+| ------------------------ | ------------------------------------------------------------------------------------------------------- |
+| the destination postcode | `job.sitePostcode` — null when the geocode did not return one                                           |
+| the workshop's postcode  | the GDEX account profile's `PostalCode` from `GetUserDetails`, **not** `job.pickupPostcode` — see below |
 
 A null `sitePostcode` is a refusal, not a fallback: throw
 `GdexNotDeliverable("The site address did not geocode to a postcode — GDEX
@@ -139,7 +136,7 @@ guesses; this is that.
 locality within a postcode — and there is no way to derive one from arbitrary
 text except `GetPostcodeLocations`, which returns many locations per postcode
 with nothing to choose between them. `GetUserDetails` returns the account's own
-postcode *and* its `LocationId` together, already agreeing with each other. See
+postcode _and_ its `LocationId` together, already agreeing with each other. See
 the open question about an edited `pickupAddress` at the end of this plan.
 
 Nothing to write, nothing to commit. Go to Task 3.
@@ -231,12 +228,16 @@ describe("weightOf", () => {
 	});
 
 	it("refuses an unweighed job rather than guessing", () => {
-		expect(() => weightOf(job({ totalWeightKg: null }))).toThrow(GdexNotDeliverable);
+		expect(() => weightOf(job({ totalWeightKg: null }))).toThrow(
+			GdexNotDeliverable,
+		);
 		expect(() => weightOf(job({ totalWeightKg: null }))).toThrow(/weight/i);
 	});
 
 	it("refuses a zero weight, which is not a parcel", () => {
-		expect(() => weightOf(job({ totalWeightKg: 0 }))).toThrow(GdexNotDeliverable);
+		expect(() => weightOf(job({ totalWeightKg: 0 }))).toThrow(
+			GdexNotDeliverable,
+		);
 	});
 });
 
@@ -246,7 +247,9 @@ describe("piecesOf", () => {
 	});
 
 	it("refuses more than fifteen pieces, which GDEX caps", () => {
-		expect(() => piecesOf(job({ items: [{ ...carton, qty: 16 }] }))).toThrow(/15 pieces/);
+		expect(() => piecesOf(job({ items: [{ ...carton, qty: 16 }] }))).toThrow(
+			/15 pieces/,
+		);
 	});
 
 	it("refuses a job with no items", () => {
@@ -260,13 +263,31 @@ describe("transportationFor", () => {
 	});
 
 	it("asks for an offsize truck when the job needs a lorry", () => {
-		const big = { ...carton, qty: 1, widthMm: 2400, heightMm: 900, depthMm: 600, weightKg: 90 };
-		expect(transportationFor(job({ items: [big], totalWeightKg: 90 }))).toBe("OffsizeTruck");
+		const big = {
+			...carton,
+			qty: 1,
+			widthMm: 2400,
+			heightMm: 900,
+			depthMm: 600,
+			weightKg: 90,
+		};
+		expect(transportationFor(job({ items: [big], totalWeightKg: 90 }))).toBe(
+			"OffsizeTruck",
+		);
 	});
 
 	it("refuses a job that fits in no vehicle at all", () => {
-		const huge = { ...carton, qty: 40, widthMm: 2400, heightMm: 2400, depthMm: 600, weightKg: 200 };
-		expect(() => transportationFor(job({ items: [huge], totalWeightKg: 8000 }))).toThrow(GdexNotDeliverable);
+		const huge = {
+			...carton,
+			qty: 40,
+			widthMm: 2400,
+			heightMm: 2400,
+			depthMm: 600,
+			weightKg: 200,
+		};
+		expect(() =>
+			transportationFor(job({ items: [huge], totalWeightKg: 8000 })),
+		).toThrow(GdexNotDeliverable);
 	});
 });
 
@@ -285,7 +306,9 @@ describe("rateBody", () => {
 	});
 
 	it("refuses a job whose address never geocoded to a postcode", () => {
-		expect(() => rateBody(job({ sitePostcode: null }), "46050")).toThrow(/postcode/i);
+		expect(() => rateBody(job({ sitePostcode: null }), "46050")).toThrow(
+			/postcode/i,
+		);
 	});
 });
 
@@ -305,7 +328,9 @@ describe("pickupInfo", () => {
 	});
 
 	it("omits the remark when there are no address notes", () => {
-		expect(pickupInfo(job({ addressNotes: null })).PickupRemark).toBeUndefined();
+		expect(
+			pickupInfo(job({ addressNotes: null })).PickupRemark,
+		).toBeUndefined();
 	});
 });
 
@@ -329,11 +354,15 @@ describe("consignmentBody", () => {
 	});
 
 	it("carries the pickup arrangement", () => {
-		expect(consignmentBody(job(), sender).Pickup?.Transportation).toBe("Motorbike");
+		expect(consignmentBody(job(), sender).Pickup?.Transportation).toBe(
+			"Motorbike",
+		);
 	});
 
 	it("refuses a customer phone GDEX cannot call", () => {
-		expect(() => consignmentBody(job({ customerPhone: "n/a" }), sender)).toThrow(GdexNotDeliverable);
+		expect(() =>
+			consignmentBody(job({ customerPhone: "n/a" }), sender),
+		).toThrow(GdexNotDeliverable);
 	});
 });
 ```
@@ -345,7 +374,6 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: FAIL — every named export is missing from the stub module.
-
 - [ ] **Step 3: Write the builders**
 
 Replace the whole of `src/lib/logistics/adapters/gdex.ts` with the module below. Task 4 appends the adapter object to the same file; the `CarrierAdapter` export disappears for one commit, which is why Task 3 and Task 4 are one branch and not two.
@@ -493,7 +521,10 @@ export type RateRequest = {
  * `ReferenceNumber` is the delivery number staff say out loud, which makes the
  * reply's row identifiable in the event log without a lookup table.
  */
-export function rateBody(job: DeliveryJob, fromPostcode: string): RateRequest[] {
+export function rateBody(
+	job: DeliveryJob,
+	fromPostcode: string,
+): RateRequest[] {
 	return [
 		{
 			ReferenceNumber: job.number,
@@ -598,7 +629,10 @@ export function consignmentBody(job: DeliveryJob, sender: GdexUserDetails) {
 				// Ours, printed on the consignment note — the fastest way to tie a
 				// note in GDEX's portal to a job number staff say aloud.
 				OrderId: `ICB-${job.number}`,
-				ShipmentContent: job.items.map((i) => i.label).join(", ").slice(0, 200),
+				ShipmentContent: job.items
+					.map((i) => i.label)
+					.join(", ")
+					.slice(0, 200),
 				ParcelType: PARCEL_TYPE,
 				ShipmentValue: 0,
 				Pieces: piecesOf(job),
@@ -624,7 +658,6 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: PASS. `pnpm exec tsc --noEmit` will still fail on `registry.ts`, which imports a `gdexAdapter` this commit removed — that is expected and Task 4 fixes it. Do not paper over it by leaving the stub in place.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -648,7 +681,6 @@ here because its message is what the admin reads on the comparison row."
 - Produces: `export const gdexAdapter: CarrierAdapter` — the name `registry.ts:4` already imports.
 
 **Do not implement `verifyWebhook`.** GDEX documents no callback operation. Leaving the method off is the correct signal: `webhooks/[carrier]/route.ts:43-47` answers `200 {received:true}` for an adapter without one, and the cron sweep at `*/10 * * * *` is the only tracking channel.
-
 - [ ] **Step 1: Write the failing tests**
 
 Append to `src/lib/logistics/__tests__/gdex.test.ts`:
@@ -675,7 +707,9 @@ const consignmentResponse = {
 	data: {
 		InvoiceNumber: "120CPA0001234",
 		ConsignmentNumbers: ["MY1700012345"],
-		Consignments: [{ OrderId: "ICB-7", ConsignmentNumber: "MY1700012345", Rate: 12.4 }],
+		Consignments: [
+			{ OrderId: "ICB-7", ConsignmentNumber: "MY1700012345", Rate: 12.4 },
+		],
 		GrandTotal: 12.4,
 		EWalletBalance: 980.6,
 	},
@@ -723,7 +757,11 @@ describe("gdexAdapter", () => {
 
 			const quote = await gdexAdapter.quote(job());
 
-			expect(quote).toMatchObject({ carrierId: "gdex", priceRm: 12.4, etaMinutes: null });
+			expect(quote).toMatchObject({
+				carrierId: "gdex",
+				priceRm: 12.4,
+				etaMinutes: null,
+			});
 			expect(fetchMock.mock.calls[0][0]).toContain("/GetUserDetails");
 			expect(fetchMock.mock.calls[1][0]).toContain("/GetShippingRate");
 			expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual([
@@ -741,33 +779,46 @@ describe("gdexAdapter", () => {
 		it("sends the user token as a header", async () => {
 			const fetchMock = stubResponses(userDetailsResponse, rateResponse);
 			await gdexAdapter.quote(job());
-			expect(fetchMock.mock.calls[0][1].headers["User-Token"]).toBe("utok_test_abc");
+			expect(fetchMock.mock.calls[0][1].headers["User-Token"]).toBe(
+				"utok_test_abc",
+			);
 		});
 
 		it("turns a per-row HasError into a refusal, not a price of zero", async () => {
 			stubResponses(userDetailsResponse, {
 				statusCode: 200,
-				data: [{ ReferenceNumber: 7, Rate: 0, HasError: true, Error: "Postal code 11950 not found" }],
+				data: [
+					{
+						ReferenceNumber: 7,
+						Rate: 0,
+						HasError: true,
+						Error: "Postal code 11950 not found",
+					},
+				],
 				message: null,
 			});
 
-			await expect(gdexAdapter.quote(job())).rejects.toThrow(/Postal code 11950 not found/);
+			await expect(gdexAdapter.quote(job())).rejects.toThrow(
+				/Postal code 11950 not found/,
+			);
 		});
 
 		it("refuses to call at all without credentials", async () => {
 			vi.stubEnv("GDEX_USER_TOKEN", "");
 			const fetchMock = stubResponses(userDetailsResponse, rateResponse);
 
-			await expect(gdexAdapter.quote(job())).rejects.toBeInstanceOf(CarrierNotConfigured);
+			await expect(gdexAdapter.quote(job())).rejects.toBeInstanceOf(
+				CarrierNotConfigured,
+			);
 			expect(fetchMock).not.toHaveBeenCalled();
 		});
 
 		it("refuses an unweighed job before it dials", async () => {
 			const fetchMock = stubResponses(userDetailsResponse, rateResponse);
 
-			await expect(gdexAdapter.quote(job({ totalWeightKg: null }))).rejects.toBeInstanceOf(
-				GdexNotDeliverable,
-			);
+			await expect(
+				gdexAdapter.quote(job({ totalWeightKg: null })),
+			).rejects.toBeInstanceOf(GdexNotDeliverable);
 			expect(fetchMock).not.toHaveBeenCalled();
 		});
 	});
@@ -793,14 +844,22 @@ describe("gdexAdapter", () => {
 			);
 			fetchMock.mockResolvedValueOnce(
 				new Response(
-					JSON.stringify({ statusCode: 400, data: null, message: "Insufficient Credit" }),
+					JSON.stringify({
+						statusCode: 400,
+						data: null,
+						message: "Insufficient Credit",
+					}),
 					{ status: 400 },
 				),
 			);
 			vi.stubGlobal("fetch", fetchMock);
 
 			await expect(
-				gdexAdapter.book(job(), { carrierId: "gdex", priceRm: 12.4, etaMinutes: null }),
+				gdexAdapter.book(job(), {
+					carrierId: "gdex",
+					priceRm: 12.4,
+					etaMinutes: null,
+				}),
 			).rejects.toThrow(/Insufficient Credit/);
 		});
 
@@ -809,11 +868,17 @@ describe("gdexAdapter", () => {
 			fetchMock.mockResolvedValueOnce(
 				new Response(JSON.stringify(userDetailsResponse), { status: 200 }),
 			);
-			fetchMock.mockResolvedValueOnce(new Response("upstream is down", { status: 503 }));
+			fetchMock.mockResolvedValueOnce(
+				new Response("upstream is down", { status: 503 }),
+			);
 			vi.stubGlobal("fetch", fetchMock);
 
 			await expect(
-				gdexAdapter.book(job(), { carrierId: "gdex", priceRm: 12.4, etaMinutes: null }),
+				gdexAdapter.book(job(), {
+					carrierId: "gdex",
+					priceRm: 12.4,
+					etaMinutes: null,
+				}),
 			).rejects.toThrow();
 			// GetUserDetails plus one CreateConsignment. A second consignment is a
 			// second parcel and a second e-Wallet debit.
@@ -825,20 +890,26 @@ describe("gdexAdapter", () => {
 		it("reads the last shipment status for the consignment", async () => {
 			const fetchMock = stubResponses({
 				statusCode: 200,
-				data: [{ ConsignmentNote: "MY1700012345", ConsignmentNoteStatus: "Pending" }],
+				data: [
+					{ ConsignmentNote: "MY1700012345", ConsignmentNoteStatus: "Pending" },
+				],
 				message: null,
 			});
 
 			const update = await gdexAdapter.track("MY1700012345");
 
 			expect(update.message).toContain("Pending");
-			expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual(["MY1700012345"]);
+			expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual([
+				"MY1700012345",
+			]);
 		});
 
 		it("leaves the status null when GDEX returns a word we have not mapped", async () => {
 			stubResponses({
 				statusCode: 200,
-				data: [{ ConsignmentNote: "MY1700012345", ConsignmentNoteStatus: "Bagged" }],
+				data: [
+					{ ConsignmentNote: "MY1700012345", ConsignmentNoteStatus: "Bagged" },
+				],
 				message: null,
 			});
 
@@ -848,9 +919,15 @@ describe("gdexAdapter", () => {
 
 	describe("cancel", () => {
 		it("puts the consignment number on the query string", async () => {
-			const fetchMock = stubResponses({ statusCode: 200, data: null, message: null });
+			const fetchMock = stubResponses({
+				statusCode: 200,
+				data: null,
+				message: null,
+			});
 			await gdexAdapter.cancel?.("MY1700012345");
-			expect(fetchMock.mock.calls[0][0]).toContain("ConsignmentNumber=MY1700012345");
+			expect(fetchMock.mock.calls[0][0]).toContain(
+				"ConsignmentNumber=MY1700012345",
+			);
 			expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
 		});
 	});
@@ -864,7 +941,6 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: FAIL — `gdexAdapter` is not exported.
-
 - [ ] **Step 3: Append the adapter**
 
 Append to `src/lib/logistics/adapters/gdex.ts`. Header names come from Task 1's recorded answer — if the ping proved a different env var carries the `User-Token`, change `USER_TOKEN` here and nowhere else.
@@ -988,7 +1064,9 @@ function readReply<T>(schema: z.ZodType<T>, payload: unknown, what: string): T {
 	if (parsed.success) return parsed.data;
 	const seen = JSON.stringify(payload) ?? String(payload);
 	trace("gdex.unreadable", { what, payload: seen });
-	throw new Error(`GDEX's ${what} reply was not the shape we expect: ${seen.slice(0, 200)}`);
+	throw new Error(
+		`GDEX's ${what} reply was not the shape we expect: ${seen.slice(0, 200)}`,
+	);
 }
 
 /**
@@ -1021,12 +1099,21 @@ export const gdexAdapter: CarrierAdapter = {
 		// Before anything is dialled: an unweighed or postcode-less job is
 		// refused here, and the message goes on the comparison row.
 		const weight = weightOf(job);
-		trace("gdex.quote", { deliveryId: job.id, weight, items: job.items.length });
+		trace("gdex.quote", {
+			deliveryId: job.id,
+			weight,
+			items: job.items.length,
+		});
 
 		const sender = await senderDetails();
 		const reply = readReply(
 			rateSchema,
-			await call("POST", "/GetShippingRate", rateBody(job, sender.PostalCode), true),
+			await call(
+				"POST",
+				"/GetShippingRate",
+				rateBody(job, sender.PostalCode),
+				true,
+			),
 			"rate",
 		);
 
@@ -1038,7 +1125,9 @@ export const gdexAdapter: CarrierAdapter = {
 		// Reading only `Rate` would put "RM 0" on the comparison row and let an
 		// admin book a parcel GDEX has already said it cannot carry.
 		if (row.HasError) {
-			throw new GdexNotDeliverable(row.Error ?? "GDEX would not price this job");
+			throw new GdexNotDeliverable(
+				row.Error ?? "GDEX would not price this job",
+			);
 		}
 
 		return {
@@ -1082,7 +1171,9 @@ export const gdexAdapter: CarrierAdapter = {
 			"shipment status",
 		);
 
-		const row = reply.data.find((r) => r.ConsignmentNote === carrierOrderId) ?? reply.data[0];
+		const row =
+			reply.data.find((r) => r.ConsignmentNote === carrierOrderId) ??
+			reply.data[0];
 		const status = row?.ConsignmentNoteStatus ?? "";
 
 		return {
@@ -1114,7 +1205,6 @@ pnpm test && pnpm exec tsc --noEmit && pnpm lint
 ```
 
 Expected: all green. `registry.ts` resolves again because `gdexAdapter` is back.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1147,7 +1237,6 @@ start, add them here: `labelUrl: string | null` on `CarrierBooking` in
 - Possibly modify: `src/lib/logistics/types.ts`, `src/app/api/admin/deliveries/[id]/book/route.ts` — only if the EasyParcel work has not already
 
 **Two things make this awkward, and both are load-bearing:**
-
 1. **The reply is a PDF, not JSON.** `carrierFetch` reads every 2xx body and
    `JSON.parse`s it, throwing `CarrierHttpError` when that fails — correct for
    every other call in this file and wrong for this one. The label fetch uses a
@@ -1168,8 +1257,12 @@ Append to `src/lib/logistics/__tests__/gdex.test.ts`, inside `describe("book")`:
 ```ts
 it("stores the consignment note and returns its url", async () => {
 	const fetchMock = vi.fn();
-	fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(userDetailsResponse), { status: 200 }));
-	fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(consignmentResponse), { status: 200 }));
+	fetchMock.mockResolvedValueOnce(
+		new Response(JSON.stringify(userDetailsResponse), { status: 200 }),
+	);
+	fetchMock.mockResolvedValueOnce(
+		new Response(JSON.stringify(consignmentResponse), { status: 200 }),
+	);
 	fetchMock.mockResolvedValueOnce(
 		new Response(new Blob([new Uint8Array([0x25, 0x50, 0x44, 0x46])]), {
 			status: 200,
@@ -1177,22 +1270,38 @@ it("stores the consignment note and returns its url", async () => {
 		}),
 	);
 	vi.stubGlobal("fetch", fetchMock);
-	const put = vi.fn().mockResolvedValue({ url: "https://blob.example/gdex/MY1700012345.pdf" });
+	const put = vi
+		.fn()
+		.mockResolvedValue({ url: "https://blob.example/gdex/MY1700012345.pdf" });
 	vi.doMock("@vercel/blob", () => ({ put }));
 
-	const booking = await gdexAdapter.book(job(), { carrierId: "gdex", priceRm: 12.4, etaMinutes: null });
+	const booking = await gdexAdapter.book(job(), {
+		carrierId: "gdex",
+		priceRm: 12.4,
+		etaMinutes: null,
+	});
 
-	expect(fetchMock.mock.calls[2][0]).toContain("/GetConsignmentsImage?ConsignmentNumber=MY1700012345");
+	expect(fetchMock.mock.calls[2][0]).toContain(
+		"/GetConsignmentsImage?ConsignmentNumber=MY1700012345",
+	);
 	expect(booking.labelUrl).toBe("https://blob.example/gdex/MY1700012345.pdf");
 });
 
 it("still returns the booking when the label cannot be fetched", async () => {
 	const fetchMock = vi.fn();
-	fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(userDetailsResponse), { status: 200 }));
-	fetchMock.mockResolvedValueOnce(new Response(JSON.stringify(consignmentResponse), { status: 200 }));
+	fetchMock.mockResolvedValueOnce(
+		new Response(JSON.stringify(userDetailsResponse), { status: 200 }),
+	);
+	fetchMock.mockResolvedValueOnce(
+		new Response(JSON.stringify(consignmentResponse), { status: 200 }),
+	);
 	fetchMock.mockResolvedValueOnce(
 		new Response(
-			JSON.stringify({ statusCode: 400, data: null, message: "Invalid Consignment Number" }),
+			JSON.stringify({
+				statusCode: 400,
+				data: null,
+				message: "Invalid Consignment Number",
+			}),
 			{ status: 400 },
 		),
 	);
@@ -1200,7 +1309,11 @@ it("still returns the booking when the label cannot be fetched", async () => {
 
 	// The consignment exists and the wallet has already been debited. Losing the
 	// carrierOrderId over a missing PDF would leave a parcel nothing points at.
-	const booking = await gdexAdapter.book(job(), { carrierId: "gdex", priceRm: 12.4, etaMinutes: null });
+	const booking = await gdexAdapter.book(job(), {
+		carrierId: "gdex",
+		priceRm: 12.4,
+		etaMinutes: null,
+	});
 
 	expect(booking.carrierOrderId).toBe("MY1700012345");
 	expect(booking.labelUrl).toBeNull();
@@ -1214,7 +1327,6 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: FAIL — `labelUrl` is undefined, and only two fetches happen.
-
 - [ ] **Step 3: Fetch and store the label**
 
 Add to `src/lib/logistics/adapters/gdex.ts`:
@@ -1255,10 +1367,14 @@ async function storeLabel(consignmentNumber: string): Promise<string | null> {
 			return null;
 		}
 
-		const blob = await put(`logistics/gdex/${consignmentNumber}.pdf`, await response.blob(), {
-			access: "public",
-			contentType: "application/pdf",
-		});
+		const blob = await put(
+			`logistics/gdex/${consignmentNumber}.pdf`,
+			await response.blob(),
+			{
+				access: "public",
+				contentType: "application/pdf",
+			},
+		);
 		return blob.url;
 	} catch (error) {
 		trace("gdex.label.failed", { consignmentNumber, error });
@@ -1292,7 +1408,6 @@ is the consignment number, which is guessable. **Raise this with the user
 before merging**; the alternative is a private blob behind an
 `/api/admin/deliveries/[id]/label` route, which is one more route and one more
 auth check. Record whichever is chosen in a comment.
-
 - [ ] **Step 5: Run everything**
 
 ```bash
@@ -1362,7 +1477,6 @@ pnpm test src/lib/logistics/__tests__/status.test.ts
 ```
 
 Expected: FAIL — every `mapCarrierStatus("gdex", …)` returns null against the empty table.
-
 - [ ] **Step 3: Fill the table**
 
 Replace `gdex: {},` in `src/lib/logistics/status.ts` with:
@@ -1405,7 +1519,6 @@ pnpm test src/lib/logistics/__tests__/status.test.ts
 ```
 
 Expected: PASS.
-
 - [ ] **Step 5: Commit — on its own, and say where the words came from**
 
 ```bash
@@ -1452,7 +1565,6 @@ pnpm test src/app/admin/logistics/__tests__/errors.test.ts
 ```
 
 Expected: FAIL — returns the fallback `"Booking failed"`.
-
 - [ ] **Step 3: Add the code to `errors.ts`**
 
 In the map inside `messageFor`, alongside `carrier_not_configured`:
@@ -1478,7 +1590,6 @@ In `src/app/api/admin/deliveries/[id]/book/route.ts`, in the catch block, replac
 - [ ] **Step 5: Show the message in the UI**
 
 In `LogisticsManager.tsx`, in the booking error branch, mirror what the cancel path already does with `carrier_refused_cancel`: when the body's `error` is `carrier_refused`, render `messageFor(...)` followed by the body's `message`. Do not replace the generic sentence — append the carrier's, so an unreadable carrier reply still leaves something on screen.
-
 - [ ] **Step 6: Run everything**
 
 ```bash
@@ -1486,7 +1597,6 @@ pnpm test && pnpm exec tsc --noEmit && pnpm lint
 ```
 
 Expected: all green.
-
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1514,27 +1624,26 @@ The Weight kg input already exists (`LogisticsManager.tsx:451-467`). The sentenc
 Replace the paragraph at `LogisticsManager.tsx:493-499` with copy that says which partners need it. Keep sentence case; keep the existing `totalVolumeM3` / weight / `suggestion.label` line intact:
 
 ```tsx
-			<p className="text-[12px] text-neutral-500">
-				{totalVolumeM3(items)} m³
-				{weight === null ? ", weight not given" : `, ${weight} kg`} —{" "}
-				<span className="text-neutral-900">{suggestion.label}</span>. The
-				vehicle partners price by distance and do not need a weight. The parcel
-				partners price by the kilogram and cannot quote without one.
-			</p>
+<p className="text-[12px] text-neutral-500">
+	{totalVolumeM3(items)} m³
+	{weight === null ? ", weight not given" : `, ${weight} kg`} —{" "}
+	<span className="text-neutral-900">{suggestion.label}</span>. The vehicle
+	partners price by distance and do not need a weight. The parcel partners price
+	by the kilogram and cannot quote without one.
+</p>;
 ```
 
 - [ ] **Step 2: Correct the env-var table in `README.md`**
 
 The table documents `GDEX_API_KEY`, which is not what `.env.local` holds and not what the adapter reads. Replace that row with the real names, and add the environment flag:
 
-| Variable | For |
-| --- | --- |
+| Variable               | For                                                                                                                                                                                                                                                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `GDEX_PRIMARY_API_KEY` | GDEX — the Azure APIM subscription key from the developer portal, sent as the `subscription-key` header. Not `Ocp-Apim-Subscription-Key`; GDEX renamed it. `GDEX_SECONDARY_API_SECRET` is APIM's rotation spare for this key, not a signing secret, and nothing reads it. |
-| `GDEX_USER_TOKEN` | GDEX — the myGDEX account's Integration Token, sent as `User-Token`. From the myGDEX **web application** (User Profile → Integration Token), not the developer portal. |
-| `GDEX_LIVE` | `1` to book against GDEX production. Anything else, including unset, uses the sandbox host. |
+| `GDEX_USER_TOKEN`      | GDEX — the myGDEX account's Integration Token, sent as `User-Token`. From the myGDEX **web application** (User Profile → Integration Token), not the developer portal.                                                                                                    |
+| `GDEX_LIVE`            | `1` to book against GDEX production. Anything else, including unset, uses the sandbox host.                                                                                                                                                                               |
 
 While there, correct the two stale claims the same table sits under: only Lalamove was implemented (now Lalamove and GDEX), and unconfigured carriers do still appear in the comparison as an explanatory row.
-
 - [ ] **Step 3: Run the checks**
 
 ```bash
@@ -1556,14 +1665,13 @@ reads and .env.local never held."
 ## Verification
 
 Run in order. Steps 1–3 need no GDEX account; step 4 spends sandbox e-Wallet credit and should be done with the user watching.
-
 1. **The suite.** `pnpm test` — expect the existing 969 plus roughly 40 new. `pnpm exec tsc --noEmit`, `pnpm lint`.
 2. **The ping.** `pnpm gdex:ping` — `GetUserTokenValidity` answers 200, `GetUserDetails` returns the workshop's registered address and a numeric `LocationId`, `GetShippingRate` returns a rate for the hardcoded postcode pair.
 3. **The comparison screen.** `pnpm db:up && pnpm dev`, then `/admin/logistics`:
-   - Create a delivery with a site address that **has** a postcode and items with **no** weight. Compare partners → the GDEX row shows, in red, *"This job has no weight — GDEX prices by the kilogram…"*, and cannot be selected.
-   - Edit the job, give each item a weight, set Scheduled to two days out. Compare again → GDEX shows a price in RM and *"Parcel, N kg"*.
+   - Create a delivery with a site address that **has** a postcode and items with **no** weight. Compare partners → the GDEX row shows, in red, _"This job has no weight — GDEX prices by the kilogram…"_, and cannot be selected.
+   - Edit the job, give each item a weight, set Scheduled to two days out. Compare again → GDEX shows a price in RM and _"Parcel, N kg"_.
    - Edit the site address to strip the postcode, compare → the GDEX row explains the postcode, not a generic failure.
-   - Clear Scheduled, compare → GDEX still quotes (a rate needs no date), but attempting to book refuses naming Scheduled. *(If you would rather it refuse at quote time, move the `pickupInfo` call into `quote` — but a rate that costs nothing is worth showing.)*
+   - Clear Scheduled, compare → GDEX still quotes (a rate needs no date), but attempting to book refuses naming Scheduled. _(If you would rather it refuse at quote time, move the `pickupInfo` call into `quote` — but a rate that costs nothing is worth showing.)_
 4. **A real sandbox booking**, with the user present. Book the weighted job with GDEX. Expect: a `Delivery` row with `carrierId: "gdex"`, a `carrierOrderId` shaped `MY17…`, `trackingUrl` null, status `BOOKED`, and a `DeliveryEvent` whose `raw` holds the consignment reply. Then press Refresh on the shipment panel → a `POLL` event appears; if its message names a status word not in `CARRIER_STATUS_MAPS.gdex`, add it in a follow-up commit to `status.ts` alone.
    Also check `labelUrl`: it should hold a Blob URL that opens as a printable consignment note. A null here is a Task 5 failure, not a booking failure — read the `gdex.label.*` trace lines with `LOGISTICS_DEBUG=1`.
 5. **The webhook route is inert for GDEX, by design.** `curl -X POST localhost:3000/api/webhooks/gdex -d '{}'` → `200 {"received":true}`. Nothing is written. That is the adapter having no `verifyWebhook`, not a bug.

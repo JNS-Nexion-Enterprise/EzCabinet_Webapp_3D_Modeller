@@ -1,3 +1,4 @@
+import type { CompanyDetails } from "@/lib/company/details";
 import { orderRef } from "./ref";
 
 /**
@@ -13,13 +14,6 @@ import { orderRef } from "./ref";
  */
 export const PAYMENT_PROVIDER = "manual";
 
-/** PLACEHOLDER — EzCabinet's real account. See CLAUDE.md Open questions. */
-export const BANK_TRANSFER = {
-	bank: "Bank to be confirmed",
-	accountName: "EzCabinet Sdn Bhd",
-	accountNumber: "To be confirmed",
-};
-
 export type PaymentInstructions = {
 	kind: "bank-transfer";
 	bank: string;
@@ -30,15 +24,21 @@ export type PaymentInstructions = {
 	amountRm: number;
 };
 
-export function paymentInstructions(order: {
-	number: number;
-	createdAt: Date | string;
-	totalRm: number;
-}): PaymentInstructions {
+export function paymentInstructions(
+	order: {
+		refPrefix: string | null;
+		number: number;
+		createdAt: Date | string;
+		totalRm: number;
+	},
+	company: CompanyDetails,
+): PaymentInstructions {
 	return {
 		kind: "bank-transfer",
-		...BANK_TRANSFER,
-		reference: orderRef(order.number, order.createdAt),
+		bank: company.bankName,
+		accountName: company.bankAccountName,
+		accountNumber: company.bankAccountNumber,
+		reference: orderRef(order),
 		amountRm: order.totalRm,
 	};
 }

@@ -5,6 +5,7 @@ const findUnique = vi.hoisted(() => vi.fn());
 const claim = vi.hoisted(() => vi.fn());
 const create = vi.hoisted(() => vi.fn());
 const resolveCoordinates = vi.hoisted(() => vi.fn());
+const isFormerWorkshop = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/auth/requireAuth", async () => {
 	const actual = await vi.importActual<typeof import("@/lib/auth/requireAuth")>(
@@ -21,11 +22,21 @@ vi.mock("@/lib/catalogue/db", () => {
 		},
 	};
 });
+vi.mock("@/lib/company/store", async () => {
+	const { testCompany } = await import(
+		"@/lib/company/__tests__/company.fixture"
+	);
+	return {
+		getCompany: async () => testCompany({ orderPrefix: "PO" }),
+		isFormerWorkshop,
+	};
+});
 vi.mock("@/lib/logistics/geocode", () => ({
 	resolveCoordinates,
 	refreshGeocoderHealth: vi.fn(),
 }));
 
+const { testCompany } = await import("@/lib/company/__tests__/company.fixture");
 const { POST } = await import("../route");
 
 const body = {
@@ -59,9 +70,55 @@ beforeEach(() => {
 	});
 	claim.mockResolvedValue({ count: 1 });
 	create.mockResolvedValue({ id: "d1" });
+	isFormerWorkshop.mockResolvedValue(false);
 });
 
 describe("POST /api/admin/deliveries", () => {
+	it("stamps the delivery with the prefix live when it is made", async () => {
+		await call();
+		expect(create.mock.calls[0][0].data.refPrefix).toBe("PO");
+	});
+
+	it("writes the workshop's pickup without geocoding it", async () => {
+		const workshop = testCompany();
+		await call({ pickupAddress: workshop.address });
+		const data = create.mock.calls[0][0].data;
+		expect(data.fromWorkshop).toBe(true);
+		expect(data.pickupLat).toBe(workshop.lat);
+		expect(data.pickupPostcode).toBe(workshop.postcode);
+		// The site only.
+		expect(resolveCoordinates).toHaveBeenCalledTimes(1);
+	});
+
+	it("geocodes any other pickup and does not mark it from the workshop", async () => {
+		await call();
+		expect(create.mock.calls[0][0].data.fromWorkshop).toBe(false);
+		expect(resolveCoordinates).toHaveBeenCalledTimes(2);
+	});
+
+	it("refuses a pickup at the old workshop from a form opened before the move", async () => {
+		isFormerWorkshop.mockResolvedValue(true);
+		const response = await call({ pickupAddress: "Lot 1, Jalan Lama, Klang" });
+		expect(response.status).toBe(409);
+		await expect(response.json()).resolves.toEqual({ error: "workshop_moved" });
+		expect(isFormerWorkshop).toHaveBeenCalledWith(
+			"Lot 1, Jalan Lama, Klang",
+			expect.objectContaining({ address: testCompany().address }),
+		);
+		expect(resolveCoordinates).not.toHaveBeenCalled();
+		expect(create).not.toHaveBeenCalled();
+	});
+
+	it("lets a typed pin at the old workshop through", async () => {
+		isFormerWorkshop.mockResolvedValue(true);
+		const response = await call({
+			pickupAddress: "Lot 1, Jalan Lama, Klang",
+			pickupLat: 3.05,
+			pickupLng: 101.45,
+		});
+		expect(response.status).toBe(201);
+	});
+
 	it("creates a paid order's delivery, re-checking the order as it writes", async () => {
 		const response = await call();
 		expect(response.status).toBe(201);

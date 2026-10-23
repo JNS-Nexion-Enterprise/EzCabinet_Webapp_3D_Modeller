@@ -4,6 +4,7 @@ import { createAuthMiddleware } from "better-auth/api";
 import { handleOAuthUserInfo } from "better-auth/oauth2";
 import { emailOTP, twoFactor } from "better-auth/plugins";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
 
 type Row = Record<string, unknown>;
 const store = vi.hoisted(() => ({
@@ -20,6 +21,9 @@ const store = vi.hoisted(() => ({
 
 vi.mock("botid/server", () => ({
 	checkBotId: async () => ({ isBot: store.bot }),
+}));
+vi.mock("@/lib/company/store", () => ({
+	getCompany: vi.fn(async () => testCompany()),
 }));
 vi.mock("@/lib/email", () => ({
 	sendEmail: async (message: { to: string; text: string }) => {

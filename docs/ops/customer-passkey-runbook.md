@@ -5,7 +5,6 @@ Every customer sets up a passkey after signing in. They sign in with Google, or 
 ## Resetting a customer's passkey
 
 A reset removes the customer's passkeys and signs them out everywhere. Their next sign-in asks them to set up a new passkey.
-
 - Only a superadmin has the button: **People**, then **Customers**, then **Reset passkey** on the customer's row.
 - An admin who takes the call passes it to a superadmin. An admin cannot reset.
 - The button works for customers only. Staff accounts have no passkey step.
@@ -13,7 +12,6 @@ A reset removes the customer's passkeys and signs them out everywhere. Their nex
 ## Before you reset
 
 Do not trust a caller because they rang you.
-
 1. Look at the phone number on the customer's row. It comes from their order.
 2. Ring that number back yourself.
 3. Ask for an order number and check it against the row.
@@ -30,7 +28,6 @@ Ask the customer to sign in and set up their passkey while you wait. The list do
 ## What a passkey does not protect
 
 Until an account has its first passkey, whoever can sign in to it can set it up. That is whoever holds the Google account, or whoever can read the mailbox a sign-in code is sent to. This covers:
-
 - every existing customer on the day this goes live
 - any customer just after a reset
 
@@ -41,7 +38,6 @@ The account's own email address is told every time a passkey is added or removed
 ## If a customer says the sign-in code never arrives
 
 Nobody at EzCabinet can see or send a code by hand. Ask them to:
-
 1. Check the junk or spam folder.
 2. Read back the address shown above the code box. If it is wrong, press **Use a different email**.
 3. Wait for the newest email. Each new code cancels the one before it.
@@ -75,7 +71,6 @@ Reset straight away. Then follow the ring-back steps above before the customer s
 The app already limits code requests: three an hour to one address, thirty an hour from one network. The per-network limit is a rolling count: while requests keep arriving less than an hour apart it never starts again, so a busy shared network (a carrier's address, the showroom Wi-Fi) that reaches thirty is refused until it has been quiet for an hour. Thirty is the owner's starting figure; if real customers on a shared network are refused, the developer raises it, and this rule with it. This rule is the wall outside the app. It stops a flood before it reaches a function or the database. It is set at ninety an hour, three times the app's limit, so a real customer always meets the app's own message first and never this.
 
 Someone with access to the Vercel project runs these, in the linked project folder.
-
 1. Stage the rule, counting only. Nothing is blocked yet.
 
    ```bash
@@ -108,7 +103,6 @@ what confirms an action that moves money or access: cancel order, mark paid,
 refund through the gateway, mark refunded, invite a member, change a role,
 suspend or restore, delete user, reset passkey, reset 2FA, remove password.
 The prompt appears when no passkey was used in the last five minutes.
-
 - Set one up under **Security** in the admin header, on each device you work
   from. The first one needs a sign-in from the last day.
 - Lost the device: a superadmin presses **Reset passkey** on your row in
@@ -119,7 +113,6 @@ The prompt appears when no passkey was used in the last five minutes.
   or in person. Whoever signs in to that account next can enrol their own.
 
 Deploy-day checklist:
-
 - [ ] Every staff member enrols a passkey under **Security** on the day this
   ships. Until an account has one, the passkey step protects nothing for it:
   a first passkey needs no confirmation, so whoever holds that session could

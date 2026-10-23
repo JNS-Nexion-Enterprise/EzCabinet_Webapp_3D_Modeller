@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { NotificationKind } from "@/generated/prisma/enums";
+import { testCompany } from "@/lib/company/__tests__/company.fixture";
 import { type OrderMailInput, orderEmail } from "../templates/order";
 
 const order: OrderMailInput["order"] = {
+	refPrefix: "IC",
 	number: 14,
 	createdAt: new Date("2026-08-26T04:00:00Z"),
 	publicToken: "tok_order",
@@ -30,6 +32,10 @@ const input = (
 	extra: Partial<OrderMailInput> = {},
 ): OrderMailInput => ({
 	kind,
+	company: testCompany({
+		bankName: "CIMB",
+		bankAccountNumber: "8000111222",
+	}),
 	locale: "en",
 	base: "https://x.test",
 	order,
@@ -55,6 +61,12 @@ const KINDS: NotificationKind[] = [
 ];
 
 describe("orderEmail", () => {
+	it("pays into the saved bank account", () => {
+		const { text } = orderEmail(input("ORDER_PLACED"));
+		expect(text).toContain("CIMB");
+		expect(text).toContain("8000111222");
+	});
+
 	it.each(
 		KINDS.flatMap((kind) =>
 			(["en", "ms", "zh"] as const).map((locale) => [kind, locale] as const),

@@ -8,9 +8,9 @@
  */
 export const en = {
 	meta: {
-		title: "EzCabinet · Design your kitchen in 3D",
+		title: "{brand} · Design your kitchen in 3D",
 		description:
-			"Drop real EzCabinet units onto a model of your own room, see it from every angle, and get an instant price. No showroom visit required.",
+			"Drop real {brand} units onto a model of your own room, see it from every angle, and get an instant price. No showroom visit required.",
 	},
 	common: {
 		whatsappHelp: "Message us on WhatsApp",
@@ -24,6 +24,7 @@ export const en = {
 	},
 	landing: {
 		nav: {
+			material: "Material",
 			howItWorks: "How it works",
 			gallery: "Gallery",
 			finishes: "Finishes",
@@ -33,51 +34,70 @@ export const en = {
 			startPlanning: "Start planning",
 		},
 		hero: {
+			/** Also the planner's start screen. */
 			eyebrow: "Free to try · no account needed",
-			titleBeforeAccent: "Design your kitchen",
-			titleAccent: "in 3D",
+			tagline: "Real sizes. Real prices.",
+			title: "Design your kitchen in 3D. See the price as you build.",
 			subtitle:
-				"Drop real EzCabinet units into your own room, see the price move as you build, and send us the plan.",
+				"Drop real {brand} units into a model of your room, then send us the plan when it looks right.",
+			fromLabel: "Cabinets from",
 			cta: "Start planning",
 			howItWorks: "How it works",
-			alt: "A finished EzCabinet kitchen",
+			alt: "A finished {brand} kitchen",
 		},
-		facts: {
-			cabinetsFromLabel: "Cabinets from",
-			typicalDeliveryValue: "4-6 weeks",
-			typicalDeliveryLabel: "Typical delivery",
-			warrantyValue: "5 years",
-			warrantyLabel: "Warranty on hardware and build",
-			noAccountValue: "No account",
-			noAccountLabel: "Needed to plan and price",
+		build: {
+			hint: "Scroll to build",
+			step1: "Cabinets along your wall",
+			step2: "Worktop, doors and drawers",
+			step3: "Tall units, wall units and an island",
+			step4: "Your finish on every front",
+			finalTitle: "Plan yours the same way.",
+			finalSubtitle:
+				"Set your wall lengths, drop in units and watch the price update as you build.",
+			totalLabel: "Example kitchen",
+			totalNote: "Illustrative prices",
+		},
+		materials: {
+			eyebrow: "The material",
+			heading: "Choose the board, then see it on every door",
 		},
 		how: {
 			heading: "Three steps from an empty wall to a quote",
+			railCaption:
+				"Every step uses real {brand} cabinet sizes, so what you plan is what we build.",
 			step1Title: "Pick your room",
 			step1Detail:
 				"Choose kitchen, living room, bedroom or foyer, and set your real wall dimensions.",
 			step2Title: "Drop in cabinets, to scale",
 			step2Detail:
-				"Arrange real EzCabinet units in 3D and swap finishes until it looks right.",
+				"Arrange real {brand} units in 3D and swap finishes until it looks right.",
 			step3Title: "Get an instant quote",
 			step3Detail:
 				"See a live price as you build, then send your plan straight to our team.",
 		},
 		gallery: {
-			heading: "Explore by room",
-			subtitle:
-				"Every room starts from real EzCabinet sizes and a layout already on your wall.",
+			eyebrow: "By room",
+			heading: "Every room starts from real {brand} sizes",
 			roomAlt: "{room} cabinets",
-			roomSubtitle: {
-				kitchen: "Real EzCabinet sizes",
-				living: "TV ledge & display units",
-				bedroom: "Wardrobes",
-				foyer: "Shoe cabinets & bench",
+			roomDetail: {
+				kitchen:
+					"Base and wall cabinets, drawer runs and islands, laid out against your actual wall lengths.",
+				living:
+					"TV ledges and display units, planned against the wall you already have.",
+				bedroom: "Wardrobes, planned against your real ceiling height.",
+				foyer:
+					"Shoe cabinets and benches that fit the entry, not the other way round.",
+			},
+			planLink: {
+				kitchen: "Plan a kitchen",
+				living: "Plan a living room",
+				bedroom: "Plan a bedroom",
+				foyer: "Plan a foyer",
 			},
 		},
 		finishes: {
-			heading: "Finishes & materials",
-			subtitle: "Swap finishes on any cabinet right inside the planner.",
+			eyebrow: "Finishes & materials",
+			heading: "Swap finishes on any cabinet right inside the planner",
 		},
 		faq: {
 			heading: "Frequently asked questions",
@@ -91,11 +111,6 @@ export const en = {
 			a4: "Changes are free before production starts. Our team will confirm your plan with you first.",
 			q5: "Do you offer a warranty?",
 			a5: "Every cabinet comes with a 5-year warranty on hardware and construction.",
-		},
-		closing: {
-			heading: "Your wall, your sizes, your price. In about five minutes.",
-			subtitle: "Nothing to install and nothing to sign up for.",
-			cta: "Start planning",
 		},
 		footer: {
 			tagline:
@@ -124,6 +139,23 @@ export const en = {
 		diyTutorials: "DIY tutorials",
 		clear: "Clear",
 		dimensionAriaSuffix: "{label} in millimetres",
+		phone: {
+			backHome: "Home",
+			backRooms: "Rooms",
+			backEdit: "Edit",
+			wallSubtitle: "{m} m wall",
+			tapHint: "Tap a cabinet to edit it",
+			tabsLabel: "Studio panels",
+			tabs: {
+				selected: "Selected",
+				add: "Add",
+				room: "Room",
+				run: "Run",
+			},
+			doorsAria: "Doors: {mode}. Tap to change.",
+			/** `price.cta` cut to fit beside the total in the bar. */
+			quoteCta: "Get a quote",
+		},
 		tools: {
 			ariaLabel: "Tools",
 			select: "Select",
@@ -161,10 +193,10 @@ export const en = {
 		},
 		start: {
 			heading: "What room are you planning?",
-			subtitle: "Pick one to start on an empty wall with real EzCabinet sizes.",
+			subtitle: "Pick one to start on an empty wall with real {brand} sizes.",
 			roomIconAlt: "{room} icon",
 			roomSubtitle: {
-				kitchen: "Real EzCabinet sizes",
+				kitchen: "Real {brand} sizes",
 				living: "TV ledge & display units",
 				bedroom: "Wardrobes",
 				foyer: "Shoe cabinets & bench",
@@ -346,7 +378,7 @@ export const en = {
 			estimatedTotal: "Estimated total",
 			estimateBadge: "ESTIMATE",
 			placeholderNote:
-				"Placeholder rates — not a quote until EzCabinet confirms.",
+				"Placeholder rates — not a quote until {brand} confirms.",
 			cta: "Get a quote for this design",
 			lines: {
 				carcasses: "Carcasses",
@@ -375,7 +407,7 @@ export const en = {
 		backToEditing: "Back to editing",
 		savedHeading: "Saved — for this demo only",
 		savedBody:
-			"Lead capture isn't wired to EzCabinet yet (that's a later phase of this build). Nothing was sent anywhere.",
+			"Lead capture isn't wired to {brand} yet (that's a later phase of this build). Nothing was sent anywhere.",
 		heading: "Order this {room}",
 		description:
 			"Place the order, then pay by bank transfer. A designer confirms your measurements on site before anything is built.",
@@ -399,7 +431,7 @@ export const en = {
 		termsLink: "Terms of sale",
 		refundsLink: "Refund policy",
 		errorTerms: "Tick this to place your order.",
-		soldBy: "Sold by {address}. Contact {email} or {phone}.",
+		soldBy: "Sold by {seller}. Contact {email} or {phone}.",
 		submitting: "Placing your order…",
 		descriptionOnline:
 			"A designer re-measures on site before anything is built.",
@@ -593,10 +625,9 @@ export const en = {
 	/** Draft wording — EzCabinet's counsel approves it before production. */
 	privacy: {
 		title: "Privacy notice",
-		draft:
-			"Draft — pending review by EzCabinet Sdn Bhd before it takes effect.",
+		draft: "Draft — pending review by {legalName} before it takes effect.",
 		intro:
-			"This notice explains what the EzCabinet planner records when you use it, and why.",
+			"This notice explains what the {brand} planner records when you use it, and why.",
 		purposeHeading: "Why",
 		purpose: "To find where the planner is confusing or broken, and fix it.",
 		collectHeading: "What we record",
@@ -634,7 +665,7 @@ export const en = {
 			"You may ask to see the personal data we hold about you, correct it, receive a copy in a portable form, withdraw your consent, or tell us to stop using it for direct marketing. Write to the contact address below.",
 		otherLawsHeading: "Other laws",
 		otherLaws:
-			"This notice is given under Malaysia's Personal Data Protection Act 2010. Our analytics provider processes usage data in the European Union under its own data processing agreement; EzCabinet sells in Malaysia only.",
+			"This notice is given under Malaysia's Personal Data Protection Act 2010. Our analytics provider processes usage data in the European Union under its own data processing agreement; {brand} sells in Malaysia only.",
 		choiceHeading: "Your choice",
 		choice:
 			"If you decline, we only count visits without cookies or local storage, with an identifier that resets daily, and no recordings are made. You can change your choice at any time by clearing this site's data in your browser.",
@@ -646,9 +677,9 @@ export const en = {
 	terms: {
 		title: "Terms of sale",
 		intro:
-			"These terms apply when you order cabinets through the EzCabinet planner. Please read them with the refund policy before you pay.",
+			"These terms apply when you order cabinets through the {brand} planner. Please read them with the refund policy before you pay.",
 		sellerHeading: "Who you are buying from",
-		seller: "{address}. Email {email}, phone {phone}.",
+		seller: "{seller}. Email {email}, phone {phone}.",
 		goodsHeading: "What you are buying",
 		goods:
 			"Cabinets made to order from the design you submit. The 3D view is an illustration; final dimensions are confirmed when we re-measure your site.",
@@ -698,12 +729,12 @@ export const en = {
 			"Refunds go back to the payment method you used, within 14 working days of our agreeing the refund.",
 		howToAskHeading: "How to ask",
 		howToAsk:
-			"Write to {email} with your order reference, which looks like IC-20261007-001.",
+			"Write to {email} with your order reference, which looks like {orderPrefix}-20261007-001.",
 	},
 	/** Server-sent WhatsApp text — `lib/whatsapp/outbox.ts`. */
 	whatsapp: {
 		autoReply:
-			"This number only sends EzCabinet order updates. To chat with our team, message us at {number}",
+			"This number only sends {brand} order updates. To chat with our team, message us at {number}",
 	},
 	/** The shared header's account menu and the account side nav. */
 	account: {
@@ -798,7 +829,7 @@ export const en = {
 			"This browser can't use passkeys. Open this page in Chrome or Safari.",
 		otherDevice:
 			"Set it up on another device? Choose that device when your browser asks, or sign in there and add this one under Passkeys",
-		lostDevice: "Lost your device? Contact EzCabinet",
+		lostDevice: "Lost your device? Contact {brand}",
 		checkoutHeading: "One more step before you pay",
 		checkoutBody:
 			"Confirm it's you with a passkey. It takes a few seconds and your design stays as it is.",
