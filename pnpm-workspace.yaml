@@ -26,3 +26,4 @@ overrides:
   lodash: '^4.18.1'
   mysql2: '>=3.24.3'
   valibot: '^1.4.2'
+  vite: '^8.2.4'
