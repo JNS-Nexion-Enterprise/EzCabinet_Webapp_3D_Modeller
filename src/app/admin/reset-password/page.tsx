@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
 import {
 	checkNewPassword,
@@ -57,10 +58,18 @@ export default function ResetPasswordPage() {
 			return;
 		}
 		setBusy(true);
-		const { error: failure } = await authClient.resetPassword({
-			newPassword,
-			token,
-		});
+		let failure: { code?: string } | null;
+		try {
+			({ error: failure } = await authClient.resetPassword({
+				newPassword,
+				token,
+			}));
+		} catch {
+			// better-fetch rejects when the request gets no answer at all.
+			setBusy(false);
+			setError(NETWORK_ERROR);
+			return;
+		}
 		setBusy(false);
 		if (failure) {
 			const outcome = resetPasswordFailure(failure.code);

@@ -5,6 +5,7 @@ import { renderSVG } from "uqr";
 import { useAdminBrand } from "@/app/admin/AdminUserContext";
 import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
 import { secretOf } from "./totpSecret";
 
@@ -45,10 +46,19 @@ export function SetupTwoFactor() {
 	async function start() {
 		setBusy(true);
 		setError(null);
-		const { data, error: failure } = await authClient.twoFactor.enable({
-			password,
-			issuer: `${brand} Admin`,
-		});
+		let result: Awaited<ReturnType<typeof authClient.twoFactor.enable>>;
+		try {
+			result = await authClient.twoFactor.enable({
+				password,
+				issuer: `${brand} Admin`,
+			});
+		} catch {
+			// better-fetch rejects when the request gets no answer at all.
+			setBusy(false);
+			fail(NETWORK_ERROR);
+			return;
+		}
+		const { data, error: failure } = result;
 		setBusy(false);
 		// The result is a union ({ method: "otp" } is the emailed-code flavour),
 		// so checking the discriminant is what makes totpURI readable.
@@ -69,9 +79,15 @@ export function SetupTwoFactor() {
 	async function verify() {
 		setBusy(true);
 		setError(null);
-		const { error: failure } = await authClient.twoFactor.verifyTotp({
-			code: code.trim(),
-		});
+		let result: Awaited<ReturnType<typeof authClient.twoFactor.verifyTotp>>;
+		try {
+			result = await authClient.twoFactor.verifyTotp({ code: code.trim() });
+		} catch {
+			setBusy(false);
+			fail(NETWORK_ERROR);
+			return;
+		}
+		const { error: failure } = result;
 		setBusy(false);
 		if (failure) {
 			fail(

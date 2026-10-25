@@ -11,9 +11,13 @@ import {
 } from "@/app/admin/login/twoFactorMessage";
 import { FieldMessage, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
 import { HERO_EXPLODED_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
 import { tenant } from "@/lib/tenant";
+
+/** The banners on this screen add their own full stop. */
+const NO_ANSWER = NETWORK_ERROR.replace(/\.$/, "");
 
 /** The look of a text input, border colour aside: that is the caller's, so the invalid look is never beaten by CSS order. */
 const FIELD = "rounded-[9px] border px-3.5 py-2.5 text-sm";
@@ -48,10 +52,16 @@ export default function AdminLoginPage() {
 		setBusy(true);
 		setError(null);
 		setWrongLogin(false);
-		const { data, error: failure } = await authClient.signIn.email({
-			email,
-			password,
-		});
+		let result: Awaited<ReturnType<typeof authClient.signIn.email>>;
+		try {
+			result = await authClient.signIn.email({ email, password });
+		} catch {
+			// better-fetch rejects when the request gets no answer at all.
+			setBusy(false);
+			setError(NO_ANSWER);
+			return;
+		}
+		const { data, error: failure } = result;
 		if (failure) {
 			setBusy(false);
 			// Deliberately one message for a wrong email and a wrong password:
@@ -79,9 +89,17 @@ export default function AdminLoginPage() {
 		setCodeError(null);
 		// Backup codes look like `abcde-12345`: strip spaces, keep the hyphen.
 		const body = { code: code.replace(/\s+/g, ""), trustDevice };
-		const { error: failure } = useBackup
-			? await authClient.twoFactor.verifyBackupCode(body)
-			: await authClient.twoFactor.verifyTotp(body);
+		let result: Awaited<ReturnType<typeof authClient.twoFactor.verifyTotp>>;
+		try {
+			result = useBackup
+				? await authClient.twoFactor.verifyBackupCode(body)
+				: await authClient.twoFactor.verifyTotp(body);
+		} catch {
+			setBusy(false);
+			setError(NO_ANSWER);
+			return;
+		}
+		const { error: failure } = result;
 		if (failure) {
 			setBusy(false);
 			const message = twoFactorMessage(failure.code, failure.status);
