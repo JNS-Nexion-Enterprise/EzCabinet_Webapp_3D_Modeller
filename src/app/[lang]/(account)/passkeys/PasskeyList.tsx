@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Done, Spinner } from "@/components/Spinner";
 import { DONE_MS } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
@@ -36,6 +37,8 @@ export function PasskeyList({
 	const [error, setError] = useState<string | null>(null);
 	const [editing, setEditing] = useState<string | null>(null);
 	const [name, setName] = useState("");
+	// Save stays pressable on an empty name so the field can say what is wrong.
+	const [nameEmpty, setNameEmpty] = useState(false);
 	// The passkey just renamed, marked Saved for a moment.
 	const [renamed, setRenamed] = useState<string | null>(null);
 
@@ -108,9 +111,14 @@ export function PasskeyList({
 					>
 						{editing === p.id ? (
 							<form
-								className="flex flex-1 items-center gap-2"
+								className="flex flex-1 items-start gap-2"
 								onSubmit={(e) => {
 									e.preventDefault();
+									if (!name.trim()) {
+										setNameEmpty(true);
+										focusFirstInvalid(e.currentTarget);
+										return;
+									}
 									act(`rename:${p.id}`, () =>
 										authClient.passkey.updatePasskey({
 											id: p.id,
@@ -119,28 +127,40 @@ export function PasskeyList({
 									).then((ok) => ok && setRenamed(p.id));
 								}}
 							>
-								<label className="sr-only" htmlFor={`name-${p.id}`}>
-									{copy.nameLabel}
-								</label>
-								<input
-									id={`name-${p.id}`}
-									value={name}
-									maxLength={60}
-									onChange={(e) => setName(e.target.value)}
-									className="min-h-[38px] flex-1 rounded-[9px] border border-[#d4d4d4] px-3 text-[13px]"
-								/>
+								<Field
+									label={copy.nameLabel}
+									labelClassName="sr-only"
+									className="flex-1"
+									error={nameEmpty ? copy.nameRequired : undefined}
+								>
+									{(control) => (
+										<input
+											{...control}
+											value={name}
+											maxLength={60}
+											onChange={(e) => {
+												setName(e.target.value);
+												setNameEmpty(false);
+											}}
+											className={`min-h-[38px] rounded-[9px] border px-3 text-[13px] ${control["aria-invalid"] ? INVALID : "border-[#d4d4d4]"}`}
+										/>
+									)}
+								</Field>
 								<button
 									type="submit"
-									disabled={busy !== null || !name.trim()}
-									className="font-medium text-[13px] disabled:opacity-60"
+									disabled={busy !== null}
+									className="flex min-h-[38px] items-center font-medium text-[13px] disabled:opacity-60"
 								>
 									{busy === `rename:${p.id}` && <Spinner />}
 									{copy.save}
 								</button>
 								<button
 									type="button"
-									onClick={() => setEditing(null)}
-									className="text-[#5c574e] text-[13px]"
+									onClick={() => {
+										setEditing(null);
+										setNameEmpty(false);
+									}}
+									className="flex min-h-[38px] items-center text-[#5c574e] text-[13px]"
 								>
 									{copy.cancel}
 								</button>
@@ -170,6 +190,7 @@ export function PasskeyList({
 										disabled={busy !== null}
 										onClick={() => {
 											setName(p.name ?? "");
+											setNameEmpty(false);
 											setEditing(p.id);
 										}}
 										className="text-[#404040] hover:text-[#171717] disabled:opacity-60"

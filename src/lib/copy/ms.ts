@@ -137,6 +137,7 @@ export const ms: Dictionary = {
 		diyTutorials: "Tutorial DIY",
 		clear: "Kosongkan",
 		dimensionAriaSuffix: "{label} dalam milimeter",
+		dimensionRange: "Antara {min} dan {max} mm",
 		phone: {
 			backHome: "Utama",
 			backRooms: "Bilik",
@@ -830,5 +831,6 @@ export const ms: Dictionary = {
 		remove: "Buang",
 		removeLast: "Anda perlukan sekurang-kurangnya satu kunci laluan",
 		nameLabel: "Nama peranti",
+		nameRequired: "Masukkan nama untuk kunci laluan ini.",
 	},
 };

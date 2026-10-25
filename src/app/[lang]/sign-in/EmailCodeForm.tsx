@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import { passkeysSupported } from "@/app/[lang]/verify/passkeySupport";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 import type { Dictionary } from "@/lib/copy/en";
@@ -22,8 +23,10 @@ import {
 	verifyFailure,
 } from "./emailCode";
 
-const FIELD =
-	"min-h-10 rounded-[9px] border border-neutral-300 px-3 py-2.5 text-sm";
+const FIELD = "min-h-10 rounded-[9px] border px-3 py-2.5 text-sm";
+// The neutral border only on a valid field: beside `INVALID` the CSS order, not the class order, would pick the border.
+const fieldClass = (invalid: boolean | undefined) =>
+	`${FIELD} ${invalid ? INVALID : "border-neutral-300"}`;
 const PRIMARY =
 	"flex items-center justify-center gap-2 rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white disabled:opacity-60";
 const QUIET =
@@ -65,6 +68,7 @@ export function EmailCodeForm({
 	const [now, setNow] = useState(0);
 	const sends = useRef<SendCounts>(new Map());
 	const codeInput = useRef<HTMLInputElement>(null);
+	const formRef = useRef<HTMLFormElement>(null);
 	// `busy` is state, so two submits in one tick (Enter, then autofill) would
 	// both read it false. The second would spend the code the first is using.
 	const inFlight = useRef(false);
@@ -95,13 +99,20 @@ export function EmailCodeForm({
 		if (step === "code") codeInput.current?.focus();
 	}, [step]);
 
+	// Show a message and, when it is about an input, put focus on that input.
+	// A send limit or a failed request is not about the input: it keeps the banner.
+	function show(next: FormMessage) {
+		setMessage(next);
+		focusFirstInvalid(formRef.current);
+	}
+
 	const address = normaliseEmail(email);
 	const wait = secondsLeft(resendAt, now);
 
 	async function requestCode() {
 		if (inFlight.current) return;
 		if (!looksLikeEmail(address)) {
-			setMessage("emailInvalid");
+			show("emailInvalid");
 			return;
 		}
 		if (!maySendTo(sends.current, address)) {
@@ -126,7 +137,7 @@ export function EmailCodeForm({
 		setBusy(false);
 		setResending(false);
 		if (failure) {
-			setMessage(sendFailure(failure.status));
+			show(sendFailure(failure.status));
 			return;
 		}
 		recordSend(sends.current, address);
@@ -140,7 +151,7 @@ export function EmailCodeForm({
 	async function submitCode() {
 		if (inFlight.current) return;
 		if (!isFullCode(code)) {
-			setMessage("wrongCode");
+			show("wrongCode");
 			return;
 		}
 		inFlight.current = true;
@@ -159,7 +170,7 @@ export function EmailCodeForm({
 		if (failure) {
 			inFlight.current = false;
 			setBusy(false);
-			setMessage(verifyFailure(failure));
+			show(verifyFailure(failure));
 			return;
 		}
 		// A full navigation, so the next page renders against the new session.
@@ -173,6 +184,13 @@ export function EmailCodeForm({
 		else submitCode();
 	}
 
+	// The input a message is about. A resend asked from the code step can still
+	// be refused for the address, but that field is not on screen: banner then.
+	const onEmail = message === "emailInvalid" && step === "address";
+	const onCode =
+		(message === "wrongCode" || message === "codeExpired") && step === "code";
+	const banner = message && !onEmail && !onCode ? message : null;
+
 	const start = canStart(supported);
 	if (start === "blocked") {
 		return (
@@ -183,23 +201,38 @@ export function EmailCodeForm({
 	}
 
 	return (
-		<form onSubmit={submit} className="flex flex-col gap-3" noValidate>
+		<form
+			ref={formRef}
+			onSubmit={submit}
+			className="flex flex-col gap-3"
+			noValidate
+		>
 			{step === "address" ? (
-				<label className="flex flex-col gap-1 text-[13px]">
-					{copy.emailLabel}
-					<input
-						type="email"
-						name="email"
-						autoComplete="email"
-						inputMode="email"
-						autoCapitalize="none"
-						spellCheck={false}
-						required
-						value={email}
-						onChange={(e) => setEmail(e.target.value)}
-						className={FIELD}
-					/>
-				</label>
+				<Field
+					label={copy.emailLabel}
+					labelClassName="text-[13px]"
+					className="text-[13px]"
+					error={onEmail && message ? copy[message] : undefined}
+				>
+					{(control) => (
+						<input
+							{...control}
+							type="email"
+							name="email"
+							autoComplete="email"
+							inputMode="email"
+							autoCapitalize="none"
+							spellCheck={false}
+							required
+							value={email}
+							onChange={(e) => {
+								setEmail(e.target.value);
+								if (onEmail) setMessage(null);
+							}}
+							className={fieldClass(control["aria-invalid"])}
+						/>
+					)}
+				</Field>
 			) : (
 				<>
 					<p
@@ -208,29 +241,39 @@ export function EmailCodeForm({
 					>
 						{fill(copy.codeSent, { email: address })}
 					</p>
-					<label className="flex flex-col gap-1 text-[13px]">
-						{copy.codeLabel}
-						<input
-							ref={codeInput}
-							type="text"
-							name="code"
-							autoComplete="one-time-code"
-							inputMode="numeric"
-							required
-							value={code}
-							onChange={(e) => setCode(e.target.value)}
-							className={`${FIELD} tracking-[0.3em]`}
-						/>
-					</label>
+					<Field
+						label={copy.codeLabel}
+						labelClassName="text-[13px]"
+						className="text-[13px]"
+						error={onCode && message ? copy[message] : undefined}
+					>
+						{(control) => (
+							<input
+								{...control}
+								ref={codeInput}
+								type="text"
+								name="code"
+								autoComplete="one-time-code"
+								inputMode="numeric"
+								required
+								value={code}
+								onChange={(e) => {
+									setCode(e.target.value);
+									if (onCode) setMessage(null);
+								}}
+								className={`${fieldClass(control["aria-invalid"])} tracking-[0.3em]`}
+							/>
+						)}
+					</Field>
 				</>
 			)}
 
-			{message && (
+			{banner && (
 				<p
 					role="alert"
 					className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[13px] text-red-700"
 				>
-					{copy[message]}
+					{copy[banner]}
 				</p>
 			)}
 

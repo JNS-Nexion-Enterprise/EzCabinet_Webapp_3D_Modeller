@@ -1,6 +1,7 @@
 "use client";
 
 import { type FormEvent, useRef, useState } from "react";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import type { Dictionary } from "@/lib/copy/en";
 
@@ -44,6 +45,7 @@ export function WelcomeForm({
 	const [message, setMessage] = useState<Message | null>(null);
 	// `busy` is state, so two submits in one tick would both read it false.
 	const inFlight = useRef(false);
+	const formRef = useRef<HTMLFormElement>(null);
 
 	async function submit(e: FormEvent) {
 		e.preventDefault();
@@ -74,28 +76,46 @@ export function WelcomeForm({
 			inFlight.current = false;
 			setBusy(false);
 			setMessage(failure);
+			focusFirstInvalid(formRef.current);
 			return;
 		}
 		// `busy` stays set: the browser is leaving.
 		window.location.assign(next);
 	}
 
+	// The two answers about the name itself mark its input; a failed request does not.
+	const onName = message === "nameRequired" || message === "nameRefused";
 	return (
-		<form onSubmit={submit} className="flex flex-col gap-3" noValidate>
-			<label className="flex flex-col gap-1 text-[13px]">
-				{copy.nameLabel}
-				<input
-					type="text"
-					name="name"
-					autoComplete="name"
-					required
-					maxLength={80}
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					className="min-h-10 rounded-[9px] border border-neutral-300 px-3 py-2.5 text-sm"
-				/>
-			</label>
-			{message && (
+		<form
+			ref={formRef}
+			onSubmit={submit}
+			className="flex flex-col gap-3"
+			noValidate
+		>
+			<Field
+				label={copy.nameLabel}
+				labelClassName="text-[13px]"
+				className="text-[13px]"
+				error={onName ? copy[message] : undefined}
+			>
+				{(control) => (
+					<input
+						{...control}
+						type="text"
+						name="name"
+						autoComplete="name"
+						required
+						maxLength={80}
+						value={name}
+						onChange={(e) => {
+							setName(e.target.value);
+							if (onName) setMessage(null);
+						}}
+						className={`min-h-10 rounded-[9px] border px-3 py-2.5 text-sm ${control["aria-invalid"] ? INVALID : "border-neutral-300"}`}
+					/>
+				)}
+			</Field>
+			{message && !onName && (
 				<p
 					role="alert"
 					className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-[13px] text-red-700"

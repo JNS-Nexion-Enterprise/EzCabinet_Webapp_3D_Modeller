@@ -130,6 +130,7 @@ export const zh: Dictionary = {
 		diyTutorials: "DIY 教学视频",
 		clear: "清除",
 		dimensionAriaSuffix: "{label}（单位：毫米）",
+		dimensionRange: "{min} 至 {max} 毫米之间",
 		phone: {
 			backHome: "首页",
 			backRooms: "房间",
@@ -776,5 +777,6 @@ export const zh: Dictionary = {
 		remove: "移除",
 		removeLast: "至少需要保留一个通行密钥",
 		nameLabel: "设备名称",
+		nameRequired: "请为此通行密钥输入名称。",
 	},
 };

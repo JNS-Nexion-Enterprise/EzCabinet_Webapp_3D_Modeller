@@ -141,6 +141,7 @@ export const en = {
 		diyTutorials: "DIY tutorials",
 		clear: "Clear",
 		dimensionAriaSuffix: "{label} in millimetres",
+		dimensionRange: "Between {min} and {max} mm",
 		phone: {
 			backHome: "Home",
 			backRooms: "Rooms",
@@ -849,6 +850,7 @@ export const en = {
 		remove: "Remove",
 		removeLast: "You need at least one passkey",
 		nameLabel: "Device name",
+		nameRequired: "Enter a name for this passkey.",
 	},
 } as const;
 
