@@ -74,3 +74,22 @@ describe("designErrorsFromReply", () => {
 		expect(designErrorsFromReply(null)).toEqual({});
 	});
 });
+
+import { hasUnmappedIssues } from "../form";
+
+describe("hasUnmappedIssues", () => {
+	it("is true when an issue names no input of the form", () => {
+		expect(
+			hasUnmappedIssues({
+				issues: [{ path: ["widthMm"] }, { path: ["rooms"] }],
+			}),
+		).toBe(true);
+		expect(hasUnmappedIssues({ issues: [{ path: ["tags"] }] })).toBe(true);
+	});
+
+	it("is false when every issue landed, or there are none", () => {
+		expect(hasUnmappedIssues({ issues: [{ path: ["sku"] }] })).toBe(false);
+		expect(hasUnmappedIssues({ error: "sku_taken" })).toBe(false);
+		expect(hasUnmappedIssues(null)).toBe(false);
+	});
+});

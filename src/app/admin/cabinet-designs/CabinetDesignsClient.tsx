@@ -39,8 +39,10 @@ import {
 	checkDesignForm,
 	type DesignErrors,
 	designErrorsFromReply,
+	hasUnmappedIssues,
+	INVALID_FIELDS_TEXT,
 } from "./form";
-import { publishIssueSentences } from "./publishIssues";
+import { publishMarks } from "./publishIssues";
 
 /**
  * The whole planner catalogue, on one screen.
@@ -342,7 +344,7 @@ function BatchFields({
 								aria-invalid={row.errors?.sku ? true : undefined}
 								aria-describedby={
 									row.errors?.sku || row.errors?.price
-										? `${row.file.name}-error`
+										? `batch-${i}-error`
 										: undefined
 								}
 								value={row.sku}
@@ -355,7 +357,7 @@ function BatchFields({
 								aria-invalid={row.errors?.price ? true : undefined}
 								aria-describedby={
 									row.errors?.sku || row.errors?.price
-										? `${row.file.name}-error`
+										? `batch-${i}-error`
 										: undefined
 								}
 								value={row.price}
@@ -367,7 +369,7 @@ function BatchFields({
 						</div>
 						{(row.errors?.sku || row.errors?.price) && (
 							<div
-								id={`${row.file.name}-error`}
+								id={`batch-${i}-error`}
 								className="mt-1 flex flex-col gap-0.5"
 							>
 								{row.errors?.sku && (
@@ -559,7 +561,10 @@ function CabinetDesigns() {
 		loadFinishPhotos();
 	}, []);
 
+	const [settingMarks, setSettingMarks] = useState<Record<string, string>>({});
 	const edit = useCallback((mutate: (next: PlannerCatalogue) => void) => {
+		// An edit may be the fix, and a mark would then outlive it.
+		setSettingMarks((m) => (Object.keys(m).length > 0 ? {} : m));
 		setBase((prev) => {
 			if (!prev) return prev;
 			const next = structuredClone(prev);
@@ -653,6 +658,7 @@ function CabinetDesigns() {
 		if (!base) return;
 		setPublishing(true);
 		setError(null);
+		setSettingMarks({});
 		try {
 			const res = await fetch("/api/admin/cabinet-designs/publish", {
 				method: "POST",
@@ -668,7 +674,14 @@ function CabinetDesigns() {
 			if (!res.ok) {
 				setConfirm(null);
 				// A rejected catalogue says which setting, in words, instead of a code.
-				const named = base ? publishIssueSentences(body?.issues, base) : [];
+				const split = base ? publishMarks(body?.issues, base) : null;
+				const named = split?.rest ?? [];
+				// Settings the server refused are marked where they are edited.
+				setSettingMarks(split?.marks ?? {});
+				if (split?.tab) {
+					selectTab(split.tab);
+					focusFirstInvalid(document);
+				}
 				setError(
 					[
 						body?.message ??
@@ -1138,12 +1151,16 @@ function CabinetDesigns() {
 				setErrors(marked);
 				// What no input can carry — a file that is already uploaded, a
 				// refused conversion — stays in the banner.
+				// A reply with issues no input carries (rooms, description…) says so
+				// in words, even when other issues did land on inputs.
 				setError(
-					some
-						? null
-						: body.error === "duplicate"
-							? "This exact file is already uploaded."
-							: (body.message ?? body.error ?? "Could not save"),
+					body.error === "invalid_body" && (!some || hasUnmappedIssues(body))
+						? INVALID_FIELDS_TEXT
+						: some
+							? null
+							: body.error === "duplicate"
+								? "This exact file is already uploaded."
+								: (body.message ?? body.error ?? "Could not save"),
 				);
 				if (some) focusFirstInvalid(panelRef.current);
 				setSaving(false);
@@ -1302,6 +1319,7 @@ function CabinetDesigns() {
 								tab={tab}
 								draft={base}
 								editAction={edit}
+								marks={settingMarks}
 								finishPhotos={finishPhotos}
 								onPhotosChangeAction={loadFinishPhotos}
 							/>

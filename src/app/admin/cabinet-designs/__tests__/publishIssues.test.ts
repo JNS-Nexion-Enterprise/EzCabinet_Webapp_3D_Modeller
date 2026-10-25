@@ -45,3 +45,50 @@ describe("publishIssueSentences", () => {
 		expect(publishIssueSentences(undefined, draft)).toEqual([]);
 	});
 });
+
+import { publishMarks } from "../publishIssues";
+
+describe("publishMarks", () => {
+	it("marks settings by their path and opens the first one's tab", () => {
+		const out = publishMarks(
+			[
+				{ path: ["doorWidthLadderMm", 2] },
+				{ path: ["rates", "deliveryFlatRm"] },
+				{ path: ["finishes", 1, "hex"] },
+			],
+			draft,
+		);
+		expect(Object.keys(out.marks)).toEqual([
+			"doorWidthLadderMm.2",
+			"rates.deliveryFlatRm",
+			"finishes.1.hex",
+		]);
+		expect(out.marks["finishes.1.hex"]).toBe("Enter a colour like #1f5138.");
+		expect(out.tab).toBe("doors");
+		expect(out.rest).toEqual([]);
+	});
+
+	it("keys a door surcharge by its width", () => {
+		expect(
+			Object.keys(
+				publishMarks(
+					[{ path: ["doorStyles", 0, "priceRmBySizeMm", "800"] }],
+					draft,
+				).marks,
+			),
+		).toEqual(["doorStyles.0.priceRmBySizeMm.800"]);
+	});
+
+	it("leaves what no input carries to the banner", () => {
+		const out = publishMarks(
+			[
+				{ path: ["families", 0, "depthMm"] },
+				{ path: ["doorStyles", 0, "look"] },
+			],
+			draft,
+		);
+		expect(out.marks).toEqual({});
+		expect(out.tab).toBeNull();
+		expect(out.rest).toHaveLength(2);
+	});
+});

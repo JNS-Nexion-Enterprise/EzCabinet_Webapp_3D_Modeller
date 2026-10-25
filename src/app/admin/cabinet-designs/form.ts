@@ -72,3 +72,18 @@ export function designErrorsFromReply(body: unknown): DesignErrors {
 		),
 	);
 }
+
+/** Plain words for a rejected body no (or not every) input could carry. */
+export const INVALID_FIELDS_TEXT = "Some fields are invalid — check the form.";
+
+/** True when the reply has issues that name no input of this form, so the banner must say something rather than let them go unsaid. */
+export function hasUnmappedIssues(body: unknown): boolean {
+	const issues = (body as { issues?: unknown } | null)?.issues;
+	return (
+		Array.isArray(issues) &&
+		issues.some((issue) => {
+			const head = (issue as { path?: unknown[] } | null)?.path?.[0];
+			return typeof head !== "string" || !(head in API_FIELD);
+		})
+	);
+}

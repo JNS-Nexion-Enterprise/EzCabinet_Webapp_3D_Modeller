@@ -79,3 +79,77 @@ export function publishIssueSentences(
 	}
 	return out;
 }
+
+/** The settings tab a catalogue path is edited on. */
+export type SettingsTabName = "doors" | "finishes" | "standards";
+
+/**
+ * The key `CatalogueSettings` files a rendered input under — its catalogue
+ * path, dot-joined — or null for a path no input carries (a cabinet, a door's
+ * look, any id). Keep in step with the `mark(...)` calls in that component.
+ */
+function settingKey(path: Path): { key: string; tab: SettingsTabName } | null {
+	const [section, index, field, sub] = path;
+	const key = path.map(String).join(".");
+	switch (section) {
+		case "doorWidthLadderMm":
+			return path.length === 2 ? { key, tab: "doors" } : null;
+		case "doorStyles":
+			return field === "label" ||
+				(field === "priceRmBySizeMm" && sub !== undefined && path.length === 4)
+				? { key, tab: "doors" }
+				: null;
+		case "finishes":
+		case "wallColours":
+			return field === "label" || field === "hex"
+				? { key, tab: "finishes" }
+				: null;
+		case "rates":
+		case "construction":
+			return path.length === 2 && index !== undefined
+				? { key, tab: "standards" }
+				: null;
+		case "roomTypes":
+			return field === "defaultWallWidthMm" ? { key, tab: "standards" } : null;
+		default:
+			return null;
+	}
+}
+
+/**
+ * A rejected publish, split: the issues an input on the settings screen can
+ * carry become marks on that input (by `settingKey`), the rest stay sentences
+ * for the banner. `tab` is the first marked input's tab, to open before focus.
+ */
+export function publishMarks(
+	issues: unknown,
+	draft: PlannerCatalogue,
+): {
+	marks: Record<string, string>;
+	tab: SettingsTabName | null;
+	rest: string[];
+} {
+	const marks: Record<string, string> = {};
+	let tab: SettingsTabName | null = null;
+	const unmarked: unknown[] = [];
+	if (Array.isArray(issues)) {
+		for (const issue of issues) {
+			const raw = (issue as { path?: unknown } | null)?.path;
+			const path = Array.isArray(raw) ? raw : [];
+			const at = settingKey(path);
+			if (!at) {
+				unmarked.push(issue);
+				continue;
+			}
+			const last = path.at(-1);
+			marks[at.key] ??=
+				last === "hex"
+					? "Enter a colour like #1f5138."
+					: last === "label"
+						? "Enter a name."
+						: "The planner cannot use this value. Enter a whole number that is not negative.";
+			tab ??= at.tab;
+		}
+	}
+	return { marks, tab, rest: publishIssueSentences(unmarked, draft) };
+}

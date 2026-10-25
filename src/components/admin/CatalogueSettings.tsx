@@ -33,6 +33,7 @@ function Num({
 	onChange,
 	width = "w-24",
 	min = 0,
+	mark,
 }: {
 	label?: string;
 	/** The accessible name when there is no visible label. */
@@ -41,9 +42,12 @@ function Num({
 	onChange: (n: number) => void;
 	width?: string;
 	min?: number;
+	/** What the server refused this value for, until it is edited. */
+	mark?: string;
 }) {
 	const id = useId();
-	const invalid = !Number.isFinite(value) || value < min;
+	const ownInvalid = !Number.isFinite(value) || value < min;
+	const invalid = ownInvalid || !!mark;
 	return (
 		<div className="flex flex-col gap-1">
 			{label && (
@@ -64,7 +68,7 @@ function Num({
 			/>
 			{invalid && (
 				<FieldMessage id={`${id}-error`}>
-					Enter a number of at least {min}.
+					{ownInvalid ? `Enter a number of at least ${min}.` : mark}
 				</FieldMessage>
 			)}
 		</div>
@@ -77,15 +81,17 @@ function Text({
 	onChange,
 	width = "w-48",
 	placeholder,
+	mark,
 }: {
 	label?: string;
 	value: string;
 	onChange: (v: string) => void;
 	width?: string;
 	placeholder?: string;
+	mark?: string;
 }) {
 	const id = useId();
-	const invalid = !value.trim();
+	const invalid = !value.trim() || !!mark;
 	return (
 		<div className="flex flex-col gap-1">
 			{label && (
@@ -103,7 +109,11 @@ function Text({
 				onChange={(e) => onChange(e.target.value)}
 				className={fieldClass(invalid, width)}
 			/>
-			{invalid && <FieldMessage id={`${id}-error`}>Enter a name.</FieldMessage>}
+			{invalid && (
+				<FieldMessage id={`${id}-error`}>
+					{value.trim() ? mark : "Enter a name."}
+				</FieldMessage>
+			)}
 		</div>
 	);
 }
@@ -125,14 +135,16 @@ function HexField({
 	value,
 	label,
 	onChange,
+	mark,
 }: {
 	value: string;
 	label: string;
 	onChange: (hex: string) => void;
+	mark?: string;
 }) {
 	const [text, setText] = useState(value);
 	useEffect(() => setText(value), [value]);
-	const valid = HEX.test(text);
+	const valid = HEX.test(text) && !mark;
 	const id = useId();
 	return (
 		<div className="flex flex-col gap-1">
@@ -208,11 +220,14 @@ export function CatalogueSettings({
 	tab,
 	draft,
 	editAction: edit,
+	marks = {},
 	finishPhotos,
 	onPhotosChangeAction,
 }: {
 	tab: SettingsTab;
 	draft: PlannerCatalogue;
+	/** Settings the server refused at publish, by catalogue path (`rates.deliveryFlatRm`). */
+	marks?: Record<string, string>;
 	/** Applies a change to `draft`; the page owns the state. */
 	editAction: Edit;
 	/** `finish:<id>` → uploaded photo URL. Live the moment it is dropped, so it
@@ -220,6 +235,7 @@ export function CatalogueSettings({
 	finishPhotos: Record<string, string>;
 	onPhotosChangeAction: () => void;
 }) {
+	const m = (...path: (string | number)[]) => marks[path.join(".")];
 	if (tab === "doors") {
 		return (
 			<div className="flex flex-col gap-3">
@@ -241,6 +257,7 @@ export function CatalogueSettings({
 							>
 								<Num
 									ariaLabel={`Door width ${i + 1}`}
+									mark={m("doorWidthLadderMm", i)}
 									value={mm}
 									min={1}
 									width="w-20"
@@ -299,6 +316,7 @@ export function CatalogueSettings({
 							<Text
 								label="Name"
 								width="w-40"
+								mark={m("doorStyles", di, "label")}
 								value={style.label}
 								onChange={(v) =>
 									edit((n) => {
@@ -342,6 +360,7 @@ export function CatalogueSettings({
 										key={`${style.id}-${mm}`}
 										label={`${mm}mm`}
 										width="w-20"
+										mark={m("doorStyles", di, "priceRmBySizeMm", String(mm))}
 										value={style.priceRmBySizeMm[String(mm)] ?? 0}
 										onChange={(v) =>
 											edit((n) => {
@@ -436,6 +455,7 @@ export function CatalogueSettings({
 									<Text
 										width="w-52"
 										placeholder="Name"
+										mark={m("finishes", i, "label")}
 										value={finish.label}
 										onChange={(v) =>
 											edit((n) => {
@@ -446,6 +466,7 @@ export function CatalogueSettings({
 									<HexField
 										value={finish.hex}
 										label={finish.label}
+										mark={m("finishes", i, "hex")}
 										onChange={(hex) =>
 											edit((n) => {
 												n.finishes[i].hex = hex;
@@ -517,6 +538,7 @@ export function CatalogueSettings({
 								<Text
 									width="w-52"
 									placeholder="Name"
+									mark={m("wallColours", i, "label")}
 									value={colour.label}
 									onChange={(v) =>
 										editWallColours((list) => {
@@ -527,6 +549,7 @@ export function CatalogueSettings({
 								<HexField
 									value={colour.hex}
 									label={colour.label}
+									mark={m("wallColours", i, "hex")}
 									onChange={(hex) =>
 										editWallColours((list) => {
 											list[i].hex = hex;
@@ -583,6 +606,7 @@ export function CatalogueSettings({
 				<div className="flex flex-wrap gap-4">
 					<Num
 						label="Worktop RM per running foot"
+						mark={m("rates", "worktopRmPerFt")}
 						value={ratesOf(draft).worktopRmPerFt}
 						onChange={(v) =>
 							edit((n) => {
@@ -592,6 +616,7 @@ export function CatalogueSettings({
 					/>
 					<Num
 						label="Delivery RM per order"
+						mark={m("rates", "deliveryFlatRm")}
 						value={ratesOf(draft).deliveryFlatRm}
 						onChange={(v) =>
 							edit((n) => {
@@ -615,6 +640,7 @@ export function CatalogueSettings({
 						<Num
 							key={key}
 							label={label}
+							mark={m("rates", key)}
 							value={ratesOf(draft)[key]}
 							onChange={(v) =>
 								edit((n) => {
@@ -646,6 +672,7 @@ export function CatalogueSettings({
 						<Num
 							key={key}
 							label={label}
+							mark={m("construction", key)}
 							value={construction[key]}
 							min={key === "plinthHeightMm" ? 0 : 1}
 							onChange={(v) =>
@@ -667,6 +694,7 @@ export function CatalogueSettings({
 						<Num
 							key={room.id}
 							label={`${room.label} mm`}
+							mark={m("roomTypes", ri, "defaultWallWidthMm")}
 							value={room.defaultWallWidthMm}
 							min={1}
 							onChange={(v) =>
