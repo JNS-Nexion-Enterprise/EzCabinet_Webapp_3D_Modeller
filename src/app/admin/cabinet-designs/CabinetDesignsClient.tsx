@@ -40,6 +40,7 @@ import {
 	type DesignErrors,
 	designErrorsFromReply,
 } from "./form";
+import { publishIssueSentences } from "./publishIssues";
 
 /**
  * The whole planner catalogue, on one screen.
@@ -666,10 +667,14 @@ function CabinetDesigns() {
 			);
 			if (!res.ok) {
 				setConfirm(null);
+				// A rejected catalogue says which setting, in words, instead of a code.
+				const named = base ? publishIssueSentences(body?.issues, base) : [];
 				setError(
 					[
 						body?.message ??
-							`Could not publish (${body?.error ?? res.status}).`,
+							(named.length > 0
+								? `Could not publish. ${named.join(" ")}`
+								: `Could not publish (${body?.error ?? res.status}).`),
 						...refused,
 					].join(" "),
 				);

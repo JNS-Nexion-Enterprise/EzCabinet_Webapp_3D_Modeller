@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { ImageSlot } from "@/components/admin/ImageSlot";
 import { fieldClass } from "@/components/admin/styles";
+import { FieldMessage, INVALID } from "@/components/Field";
 import { finishSlot } from "@/lib/catalogue/siteImages";
 import { BUNDLED_FINISH_TEXTURES } from "@/lib/finishPhotos";
 import { constructionOf, ratesOf, WALL_COLOURS } from "@/lib/planner/catalogue";
@@ -27,18 +28,22 @@ type Edit = (mutate: (next: PlannerCatalogue) => void) => void;
 
 function Num({
 	label,
+	ariaLabel,
 	value,
 	onChange,
 	width = "w-24",
 	min = 0,
 }: {
 	label?: string;
+	/** The accessible name when there is no visible label. */
+	ariaLabel?: string;
 	value: number;
 	onChange: (n: number) => void;
 	width?: string;
 	min?: number;
 }) {
 	const id = useId();
+	const invalid = !Number.isFinite(value) || value < min;
 	return (
 		<div className="flex flex-col gap-1">
 			{label && (
@@ -49,14 +54,19 @@ function Num({
 			<input
 				id={id}
 				type="number"
+				aria-label={label ? undefined : ariaLabel}
+				aria-invalid={invalid ? true : undefined}
+				aria-describedby={invalid ? `${id}-error` : undefined}
 				value={Number.isFinite(value) ? value : ""}
 				min={min}
 				onChange={(e) => onChange(Number(e.target.value))}
-				className={fieldClass(
-					!Number.isFinite(value) || value < min,
-					`${width} tabular-nums`,
-				)}
+				className={fieldClass(invalid, `${width} tabular-nums`)}
 			/>
+			{invalid && (
+				<FieldMessage id={`${id}-error`}>
+					Enter a number of at least {min}.
+				</FieldMessage>
+			)}
 		</div>
 	);
 }
@@ -75,6 +85,7 @@ function Text({
 	placeholder?: string;
 }) {
 	const id = useId();
+	const invalid = !value.trim();
 	return (
 		<div className="flex flex-col gap-1">
 			{label && (
@@ -87,9 +98,12 @@ function Text({
 				value={value}
 				placeholder={placeholder}
 				aria-label={label ? undefined : placeholder}
+				aria-invalid={invalid ? true : undefined}
+				aria-describedby={invalid ? `${id}-error` : undefined}
 				onChange={(e) => onChange(e.target.value)}
-				className={fieldClass(!value.trim(), width)}
+				className={fieldClass(invalid, width)}
 			/>
+			{invalid && <FieldMessage id={`${id}-error`}>Enter a name.</FieldMessage>}
 		</div>
 	);
 }
@@ -119,26 +133,39 @@ function HexField({
 	const [text, setText] = useState(value);
 	useEffect(() => setText(value), [value]);
 	const valid = HEX.test(text);
+	const id = useId();
 	return (
-		<input
-			value={text}
-			aria-label={`${label} hex colour`}
-			spellCheck={false}
-			placeholder="#cc9168"
-			onChange={(e) => {
-				const typed = e.target.value.trim();
-				const hex = typed === "" || typed.startsWith("#") ? typed : `#${typed}`;
-				setText(hex);
-				if (HEX.test(hex)) onChange(hex.toLowerCase());
-			}}
-			// Red rather than silently ignored: the colour on screen is still the
-			// last good one, so without this the field looks accepted and is not.
-			className={`w-24 rounded border px-2 py-1.5 font-mono text-[12px] ${
-				valid
-					? "border-neutral-300 text-neutral-500"
-					: "border-red-400 text-red-600"
-			}`}
-		/>
+		<div className="flex flex-col gap-1">
+			<input
+				value={text}
+				aria-label={`${label} hex colour`}
+				aria-invalid={valid ? undefined : true}
+				aria-describedby={valid ? undefined : `${id}-error`}
+				spellCheck={false}
+				placeholder="#cc9168"
+				onChange={(e) => {
+					const typed = e.target.value.trim();
+					const hex =
+						typed === "" || typed.startsWith("#") ? typed : `#${typed}`;
+					setText(hex);
+					if (HEX.test(hex)) onChange(hex.toLowerCase());
+				}}
+				// Marked rather than silently ignored: the colour on screen is still
+				// the last good one, so without this the field looks accepted and is
+				// not. The valid border lives only in the valid branch, so it cannot
+				// outrank the invalid one.
+				className={`w-24 rounded border px-2 py-1.5 font-mono text-[12px] ${
+					valid
+						? "border-neutral-300 text-neutral-500"
+						: `${INVALID} text-danger`
+				}`}
+			/>
+			{!valid && (
+				<FieldMessage id={`${id}-error`}>
+					Enter a colour like #1f5138.
+				</FieldMessage>
+			)}
+		</div>
 	);
 }
 
@@ -213,6 +240,7 @@ export function CatalogueSettings({
 								className="flex items-center gap-1"
 							>
 								<Num
+									ariaLabel={`Door width ${i + 1}`}
 									value={mm}
 									min={1}
 									width="w-20"
