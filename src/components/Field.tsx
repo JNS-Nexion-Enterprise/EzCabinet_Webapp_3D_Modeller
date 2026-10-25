@@ -1,6 +1,6 @@
 import { type ReactNode, useId } from "react";
 
-/** The invalid look, for an input whose value failed a check. */
+/** The invalid look, for an input whose value failed a check. It replaces the valid border colour and background, so a caller must not also apply those: which one wins would depend on Tailwind's CSS order. */
 export const INVALID = "border-danger ring-1 ring-danger bg-danger/5";
 /** The same look for a native constraint (`required`, `type="email"`…) the browser rejected, so the field stays marked after the browser's tooltip fades. */
 export const USER_INVALID =
@@ -93,7 +93,14 @@ export function Field({
 
 /** Focus the first field marked invalid inside `root`, after the marks render. Focus also scrolls it into view — on a phone the submit button can be a screen below the field. */
 export function focusFirstInvalid(root: ParentNode | null | undefined) {
-	requestAnimationFrame(() =>
-		root?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(),
-	);
+	// A state set after an `await` is flushed in a scheduler task, which can run
+	// after the first animation frame, so the marks may not exist yet. Try again
+	// for a few frames and then give up: no mark means nothing to focus.
+	let frames = 5;
+	const tick = () => {
+		const field = root?.querySelector<HTMLElement>('[aria-invalid="true"]');
+		if (field) field.focus();
+		else if (--frames > 0) requestAnimationFrame(tick);
+	};
+	requestAnimationFrame(tick);
 }

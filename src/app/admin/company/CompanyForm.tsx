@@ -31,7 +31,7 @@ import {
 	tidyAddress,
 } from "./form";
 
-const INPUT = "min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px]";
+const INPUT = "min-h-10 rounded-[9px] border px-3 py-[10px]";
 const MAP_DOWN =
 	"Could not reach Google Maps. Try again, or set the pin by hand below.";
 const MAP_MISS =
@@ -43,9 +43,13 @@ type Errors = ReturnType<typeof fieldErrors>;
 const FIELD_BOX = "min-w-[220px] flex-1 text-[13px]";
 const WIDE_BOX = `${FIELD_BOX} basis-full`;
 
-/** The input look, marked when the field's `Field` says it failed. */
+/**
+ * The input look, marked when the field's `Field` says it failed. The valid
+ * border colour and background are left off then, so which one paints never
+ * depends on the order Tailwind emits them in.
+ */
 const inputClass = (c: Control, extra = "") =>
-	`${INPUT} ${c["aria-invalid"] ? INVALID : ""} ${extra}`;
+	`${INPUT} ${c["aria-invalid"] ? INVALID : "border-[#d4d4d4] bg-white"} ${extra}`;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
 	return (
@@ -404,7 +408,7 @@ export function CompanyForm({
 							{...c}
 							value={v.state}
 							onChange={set("state")}
-							className={inputClass(c, "select-chevron bg-white pl-3")}
+							className={inputClass(c, "select-chevron pl-3")}
 						>
 							<option value="">Choose a state</option>
 							{MALAYSIAN_STATES.map((s) => (
