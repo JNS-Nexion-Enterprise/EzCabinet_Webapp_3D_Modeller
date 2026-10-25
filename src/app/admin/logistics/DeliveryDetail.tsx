@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fieldClass } from "@/components/admin/styles";
+import { Field, focusFirstInvalid } from "@/components/Field";
 import { Spinner as ButtonSpinner } from "@/components/Spinner";
 import { NETWORK_ERROR } from "@/components/useAction";
 import { CARRIERS, KIND, LABEL } from "@/lib/logistics/carriers";
@@ -204,22 +205,35 @@ function ProcessSteps({ stage }: { stage: number }) {
 function ActorField({
 	label,
 	value,
+	error,
 	onChange,
 }: {
 	label: string;
 	value: string;
+	error?: string;
 	onChange: (name: string) => void;
 }) {
 	return (
-		<label className="flex max-w-[280px] flex-col gap-[5px] text-[12px] text-neutral-500">
-			{label}
-			<input
-				className={fieldClass(false, `bg-white text-neutral-900 ${FOCUS}`)}
-				placeholder="e.g. Farah"
-				value={value}
-				onChange={(e) => onChange(e.target.value)}
-			/>
-		</label>
+		<Field
+			label={label}
+			labelClassName="text-[12px] text-neutral-500"
+			error={error}
+			className="max-w-[280px] gap-[5px]"
+		>
+			{(c) => (
+				<input
+					{...c}
+					// The white background is the valid look; the invalid one brings its own.
+					className={fieldClass(
+						!!error,
+						`text-neutral-900 ${error ? "" : "bg-white"} ${FOCUS}`,
+					)}
+					placeholder="e.g. Farah"
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+				/>
+			)}
+		</Field>
 	);
 }
 
@@ -293,6 +307,7 @@ export function DeliveryDetail({
 	// "not checked yet" and "not there" must not look the same.
 	const [pickup, setPickup] = useState<Pickup | null>(null);
 	const [actor, setActor] = useState("");
+	const [actorError, setActorError] = useState<string | null>(null);
 	// Which rows would move to the new job, and whether the preview is up.
 	const [ticked, setTicked] = useState<number[]>([]);
 	const [splitting, setSplitting] = useState(false);
@@ -311,6 +326,7 @@ export function DeliveryDetail({
 
 	const rememberActor = (name: string) => {
 		setActor(name);
+		setActorError(null);
 		localStorage.setItem("ic.logistics.actor", name);
 	};
 
@@ -358,6 +374,11 @@ export function DeliveryDetail({
 	}
 
 	async function book() {
+		if (actor.trim() === "") {
+			setActorError("Enter your name to book.");
+			focusFirstInvalid(document);
+			return;
+		}
 		const choice = quotes?.find((quote) => quote.carrierId === selected);
 		if (!choice) return;
 		setBusy("book");
@@ -560,7 +581,6 @@ export function DeliveryDetail({
 	const steps = journeySteps(delivery.status, events, delivery.carrierId);
 	const tags = quotes === null ? {} : quoteTags(quotes);
 	const choice = quotes?.find((q) => q.carrierId === selected) ?? null;
-	const actorMissing = actor.trim() === "";
 
 	// A job worth splitting has more than one thing on it and has not been
 	// bought yet.
@@ -1078,12 +1098,12 @@ export function DeliveryDetail({
 											<ActorField
 												label="Your name — recorded against the booking"
 												value={actor}
+												error={actorError ?? undefined}
 												onChange={rememberActor}
 											/>
 											<button
 												type="button"
 												className={`${PRIMARY} min-h-10 px-[22px] py-[11px] text-[13px]`}
-												disabled={actorMissing}
 												onClick={book}
 											>
 												Book pickup with {carrierLabel(choice.carrierId)}

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { chipClass, fieldClass } from "@/components/admin/styles";
+import { Field, FieldMessage, focusFirstInvalid } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import { NETWORK_ERROR, useAction } from "@/components/useAction";
 import { LABEL } from "@/lib/logistics/carriers";
@@ -16,6 +17,14 @@ import {
 } from "@/lib/logistics/measure";
 import { BADGE_TONE } from "./DeliveryDetail";
 import { messageFor } from "./errors";
+import {
+	checkDeliveryForm,
+	type DeliveryErrors,
+	deliveryErrors,
+	ITEM_FIELDS,
+	itemKey,
+	itemRowMessage,
+} from "./fieldErrors";
 import type { DeliveryRow } from "./form";
 import {
 	blankForm,
@@ -56,6 +65,13 @@ export function LogisticsManager({
 	const [rows, setRows] = useState<DeliveryRow[]>(initial);
 	const [form, setForm] = useState<FormState | null>(prefill);
 	const [error, setError] = useState<string | null>(null);
+	const [errors, setErrors] = useState<DeliveryErrors>({});
+	const formRef = useRef<HTMLFormElement>(null);
+	// Marks belong to the form that earned them: closing it or opening another
+	// job starts clean.
+	const formId = form === null ? null : (form.id ?? "new");
+	// biome-ignore lint/correctness/useExhaustiveDependencies: reset on form identity only
+	useEffect(() => setErrors({}), [formId]);
 	// Read after mount, not during render: both come from a redirect's query
 	// string — the OAuth callback, or a job page's "Edit job" — and
 	// `location.search` doesn't exist on the server.
@@ -83,6 +99,15 @@ export function LogisticsManager({
 
 	const saving = useAction(async (state: FormState) => {
 		setError(null);
+		// The server's checks, made first: an empty size is `0` by now and would
+		// only be refused there, with no way to tell which row.
+		const found = checkDeliveryForm(state);
+		if (Object.keys(found).length > 0) {
+			setErrors(found);
+			focusFirstInvalid(formRef.current);
+			return false;
+		}
+		setErrors({});
 		const res = await fetch(
 			state.id === null
 				? "/api/admin/deliveries"
@@ -95,7 +120,13 @@ export function LogisticsManager({
 		);
 		const body = await res.json().catch(() => null);
 		if (!res.ok) {
-			setError(messageFor(body?.error, "Could not save this delivery"));
+			const marked = deliveryErrors(body?.issues, state);
+			if (Object.keys(marked).length > 0) {
+				setErrors(marked);
+				focusFirstInvalid(formRef.current);
+			} else {
+				setError(messageFor(body?.error, "Could not save this delivery"));
+			}
 			return false;
 		}
 		setForm(null);
@@ -126,7 +157,10 @@ export function LogisticsManager({
 		<div className="flex flex-col gap-6">
 			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
 			{(error || saving.failed) && (
-				<p className="rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700">
+				<p
+					role="alert"
+					className="rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700"
+				>
 					{error ?? NETWORK_ERROR}
 				</p>
 			)}
@@ -191,6 +225,14 @@ export function LogisticsManager({
 			{form !== null && (
 				<DeliveryForm
 					state={form}
+					errors={errors}
+					clearError={(key) =>
+						setErrors((now) => {
+							const { [key]: _gone, ...rest } = now;
+							return key in now ? rest : now;
+						})
+					}
+					formRef={formRef}
 					onChange={setForm}
 					// Success navigates away, so the spinner stays until the page changes.
 					saving={saving.busy || saving.done}
@@ -282,13 +324,21 @@ export function LogisticsManager({
 	);
 }
 
+const LABEL_CLASS = "text-[12px] text-neutral-500";
+
 function DeliveryForm({
 	state,
+	errors,
+	clearError,
+	formRef,
 	onChange,
 	onSubmit,
 	saving,
 }: {
 	state: FormState;
+	errors: DeliveryErrors;
+	clearError: (key: string) => void;
+	formRef: React.RefObject<HTMLFormElement | null>;
 	onChange: (next: FormState) => void;
 	onSubmit: () => void;
 	saving: boolean;
@@ -297,19 +347,27 @@ function DeliveryForm({
 	const suggestion = suggestVehicle(items);
 	const weight = totalWeightKg(items);
 
-	const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+	const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+		clearError(key);
 		onChange({ ...state, [key]: value });
+	};
 
-	const setItem = (index: number, next: Partial<FormItem>) =>
+	const setItem = (index: number, next: Partial<FormItem>) => {
+		for (const field of Object.keys(next)) {
+			clearError(itemKey(state.items[index].uid, field));
+		}
 		onChange({
 			...state,
 			items: state.items.map((item, i) =>
 				i === index ? { ...item, ...next } : item,
 			),
 		});
+	};
 
 	return (
 		<form
+			ref={formRef}
+			noValidate
 			className="flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4"
 			onSubmit={(e) => {
 				e.preventDefault();
@@ -331,123 +389,191 @@ function DeliveryForm({
 				</p>
 			)}
 			<div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-				<label className="flex flex-col gap-1 text-[12px] text-neutral-500">
-					Customer
-					<input
-						required
-						className={fieldClass(false)}
-						value={state.customerName}
-						onChange={(e) => set("customerName", e.target.value)}
-					/>
-				</label>
-				<label className="flex flex-col gap-1 text-[12px] text-neutral-500">
-					Phone
-					<input
-						required
-						className={fieldClass(false)}
-						value={state.customerPhone}
-						onChange={(e) => set("customerPhone", e.target.value)}
-					/>
-				</label>
-				<label className="flex flex-col gap-1 text-[12px] text-neutral-500 sm:col-span-2">
-					Site address
-					<input
-						required
-						className={fieldClass(false)}
-						value={state.siteAddress}
-						onChange={(e) => set("siteAddress", e.target.value)}
-					/>
-				</label>
-				<label className="flex flex-col gap-1 text-[12px] text-neutral-500 sm:col-span-2">
-					Access notes — gate codes, unit number, who to call
-					<input
-						className={fieldClass(false)}
-						value={state.addressNotes}
-						onChange={(e) => set("addressNotes", e.target.value)}
-					/>
-				</label>
-				<label className="flex flex-col gap-1 text-[12px] text-neutral-500">
-					Pickup from
-					<input
-						required
-						className={fieldClass(false)}
-						value={state.pickupAddress}
-						onChange={(e) => set("pickupAddress", e.target.value)}
-					/>
-				</label>
-				<label className="flex flex-col gap-1 text-[12px] text-neutral-500">
-					Scheduled
-					<input
-						type="datetime-local"
-						className={fieldClass(false)}
-						value={state.scheduledAt}
-						onChange={(e) => set("scheduledAt", e.target.value)}
-					/>
-				</label>
+				<Field
+					label="Customer"
+					labelClassName={LABEL_CLASS}
+					error={errors.customerName}
+				>
+					{(c) => (
+						<input
+							{...c}
+							className={fieldClass(!!c["aria-invalid"])}
+							value={state.customerName}
+							onChange={(e) => set("customerName", e.target.value)}
+						/>
+					)}
+				</Field>
+				<Field
+					label="Phone"
+					labelClassName={LABEL_CLASS}
+					error={errors.customerPhone}
+				>
+					{(c) => (
+						<input
+							{...c}
+							className={fieldClass(!!c["aria-invalid"])}
+							value={state.customerPhone}
+							onChange={(e) => set("customerPhone", e.target.value)}
+						/>
+					)}
+				</Field>
+				<Field
+					label="Site address"
+					labelClassName={LABEL_CLASS}
+					className="sm:col-span-2"
+					error={errors.siteAddress}
+				>
+					{(c) => (
+						<input
+							{...c}
+							className={fieldClass(!!c["aria-invalid"])}
+							value={state.siteAddress}
+							onChange={(e) => set("siteAddress", e.target.value)}
+						/>
+					)}
+				</Field>
+				<Field
+					label="Access notes — gate codes, unit number, who to call"
+					labelClassName={LABEL_CLASS}
+					className="sm:col-span-2"
+					error={errors.addressNotes}
+				>
+					{(c) => (
+						<input
+							{...c}
+							className={fieldClass(!!c["aria-invalid"])}
+							value={state.addressNotes}
+							onChange={(e) => set("addressNotes", e.target.value)}
+						/>
+					)}
+				</Field>
+				<Field
+					label="Pickup from"
+					labelClassName={LABEL_CLASS}
+					error={errors.pickupAddress}
+				>
+					{(c) => (
+						<input
+							{...c}
+							className={fieldClass(!!c["aria-invalid"])}
+							value={state.pickupAddress}
+							onChange={(e) => set("pickupAddress", e.target.value)}
+						/>
+					)}
+				</Field>
+				<Field
+					label="Scheduled"
+					labelClassName={LABEL_CLASS}
+					error={errors.scheduledAt}
+				>
+					{(c) => (
+						<input
+							{...c}
+							type="datetime-local"
+							className={fieldClass(!!c["aria-invalid"])}
+							value={state.scheduledAt}
+							onChange={(e) => set("scheduledAt", e.target.value)}
+						/>
+					)}
+				</Field>
 			</div>
 
 			<div className="flex flex-col gap-2">
 				<p className="font-medium text-[13px]">What is going on the lorry</p>
-				{state.items.map((item, i) => (
-					<div key={item.uid} className="flex flex-wrap items-end gap-2">
-						<label className="flex min-w-[150px] flex-1 flex-col gap-1 text-[11px] text-neutral-500">
-							Item
-							<input
-								className={fieldClass(false)}
-								value={item.label}
-								onChange={(e) => setItem(i, { label: e.target.value })}
-							/>
-						</label>
-						{(["qty", "widthMm", "heightMm", "depthMm"] as const).map(
-							(field) => (
-								<label
-									key={field}
-									className="flex w-[74px] flex-col gap-1 text-[11px] text-neutral-500"
-								>
-									{field === "qty" ? "Qty" : field.replace("Mm", " mm")}
+				{state.items.map((item, i) => {
+					const rowMessage = itemRowMessage(errors, item.uid);
+					const bad = (field: string) => !!errors[itemKey(item.uid, field)];
+					// Props for one input of this row. The row is too narrow for a
+					// message under each input, so one sentence under the row serves
+					// them all.
+					const mark = (field: string) => ({
+						id: `${item.uid}-${field}`,
+						"aria-invalid": bad(field) ? (true as const) : undefined,
+						"aria-describedby": bad(field) ? `${item.uid}-error` : undefined,
+					});
+					return (
+						<div key={item.uid} className="flex flex-col gap-1">
+							<div className="flex flex-wrap items-end gap-2">
+								<div className="flex min-w-[150px] flex-1 flex-col gap-1">
+									<label
+										htmlFor={`${item.uid}-label`}
+										className="text-[11px] text-neutral-500"
+									>
+										Item
+									</label>
 									<input
+										{...mark("label")}
+										className={fieldClass(bad("label"))}
+										value={item.label}
+										onChange={(e) => setItem(i, { label: e.target.value })}
+									/>
+								</div>
+								{(["qty", "widthMm", "heightMm", "depthMm"] as const).map(
+									(field) => (
+										<div key={field} className="flex w-[74px] flex-col gap-1">
+											<label
+												htmlFor={`${item.uid}-${field}`}
+												className="text-[11px] text-neutral-500"
+											>
+												{ITEM_FIELDS[field].name === "Qty"
+													? "Qty"
+													: field.replace("Mm", " mm")}
+											</label>
+											<input
+												{...mark(field)}
+												type="number"
+												className={fieldClass(bad(field))}
+												value={item[field]}
+												onChange={(e) =>
+													setItem(i, { [field]: Number(e.target.value) })
+												}
+											/>
+										</div>
+									),
+								)}
+								<div className="flex w-[86px] flex-col gap-1">
+									<label
+										htmlFor={`${item.uid}-weightKg`}
+										className="text-[11px] text-neutral-500"
+									>
+										Weight kg
+									</label>
+									<input
+										{...mark("weightKg")}
 										type="number"
-										min={1}
-										className={fieldClass(false)}
-										value={item[field]}
+										step="0.1"
+										placeholder="—"
+										className={fieldClass(bad("weightKg"))}
+										value={item.weightKg ?? ""}
 										onChange={(e) =>
-											setItem(i, { [field]: Number(e.target.value) })
+											setItem(i, {
+												weightKg:
+													e.target.value === "" ? null : Number(e.target.value),
+											})
 										}
 									/>
-								</label>
-							),
-						)}
-						<label className="flex w-[86px] flex-col gap-1 text-[11px] text-neutral-500">
-							Weight kg
-							<input
-								type="number"
-								min={0}
-								step="0.1"
-								placeholder="—"
-								className={fieldClass(false)}
-								value={item.weightKg ?? ""}
-								onChange={(e) =>
-									setItem(i, {
-										weightKg:
-											e.target.value === "" ? null : Number(e.target.value),
-									})
-								}
-							/>
-						</label>
-						<button
-							type="button"
-							className="pb-2 text-[12px] text-neutral-400 underline"
-							onClick={() =>
-								onChange({
-									...state,
-									items: state.items.filter((_, j) => j !== i),
-								})
-							}
-						>
-							Remove
-						</button>
-					</div>
-				))}
+								</div>
+								<button
+									type="button"
+									className="pb-2 text-[12px] text-neutral-400 underline"
+									onClick={() =>
+										onChange({
+											...state,
+											items: state.items.filter((_, j) => j !== i),
+										})
+									}
+								>
+									Remove
+								</button>
+							</div>
+							{rowMessage && (
+								<FieldMessage id={`${item.uid}-error`}>
+									{rowMessage}
+								</FieldMessage>
+							)}
+						</div>
+					);
+				})}
 				<button
 					type="button"
 					className={`${chipClass(false)} self-start`}
