@@ -3,7 +3,9 @@
 import * as UpChunk from "@mux/upchunk";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import {
 	CATEGORIES,
 	type CategoryId,
@@ -13,6 +15,12 @@ import {
 	type LevelId,
 	posterUrl,
 } from "@/lib/tutorials";
+import {
+	DESCRIPTION_MAX,
+	TITLE_MAX,
+	type TutorialErrors,
+	tutorialFailure,
+} from "./tutorialFields";
 
 /**
  * The admin's tutorial library.
@@ -80,6 +88,8 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 	const [level, setLevel] = useState<LevelId>("beginner");
 	const [justPublished, setJustPublished] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [fieldErrors, setFieldErrors] = useState<TutorialErrors>({});
+	const formRef = useRef<HTMLElement>(null);
 	const [busy, setBusy] = useState(false);
 	const [dragging, setDragging] = useState(false);
 	const chunkRef = useRef<UpChunk.UpChunk | null>(null);
@@ -182,6 +192,7 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 		if (!ready || upload.phase !== "done") return;
 		setBusy(true);
 		setError(null);
+		setFieldErrors({});
 		try {
 			const response = await fetch("/api/admin/tutorials", {
 				method: "POST",
@@ -195,15 +206,23 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 					sortOrder: rows.length,
 				}),
 			});
-			if (!response.ok) throw new Error((await response.json()).error);
+			if (!response.ok) {
+				const failure = tutorialFailure(
+					await response.json().catch(() => null),
+				);
+				setFieldErrors(failure.errors);
+				setError(failure.banner);
+				focusFirstInvalid(formRef.current);
+				return;
+			}
 			const { tutorial } = (await response.json()) as { tutorial: Row };
 			setRows((prev) => [tutorial, ...prev]);
 			setTitle("");
 			setDescription("");
 			setUpload({ phase: "idle" });
 			setJustPublished(true);
-		} catch (e) {
-			setError((e as Error).message);
+		} catch {
+			setError(NETWORK_ERROR);
 		} finally {
 			setBusy(false);
 		}
@@ -263,7 +282,10 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 	return (
 		<div className="flex flex-col gap-8">
 			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
-			<section className="rounded-[14px] border border-neutral-200 bg-white px-6 pt-[22px] pb-6">
+			<section
+				ref={formRef}
+				className="rounded-[14px] border border-neutral-200 bg-white px-6 pt-[22px] pb-6"
+			>
 				<p className="mb-4 font-semibold text-[12px] text-neutral-600 uppercase tracking-[0.06em]">
 					Add a tutorial
 				</p>
@@ -386,44 +408,52 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 				)}
 
 				<div className="mt-5 flex flex-col gap-3.5">
-					<div>
-						<label
-							htmlFor="tut-title"
-							className="mb-1.5 block font-semibold text-[12px] text-neutral-700"
-						>
-							Title
-						</label>
-						<input
-							id="tut-title"
-							type="text"
-							value={title}
-							onChange={(e) => {
-								setTitle(e.target.value);
-								setJustPublished(false);
-							}}
-							placeholder="Assembling a base cabinet carcass"
-							className="min-h-10 w-full rounded-[9px] border border-neutral-300 px-3 py-2.5 text-[13px]"
-						/>
-					</div>
-					<div>
-						<label
-							htmlFor="tut-desc"
-							className="mb-1.5 block font-semibold text-[12px] text-neutral-700"
-						>
-							Description
-						</label>
-						<textarea
-							id="tut-desc"
-							rows={3}
-							value={description}
-							onChange={(e) => {
-								setDescription(e.target.value);
-								setJustPublished(false);
-							}}
-							placeholder="Panels, cams and dowels: building your first flat-pack base cabinet from the box."
-							className="w-full resize-y rounded-[9px] border border-neutral-300 px-3 py-2.5 text-[13px] leading-5"
-						/>
-					</div>
+					<Field
+						label="Title"
+						error={fieldErrors.title}
+						labelClassName="mb-1.5 block font-semibold text-[12px] text-neutral-700"
+					>
+						{(c) => (
+							<input
+								{...c}
+								type="text"
+								maxLength={TITLE_MAX}
+								value={title}
+								onChange={(e) => {
+									setTitle(e.target.value);
+									setJustPublished(false);
+									setFieldErrors(({ title: _gone, ...rest }) => rest);
+								}}
+								placeholder="Assembling a base cabinet carcass"
+								className={`min-h-10 w-full rounded-[9px] border px-3 py-2.5 text-[13px] ${
+									c["aria-invalid"] ? INVALID : "border-neutral-300"
+								}`}
+							/>
+						)}
+					</Field>
+					<Field
+						label="Description"
+						error={fieldErrors.description}
+						labelClassName="mb-1.5 block font-semibold text-[12px] text-neutral-700"
+					>
+						{(c) => (
+							<textarea
+								{...c}
+								rows={3}
+								maxLength={DESCRIPTION_MAX}
+								value={description}
+								onChange={(e) => {
+									setDescription(e.target.value);
+									setJustPublished(false);
+									setFieldErrors(({ description: _gone, ...rest }) => rest);
+								}}
+								placeholder="Panels, cams and dowels: building your first flat-pack base cabinet from the box."
+								className={`w-full resize-y rounded-[9px] border px-3 py-2.5 text-[13px] leading-5 ${
+									c["aria-invalid"] ? INVALID : "border-neutral-300"
+								}`}
+							/>
+						)}
+					</Field>
 
 					<div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-3.5">
 						<div>
@@ -483,7 +513,10 @@ export function TutorialManager({ initial }: { initial: Row[] }) {
 				</div>
 
 				{error && (
-					<p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700">
+					<p
+						role="alert"
+						className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700"
+					>
 						{error}
 					</p>
 				)}

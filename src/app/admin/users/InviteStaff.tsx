@@ -1,11 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
+import {
+	type Control,
+	Field,
+	focusFirstInvalid,
+	INVALID,
+	USER_INVALID,
+} from "@/components/Field";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
 import { inviteFailure } from "./inviteFailure";
+import {
+	type InviteErrors,
+	type InviteField,
+	inviteErrors,
+} from "./inviteFields";
+
+/** An input of the invite row: the valid border only when valid, so the invalid look is never beaten by CSS order. */
+const inputClass = (c: Control, extra = "") =>
+	`min-h-10 rounded-[9px] border px-3 py-[10px] ${
+		c["aria-invalid"] ? INVALID : "border-[#d4d4d4]"
+	} ${USER_INVALID} ${extra}`;
 
 function generatePassword(): string {
 	return crypto.randomUUID().slice(0, 16);
@@ -37,6 +55,8 @@ export function InviteStaff() {
 	const [role, setRole] = useState<Role>(STAFF_ROLES[STAFF_ROLES.length - 1]);
 	const [password, setPassword] = useState(generatePassword());
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
+	const [errors, setErrors] = useState<InviteErrors>({});
+	const formRef = useRef<HTMLFormElement>(null);
 	const [result, setResult] = useState<{
 		promoted: boolean;
 		passwordSet: boolean;
@@ -44,7 +64,14 @@ export function InviteStaff() {
 		password: string;
 	} | null>(null);
 
+	/** Edit one input and clear its mark, since what was wrong is gone. */
+	function edit(field: InviteField, set: (v: string) => void, value: string) {
+		set(value);
+		setErrors(({ [field]: _gone, ...rest }) => rest);
+	}
+
 	function reset() {
+		setErrors({});
 		setEmail("");
 		setName("");
 		setRole(STAFF_ROLES[STAFF_ROLES.length - 1]);
@@ -61,7 +88,13 @@ export function InviteStaff() {
 		});
 		if (typeof res === "string") return res;
 		const data = await res.json().catch(() => null);
-		if (!res.ok) return inviteFailure(data?.error);
+		if (!res.ok) {
+			// The input that is wrong carries the failure; the dialog is only
+			// told something so it stays open until the person has read it.
+			const marks = inviteErrors(res.status, data);
+			setErrors(marks);
+			return Object.values(marks)[0] ?? inviteFailure(data?.error);
+		}
 		setResult({
 			promoted: Boolean(data?.promoted),
 			// A fresh invite always sets one; a promotion says whether it did.
@@ -88,7 +121,15 @@ export function InviteStaff() {
 
 	return (
 		<div className="rounded-[14px] border border-[#e5e5e5] bg-white p-5">
-			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
+			<ConfirmDialog
+				confirm={confirming}
+				onClose={() => {
+					setConfirming(null);
+					// The marks sit behind the dialog while it is open, so focus
+					// waits until it closes.
+					focusFirstInvalid(formRef.current);
+				}}
+			/>
 			<p className="mb-3 font-semibold text-[#525252] text-[12px] uppercase tracking-[.06em]">
 				Invite a member
 			</p>
@@ -133,28 +174,42 @@ export function InviteStaff() {
 					</button>
 				</div>
 			) : (
-				<form onSubmit={submit} className="flex flex-col gap-3">
+				<form ref={formRef} onSubmit={submit} className="flex flex-col gap-3">
 					<div className="flex flex-wrap items-end gap-3">
-						<label className="flex min-w-[220px] flex-1 flex-col gap-1 text-[13px]">
-							Work email
-							<input
-								type="email"
-								required
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-								className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px]"
-							/>
-						</label>
-						<label className="flex min-w-[160px] flex-col gap-1 text-[13px]">
-							Name
-							<input
-								type="text"
-								required
-								value={name}
-								onChange={(e) => setName(e.target.value)}
-								className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px]"
-							/>
-						</label>
+						<Field
+							label="Work email"
+							error={errors.email}
+							className="min-w-[220px] flex-1 text-[13px]"
+							labelClassName=""
+						>
+							{(c) => (
+								<input
+									{...c}
+									type="email"
+									required
+									value={email}
+									onChange={(e) => edit("email", setEmail, e.target.value)}
+									className={inputClass(c)}
+								/>
+							)}
+						</Field>
+						<Field
+							label="Name"
+							error={errors.name}
+							className="min-w-[160px] text-[13px]"
+							labelClassName=""
+						>
+							{(c) => (
+								<input
+									{...c}
+									type="text"
+									required
+									value={name}
+									onChange={(e) => edit("name", setName, e.target.value)}
+									className={inputClass(c)}
+								/>
+							)}
+						</Field>
 						<label className="flex flex-col gap-1 text-[13px]">
 							Role
 							<select
@@ -169,26 +224,37 @@ export function InviteStaff() {
 								))}
 							</select>
 						</label>
-						<label className="flex flex-col gap-1 text-[13px]">
-							Password
-							<div className="flex gap-2">
-								<input
-									type="text"
-									required
-									minLength={12}
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-									className="min-h-10 w-[160px] rounded-[9px] border border-[#d4d4d4] px-3 py-[10px]"
-								/>
-								<button
-									type="button"
-									onClick={() => setPassword(generatePassword())}
-									className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px] text-[13px] hover:bg-neutral-50"
-								>
-									Generate
-								</button>
-							</div>
-						</label>
+						<Field
+							label="Password"
+							error={errors.password}
+							className="text-[13px]"
+							labelClassName=""
+						>
+							{(c) => (
+								<div className="flex gap-2">
+									<input
+										{...c}
+										type="text"
+										required
+										minLength={12}
+										value={password}
+										onChange={(e) =>
+											edit("password", setPassword, e.target.value)
+										}
+										className={inputClass(c, "w-[160px]")}
+									/>
+									<button
+										type="button"
+										onClick={() =>
+											edit("password", setPassword, generatePassword())
+										}
+										className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px] text-[13px] hover:bg-neutral-50"
+									>
+										Generate
+									</button>
+								</div>
+							)}
+						</Field>
 						<button
 							type="submit"
 							className="min-h-10 flex-none rounded-full bg-[#1f5138] px-5 py-[11px] font-semibold text-[13px] text-white hover:bg-[#193f2c]"

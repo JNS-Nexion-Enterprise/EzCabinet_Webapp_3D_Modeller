@@ -3,12 +3,13 @@
  * own near-identical copy — same borders, same red error state, drifting
  * padding.
  */
+import { INVALID, USER_INVALID } from "@/components/Field";
 
 /** A text/number input. `hasError` paints the invalid state. */
 export function fieldClass(hasError: boolean, extra = "") {
 	return `rounded-lg border px-2.5 py-2 text-sm ${
-		hasError ? "border-red-400 bg-red-50" : "border-neutral-300"
-	} ${extra}`;
+		hasError ? INVALID : "border-neutral-300"
+	} ${USER_INVALID} ${extra}`;
 }
 
 /** A pill toggle — filter chips, multi-selects, segmented choices. */

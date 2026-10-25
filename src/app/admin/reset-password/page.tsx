@@ -1,19 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
+import {
+	checkNewPassword,
+	DEAD_LINK,
+	type PasswordErrors,
+	type PasswordField,
+	resetPasswordFailure,
+} from "../passwordFields";
 
-/** Matches `emailAndPassword.minPasswordLength`; the server enforces it. */
-const MIN_LENGTH = 12;
-const DEAD_LINK =
-	"This link has expired or was already used. Request a new one.";
+/** The valid border only when valid, so the invalid look is never beaten by CSS order. */
+const inputClass = (invalid: boolean | undefined) =>
+	`rounded-[9px] border px-3.5 py-2.5 text-sm ${
+		invalid ? INVALID : "border-neutral-300"
+	}`;
 
 export default function ResetPasswordPage() {
 	const [newPassword, setNewPassword] = useState("");
 	const [confirm, setConfirm] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [errors, setErrors] = useState<PasswordErrors>({});
+	const formRef = useRef<HTMLFormElement>(null);
 	const [done, setDone] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [deadLink, setDeadLink] = useState(false);
@@ -25,14 +37,18 @@ export default function ResetPasswordPage() {
 		if (query.has("error") || !query.get("token")) setDeadLink(true);
 	}, []);
 
+	/** Type into one input and clear its mark, since what was wrong is gone. */
+	function edit(field: PasswordField, set: (v: string) => void, value: string) {
+		set(value);
+		setErrors(({ [field]: _gone, ...rest }) => rest);
+	}
+
 	async function submit() {
 		setError(null);
-		if (newPassword.length < MIN_LENGTH) {
-			setError(`New password must be at least ${MIN_LENGTH} characters.`);
-			return;
-		}
-		if (newPassword !== confirm) {
-			setError("Passwords don't match.");
+		const marks = checkNewPassword(newPassword, confirm);
+		setErrors(marks);
+		if (Object.keys(marks).length > 0) {
+			focusFirstInvalid(formRef.current);
 			return;
 		}
 		// Better Auth's link lands here as ?token=…, or ?error=INVALID_TOKEN.
@@ -42,17 +58,24 @@ export default function ResetPasswordPage() {
 			return;
 		}
 		setBusy(true);
-		const { error: failure } = await authClient.resetPassword({
-			newPassword,
-			token,
-		});
+		let failure: { code?: string } | null;
+		try {
+			({ error: failure } = await authClient.resetPassword({
+				newPassword,
+				token,
+			}));
+		} catch {
+			// better-fetch rejects when the request gets no answer at all.
+			setBusy(false);
+			setError(NETWORK_ERROR);
+			return;
+		}
 		setBusy(false);
 		if (failure) {
-			setError(
-				failure.code === "PASSWORD_TOO_SHORT"
-					? `New password must be at least ${MIN_LENGTH} characters.`
-					: DEAD_LINK,
-			);
+			const outcome = resetPasswordFailure(failure.code);
+			setErrors(outcome.errors);
+			setError(outcome.banner);
+			focusFirstInvalid(formRef.current);
 			return;
 		}
 		setDone(true);
@@ -73,36 +96,49 @@ export default function ResetPasswordPage() {
 					</p>
 				) : (
 					<form
+						ref={formRef}
 						onSubmit={(e) => {
 							e.preventDefault();
 							submit();
 						}}
 						className="mt-5 flex flex-col gap-4"
 					>
-						<label className="flex flex-col gap-1.5">
-							<span className="font-medium text-neutral-700 text-xs">
-								New password
-							</span>
-							<input
-								type="password"
-								value={newPassword}
-								onChange={(e) => setNewPassword(e.target.value)}
-								autoComplete="new-password"
-								className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
-							/>
-						</label>
-						<label className="flex flex-col gap-1.5">
-							<span className="font-medium text-neutral-700 text-xs">
-								Confirm new password
-							</span>
-							<input
-								type="password"
-								value={confirm}
-								onChange={(e) => setConfirm(e.target.value)}
-								autoComplete="new-password"
-								className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
-							/>
-						</label>
+						<Field
+							label="New password"
+							error={errors.newPassword}
+							className="gap-1.5"
+							labelClassName="font-medium text-neutral-700 text-xs"
+						>
+							{(c) => (
+								<input
+									{...c}
+									type="password"
+									value={newPassword}
+									onChange={(e) =>
+										edit("newPassword", setNewPassword, e.target.value)
+									}
+									autoComplete="new-password"
+									className={inputClass(c["aria-invalid"])}
+								/>
+							)}
+						</Field>
+						<Field
+							label="Confirm new password"
+							error={errors.confirm}
+							className="gap-1.5"
+							labelClassName="font-medium text-neutral-700 text-xs"
+						>
+							{(c) => (
+								<input
+									{...c}
+									type="password"
+									value={confirm}
+									onChange={(e) => edit("confirm", setConfirm, e.target.value)}
+									autoComplete="new-password"
+									className={inputClass(c["aria-invalid"])}
+								/>
+							)}
+						</Field>
 						{error && (
 							<p
 								role="alert"

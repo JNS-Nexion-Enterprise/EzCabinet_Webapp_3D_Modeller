@@ -2,14 +2,25 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
 import { useAdminBrand } from "@/app/admin/AdminUserContext";
 import { safeNext } from "@/app/admin/login/safeNext";
-import { twoFactorMessage } from "@/app/admin/login/twoFactorMessage";
+import {
+	isWrongCode,
+	twoFactorMessage,
+} from "@/app/admin/login/twoFactorMessage";
+import { FieldMessage, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
 import { HERO_EXPLODED_FRAME, heroFrameSrc } from "@/lib/scroll/sequence";
 import { tenant } from "@/lib/tenant";
+
+/** The banners on this screen add their own full stop. */
+const NO_ANSWER = NETWORK_ERROR.replace(/\.$/, "");
+
+/** The look of a text input, border colour aside: that is the caller's, so the invalid look is never beaten by CSS order. */
+const FIELD = "rounded-[9px] border px-3.5 py-2.5 text-sm";
 
 export default function AdminLoginPage() {
 	const router = useRouter();
@@ -17,6 +28,13 @@ export default function AdminLoginPage() {
 	const [email, setEmail] = useState("");
 	const [password, setPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	// Wrong email or password is one flag, not two messages: it marks both
+	// inputs and says nothing about which one was wrong.
+	const [wrongLogin, setWrongLogin] = useState(false);
+	const [codeError, setCodeError] = useState<string | null>(null);
+	const formRef = useRef<HTMLFormElement>(null);
+	const loginErrorId = useId();
+	const codeErrorId = useId();
 	const [busy, setBusy] = useState(false);
 	const [step, setStep] = useState<"password" | "code">("password");
 	const [code, setCode] = useState("");
@@ -33,38 +51,64 @@ export default function AdminLoginPage() {
 	async function login() {
 		setBusy(true);
 		setError(null);
-		const { data, error: failure } = await authClient.signIn.email({
-			email,
-			password,
-		});
-		setBusy(false);
+		setWrongLogin(false);
+		let result: Awaited<ReturnType<typeof authClient.signIn.email>>;
+		try {
+			result = await authClient.signIn.email({ email, password });
+		} catch {
+			// better-fetch rejects when the request gets no answer at all.
+			setBusy(false);
+			setError(NO_ANSWER);
+			return;
+		}
+		const { data, error: failure } = result;
 		if (failure) {
+			setBusy(false);
 			// Deliberately one message for a wrong email and a wrong password:
 			// telling them apart tells an attacker which staff emails are real.
-			setError("Wrong email or password");
+			setWrongLogin(true);
+			focusFirstInvalid(formRef.current);
 			return;
 		}
 		// The password was right but no session exists yet: the plugin holds
 		// the sign-in in a short-lived cookie until a code verifies.
 		if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+			setBusy(false);
 			setPassword("");
 			setStep("code");
 			return;
 		}
+		// Busy stays set: the route is changing, and the button must not look
+		// ready again before the page does.
 		enter();
 	}
 
 	async function verifyCode() {
 		setBusy(true);
 		setError(null);
+		setCodeError(null);
 		// Backup codes look like `abcde-12345`: strip spaces, keep the hyphen.
 		const body = { code: code.replace(/\s+/g, ""), trustDevice };
-		const { error: failure } = useBackup
-			? await authClient.twoFactor.verifyBackupCode(body)
-			: await authClient.twoFactor.verifyTotp(body);
-		setBusy(false);
+		let result: Awaited<ReturnType<typeof authClient.twoFactor.verifyTotp>>;
+		try {
+			result = useBackup
+				? await authClient.twoFactor.verifyBackupCode(body)
+				: await authClient.twoFactor.verifyTotp(body);
+		} catch {
+			setBusy(false);
+			setError(NO_ANSWER);
+			return;
+		}
+		const { error: failure } = result;
 		if (failure) {
-			setError(twoFactorMessage(failure.code, failure.status));
+			setBusy(false);
+			const message = twoFactorMessage(failure.code, failure.status);
+			if (isWrongCode(failure.code, failure.status)) {
+				setCodeError(`${message}.`);
+				focusFirstInvalid(formRef.current);
+			} else {
+				setError(message);
+			}
 			// The challenge cookie is spent or gone: another code cannot work, so
 			// go back to the password. The error paragraph renders on that step
 			// too, so the reason stays visible.
@@ -77,6 +121,7 @@ export default function AdminLoginPage() {
 			}
 			return;
 		}
+		// Busy stays set while the route changes.
 		enter();
 	}
 
@@ -109,6 +154,7 @@ export default function AdminLoginPage() {
 		<main className="flex min-h-screen bg-[#f4f3f1] text-neutral-900">
 			<div className="flex flex-1 items-center justify-center p-10">
 				<form
+					ref={formRef}
 					onSubmit={(e) => {
 						e.preventDefault();
 						if (step === "code") verifyCode();
@@ -165,29 +211,52 @@ export default function AdminLoginPage() {
 								<input
 									type="email"
 									value={email}
-									onChange={(e) => setEmail(e.target.value)}
+									onChange={(e) => {
+										setEmail(e.target.value);
+										setWrongLogin(false);
+									}}
 									placeholder="you@company.com"
 									autoComplete="username"
-									className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
+									aria-invalid={wrongLogin || undefined}
+									aria-describedby={wrongLogin ? loginErrorId : undefined}
+									className={`${FIELD} ${wrongLogin ? INVALID : "border-neutral-300"}`}
 								/>
 							</label>
 
-							<label className="flex flex-col gap-1.5">
-								<span className="font-medium text-neutral-700 text-xs">
-									Password
-								</span>
-								<input
-									type="password"
-									value={password}
-									onChange={(e) => setPassword(e.target.value)}
-									placeholder="Your password"
-									autoComplete="current-password"
-									className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
-								/>
-							</label>
+							<div className="flex flex-col gap-1.5">
+								<label className="flex flex-col gap-1.5">
+									<span className="font-medium text-neutral-700 text-xs">
+										Password
+									</span>
+									<input
+										type="password"
+										value={password}
+										onChange={(e) => {
+											setPassword(e.target.value);
+											setWrongLogin(false);
+										}}
+										placeholder="Your password"
+										autoComplete="current-password"
+										aria-invalid={wrongLogin || undefined}
+										aria-describedby={wrongLogin ? loginErrorId : undefined}
+										className={`${FIELD} ${wrongLogin ? INVALID : "border-neutral-300"}`}
+									/>
+								</label>
+								{wrongLogin && (
+									// Deliberately one message for a wrong email and a wrong
+									// password: telling them apart tells an attacker which
+									// staff emails are real.
+									<FieldMessage id={loginErrorId}>
+										Wrong email or password.
+									</FieldMessage>
+								)}
+							</div>
 
 							{error && (
-								<p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm">
+								<p
+									role="alert"
+									className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm"
+								>
 									{error}.
 								</p>
 							)}
@@ -210,35 +279,43 @@ export default function AdminLoginPage() {
 					)}
 					{step === "code" && (
 						<>
-							<label className="flex flex-col gap-1.5">
-								<span className="font-medium text-neutral-700 text-xs">
-									{useBackup ? "Backup code" : "6-digit code"}
-								</span>
-								<input
-									// Remounted on the switch so the keyboard and autofill
-									// hints follow the kind of code being asked for.
-									key={useBackup ? "backup" : "totp"}
-									inputMode={useBackup ? "text" : "numeric"}
-									autoComplete="one-time-code"
-									// biome-ignore lint/a11y/noAutofocus: the only field on this step
-									autoFocus
-									value={code}
-									onChange={(e) =>
-										// A pasted "123 456" must work: digits only, six of them.
-										setCode(
+							<div className="flex flex-col gap-1.5">
+								<label className="flex flex-col gap-1.5">
+									<span className="font-medium text-neutral-700 text-xs">
+										{useBackup ? "Backup code" : "6-digit code"}
+									</span>
+									<input
+										// Remounted on the switch so the keyboard and autofill
+										// hints follow the kind of code being asked for.
+										key={useBackup ? "backup" : "totp"}
+										inputMode={useBackup ? "text" : "numeric"}
+										autoComplete="one-time-code"
+										// biome-ignore lint/a11y/noAutofocus: the only field on this step
+										autoFocus
+										value={code}
+										onChange={(e) => {
+											// A pasted "123 456" must work: digits only, six of them.
+											setCode(
+												useBackup
+													? e.target.value
+													: e.target.value.replace(/\D/g, "").slice(0, 6),
+											);
+											setCodeError(null);
+										}}
+										aria-invalid={codeError ? true : undefined}
+										aria-describedby={codeError ? codeErrorId : undefined}
+										placeholder={
 											useBackup
-												? e.target.value
-												: e.target.value.replace(/\D/g, "").slice(0, 6),
-										)
-									}
-									placeholder={
-										useBackup
-											? "One of your saved codes"
-											: "From your authenticator app"
-									}
-									className="rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm"
-								/>
-							</label>
+												? "One of your saved codes"
+												: "From your authenticator app"
+										}
+										className={`${FIELD} ${codeError ? INVALID : "border-neutral-300"}`}
+									/>
+								</label>
+								{codeError && (
+									<FieldMessage id={codeErrorId}>{codeError}</FieldMessage>
+								)}
+							</div>
 
 							<label className="flex items-center gap-2 text-neutral-700 text-xs">
 								<input
@@ -273,6 +350,7 @@ export default function AdminLoginPage() {
 									setUseBackup(!useBackup);
 									setCode("");
 									setError(null);
+									setCodeError(null);
 								}}
 								className="text-center text-neutral-500 text-xs hover:text-neutral-900"
 							>
@@ -287,6 +365,7 @@ export default function AdminLoginPage() {
 									setUseBackup(false);
 									setTrustDevice(false);
 									setError(null);
+									setCodeError(null);
 								}}
 								className="text-center text-neutral-500 text-xs hover:text-neutral-900"
 							>

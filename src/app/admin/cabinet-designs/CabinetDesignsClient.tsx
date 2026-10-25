@@ -2,14 +2,23 @@
 
 import dynamic from "next/dynamic";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import {
+	Suspense,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
 import { AdminHeader } from "@/components/admin/AdminHeader";
 import {
 	CatalogueSettings,
 	type SettingsTab,
 } from "@/components/admin/CatalogueSettings";
 import { chipClass, fieldClass } from "@/components/admin/styles";
+import { Field, FieldMessage, focusFirstInvalid } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { buildCatalogue } from "@/lib/catalogue/buildCatalogue";
 import {
 	CATEGORIES,
@@ -25,6 +34,15 @@ import { siteImageSrc } from "@/lib/catalogue/siteImages";
 import type { DesignMeasurement } from "@/lib/mesh/measureDesign";
 import { PLANNER_CATALOGUE } from "@/lib/planner/catalogue";
 import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
+import {
+	checkBatchRow,
+	checkDesignForm,
+	type DesignErrors,
+	designErrorsFromReply,
+	hasUnmappedIssues,
+	INVALID_FIELDS_TEXT,
+} from "./form";
+import { publishMarks } from "./publishIssues";
 
 /**
  * The whole planner catalogue, on one screen.
@@ -147,25 +165,6 @@ const REACH_TONE: Record<Reach, string> = {
 
 const FINISH_OPTIONS = ["Slab", "Shaker", "Glass"];
 
-/** What the API's zod schema actually requires, mirrored here so the form
- * can flag missing fields before a round trip — same rules, human labels. */
-const REQUIRED_FIELDS: {
-	key: "name" | "w" | "h" | "d" | "price" | "sku";
-	label: string;
-	valid: (value: string) => boolean;
-}[] = [
-	{ key: "name", label: "Cabinet name", valid: (v) => v.trim().length > 0 },
-	{ key: "w", label: "Width", valid: (v) => Number(v) > 0 },
-	{ key: "h", label: "Height", valid: (v) => Number(v) > 0 },
-	{ key: "d", label: "Depth", valid: (v) => Number(v) > 0 },
-	{
-		key: "price",
-		label: "Price",
-		valid: (v) => v.trim() !== "" && Number(v) >= 0,
-	},
-	{ key: "sku", label: "SKU", valid: (v) => v.trim().length > 0 },
-];
-
 type Form = {
 	name: string;
 	category: Category;
@@ -205,7 +204,15 @@ function emptyForm(room: Room): Form {
  */
 const DesignViewer = dynamic(
 	() => import("@/components/admin/DesignViewer").then((m) => m.DesignViewer),
-	{ ssr: false },
+	{
+		ssr: false,
+		loading: () => (
+			<p role="status" className="text-neutral-500 text-sm">
+				<Spinner />
+				Loading viewer…
+			</p>
+		),
+	},
 );
 
 /**
@@ -222,6 +229,8 @@ type BatchRow = {
 	name: string;
 	sku: string;
 	price: string;
+	/** The inputs this row's check or the server's reply refused. */
+	errors?: DesignErrors;
 	/** Filled once the row has been through the API. */
 	result: "pending" | "saved" | string;
 };
@@ -229,6 +238,8 @@ type BatchRow = {
 /** A publish offer: what just happened, and anything the conversion noted. */
 type Confirm = { title: string; notes: string[] };
 
+const LABEL_TEXT =
+	"font-semibold text-[11px] text-neutral-600 uppercase tracking-wide";
 const LABEL_CLASS =
 	"mb-1 font-semibold text-[11px] text-neutral-600 uppercase tracking-wide";
 const SELECT_CLASS =
@@ -294,7 +305,17 @@ function BatchFields({
 	setField: <K extends keyof Form>(key: K, value: Form[K]) => void;
 }) {
 	const update = (i: number, patch: Partial<BatchRow>) =>
-		setBatch(batch.map((row, n) => (n === i ? { ...row, ...patch } : row)));
+		setBatch(
+			batch.map((row, n) => {
+				if (n !== i) return row;
+				// Typing in an input clears that input's mark, not its neighbour's.
+				const { sku: _s, ...noSku } = row.errors ?? {};
+				const { price: _p, ...noPrice } = row.errors ?? {};
+				const errors =
+					"sku" in patch ? noSku : "price" in patch ? noPrice : row.errors;
+				return { ...row, ...patch, errors };
+			}),
+		);
 
 	return (
 		<>
@@ -319,19 +340,46 @@ function BatchFields({
 						</div>
 						<div className="mt-1.5 flex gap-2">
 							<input
+								aria-label={`SKU for ${row.file.name}`}
+								aria-invalid={row.errors?.sku ? true : undefined}
+								aria-describedby={
+									row.errors?.sku || row.errors?.price
+										? `batch-${i}-error`
+										: undefined
+								}
 								value={row.sku}
 								onChange={(e) => update(i, { sku: e.target.value })}
 								placeholder="SKU"
-								className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-2.5 py-2 text-sm"
+								className={fieldClass(!!row.errors?.sku, "min-w-0 flex-1")}
 							/>
 							<input
+								aria-label={`Price in RM for ${row.file.name}`}
+								aria-invalid={row.errors?.price ? true : undefined}
+								aria-describedby={
+									row.errors?.sku || row.errors?.price
+										? `batch-${i}-error`
+										: undefined
+								}
 								value={row.price}
 								onChange={(e) => update(i, { price: e.target.value })}
 								placeholder="RM"
 								inputMode="decimal"
-								className="w-24 rounded-lg border border-neutral-300 px-2.5 py-2 text-sm"
+								className={fieldClass(!!row.errors?.price, "w-24")}
 							/>
 						</div>
+						{(row.errors?.sku || row.errors?.price) && (
+							<div
+								id={`batch-${i}-error`}
+								className="mt-1 flex flex-col gap-0.5"
+							>
+								{row.errors?.sku && (
+									<FieldMessage>{row.errors.sku}</FieldMessage>
+								)}
+								{row.errors?.price && (
+									<FieldMessage>{row.errors.price}</FieldMessage>
+								)}
+							</div>
+						)}
 						{row.result !== "pending" && (
 							<p
 								className={`mt-1.5 text-[11px] ${
@@ -440,7 +488,8 @@ function CabinetDesigns() {
 	const [existingFilename, setExistingFilename] = useState<string | null>(null);
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [missing, setMissing] = useState<Set<string>>(new Set());
+	const [errors, setErrors] = useState<DesignErrors>({});
+	const panelRef = useRef<HTMLDivElement>(null);
 	/** What the design file said, once it has been read. */
 	const [measured, setMeasured] = useState<DesignMeasurement | null>(null);
 	const [measureError, setMeasureError] = useState<string | null>(null);
@@ -448,6 +497,9 @@ function CabinetDesigns() {
 	const [batch, setBatch] = useState<BatchRow[] | null>(null);
 	/** Id of the row whose Delete is armed, so only one row is ever primed. */
 	const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+	// "archive:<id>" or "delete:<id>" while that row's request is in flight, so
+	// the row's own button spins and nothing else on the row can be pressed.
+	const [rowBusy, setRowBusy] = useState<string | null>(null);
 
 	/** The last thing that happened, shown until the next action. */
 	const [notice, setNotice] = useState<string | null>(null);
@@ -463,27 +515,33 @@ function CabinetDesigns() {
 	 * waiting for a render. */
 	async function load(resetBase = false): Promise<CabinetDesign[] | null> {
 		setLoading(true);
-		const res = await fetch("/api/admin/cabinet-designs");
-		if (res.status === 401) {
-			router.push("/admin/login");
+		try {
+			const res = await fetch("/api/admin/cabinet-designs");
+			if (res.status === 401) {
+				router.push("/admin/login");
+				return null;
+			}
+			if (!res.ok) {
+				setError("Failed to load designs");
+				return null;
+			}
+			const body = await res.json();
+			const rows: CabinetDesign[] = body.designs ?? [];
+			setDesigns(rows);
+			setPublished(body.published);
+			// Settings edits live only in `base`; reloading the rows after an upload
+			// must not throw them away. Only a publish — which made them live — resets.
+			setBase((prev) =>
+				resetBase || !prev ? structuredClone(body.published.data) : prev,
+			);
+			return rows;
+		} catch {
+			// No answer: without this the loading line would never end.
+			setError(NETWORK_ERROR);
 			return null;
-		}
-		if (!res.ok) {
-			setError("Failed to load designs");
+		} finally {
 			setLoading(false);
-			return null;
 		}
-		const body = await res.json();
-		const rows: CabinetDesign[] = body.designs ?? [];
-		setDesigns(rows);
-		setPublished(body.published);
-		// Settings edits live only in `base`; reloading the rows after an upload
-		// must not throw them away. Only a publish — which made them live — resets.
-		setBase((prev) =>
-			resetBase || !prev ? structuredClone(body.published.data) : prev,
-		);
-		setLoading(false);
-		return rows;
 	}
 
 	const loadFinishPhotos = useCallback(async () => {
@@ -503,7 +561,10 @@ function CabinetDesigns() {
 		loadFinishPhotos();
 	}, []);
 
+	const [settingMarks, setSettingMarks] = useState<Record<string, string>>({});
 	const edit = useCallback((mutate: (next: PlannerCatalogue) => void) => {
+		// An edit may be the fix, and a mark would then outlive it.
+		setSettingMarks((m) => (Object.keys(m).length > 0 ? {} : m));
 		setBase((prev) => {
 			if (!prev) return prev;
 			const next = structuredClone(prev);
@@ -597,6 +658,7 @@ function CabinetDesigns() {
 		if (!base) return;
 		setPublishing(true);
 		setError(null);
+		setSettingMarks({});
 		try {
 			const res = await fetch("/api/admin/cabinet-designs/publish", {
 				method: "POST",
@@ -611,10 +673,21 @@ function CabinetDesigns() {
 			);
 			if (!res.ok) {
 				setConfirm(null);
+				// A rejected catalogue says which setting, in words, instead of a code.
+				const split = base ? publishMarks(body?.issues, base) : null;
+				const named = split?.rest ?? [];
+				// Settings the server refused are marked where they are edited.
+				setSettingMarks(split?.marks ?? {});
+				if (split?.tab) {
+					selectTab(split.tab);
+					focusFirstInvalid(document);
+				}
 				setError(
 					[
 						body?.message ??
-							`Could not publish (${body?.error ?? res.status}).`,
+							(named.length > 0
+								? `Could not publish. ${named.join(" ")}`
+								: `Could not publish (${body?.error ?? res.status}).`),
 						...refused,
 					].join(" "),
 				);
@@ -644,7 +717,7 @@ function CabinetDesigns() {
 		setMeasured(null);
 		setMeasureError(null);
 		setError(null);
-		setMissing(new Set());
+		setErrors({});
 		setBatch(null);
 		setPanelOpen(true);
 	}
@@ -748,7 +821,7 @@ function CabinetDesigns() {
 				h: prev.h || String(result.heightMm),
 				d: prev.d || String(result.depthMm),
 			}));
-			setMissing(new Set());
+			setErrors({});
 		} catch (error) {
 			setMeasureError(
 				`Could not read that .obj: ${error instanceof Error ? error.message : String(error)}`,
@@ -777,17 +850,16 @@ function CabinetDesigns() {
 		setExistingFilename(d.filename);
 		setBatch(null);
 		setError(null);
-		setMissing(new Set());
+		setErrors({});
 		setPanelOpen(true);
 	}
 
 	function setField<K extends keyof Form>(key: K, value: Form[K]) {
 		setForm((f) => ({ ...f, [key]: value }));
-		setMissing((m) => {
-			if (!m.has(key)) return m;
-			const next = new Set(m);
-			next.delete(key);
-			return next;
+		setErrors((m) => {
+			if (!(key in m)) return m;
+			const { [key as keyof DesignErrors]: _gone, ...rest } = m;
+			return rest;
 		});
 	}
 
@@ -803,17 +875,33 @@ function CabinetDesigns() {
 	async function toggleArchive(d: CabinetDesign) {
 		const status: Status = d.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED";
 		setNotice(null);
-		await fetch(`/api/admin/cabinet-designs/${d.id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ status }),
-		});
-		const fresh = await load();
-		offerPublish(
-			`${d.name} ${status === "ARCHIVED" ? "archived" : "restored"}`,
-			[],
-			fresh,
-		);
+		setError(null);
+		setRowBusy(`archive:${d.id}`);
+		try {
+			const res = await fetch(`/api/admin/cabinet-designs/${d.id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ status }),
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				setError(
+					body?.message ??
+						`Could not ${status === "ARCHIVED" ? "archive" : "restore"} ${d.name}.`,
+				);
+				return;
+			}
+			const fresh = await load();
+			offerPublish(
+				`${d.name} ${status === "ARCHIVED" ? "archived" : "restored"}`,
+				[],
+				fresh,
+			);
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setRowBusy(null);
+		}
 	}
 
 	/**
@@ -827,23 +915,33 @@ function CabinetDesigns() {
 		setConfirmingDelete(null);
 		setNotice(null);
 		setError(null);
-		const res = await fetch(`/api/admin/cabinet-designs/${d.id}`, {
-			method: "DELETE",
-		});
-		if (!res.ok) {
-			const body = await res.json().catch(() => null);
-			setError(body?.message ?? `Could not delete ${d.name}.`);
-			return;
+		setRowBusy(`delete:${d.id}`);
+		try {
+			const res = await fetch(`/api/admin/cabinet-designs/${d.id}`, {
+				method: "DELETE",
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				setError(body?.message ?? `Could not delete ${d.name}.`);
+				return;
+			}
+			setNotice(`${d.name} deleted.`);
+			load();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setRowBusy(null);
 		}
-		setNotice(`${d.name} deleted.`);
-		load();
 	}
 
 	/** Uploads one file and creates its row. Per row, because one bad file in a
 	 * batch of three must not lose the other two. */
 	async function createOne(
 		row: BatchRow,
-	): Promise<{ id: string; meshNote: string | null } | { error: string }> {
+	): Promise<
+		| { id: string; meshNote: string | null }
+		| { error: string; errors?: DesignErrors }
+	> {
 		const { upload } = await import("@vercel/blob/client");
 		const importId = crypto.randomUUID();
 		// Must match MESH_PATHNAME in lib/catalogue/meshBlob.ts, which the shared
@@ -889,6 +987,7 @@ function CabinetDesigns() {
 		const body = await res.json().catch(() => null);
 		if (!res.ok) {
 			return {
+				errors: designErrorsFromReply(body),
 				error:
 					body?.error === "duplicate"
 						? "this exact file is already in the library"
@@ -903,12 +1002,19 @@ function CabinetDesigns() {
 	async function saveBatch() {
 		if (!batch) return;
 
-		const missingPrice = batch.some((row) => !row.price.trim());
-		const missingSku = batch.some((row) => !row.sku.trim());
-		if (missingPrice || missingSku || form.rooms.length === 0) {
-			setError(
-				"Every design needs its own SKU and price, and the batch needs at least one room.",
-			);
+		const checked = batch.map((row) => ({
+			...row,
+			// A row already saved is not asked again.
+			errors: row.result === "saved" ? undefined : checkBatchRow(row),
+		}));
+		const noRoom = form.rooms.length === 0;
+		if (
+			checked.some((row) => row.errors && Object.keys(row.errors).length) ||
+			noRoom
+		) {
+			setBatch(checked);
+			setError(noRoom ? "Choose at least one room." : null);
+			focusFirstInvalid(panelRef.current);
 			return;
 		}
 
@@ -916,24 +1022,35 @@ function CabinetDesigns() {
 		setError(null);
 		setNotice(null);
 
-		const rows = [...batch];
+		const rows: BatchRow[] = batch.map((row) => ({
+			...row,
+			errors: undefined,
+		}));
 		const notes: string[] = [];
 		let saved = 0;
-		for (const [i, row] of rows.entries()) {
-			if (row.result === "saved") continue;
-			const result = await createOne(row);
-			if ("error" in result) {
-				rows[i] = { ...row, result: result.error };
-			} else {
-				rows[i] = { ...row, result: "saved" };
-				saved++;
-				if (result.meshNote) notes.push(result.meshNote);
+		let fresh: CabinetDesign[] | null;
+		try {
+			for (const [i, row] of rows.entries()) {
+				if (row.result === "saved") continue;
+				const result = await createOne(row);
+				if ("error" in result) {
+					rows[i] = { ...row, result: result.error, errors: result.errors };
+				} else {
+					rows[i] = { ...row, result: "saved" };
+					saved++;
+					if (result.meshNote) notes.push(result.meshNote);
+				}
+				setBatch([...rows]);
 			}
-			setBatch([...rows]);
+			fresh = await load();
+		} catch {
+			// Rows that already saved are in the library; the panel stays open on
+			// the rest so a retry skips them.
+			setError(NETWORK_ERROR);
+			return;
+		} finally {
+			setSaving(false);
 		}
-
-		const fresh = await load();
-		setSaving(false);
 
 		const failed = rows.filter((row) => row.result !== "saved").length;
 		if (failed > 0) {
@@ -953,18 +1070,16 @@ function CabinetDesigns() {
 	}
 
 	async function save() {
-		const failed = REQUIRED_FIELDS.filter((f) => !f.valid(form[f.key]));
-		if (failed.length > 0 || form.rooms.length === 0) {
-			setMissing(new Set(failed.map((f) => f.key)));
-			setError(
-				`Missing: ${[
-					...failed.map((f) => f.label),
-					...(form.rooms.length === 0 ? ["Room"] : []),
-				].join(", ")}`,
-			);
+		const found = checkDesignForm(form);
+		const noRoom = form.rooms.length === 0;
+		if (Object.keys(found).length > 0 || noRoom) {
+			setErrors(found);
+			// The room picker is a group of toggles, not one input a mark can sit on.
+			setError(noRoom ? "Choose at least one room." : null);
+			focusFirstInvalid(panelRef.current);
 			return;
 		}
-		setMissing(new Set());
+		setErrors({});
 		setSaving(true);
 		setError(null);
 		setNotice(null);
@@ -1009,10 +1124,7 @@ function CabinetDesigns() {
 				heightMm: Number(form.h),
 				depthMm: Number(form.d),
 				priceRm: Number(form.price),
-				weightKg:
-					form.weight.trim() === "" || !(Number(form.weight) > 0)
-						? null
-						: Number(form.weight),
+				weightKg: form.weight.trim() === "" ? null : Number(form.weight),
 				sku: form.sku,
 				description: form.description || undefined,
 				tags: form.tags || undefined,
@@ -1032,15 +1144,25 @@ function CabinetDesigns() {
 			);
 			const body = await res.json();
 			if (!res.ok) {
+				// Marks stay through the reply: the server's issues land on the same
+				// inputs the form's own check marks.
+				const marked = designErrorsFromReply(body);
+				const some = Object.keys(marked).length > 0;
+				setErrors(marked);
+				// What no input can carry — a file that is already uploaded, a
+				// refused conversion — stays in the banner.
+				// A reply with issues no input carries (rooms, description…) says so
+				// in words, even when other issues did land on inputs.
 				setError(
-					body.error === "duplicate"
-						? "This exact file is already uploaded."
-						: body.error === "sku_taken"
-							? "That SKU is already in use."
-							: body.error === "invalid_body"
-								? "Some fields are invalid — check the highlighted ones."
+					body.error === "invalid_body" && (!some || hasUnmappedIssues(body))
+						? INVALID_FIELDS_TEXT
+						: some
+							? null
+							: body.error === "duplicate"
+								? "This exact file is already uploaded."
 								: (body.message ?? body.error ?? "Could not save"),
 				);
+				if (some) focusFirstInvalid(panelRef.current);
 				setSaving(false);
 				return;
 			}
@@ -1052,8 +1174,8 @@ function CabinetDesigns() {
 				body.meshNote ? [body.meshNote] : [],
 				fresh,
 			);
-		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+		} catch {
+			setError(NETWORK_ERROR);
 		} finally {
 			setSaving(false);
 		}
@@ -1197,6 +1319,7 @@ function CabinetDesigns() {
 								tab={tab}
 								draft={base}
 								editAction={edit}
+								marks={settingMarks}
 								finishPhotos={finishPhotos}
 								onPhotosChangeAction={loadFinishPhotos}
 							/>
@@ -1250,6 +1373,13 @@ function CabinetDesigns() {
 								Upload to {ROOM_LABELS[tab]}
 							</button>
 						</div>
+
+						{loading && (
+							<p role="status" className="text-neutral-500 text-sm">
+								<Spinner />
+								Loading designs…
+							</p>
+						)}
 
 						{/* Only after a load that worked: a failed one has no rows either, and
 						    "coming soon" would hide the error above it. */}
@@ -1392,6 +1522,7 @@ function CabinetDesigns() {
 																			<button
 																				type="button"
 																				onClick={() => removeItem(d)}
+																				disabled={rowBusy !== null}
 																				className="font-medium text-red-700 text-xs underline"
 																			>
 																				Delete
@@ -1418,12 +1549,19 @@ function CabinetDesigns() {
 																			<button
 																				type="button"
 																				onClick={() => toggleArchive(d)}
-																				className={`text-xs underline ${
+																				disabled={
+																					rowBusy === `archive:${d.id}` ||
+																					rowBusy === `delete:${d.id}`
+																				}
+																				className={`text-xs underline disabled:opacity-60 ${
 																					d.status === "PUBLISHED"
 																						? "text-amber-700"
 																						: "text-green-700"
 																				}`}
 																			>
+																				{rowBusy === `archive:${d.id}` && (
+																					<Spinner />
+																				)}
 																				{d.status === "PUBLISHED"
 																					? "Archive"
 																					: "Restore"}
@@ -1433,8 +1571,15 @@ function CabinetDesigns() {
 																				onClick={() =>
 																					setConfirmingDelete(d.id)
 																				}
-																				className="text-neutral-400 text-xs underline hover:text-red-700"
+																				disabled={
+																					rowBusy === `archive:${d.id}` ||
+																					rowBusy === `delete:${d.id}`
+																				}
+																				className="text-neutral-400 text-xs underline hover:text-red-700 disabled:opacity-60"
 																			>
+																				{rowBusy === `delete:${d.id}` && (
+																					<Spinner />
+																				)}
 																				Delete
 																			</button>
 																		</div>
@@ -1484,6 +1629,7 @@ function CabinetDesigns() {
 				// half-typed form.
 				<div className="fixed inset-0 z-40 flex items-center justify-center bg-neutral-900/40 sm:p-6">
 					<div
+						ref={panelRef}
 						role="dialog"
 						aria-modal="true"
 						aria-labelledby="design-panel-title"
@@ -1627,19 +1773,22 @@ function CabinetDesigns() {
 								/>
 							) : (
 								<div className="flex flex-col gap-5">
-									<div>
-										<p className={LABEL_CLASS}>Cabinet name</p>
-										<input
-											type="text"
-											value={form.name}
-											onChange={(e) => setField("name", e.target.value)}
-											placeholder="e.g. BC 800mm"
-											className={fieldClass(missing.has("name"), "w-full")}
-										/>
-										{missing.has("name") && (
-											<p className="mt-1 text-[11px] text-red-600">Required</p>
+									<Field
+										label="Cabinet name"
+										labelClassName={LABEL_TEXT}
+										error={errors.name}
+									>
+										{(c) => (
+											<input
+												{...c}
+												type="text"
+												value={form.name}
+												onChange={(e) => setField("name", e.target.value)}
+												placeholder="e.g. BC 800mm"
+												className={fieldClass(!!c["aria-invalid"], "w-full")}
+											/>
 										)}
-									</div>
+									</Field>
 
 									<div>
 										<p className={LABEL_CLASS}>Category</p>
@@ -1663,81 +1812,104 @@ function CabinetDesigns() {
 										onChange={(rooms) => setField("rooms", rooms)}
 									/>
 
-									<div>
-										<p className={LABEL_CLASS}>Dimensions (W × H × D, mm)</p>
-										<div className="grid grid-cols-3 gap-2">
-											{(["w", "h", "d"] as const).map((key) => (
-												<div key={key}>
+									<div className="grid grid-cols-3 gap-2">
+										{(
+											[
+												["w", "Width (mm)"],
+												["h", "Height (mm)"],
+												["d", "Depth (mm)"],
+											] as const
+										).map(([key, label]) => (
+											<Field
+												key={key}
+												label={label}
+												labelClassName={LABEL_TEXT}
+												error={errors[key]}
+											>
+												{(c) => (
 													<input
+														{...c}
 														type="number"
 														value={form[key]}
 														onChange={(e) => setField(key, e.target.value)}
 														placeholder={key.toUpperCase()}
-														className={fieldClass(missing.has(key), "w-full")}
+														className={fieldClass(
+															!!c["aria-invalid"],
+															"w-full",
+														)}
 													/>
-													{missing.has(key) && (
-														<p className="mt-1 text-[11px] text-red-600">
-															Required
-														</p>
-													)}
-												</div>
-											))}
-										</div>
+												)}
+											</Field>
+										))}
 									</div>
 
 									<div className="grid grid-cols-2 gap-3">
-										<div>
-											<p className={LABEL_CLASS}>Price (RM)</p>
-											<input
-												type="number"
-												value={form.price}
-												onChange={(e) => setField("price", e.target.value)}
-												placeholder="0.00"
-												className={fieldClass(missing.has("price"), "w-full")}
-											/>
-											<p className="mt-1 text-[11px] text-neutral-400">
-												All-in, door included.
-											</p>
-											<label className="mt-3 block">
-												<span className={LABEL_CLASS}>Weight (kg)</span>
-												<input
-													type="number"
-													min={0}
-													step="0.1"
-													value={form.weight}
-													onChange={(e) => setField("weight", e.target.value)}
-													placeholder="Not weighed"
-													className={fieldClass(false, "w-full")}
-												/>
-												<span className="mt-1 block text-[11px] text-neutral-400">
-													Optional. Fills the weight on deliveries made from
-													orders — parcel partners need it.
-												</span>
-											</label>
-											{missing.has("price") && (
-												<p className="mt-1 text-[11px] text-red-600">
-													Required
-												</p>
-											)}
-										</div>
-										<div>
-											<p className={LABEL_CLASS}>SKU</p>
-											<input
-												type="text"
-												value={form.sku}
-												onChange={(e) => setField("sku", e.target.value)}
-												placeholder="ICB-0000"
-												className={fieldClass(
-													missing.has("sku"),
-													"w-full font-mono",
+										<div className="flex flex-col gap-3">
+											<Field
+												label="Price (RM)"
+												labelClassName={LABEL_TEXT}
+												hint="All-in, door included."
+												error={errors.price}
+											>
+												{(c) => (
+													<input
+														{...c}
+														type="number"
+														// A price has sen: without this 450.50 is a step
+														// mismatch and reads as invalid.
+														step="any"
+														value={form.price}
+														onChange={(e) => setField("price", e.target.value)}
+														placeholder="0.00"
+														className={fieldClass(
+															!!c["aria-invalid"],
+															"w-full",
+														)}
+													/>
 												)}
-											/>
-											{missing.has("sku") && (
-												<p className="mt-1 text-[11px] text-red-600">
-													Required
-												</p>
-											)}
+											</Field>
+											<Field
+												label="Weight (kg)"
+												labelClassName={LABEL_TEXT}
+												hint="Optional. Fills the weight on deliveries made from orders — parcel partners need it."
+												error={errors.weight}
+											>
+												{(c) => (
+													<input
+														{...c}
+														type="number"
+														step="any"
+														value={form.weight}
+														onChange={(e) => setField("weight", e.target.value)}
+														placeholder="Not weighed"
+														className={fieldClass(
+															!!c["aria-invalid"],
+															"w-full",
+														)}
+													/>
+												)}
+											</Field>
 										</div>
+										<Field
+											label="SKU"
+											labelClassName={LABEL_TEXT}
+											error={errors.sku}
+											className="self-start"
+										>
+											{(c) => (
+												<input
+													{...c}
+													type="text"
+													value={form.sku}
+													onChange={(e) => setField("sku", e.target.value)}
+													placeholder="ICB-0000"
+													className={fieldClass(
+														!!c["aria-invalid"],
+														"w-full font-mono",
+													)}
+												/>
+											)}
+										</Field>
 									</div>
 
 									<div>
@@ -1819,7 +1991,10 @@ function CabinetDesigns() {
 							)}
 
 							{error && (
-								<p className="rounded border border-red-300 bg-red-50 p-2.5 text-red-900 text-sm lg:col-span-2">
+								<p
+									role="alert"
+									className="rounded border border-red-300 bg-red-50 p-2.5 text-red-900 text-sm lg:col-span-2"
+								>
 									{error}
 								</p>
 							)}

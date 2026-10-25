@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
 import { fieldClass } from "@/components/admin/styles";
+import { Field, focusFirstInvalid } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import type {
 	NotificationChannel,
 	NotificationKind,
@@ -26,6 +28,7 @@ import {
 	type OrderStatusName,
 	rm,
 } from "../status";
+import { cancelReasonError, REASON_REQUIRED } from "./cancelReason";
 
 export type OrderView = {
 	id: string;
@@ -112,7 +115,7 @@ const ACTION_ERROR: Record<string, string> = {
 	in_production:
 		"Production has started, so this order can no longer be cancelled.",
 	has_delivery: "Cancel this order's delivery first.",
-	reason_required: "Give a reason for cancelling a paid order.",
+	reason_required: REASON_REQUIRED,
 	not_refundable:
 		"This order is no longer waiting on a refund. Reload to see where it is.",
 	manual_order:
@@ -155,6 +158,8 @@ export function OrderDetail({
 	const [error, setError] = useState<string | null>(null);
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 	const [cancelling, setCancelling] = useState(false);
+	const [reasonError, setReasonError] = useState<string | null>(null);
+	const reasonRef = useRef<HTMLDivElement>(null);
 	const [stillPending, setStillPending] = useState(false);
 
 	/** A step-up guarded action; the dialog shows whatever this returns. */
@@ -185,38 +190,50 @@ export function OrderDetail({
 		setBusy("check");
 		setError(null);
 		setStillPending(false);
-		const res = await fetchGuarded(`/api/admin/orders/${order.id}/refund`, {
-			method: "POST",
-		});
-		setBusy(null);
-		if (typeof res === "string") return setError(res);
-		const payload = await res.json().catch(() => null);
-		if (!res.ok) {
-			return setError(
-				ACTION_ERROR[payload?.error] ?? "Could not check this refund.",
-			);
+		try {
+			const res = await fetchGuarded(`/api/admin/orders/${order.id}/refund`, {
+				method: "POST",
+			});
+			if (typeof res === "string") return setError(res);
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				return setError(
+					ACTION_ERROR[payload?.error] ?? "Could not check this refund.",
+				);
+			}
+			// Still pending is an answer, but the page looks the same as before
+			// the press, so it has to be said.
+			setStillPending(payload?.state === "pending");
+			router.refresh();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		// Still pending is an answer, but the page looks the same as before
-		// the press, so it has to be said.
-		setStillPending(payload?.state === "pending");
-		router.refresh();
 	}
 
 	async function post(url: string, body: unknown, key: string) {
 		setBusy(key);
 		setError(null);
-		const res = await fetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body),
-		});
-		setBusy(null);
-		if (!res.ok) {
-			const payload = await res.json().catch(() => null);
-			setError(ACTION_ERROR[payload?.error] ?? "Could not update this order.");
-			return;
+		try {
+			const res = await fetch(url, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			if (!res.ok) {
+				const payload = await res.json().catch(() => null);
+				setError(
+					ACTION_ERROR[payload?.error] ?? "Could not update this order.",
+				);
+				return;
+			}
+			router.refresh();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		router.refresh();
 	}
 
 	const upcoming = nextStage(order.productionStage);
@@ -266,24 +283,52 @@ export function OrderDetail({
 								confirmLabel: "Cancel order",
 								danger: true,
 								stepUp: true,
-								run: () =>
-									guarded("cancel", { reason: cancelReason.trim() || null }),
+								check: () => {
+									const message = cancelReasonError(paid, cancelReason);
+									setReasonError(message);
+									if (message) focusFirstInvalid(reasonRef.current);
+									return !message;
+								},
+								run: async () => {
+									const message = await guarded("cancel", {
+										reason: cancelReason.trim() || null,
+									});
+									// The server asking for a reason is the same mark.
+									if (message === REASON_REQUIRED) {
+										setReasonError(message);
+										focusFirstInvalid(reasonRef.current);
+									}
+									return message;
+								},
 							}
 						: null
 				}
-				onClose={() => setCancelling(false)}
-				blocked={paid && cancelReason.trim() === ""}
+				onClose={() => {
+					setCancelling(false);
+					setReasonError(null);
+				}}
 			>
 				{paid && (
-					<label className="flex flex-col gap-1 text-[12px] text-neutral-500">
-						Reason for cancelling (kept on the order)
-						<input
-							className={fieldClass(false, FOCUS)}
-							maxLength={300}
-							value={cancelReason}
-							onChange={(e) => setCancelReason(e.target.value)}
-						/>
-					</label>
+					<div ref={reasonRef}>
+						<Field
+							label="Reason for cancelling (kept on the order)"
+							error={reasonError ?? undefined}
+							labelClassName="text-[12px] text-neutral-500"
+						>
+							{(c) => (
+								<input
+									{...c}
+									className={fieldClass(Boolean(reasonError), FOCUS)}
+									maxLength={300}
+									value={cancelReason}
+									onChange={(e) => {
+										setCancelReason(e.target.value);
+										setReasonError(null);
+									}}
+								/>
+							)}
+						</Field>
+					</div>
 				)}
 			</ConfirmDialog>
 			{error && (

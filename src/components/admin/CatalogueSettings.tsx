@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { ImageSlot } from "@/components/admin/ImageSlot";
 import { fieldClass } from "@/components/admin/styles";
+import { FieldMessage, INVALID } from "@/components/Field";
 import { finishSlot } from "@/lib/catalogue/siteImages";
 import { BUNDLED_FINISH_TEXTURES } from "@/lib/finishPhotos";
 import { constructionOf, ratesOf, WALL_COLOURS } from "@/lib/planner/catalogue";
@@ -27,18 +28,29 @@ type Edit = (mutate: (next: PlannerCatalogue) => void) => void;
 
 function Num({
 	label,
+	ariaLabel,
 	value,
 	onChange,
 	width = "w-24",
 	min = 0,
+	step = "any",
+	mark,
 }: {
 	label?: string;
+	/** The accessible name when there is no visible label. */
+	ariaLabel?: string;
 	value: number;
 	onChange: (n: number) => void;
 	width?: string;
 	min?: number;
+	/** "any" because most figures here (RM rates, mm) allow decimals; only the door-width ladder is whole numbers. */
+	step?: number | "any";
+	/** What the server refused this value for, until it is edited. */
+	mark?: string;
 }) {
 	const id = useId();
+	const ownInvalid = !Number.isFinite(value) || value < min;
+	const invalid = ownInvalid || !!mark;
 	return (
 		<div className="flex flex-col gap-1">
 			{label && (
@@ -49,14 +61,20 @@ function Num({
 			<input
 				id={id}
 				type="number"
+				aria-label={label ? undefined : ariaLabel}
+				aria-invalid={invalid ? true : undefined}
+				aria-describedby={invalid ? `${id}-error` : undefined}
 				value={Number.isFinite(value) ? value : ""}
 				min={min}
+				step={step}
 				onChange={(e) => onChange(Number(e.target.value))}
-				className={fieldClass(
-					!Number.isFinite(value) || value < min,
-					`${width} tabular-nums`,
-				)}
+				className={fieldClass(invalid, `${width} tabular-nums`)}
 			/>
+			{invalid && (
+				<FieldMessage id={`${id}-error`}>
+					{ownInvalid ? `Enter a number of at least ${min}.` : mark}
+				</FieldMessage>
+			)}
 		</div>
 	);
 }
@@ -67,14 +85,17 @@ function Text({
 	onChange,
 	width = "w-48",
 	placeholder,
+	mark,
 }: {
 	label?: string;
 	value: string;
 	onChange: (v: string) => void;
 	width?: string;
 	placeholder?: string;
+	mark?: string;
 }) {
 	const id = useId();
+	const invalid = !value.trim() || !!mark;
 	return (
 		<div className="flex flex-col gap-1">
 			{label && (
@@ -87,9 +108,16 @@ function Text({
 				value={value}
 				placeholder={placeholder}
 				aria-label={label ? undefined : placeholder}
+				aria-invalid={invalid ? true : undefined}
+				aria-describedby={invalid ? `${id}-error` : undefined}
 				onChange={(e) => onChange(e.target.value)}
-				className={fieldClass(!value.trim(), width)}
+				className={fieldClass(invalid, width)}
 			/>
+			{invalid && (
+				<FieldMessage id={`${id}-error`}>
+					{value.trim() ? mark : "Enter a name."}
+				</FieldMessage>
+			)}
 		</div>
 	);
 }
@@ -111,34 +139,49 @@ function HexField({
 	value,
 	label,
 	onChange,
+	mark,
 }: {
 	value: string;
 	label: string;
 	onChange: (hex: string) => void;
+	mark?: string;
 }) {
 	const [text, setText] = useState(value);
 	useEffect(() => setText(value), [value]);
-	const valid = HEX.test(text);
+	const valid = HEX.test(text) && !mark;
+	const id = useId();
 	return (
-		<input
-			value={text}
-			aria-label={`${label} hex colour`}
-			spellCheck={false}
-			placeholder="#cc9168"
-			onChange={(e) => {
-				const typed = e.target.value.trim();
-				const hex = typed === "" || typed.startsWith("#") ? typed : `#${typed}`;
-				setText(hex);
-				if (HEX.test(hex)) onChange(hex.toLowerCase());
-			}}
-			// Red rather than silently ignored: the colour on screen is still the
-			// last good one, so without this the field looks accepted and is not.
-			className={`w-24 rounded border px-2 py-1.5 font-mono text-[12px] ${
-				valid
-					? "border-neutral-300 text-neutral-500"
-					: "border-red-400 text-red-600"
-			}`}
-		/>
+		<div className="flex flex-col gap-1">
+			<input
+				value={text}
+				aria-label={`${label} hex colour`}
+				aria-invalid={valid ? undefined : true}
+				aria-describedby={valid ? undefined : `${id}-error`}
+				spellCheck={false}
+				placeholder="#cc9168"
+				onChange={(e) => {
+					const typed = e.target.value.trim();
+					const hex =
+						typed === "" || typed.startsWith("#") ? typed : `#${typed}`;
+					setText(hex);
+					if (HEX.test(hex)) onChange(hex.toLowerCase());
+				}}
+				// Marked rather than silently ignored: the colour on screen is still
+				// the last good one, so without this the field looks accepted and is
+				// not. The valid border lives only in the valid branch, so it cannot
+				// outrank the invalid one.
+				className={`w-24 rounded border px-2 py-1.5 font-mono text-[12px] ${
+					valid
+						? "border-neutral-300 text-neutral-500"
+						: `${INVALID} text-danger`
+				}`}
+			/>
+			{!valid && (
+				<FieldMessage id={`${id}-error`}>
+					Enter a colour like #1f5138.
+				</FieldMessage>
+			)}
+		</div>
 	);
 }
 
@@ -181,11 +224,14 @@ export function CatalogueSettings({
 	tab,
 	draft,
 	editAction: edit,
+	marks = {},
 	finishPhotos,
 	onPhotosChangeAction,
 }: {
 	tab: SettingsTab;
 	draft: PlannerCatalogue;
+	/** Settings the server refused at publish, by catalogue path (`rates.deliveryFlatRm`). */
+	marks?: Record<string, string>;
 	/** Applies a change to `draft`; the page owns the state. */
 	editAction: Edit;
 	/** `finish:<id>` → uploaded photo URL. Live the moment it is dropped, so it
@@ -193,6 +239,7 @@ export function CatalogueSettings({
 	finishPhotos: Record<string, string>;
 	onPhotosChangeAction: () => void;
 }) {
+	const m = (...path: (string | number)[]) => marks[path.join(".")];
 	if (tab === "doors") {
 		return (
 			<div className="flex flex-col gap-3">
@@ -213,8 +260,11 @@ export function CatalogueSettings({
 								className="flex items-center gap-1"
 							>
 								<Num
+									ariaLabel={`Door width ${i + 1}`}
+									mark={m("doorWidthLadderMm", i)}
 									value={mm}
 									min={1}
+									step={1}
 									width="w-20"
 									onChange={(v) =>
 										edit((n) => {
@@ -271,6 +321,7 @@ export function CatalogueSettings({
 							<Text
 								label="Name"
 								width="w-40"
+								mark={m("doorStyles", di, "label")}
 								value={style.label}
 								onChange={(v) =>
 									edit((n) => {
@@ -314,6 +365,7 @@ export function CatalogueSettings({
 										key={`${style.id}-${mm}`}
 										label={`${mm}mm`}
 										width="w-20"
+										mark={m("doorStyles", di, "priceRmBySizeMm", String(mm))}
 										value={style.priceRmBySizeMm[String(mm)] ?? 0}
 										onChange={(v) =>
 											edit((n) => {
@@ -408,6 +460,7 @@ export function CatalogueSettings({
 									<Text
 										width="w-52"
 										placeholder="Name"
+										mark={m("finishes", i, "label")}
 										value={finish.label}
 										onChange={(v) =>
 											edit((n) => {
@@ -418,6 +471,7 @@ export function CatalogueSettings({
 									<HexField
 										value={finish.hex}
 										label={finish.label}
+										mark={m("finishes", i, "hex")}
 										onChange={(hex) =>
 											edit((n) => {
 												n.finishes[i].hex = hex;
@@ -489,6 +543,7 @@ export function CatalogueSettings({
 								<Text
 									width="w-52"
 									placeholder="Name"
+									mark={m("wallColours", i, "label")}
 									value={colour.label}
 									onChange={(v) =>
 										editWallColours((list) => {
@@ -499,6 +554,7 @@ export function CatalogueSettings({
 								<HexField
 									value={colour.hex}
 									label={colour.label}
+									mark={m("wallColours", i, "hex")}
 									onChange={(hex) =>
 										editWallColours((list) => {
 											list[i].hex = hex;
@@ -555,6 +611,7 @@ export function CatalogueSettings({
 				<div className="flex flex-wrap gap-4">
 					<Num
 						label="Worktop RM per running foot"
+						mark={m("rates", "worktopRmPerFt")}
 						value={ratesOf(draft).worktopRmPerFt}
 						onChange={(v) =>
 							edit((n) => {
@@ -564,6 +621,7 @@ export function CatalogueSettings({
 					/>
 					<Num
 						label="Delivery RM per order"
+						mark={m("rates", "deliveryFlatRm")}
 						value={ratesOf(draft).deliveryFlatRm}
 						onChange={(v) =>
 							edit((n) => {
@@ -587,6 +645,7 @@ export function CatalogueSettings({
 						<Num
 							key={key}
 							label={label}
+							mark={m("rates", key)}
 							value={ratesOf(draft)[key]}
 							onChange={(v) =>
 								edit((n) => {
@@ -618,6 +677,7 @@ export function CatalogueSettings({
 						<Num
 							key={key}
 							label={label}
+							mark={m("construction", key)}
 							value={construction[key]}
 							min={key === "plinthHeightMm" ? 0 : 1}
 							onChange={(v) =>
@@ -639,6 +699,7 @@ export function CatalogueSettings({
 						<Num
 							key={room.id}
 							label={`${room.label} mm`}
+							mark={m("roomTypes", ri, "defaultWallWidthMm")}
 							value={room.defaultWallWidthMm}
 							min={1}
 							onChange={(v) =>

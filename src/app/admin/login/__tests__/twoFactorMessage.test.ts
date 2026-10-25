@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { twoFactorMessage } from "../twoFactorMessage";
+import { isWrongCode, twoFactorMessage } from "../twoFactorMessage";
 
 describe("twoFactorMessage", () => {
 	it("has one message for any wrong code", () => {
@@ -24,5 +24,15 @@ describe("twoFactorMessage", () => {
 			"Too many attempts. Wait a few minutes, then sign in again";
 		expect(twoFactorMessage(undefined, 429)).toBe(throttled);
 		expect(twoFactorMessage("INVALID_CODE", 429)).toBe(throttled);
+	});
+});
+
+describe("isWrongCode", () => {
+	it("is true only for a code that did not match", () => {
+		expect(isWrongCode("INVALID_CODE", 400)).toBe(true);
+		expect(isWrongCode(undefined, 401)).toBe(true);
+		expect(isWrongCode(undefined, 429)).toBe(false);
+		expect(isWrongCode("ACCOUNT_TEMPORARILY_LOCKED", 403)).toBe(false);
+		expect(isWrongCode("INVALID_TWO_FACTOR_COOKIE", 401)).toBe(false);
 	});
 });

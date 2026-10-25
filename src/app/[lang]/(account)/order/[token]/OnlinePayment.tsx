@@ -29,6 +29,7 @@ export function OnlinePayment({
 	errorText,
 	settlingText,
 	loadingText,
+	networkText,
 	locale,
 }: {
 	token: string;
@@ -37,6 +38,8 @@ export function OnlinePayment({
 	settlingText: string;
 	/** Shown while the payment step is being opened. */
 	loadingText: string;
+	/** Shown when a request never got an answer. */
+	networkText: string;
 	locale: Locale;
 }) {
 	const [start, setStart] = useState<PaymentStart | null>(null);
@@ -44,6 +47,16 @@ export function OnlinePayment({
 	const [busy, setBusy] = useState(false);
 	const [settling, setSettling] = useState(false);
 	const payApi = useRef<StripePayApi | null>(null);
+
+	// Back from the gateway can restore this page from the browser's cache with
+	// the button still busy; the spinner is only right while the page unloads.
+	useEffect(() => {
+		const onShow = (event: PageTransitionEvent) => {
+			if (event.persisted) setBusy(false);
+		};
+		window.addEventListener("pageshow", onShow);
+		return () => window.removeEventListener("pageshow", onShow);
+	}, []);
 
 	useEffect(() => {
 		fetch(`/api/orders/${token}/pay`, { method: "POST" })
@@ -57,17 +70,23 @@ export function OnlinePayment({
 		if (!payApi.current) return;
 		setBusy(true);
 		setError(null);
-		const message = await payApi.current.confirm({
-			returnUrl: window.location.origin + window.location.pathname,
-		});
-		setBusy(false);
-		setError(message);
+		try {
+			const message = await payApi.current.confirm({
+				returnUrl: window.location.origin + window.location.pathname,
+			});
+			setError(message);
+		} catch {
+			setError(networkText);
+		} finally {
+			setBusy(false);
+		}
 	}
 
 	if (settling) {
 		return (
 			<p role="status" className="text-[#404040] text-[13px] leading-[19px]">
 				<RefreshWhileSettling />
+				<Spinner />
 				{settlingText}
 			</p>
 		);
@@ -110,14 +129,20 @@ export function OnlinePayment({
 				</div>
 			)}
 			{start?.kind === "redirect" && (
-				<form action={start.url} method={start.method}>
+				<form
+					action={start.url}
+					method={start.method}
+					onSubmit={() => setBusy(true)}
+				>
 					{Object.entries(start.fields).map(([name, value]) => (
 						<input key={name} type="hidden" name={name} value={value} />
 					))}
 					<button
 						type="submit"
-						className="flex min-h-12 w-full items-center justify-center rounded-[10px] bg-neutral-900 px-3 font-semibold text-[14px] text-white hover:bg-neutral-800"
+						disabled={busy}
+						className="flex min-h-12 w-full items-center justify-center rounded-[10px] bg-neutral-900 px-3 font-semibold text-[14px] text-white hover:bg-neutral-800 disabled:opacity-50"
 					>
+						{busy && <Spinner />}
 						{payLabel}
 					</button>
 				</form>
