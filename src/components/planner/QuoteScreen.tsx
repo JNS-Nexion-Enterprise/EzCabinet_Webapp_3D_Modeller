@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { FieldMessage, INVALID } from "@/components/Field";
+import { FieldMessage, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
@@ -316,7 +316,8 @@ export function QuoteScreen({
 				setBusy(false);
 				if (body?.error === "bad_phone") {
 					setFieldErrors({ phone: t.quote.errorPhone });
-					(form.elements.namedItem("phone") as HTMLElement | null)?.focus();
+					// Not .focus() now: the fieldset is still disabled until this render.
+					focusFirstInvalid(form);
 					return;
 				}
 				// The server's checks are stricter than ours in places (its email
@@ -337,7 +338,7 @@ export function QuoteScreen({
 							refused.map((key) => [key, t.quote[SERVER_FIELD_COPY[key]]]),
 						),
 					);
-					(form.elements.namedItem(refused[0]) as HTMLElement | null)?.focus();
+					focusFirstInvalid(form);
 					return;
 				}
 				setError(
