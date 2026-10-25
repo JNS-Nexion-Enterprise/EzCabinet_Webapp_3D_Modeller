@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
@@ -40,7 +41,7 @@ const FIELD =
 	// 16px below 760 (not `sm`, which would leave 640-759 at 14): iOS Safari zooms the page on focusing anything smaller.
 	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 max-[760px]:min-h-[50px] max-[760px]:rounded-[10px] max-[760px]:px-3.5 text-base text-[#171717] min-[760px]:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
 const fieldClass = (error: string | undefined) =>
-	`${FIELD} ${error ? "border-[1.5px] border-[#b42318]" : "border border-[#d4d4d4]"}`;
+	`${FIELD} ${error ? `border ${INVALID}` : "border border-[#d4d4d4]"}`;
 
 /** This page, as somewhere to come back to: `PlannerApp` reopens the quote
  * for `#quote` rather than starting again at the room picker. */
