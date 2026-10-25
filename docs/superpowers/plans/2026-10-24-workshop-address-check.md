@@ -77,16 +77,26 @@ describe("oneLine", () => {
 });
 
 describe("pinStatus", () => {
-	const found = { formattedAddress: "Jalan Industri, 43800 Dengkil", lat: 2.98, lng: 101.86 };
+	const found = {
+		formattedAddress: "Jalan Industri, 43800 Dengkil",
+		lat: 2.98,
+		lng: 101.86,
+	};
 	const pin = { ok: true as const, lat: 3.1, lng: 101.6 };
 	it("shows what Google found", () =>
 		expect(pinStatus(found, false, pin)).toEqual({ kind: "found", ...found }));
 	it("asks for a check when the address changed and nothing confirms it", () =>
 		expect(pinStatus(null, true, pin)).toEqual({ kind: "unchecked" }));
 	it("falls back to the pin in the box once found is cleared", () =>
-		expect(pinStatus(null, false, pin)).toEqual({ kind: "pinned", lat: 3.1, lng: 101.6 }));
+		expect(pinStatus(null, false, pin)).toEqual({
+			kind: "pinned",
+			lat: 3.1,
+			lng: 101.6,
+		}));
 	it("says nothing when the pin box cannot be read", () =>
-		expect(pinStatus(null, false, { ok: false, message: "x" })).toEqual({ kind: "none" }));
+		expect(pinStatus(null, false, { ok: false, message: "x" })).toEqual({
+			kind: "none",
+		}));
 });
 ```
 
@@ -94,16 +104,13 @@ describe("pinStatus", () => {
 
 Run: `pnpm vitest run src/app/admin/company/__tests__/form.test.ts`
 Expected: FAIL, with `oneLine` / `pinStatus` not exported.
-
 - [ ] **Step 3: Implement both helpers in `form.ts`**
 
-`oneLine`: replace every run of optional whitespace, an optional comma, optional whitespace, one or more `\r`/`\n`, then whitespace, with `", "`. That is one regex, `/\s*,?\s*[\r\n]+\s*/g`. Don't trim: it runs on every keystroke. `pinStatus`: check `found`, then `needsCheck`, then `pin.ok`, in that order; the `found` branch copies only `formattedAddress`, `lat` and `lng`, since the caller passes a whole `GeocodeResult`. Give each a one-line doc comment that says *why*, in the file's own style. The `oneLine` comment should mention the text input deleting line breaks and the address being stored as one line.
-
+`oneLine`: replace every run of optional whitespace, an optional comma, optional whitespace, one or more `\r`/`\n`, then whitespace, with `", "`. That is one regex, `/\s*,?\s*[\r\n]+\s*/g`. Don't trim: it runs on every keystroke. `pinStatus`: check `found`, then `needsCheck`, then `pin.ok`, in that order; the `found` branch copies only `formattedAddress`, `lat` and `lng`, since the caller passes a whole `GeocodeResult`. Give each a one-line doc comment that says _why_, in the file's own style. The `oneLine` comment should mention the text input deleting line breaks and the address being stored as one line.
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `pnpm vitest run src/app/admin/company/__tests__/form.test.ts`
 Expected: PASS, with the existing `readPin` / `placeFields` / `addressNeedsPin` tests still green.
-
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -167,7 +174,6 @@ git commit -m "feat(company): one-line a pasted address and say what the pin is"
 
 Run: `pnpm typecheck && pnpm lint && pnpm vitest run src/app/admin/company`
 Expected: all three exit 0.
-
 - [ ] **Step 5: Check it in the browser**
 
 Run `pnpm dev` with `AUTH_ENABLED="false"` in `.env.local` and the existing `GOOGLE_GEOCODING_API_KEY`, then open `/admin/company`. Each line is one check:
