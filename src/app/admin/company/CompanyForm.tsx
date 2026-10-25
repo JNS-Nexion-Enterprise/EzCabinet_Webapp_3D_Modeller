@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { type ReactNode, useId, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
+import { Done, Spinner } from "@/components/Spinner";
+import { DONE_MS, NETWORK_ERROR } from "@/components/useAction";
 import {
 	type CompanyDetails,
 	companyDetailsSchema,
@@ -146,6 +148,9 @@ export function CompanyForm({
 	// The pin box is for when Google cannot help, so it opens by itself then.
 	const [pinByHand, setPinByHand] = useState(geocoderFault !== null);
 	const [saving, setSaving] = useState(false);
+	// The Save button's check mark: a save that wrote leaves nothing else on the
+	// button to say so, and the status line is easy to miss below it.
+	const [justSaved, setJustSaved] = useState(false);
 	const [message, setMessage] = useState<string | null>(null);
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 	// Moves on with each save, so this tab is never stale against itself.
@@ -230,6 +235,8 @@ export function CompanyForm({
 		setV({ ...details, ssmNumber: details.ssmNumber ?? "" });
 		setPinConfirmed(true);
 		setPinNote(null);
+		setJustSaved(true);
+		setTimeout(() => setJustSaved(false), DONE_MS);
 		setMessage(
 			repointed > 0
 				? `Saved. ${repointed} ${repointed === 1 ? "delivery now leaves" : "deliveries now leave"} from the new address.`
@@ -262,8 +269,14 @@ export function CompanyForm({
 		const details = parsed.data;
 
 		setSaving(true);
-		const out = await post(details, false);
-		setSaving(false);
+		let out: Awaited<ReturnType<typeof post>>;
+		try {
+			out = await post(details, false);
+		} catch {
+			return setMessage(NETWORK_ERROR);
+		} finally {
+			setSaving(false);
+		}
 		if ("message" in out) return setMessage(out.message);
 		if ("repointed" in out) return saved(details, out.repointed);
 
@@ -353,6 +366,7 @@ export function CompanyForm({
 								disabled={finding || v.address.trim() === ""}
 								className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 text-[13px] hover:bg-neutral-50 disabled:opacity-50"
 							>
+								{finding && <Spinner />}
 								{finding ? "Checking…" : "Check address"}
 							</button>
 						</div>
@@ -486,7 +500,9 @@ export function CompanyForm({
 					disabled={saving}
 					className="min-h-10 rounded-full bg-[#1f5138] px-5 py-[11px] font-semibold text-[13px] text-white hover:bg-[#193f2c] disabled:opacity-50"
 				>
-					{saving ? "Saving…" : "Save"}
+					{saving && <Spinner />}
+					{justSaved && !saving && <Done />}
+					{saving ? "Saving…" : justSaved ? "Saved" : "Save"}
 				</button>
 				{message && (
 					<p role="status" className="text-[13px]">

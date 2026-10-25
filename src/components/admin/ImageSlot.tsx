@@ -2,6 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import {
 	SITE_IMAGE_CONTENT_TYPES,
 	SITE_IMAGE_MAX_BYTES,
@@ -20,6 +22,7 @@ import {
 type State =
 	| { status: "idle" }
 	| { status: "uploading" }
+	| { status: "removing" }
 	| { status: "error"; message: string };
 
 export function ImageSlot({
@@ -56,7 +59,12 @@ export function ImageSlot({
 	const [state, setState] = useState<State>({ status: "idle" });
 	const [dragging, setDragging] = useState(false);
 
+	const uploading = state.status === "uploading";
+	const removing = state.status === "removing";
+
 	async function send(file: File) {
+		// A second photo mid-upload would race the first for the same slot.
+		if (uploading || removing) return;
 		if (!SITE_IMAGE_CONTENT_TYPES.includes(file.type)) {
 			setState({ status: "error", message: "JPG, PNG, WebP or AVIF only" });
 			return;
@@ -105,13 +113,27 @@ export function ImageSlot({
 	}
 
 	async function clear() {
-		setState({ status: "uploading" });
-		await fetch(`/api/admin/site-images?key=${encodeURIComponent(slotKey)}`, {
-			method: "DELETE",
-		});
-		setState({ status: "idle" });
-		router.refresh();
-		onChangeAction?.();
+		if (uploading || removing) return;
+		setState({ status: "removing" });
+		try {
+			const res = await fetch(
+				`/api/admin/site-images?key=${encodeURIComponent(slotKey)}`,
+				{ method: "DELETE" },
+			);
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				setState({
+					status: "error",
+					message: body?.error ?? "Could not remove",
+				});
+				return;
+			}
+			setState({ status: "idle" });
+			router.refresh();
+			onChangeAction?.();
+		} catch {
+			setState({ status: "error", message: NETWORK_ERROR });
+		}
 	}
 
 	return (
@@ -149,12 +171,20 @@ export function ImageSlot({
 					/>
 				) : (
 					<span className="px-3 text-[12px] text-neutral-400">
-						{state.status === "uploading" ? "Uploading…" : placeholder}
+						{uploading ? (
+							<>
+								<Spinner />
+								Uploading…
+							</>
+						) : (
+							placeholder
+						)}
 					</span>
 				)}
 
-				{url && state.status === "uploading" && (
+				{url && uploading && (
 					<span className="absolute inset-0 flex items-center justify-center bg-white/70 text-[12px] text-neutral-600">
+						<Spinner />
 						Uploading…
 					</span>
 				)}
@@ -165,6 +195,7 @@ export function ImageSlot({
 				type="file"
 				accept={SITE_IMAGE_CONTENT_TYPES.join(",")}
 				className="sr-only"
+				disabled={uploading || removing}
 				onChange={(e) => {
 					const file = e.target.files?.[0];
 					if (file) send(file);
@@ -178,8 +209,10 @@ export function ImageSlot({
 					<button
 						type="button"
 						onClick={clear}
-						className="text-[11px] text-neutral-400 hover:text-red-600"
+						disabled={uploading || removing}
+						className="text-[11px] text-neutral-400 hover:text-red-600 disabled:opacity-60"
 					>
+						{removing && <Spinner />}
 						Remove
 					</button>
 				)}

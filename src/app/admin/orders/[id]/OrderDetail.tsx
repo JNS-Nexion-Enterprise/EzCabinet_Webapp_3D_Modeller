@@ -7,6 +7,7 @@ import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
 import { fieldClass } from "@/components/admin/styles";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import type {
 	NotificationChannel,
 	NotificationKind,
@@ -185,38 +186,50 @@ export function OrderDetail({
 		setBusy("check");
 		setError(null);
 		setStillPending(false);
-		const res = await fetchGuarded(`/api/admin/orders/${order.id}/refund`, {
-			method: "POST",
-		});
-		setBusy(null);
-		if (typeof res === "string") return setError(res);
-		const payload = await res.json().catch(() => null);
-		if (!res.ok) {
-			return setError(
-				ACTION_ERROR[payload?.error] ?? "Could not check this refund.",
-			);
+		try {
+			const res = await fetchGuarded(`/api/admin/orders/${order.id}/refund`, {
+				method: "POST",
+			});
+			if (typeof res === "string") return setError(res);
+			const payload = await res.json().catch(() => null);
+			if (!res.ok) {
+				return setError(
+					ACTION_ERROR[payload?.error] ?? "Could not check this refund.",
+				);
+			}
+			// Still pending is an answer, but the page looks the same as before
+			// the press, so it has to be said.
+			setStillPending(payload?.state === "pending");
+			router.refresh();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		// Still pending is an answer, but the page looks the same as before
-		// the press, so it has to be said.
-		setStillPending(payload?.state === "pending");
-		router.refresh();
 	}
 
 	async function post(url: string, body: unknown, key: string) {
 		setBusy(key);
 		setError(null);
-		const res = await fetch(url, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(body),
-		});
-		setBusy(null);
-		if (!res.ok) {
-			const payload = await res.json().catch(() => null);
-			setError(ACTION_ERROR[payload?.error] ?? "Could not update this order.");
-			return;
+		try {
+			const res = await fetch(url, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(body),
+			});
+			if (!res.ok) {
+				const payload = await res.json().catch(() => null);
+				setError(
+					ACTION_ERROR[payload?.error] ?? "Could not update this order.",
+				);
+				return;
+			}
+			router.refresh();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		router.refresh();
 	}
 
 	const upcoming = nextStage(order.productionStage);

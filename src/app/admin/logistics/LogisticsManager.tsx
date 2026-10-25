@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { chipClass, fieldClass } from "@/components/admin/styles";
+import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR, useAction } from "@/components/useAction";
 import { LABEL } from "@/lib/logistics/carriers";
 import { pinState } from "@/lib/logistics/coords";
 import {
@@ -79,7 +81,7 @@ export function LogisticsManager({
 		setRows(body.deliveries ?? []);
 	}, [router]);
 
-	async function save(state: FormState) {
+	const saving = useAction(async (state: FormState) => {
 		setError(null);
 		const res = await fetch(
 			state.id === null
@@ -94,7 +96,7 @@ export function LogisticsManager({
 		const body = await res.json().catch(() => null);
 		if (!res.ok) {
 			setError(messageFor(body?.error, "Could not save this delivery"));
-			return;
+			return false;
 		}
 		setForm(null);
 		// Straight to the job: comparing partners is the next thing anyone does
@@ -104,7 +106,7 @@ export function LogisticsManager({
 			return;
 		}
 		await load();
-	}
+	});
 
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 
@@ -123,9 +125,9 @@ export function LogisticsManager({
 	return (
 		<div className="flex flex-col gap-6">
 			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
-			{error && (
+			{(error || saving.failed) && (
 				<p className="rounded-lg bg-red-50 px-3 py-2 text-[13px] text-red-700">
-					{error}
+					{error ?? NETWORK_ERROR}
 				</p>
 			)}
 
@@ -190,7 +192,9 @@ export function LogisticsManager({
 				<DeliveryForm
 					state={form}
 					onChange={setForm}
-					onSubmit={() => save(form)}
+					// Success navigates away, so the spinner stays until the page changes.
+					saving={saving.busy || saving.done}
+					onSubmit={() => saving.run(form)}
 				/>
 			)}
 
@@ -282,10 +286,12 @@ function DeliveryForm({
 	state,
 	onChange,
 	onSubmit,
+	saving,
 }: {
 	state: FormState;
 	onChange: (next: FormState) => void;
 	onSubmit: () => void;
+	saving: boolean;
 }) {
 	const items = state.items.filter((i) => i.label.trim() !== "");
 	const suggestion = suggestVehicle(items);
@@ -463,9 +469,15 @@ function DeliveryForm({
 
 			<button
 				type="submit"
-				className="self-start rounded-full bg-neutral-900 px-4 py-2 text-[13px] text-white"
+				disabled={saving}
+				className="self-start rounded-full bg-neutral-900 px-4 py-2 text-[13px] text-white disabled:opacity-60"
 			>
-				{state.id === null ? "Save delivery" : "Save changes"}
+				{saving && <Spinner />}
+				{saving
+					? "Saving…"
+					: state.id === null
+						? "Save delivery"
+						: "Save changes"}
 			</button>
 		</form>
 	);

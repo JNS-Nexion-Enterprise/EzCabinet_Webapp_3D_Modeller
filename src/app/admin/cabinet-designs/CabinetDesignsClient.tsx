@@ -10,6 +10,7 @@ import {
 } from "@/components/admin/CatalogueSettings";
 import { chipClass, fieldClass } from "@/components/admin/styles";
 import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { buildCatalogue } from "@/lib/catalogue/buildCatalogue";
 import {
 	CATEGORIES,
@@ -448,6 +449,9 @@ function CabinetDesigns() {
 	const [batch, setBatch] = useState<BatchRow[] | null>(null);
 	/** Id of the row whose Delete is armed, so only one row is ever primed. */
 	const [confirmingDelete, setConfirmingDelete] = useState<string | null>(null);
+	// "archive:<id>" or "delete:<id>" while that row's request is in flight, so
+	// the row's own button spins and nothing else on the row can be pressed.
+	const [rowBusy, setRowBusy] = useState<string | null>(null);
 
 	/** The last thing that happened, shown until the next action. */
 	const [notice, setNotice] = useState<string | null>(null);
@@ -803,17 +807,33 @@ function CabinetDesigns() {
 	async function toggleArchive(d: CabinetDesign) {
 		const status: Status = d.status === "PUBLISHED" ? "ARCHIVED" : "PUBLISHED";
 		setNotice(null);
-		await fetch(`/api/admin/cabinet-designs/${d.id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ status }),
-		});
-		const fresh = await load();
-		offerPublish(
-			`${d.name} ${status === "ARCHIVED" ? "archived" : "restored"}`,
-			[],
-			fresh,
-		);
+		setError(null);
+		setRowBusy(`archive:${d.id}`);
+		try {
+			const res = await fetch(`/api/admin/cabinet-designs/${d.id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ status }),
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				setError(
+					body?.message ??
+						`Could not ${status === "ARCHIVED" ? "archive" : "restore"} ${d.name}.`,
+				);
+				return;
+			}
+			const fresh = await load();
+			offerPublish(
+				`${d.name} ${status === "ARCHIVED" ? "archived" : "restored"}`,
+				[],
+				fresh,
+			);
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setRowBusy(null);
+		}
 	}
 
 	/**
@@ -827,16 +847,23 @@ function CabinetDesigns() {
 		setConfirmingDelete(null);
 		setNotice(null);
 		setError(null);
-		const res = await fetch(`/api/admin/cabinet-designs/${d.id}`, {
-			method: "DELETE",
-		});
-		if (!res.ok) {
-			const body = await res.json().catch(() => null);
-			setError(body?.message ?? `Could not delete ${d.name}.`);
-			return;
+		setRowBusy(`delete:${d.id}`);
+		try {
+			const res = await fetch(`/api/admin/cabinet-designs/${d.id}`, {
+				method: "DELETE",
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				setError(body?.message ?? `Could not delete ${d.name}.`);
+				return;
+			}
+			setNotice(`${d.name} deleted.`);
+			load();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setRowBusy(null);
 		}
-		setNotice(`${d.name} deleted.`);
-		load();
 	}
 
 	/** Uploads one file and creates its row. Per row, because one bad file in a
@@ -919,21 +946,29 @@ function CabinetDesigns() {
 		const rows = [...batch];
 		const notes: string[] = [];
 		let saved = 0;
-		for (const [i, row] of rows.entries()) {
-			if (row.result === "saved") continue;
-			const result = await createOne(row);
-			if ("error" in result) {
-				rows[i] = { ...row, result: result.error };
-			} else {
-				rows[i] = { ...row, result: "saved" };
-				saved++;
-				if (result.meshNote) notes.push(result.meshNote);
+		let fresh: CabinetDesign[] | null;
+		try {
+			for (const [i, row] of rows.entries()) {
+				if (row.result === "saved") continue;
+				const result = await createOne(row);
+				if ("error" in result) {
+					rows[i] = { ...row, result: result.error };
+				} else {
+					rows[i] = { ...row, result: "saved" };
+					saved++;
+					if (result.meshNote) notes.push(result.meshNote);
+				}
+				setBatch([...rows]);
 			}
-			setBatch([...rows]);
+			fresh = await load();
+		} catch {
+			// Rows that already saved are in the library; the panel stays open on
+			// the rest so a retry skips them.
+			setError(NETWORK_ERROR);
+			return;
+		} finally {
+			setSaving(false);
 		}
-
-		const fresh = await load();
-		setSaving(false);
 
 		const failed = rows.filter((row) => row.result !== "saved").length;
 		if (failed > 0) {
@@ -1392,6 +1427,7 @@ function CabinetDesigns() {
 																			<button
 																				type="button"
 																				onClick={() => removeItem(d)}
+																				disabled={rowBusy !== null}
 																				className="font-medium text-red-700 text-xs underline"
 																			>
 																				Delete
@@ -1418,12 +1454,19 @@ function CabinetDesigns() {
 																			<button
 																				type="button"
 																				onClick={() => toggleArchive(d)}
-																				className={`text-xs underline ${
+																				disabled={
+																					rowBusy === `archive:${d.id}` ||
+																					rowBusy === `delete:${d.id}`
+																				}
+																				className={`text-xs underline disabled:opacity-60 ${
 																					d.status === "PUBLISHED"
 																						? "text-amber-700"
 																						: "text-green-700"
 																				}`}
 																			>
+																				{rowBusy === `archive:${d.id}` && (
+																					<Spinner />
+																				)}
 																				{d.status === "PUBLISHED"
 																					? "Archive"
 																					: "Restore"}
@@ -1433,8 +1476,15 @@ function CabinetDesigns() {
 																				onClick={() =>
 																					setConfirmingDelete(d.id)
 																				}
-																				className="text-neutral-400 text-xs underline hover:text-red-700"
+																				disabled={
+																					rowBusy === `archive:${d.id}` ||
+																					rowBusy === `delete:${d.id}`
+																				}
+																				className="text-neutral-400 text-xs underline hover:text-red-700 disabled:opacity-60"
 																			>
+																				{rowBusy === `delete:${d.id}` && (
+																					<Spinner />
+																				)}
 																				Delete
 																			</button>
 																		</div>

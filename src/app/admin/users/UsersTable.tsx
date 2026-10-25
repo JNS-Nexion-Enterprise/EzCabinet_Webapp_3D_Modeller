@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
+import { Spinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { ROLE_LABELS, type Role, STAFF_ROLES } from "@/lib/auth/permissions";
 import { initialsOf } from "@/lib/initials";
 import { shortTime } from "../logistics/time";
@@ -77,23 +79,28 @@ export function UsersTable({
 	async function toggleDisabled(id: string, disabled: boolean) {
 		setError(null);
 		setBusyId(id);
-		const res = await fetchGuarded(`/api/admin/users/${id}`, {
-			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ disabled }),
-		});
-		setBusyId(null);
-		if (typeof res === "string") return setError(res);
-		if (!res.ok) {
-			setError(
-				res.status === 409
-					? "You can't disable yourself."
-					: "Could not update that account.",
-			);
-			return;
+		try {
+			const res = await fetchGuarded(`/api/admin/users/${id}`, {
+				method: "PATCH",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ disabled }),
+			});
+			if (typeof res === "string") return setError(res);
+			if (!res.ok) {
+				setError(
+					res.status === 409
+						? "You can't disable yourself."
+						: "Could not update that account.",
+				);
+				return;
+			}
+			await reload(query, scope);
+			router.refresh();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusyId(null);
 		}
-		await reload(query, scope);
-		router.refresh();
 	}
 
 	/**
@@ -437,6 +444,7 @@ export function UsersTable({
 											onClick={() => toggleDisabled(user.id, !user.disabled)}
 											className="min-h-9 rounded-lg border border-[#d4d4d4] px-[11px] text-[#404040] text-[12px] hover:bg-[#f4f3f1] disabled:cursor-not-allowed disabled:opacity-50"
 										>
+											{busyId === user.id && <Spinner />}
 											{user.disabled ? "Restore" : "Suspend"}
 										</button>
 									)}

@@ -37,8 +37,8 @@ export default function AdminLoginPage() {
 			email,
 			password,
 		});
-		setBusy(false);
 		if (failure) {
+			setBusy(false);
 			// Deliberately one message for a wrong email and a wrong password:
 			// telling them apart tells an attacker which staff emails are real.
 			setError("Wrong email or password");
@@ -47,10 +47,13 @@ export default function AdminLoginPage() {
 		// The password was right but no session exists yet: the plugin holds
 		// the sign-in in a short-lived cookie until a code verifies.
 		if (data && "twoFactorRedirect" in data && data.twoFactorRedirect) {
+			setBusy(false);
 			setPassword("");
 			setStep("code");
 			return;
 		}
+		// Busy stays set: the route is changing, and the button must not look
+		// ready again before the page does.
 		enter();
 	}
 
@@ -62,8 +65,8 @@ export default function AdminLoginPage() {
 		const { error: failure } = useBackup
 			? await authClient.twoFactor.verifyBackupCode(body)
 			: await authClient.twoFactor.verifyTotp(body);
-		setBusy(false);
 		if (failure) {
+			setBusy(false);
 			setError(twoFactorMessage(failure.code, failure.status));
 			// The challenge cookie is spent or gone: another code cannot work, so
 			// go back to the password. The error paragraph renders on that step
@@ -77,6 +80,7 @@ export default function AdminLoginPage() {
 			}
 			return;
 		}
+		// Busy stays set while the route changes.
 		enter();
 	}
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { fieldClass } from "@/components/admin/styles";
 import { Spinner as ButtonSpinner } from "@/components/Spinner";
+import { NETWORK_ERROR } from "@/components/useAction";
 import { CARRIERS, KIND, LABEL } from "@/lib/logistics/carriers";
 import { type PinState, pinState } from "@/lib/logistics/coords";
 import { LABEL_FALLBACK } from "@/lib/logistics/label";
@@ -336,19 +337,24 @@ export function DeliveryDetail({
 	async function compare() {
 		setBusy("compare");
 		setError(null);
-		const res = await fetch(`/api/admin/deliveries/${id}/quotes`, {
-			method: "POST",
-		});
-		setBusy(null);
-		if (!res.ok) {
-			setError("Could not reach the logistics partners");
-			return;
+		try {
+			const res = await fetch(`/api/admin/deliveries/${id}/quotes`, {
+				method: "POST",
+			});
+			if (!res.ok) {
+				setError("Could not reach the logistics partners");
+				return;
+			}
+			const body = await res.json();
+			const rows: QuoteRow[] = body.quotes ?? [];
+			setQuotes(rows);
+			setSelected(defaultChoice(rows));
+			await read();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		const body = await res.json();
-		const rows: QuoteRow[] = body.quotes ?? [];
-		setQuotes(rows);
-		setSelected(defaultChoice(rows));
-		await read();
 	}
 
 	async function book() {
@@ -356,108 +362,133 @@ export function DeliveryDetail({
 		if (!choice) return;
 		setBusy("book");
 		setError(null);
-		const res = await fetch(`/api/admin/deliveries/${id}/book`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				carrierId: choice.carrierId,
-				bookedBy: actor,
-				quotedPriceRm: choice.priceRm,
-			}),
-		});
-		setBusy(null);
-		const body = await res.json().catch(() => null);
-		if (!res.ok) {
-			if (body?.error === "price_moved") {
-				setError(
-					`The price moved to RM ${body.currentPriceRm} — compare again before booking.`,
-				);
+		try {
+			const res = await fetch(`/api/admin/deliveries/${id}/book`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					carrierId: choice.carrierId,
+					bookedBy: actor,
+					quotedPriceRm: choice.priceRm,
+				}),
+			});
+			const body = await res.json().catch(() => null);
+			if (!res.ok) {
+				if (body?.error === "price_moved") {
+					setError(
+						`The price moved to RM ${body.currentPriceRm} — compare again before booking.`,
+					);
+					return;
+				}
+				// Append rather than replace: an unreadable carrier reply must still
+				// leave our own sentence on screen.
+				const said = messageFor(body?.error, "Booking failed");
+				setError(body?.message ? `${said} (${body.message})` : said);
 				return;
 			}
-			// Append rather than replace: an unreadable carrier reply must still
-			// leave our own sentence on screen.
-			const said = messageFor(body?.error, "Booking failed");
-			setError(body?.message ? `${said} (${body.message})` : said);
-			return;
+			setQuotes(null);
+			await read();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		setQuotes(null);
-		await read();
 	}
 
 	/** Ask GDEX what it has scheduled, rather than trusting our own success. */
 	async function checkPickup() {
 		setBusy("pickup");
 		setError(null);
-		const res = await fetch(`/api/admin/deliveries/${id}/pickup`, {
-			method: "POST",
-		});
-		setBusy(null);
-		const body = await res.json().catch(() => null);
-		if (!res.ok) {
-			setError(messageFor(body?.error, "Could not check the collection"));
-			return;
+		try {
+			const res = await fetch(`/api/admin/deliveries/${id}/pickup`, {
+				method: "POST",
+			});
+			const body = await res.json().catch(() => null);
+			if (!res.ok) {
+				setError(messageFor(body?.error, "Could not check the collection"));
+				return;
+			}
+			setPickup(body.pickup);
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		setPickup(body.pickup);
 	}
 
 	async function refreshFromCarrier() {
 		setBusy("track");
 		setError(null);
-		const res = await fetch(`/api/admin/deliveries/${id}/track`, {
-			method: "POST",
-		});
-		setBusy(null);
-		if (!res.ok) {
-			const body = await res.json().catch(() => null);
-			setError(messageFor(body?.error, "Could not reach the carrier"));
-			return;
+		try {
+			const res = await fetch(`/api/admin/deliveries/${id}/track`, {
+				method: "POST",
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				setError(messageFor(body?.error, "Could not reach the carrier"));
+				return;
+			}
+			await read();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		await read();
 	}
 
 	/** The endpoint deletes this job and returns the two that replace it. */
 	async function commitSplit() {
 		setBusy("split");
 		setError(null);
-		const res = await fetch(`/api/admin/deliveries/${id}/split`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({
-				itemIndexes: ticked,
-				actor: actor.trim() === "" ? "Admin" : actor,
-			}),
-		});
-		setBusy(null);
-		const body = await res.json().catch(() => null);
-		if (!res.ok) {
-			setError(messageFor(body?.error, "Could not split this job"));
-			return;
+		try {
+			const res = await fetch(`/api/admin/deliveries/${id}/split`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					itemIndexes: ticked,
+					actor: actor.trim() === "" ? "Admin" : actor,
+				}),
+			});
+			const body = await res.json().catch(() => null);
+			if (!res.ok) {
+				setError(messageFor(body?.error, "Could not split this job"));
+				return;
+			}
+			setSplitting(false);
+			setHalves(body.deliveries as DeliveryRow[]);
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		setSplitting(false);
-		setHalves(body.deliveries as DeliveryRow[]);
 	}
 
 	async function advance(status: DeliveryStatusName) {
 		setBusy(status);
 		setError(null);
-		const res = await fetch(`/api/admin/deliveries/${id}/advance`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ status }),
-		});
-		setBusy(null);
-		if (!res.ok) {
-			const body = await res.json().catch(() => null);
-			if (body?.error === "carrier_refused_cancel") {
-				setError(
-					`The carrier would not cancel this job — ring them. (${body.message})`,
-				);
+		try {
+			const res = await fetch(`/api/admin/deliveries/${id}/advance`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ status }),
+			});
+			if (!res.ok) {
+				const body = await res.json().catch(() => null);
+				if (body?.error === "carrier_refused_cancel") {
+					setError(
+						`The carrier would not cancel this job — ring them. (${body.message})`,
+					);
+					return;
+				}
+				setError(messageFor(body?.error, "Could not update this job"));
 				return;
 			}
-			setError(messageFor(body?.error, "Could not update this job"));
-			return;
+			await read();
+		} catch {
+			setError(NETWORK_ERROR);
+		} finally {
+			setBusy(null);
 		}
-		await read();
 	}
 
 	const copy = async (text: string, which: "carrier" | "customer") => {
@@ -1326,7 +1357,9 @@ export function DeliveryDetail({
 												type="button"
 												className={CHIP}
 												onClick={() => advance("CANCELLED")}
+												disabled={busy !== null}
 											>
+												{busy === "CANCELLED" && <ButtonSpinner />}
 												Cancel job
 											</button>
 										)}
