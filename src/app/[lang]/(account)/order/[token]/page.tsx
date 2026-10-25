@@ -280,6 +280,7 @@ export default async function OrderPage({
 								errorText={o.payOnlineError}
 								settlingText={o.bodyConfirming}
 								loadingText={t.quote.loading}
+								networkText={t.common.networkError}
 								locale={lang}
 							/>
 						</section>
@@ -404,6 +405,8 @@ export default async function OrderPage({
 									errorPhone: t.quote.errorPhone,
 									errorLocked: o.detailsLocked,
 									errorGeneric: o.detailsError,
+									networkError: t.common.networkError,
+									saved: o.detailsSaved,
 								}}
 							/>
 						)}

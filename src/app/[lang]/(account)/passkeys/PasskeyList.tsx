@@ -1,8 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
-import { Spinner } from "@/components/Spinner";
+import { useEffect, useState } from "react";
+import { Done, Spinner } from "@/components/Spinner";
+import { DONE_MS } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
 import type { Dictionary } from "@/lib/copy/en";
 import { fill } from "@/lib/copy/fill";
@@ -35,8 +36,17 @@ export function PasskeyList({
 	const [error, setError] = useState<string | null>(null);
 	const [editing, setEditing] = useState<string | null>(null);
 	const [name, setName] = useState("");
+	// The passkey just renamed, marked Saved for a moment.
+	const [renamed, setRenamed] = useState<string | null>(null);
+
+	useEffect(() => {
+		if (!renamed) return;
+		const timer = setTimeout(() => setRenamed(null), DONE_MS);
+		return () => clearTimeout(timer);
+	}, [renamed]);
 
 	async function act(key: string, run: () => Promise<Outcome>) {
+		// True once the action landed, for a caller that marks it.
 		setBusy(key);
 		setError(null);
 		let failure: { status?: number; code?: string } | null = null;
@@ -58,10 +68,11 @@ export function PasskeyList({
 			setError(
 				failure.code === "PASSKEY_LAST_ONE" ? copy.removeLast : copy.failed,
 			);
-			return;
+			return false;
 		}
 		setEditing(null);
 		router.refresh();
+		return true;
 	}
 
 	// Adding a device needs a session less than a day old (the plugin's
@@ -105,7 +116,7 @@ export function PasskeyList({
 											id: p.id,
 											name: name.trim(),
 										}),
-									);
+									).then((ok) => ok && setRenamed(p.id));
 								}}
 							>
 								<label className="sr-only" htmlFor={`name-${p.id}`}>
@@ -123,6 +134,7 @@ export function PasskeyList({
 									disabled={busy !== null || !name.trim()}
 									className="font-medium text-[13px] disabled:opacity-60"
 								>
+									{busy === `rename:${p.id}` && <Spinner />}
 									{copy.save}
 								</button>
 								<button
@@ -139,6 +151,15 @@ export function PasskeyList({
 									<span className="block truncate font-medium text-[14px]">
 										{p.name || copy.unnamed}
 									</span>
+									{renamed === p.id && (
+										<span
+											role="status"
+											className="block text-[#1f5138] text-[12px]"
+										>
+											<Done />
+											{copy.saved}
+										</span>
+									)}
 									<span className="block text-[#5c574e] text-[12px]">
 										{date(p.createdAt)}
 									</span>
@@ -166,6 +187,7 @@ export function PasskeyList({
 										}
 										className="text-[#7f1d1d] disabled:opacity-40"
 									>
+										{busy === `remove:${p.id}` && <Spinner />}
 										{copy.remove}
 									</button>
 								</span>

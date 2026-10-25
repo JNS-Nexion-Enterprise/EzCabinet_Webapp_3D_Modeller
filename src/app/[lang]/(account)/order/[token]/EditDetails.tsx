@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
+import { Done, Spinner } from "@/components/Spinner";
 
 const LABEL = "font-medium text-[#404040] text-[12px]";
 // 16px below `sm`: iOS Safari zooms the page on focusing anything smaller.
@@ -43,22 +44,38 @@ export function EditDetails({
 		errorPhone: string;
 		errorLocked: string;
 		errorGeneric: string;
+		networkError: string;
+		saved: string;
 	};
 }) {
 	const router = useRouter();
 	const [open, setOpen] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	// Stays until the editor is opened again: the form closing is the only
+	// other sign the save landed.
+	const [saved, setSaved] = useState(false);
 
 	if (!open) {
 		return (
-			<button
-				type="button"
-				onClick={() => setOpen(true)}
-				className="mt-3 inline-flex min-h-9 items-center rounded-lg border border-[#d4d4d4] bg-white px-3.5 font-medium text-[13px] hover:border-[#a3a3a3] hover:bg-[#faf9f7]"
-			>
-				{labels.edit}
-			</button>
+			<div className="mt-3 flex flex-wrap items-center gap-3">
+				<button
+					type="button"
+					onClick={() => {
+						setSaved(false);
+						setOpen(true);
+					}}
+					className="inline-flex min-h-9 items-center rounded-lg border border-[#d4d4d4] bg-white px-3.5 font-medium text-[13px] hover:border-[#a3a3a3] hover:bg-[#faf9f7]"
+				>
+					{labels.edit}
+				</button>
+				{saved && (
+					<p role="status" className="text-[#1f5138] text-[13px]">
+						<Done />
+						{labels.saved}
+					</p>
+				)}
+			</div>
 		);
 	}
 
@@ -68,33 +85,41 @@ export function EditDetails({
 		const text = (name: string) => String(form.get(name) ?? "").trim();
 		setBusy(true);
 		setError(null);
-		const response = await fetch(`/api/orders/${token}`, {
-			method: "PATCH",
-			headers: { "content-type": "application/json" },
-			body: JSON.stringify({
-				name: text("name"),
-				phone: text("phone"),
-				email: text("email") || null,
-				siteAddress: text("siteAddress"),
-				addressNotes: text("addressNotes") || null,
-				whatsappOptIn: form.get("whatsappOptIn") === "on",
-			}),
-		}).catch(() => null);
-		setBusy(false);
-		if (response?.ok) {
+		let response: Response;
+		try {
+			response = await fetch(`/api/orders/${token}`, {
+				method: "PATCH",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					name: text("name"),
+					phone: text("phone"),
+					email: text("email") || null,
+					siteAddress: text("siteAddress"),
+					addressNotes: text("addressNotes") || null,
+					whatsappOptIn: form.get("whatsappOptIn") === "on",
+				}),
+			});
+		} catch {
+			setError(labels.networkError);
+			return;
+		} finally {
+			setBusy(false);
+		}
+		if (response.ok) {
+			setSaved(true);
 			setOpen(false);
 			router.refresh();
 			return;
 		}
 		setError(
-			response?.status === 422
+			response.status === 422
 				? labels.errorPhone
-				: response?.status === 409
+				: response.status === 409
 					? labels.errorLocked
 					: labels.errorGeneric,
 		);
 		// Locked means the page is stale: show what the order looks like now.
-		if (response?.status === 409) router.refresh();
+		if (response.status === 409) router.refresh();
 	};
 
 	return (
@@ -177,6 +202,7 @@ export function EditDetails({
 						type="submit"
 						className="inline-flex min-h-10 items-center rounded-[9px] bg-[#1f5138] px-4 font-semibold text-[13px] text-white hover:bg-[#1a4430] disabled:opacity-60"
 					>
+						{busy && <Spinner />}
 						{busy ? labels.saving : labels.save}
 					</button>
 					<button

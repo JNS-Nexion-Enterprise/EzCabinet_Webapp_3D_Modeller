@@ -17,6 +17,7 @@ export const zh: Dictionary = {
 		close: "关闭",
 		language: "语言",
 		comingSoon: "即将推出",
+		networkError: "无法连接服务器。请检查网络连接后重试。",
 	},
 	landing: {
 		nav: {
@@ -473,6 +474,7 @@ export const zh: Dictionary = {
 		cancelEdit: "取消",
 		detailsLocked: "这些资料已无法在此修改。请联系我们,我们会协助您。",
 		detailsError: "无法保存您的更改,请重试。",
+		detailsSaved: "资料已保存",
 		headingConfirming: "正在确认您的付款",
 		bodyConfirming:
 			"谢谢——我们正在等待支付服务商确认，通常只需几秒钟，此页面会自动更新。您无需再次付款。",
@@ -769,6 +771,7 @@ export const zh: Dictionary = {
 		add: "添加另一台设备",
 		rename: "重命名",
 		save: "保存",
+		saved: "已保存",
 		cancel: "取消",
 		remove: "移除",
 		removeLast: "至少需要保留一个通行密钥",

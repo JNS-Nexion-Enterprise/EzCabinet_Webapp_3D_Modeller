@@ -16,6 +16,8 @@ export const ms: Dictionary = {
 		close: "Tutup",
 		language: "Bahasa",
 		comingSoon: "Akan datang",
+		networkError:
+			"Tidak dapat menghubungi pelayan. Semak sambungan anda dan cuba lagi.",
 	},
 	landing: {
 		nav: {
@@ -504,6 +506,7 @@ export const ms: Dictionary = {
 		detailsLocked:
 			"Butiran ini tidak lagi boleh diubah di sini. Hubungi kami dan kami akan bantu.",
 		detailsError: "Perubahan anda tidak dapat disimpan. Sila cuba lagi.",
+		detailsSaved: "Butiran disimpan",
 		headingConfirming: "Mengesahkan pembayaran anda",
 		bodyConfirming:
 			"Terima kasih — kami sedang menunggu pengesahan daripada penyedia pembayaran. Biasanya ini mengambil beberapa saat, dan halaman ini akan dikemas kini sendiri. Anda tidak perlu membayar lagi.",
@@ -822,6 +825,7 @@ export const ms: Dictionary = {
 		add: "Tambah peranti lain",
 		rename: "Namakan semula",
 		save: "Simpan",
+		saved: "Disimpan",
 		cancel: "Batal",
 		remove: "Buang",
 		removeLast: "Anda perlukan sekurang-kurangnya satu kunci laluan",

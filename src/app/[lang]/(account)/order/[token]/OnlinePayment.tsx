@@ -29,6 +29,7 @@ export function OnlinePayment({
 	errorText,
 	settlingText,
 	loadingText,
+	networkText,
 	locale,
 }: {
 	token: string;
@@ -37,6 +38,8 @@ export function OnlinePayment({
 	settlingText: string;
 	/** Shown while the payment step is being opened. */
 	loadingText: string;
+	/** Shown when a request never got an answer. */
+	networkText: string;
 	locale: Locale;
 }) {
 	const [start, setStart] = useState<PaymentStart | null>(null);
@@ -57,17 +60,23 @@ export function OnlinePayment({
 		if (!payApi.current) return;
 		setBusy(true);
 		setError(null);
-		const message = await payApi.current.confirm({
-			returnUrl: window.location.origin + window.location.pathname,
-		});
-		setBusy(false);
-		setError(message);
+		try {
+			const message = await payApi.current.confirm({
+				returnUrl: window.location.origin + window.location.pathname,
+			});
+			setError(message);
+		} catch {
+			setError(networkText);
+		} finally {
+			setBusy(false);
+		}
 	}
 
 	if (settling) {
 		return (
 			<p role="status" className="text-[#404040] text-[13px] leading-[19px]">
 				<RefreshWhileSettling />
+				<Spinner />
 				{settlingText}
 			</p>
 		);
@@ -110,14 +119,20 @@ export function OnlinePayment({
 				</div>
 			)}
 			{start?.kind === "redirect" && (
-				<form action={start.url} method={start.method}>
+				<form
+					action={start.url}
+					method={start.method}
+					onSubmit={() => setBusy(true)}
+				>
 					{Object.entries(start.fields).map(([name, value]) => (
 						<input key={name} type="hidden" name={name} value={value} />
 					))}
 					<button
 						type="submit"
-						className="flex min-h-12 w-full items-center justify-center rounded-[10px] bg-neutral-900 px-3 font-semibold text-[14px] text-white hover:bg-neutral-800"
+						disabled={busy}
+						className="flex min-h-12 w-full items-center justify-center rounded-[10px] bg-neutral-900 px-3 font-semibold text-[14px] text-white hover:bg-neutral-800 disabled:opacity-50"
 					>
+						{busy && <Spinner />}
 						{payLabel}
 					</button>
 				</form>

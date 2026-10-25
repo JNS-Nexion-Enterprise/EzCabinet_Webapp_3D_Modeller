@@ -56,6 +56,8 @@ export function EmailCodeForm({
 	const [email, setEmail] = useState("");
 	const [code, setCode] = useState("");
 	const [busy, setBusy] = useState(false);
+	// Which button the spinner goes on: a resend is asked from the code step.
+	const [resending, setResending] = useState(false);
 	const [message, setMessage] = useState<FormMessage | null>(null);
 	// Epoch milliseconds: when "Send a new code" comes back, and the clock as
 	// last read. The wait is derived from the two, never counted down.
@@ -108,6 +110,7 @@ export function EmailCodeForm({
 		}
 		inFlight.current = true;
 		setBusy(true);
+		setResending(step === "code");
 		setMessage(null);
 		let failure: { status?: number } | null = null;
 		try {
@@ -121,6 +124,7 @@ export function EmailCodeForm({
 		}
 		inFlight.current = false;
 		setBusy(false);
+		setResending(false);
 		if (failure) {
 			setMessage(sendFailure(failure.status));
 			return;
@@ -235,7 +239,7 @@ export function EmailCodeForm({
 				disabled={busy || start === "wait"}
 				className={PRIMARY}
 			>
-				{busy && <Spinner />}
+				{busy && !resending && <Spinner />}
 				{step === "address" ? copy.continueEmail : copy.submitCode}
 			</button>
 
@@ -250,6 +254,7 @@ export function EmailCodeForm({
 						disabled={busy || wait > 0}
 						className={QUIET}
 					>
+						{resending && <Spinner />}
 						{wait > 0 ? fill(copy.resendIn, { seconds: wait }) : copy.resend}
 					</button>
 					<button

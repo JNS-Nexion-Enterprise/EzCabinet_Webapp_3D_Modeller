@@ -425,6 +425,15 @@ export function QuoteScreen({
 							{stripeClient ? t.quote.descriptionOnline : t.quote.description}
 						</p>
 
+						{authPending && (
+							<div
+								role="status"
+								className="flex items-center text-[#5c574e] text-[13px]"
+							>
+								<Spinner />
+								{t.quote.loading}
+							</div>
+						)}
 						{signedOut && (
 							// Before the form, not after it: the old stop was a 401 on
 							// Pay, which sent a customer off to sign in with every field
@@ -494,7 +503,12 @@ export function QuoteScreen({
 							}
 							onSubmit={(e) => {
 								e.preventDefault();
-								placeOrder(e.currentTarget);
+								// Only the Stripe calls can throw here (the order request has
+								// its own catch); success keeps `busy` through the redirect.
+								placeOrder(e.currentTarget).catch(() => {
+									setBusy(false);
+									setError(t.common.networkError);
+								});
 							}}
 						>
 							<fieldset className="flex flex-col gap-3" disabled={busy}>
