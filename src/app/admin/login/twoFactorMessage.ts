@@ -1,3 +1,5 @@
+const WRONG_CODE = "That code didn't work. Try again";
+
 /**
  * What the code prompt says after a failed attempt. One sentence for every
  * kind of wrong code — which kind is nobody's business — but a lock, a
@@ -20,5 +22,14 @@ export function twoFactorMessage(
 	if (code === "INVALID_TWO_FACTOR_COOKIE") {
 		return "That took too long. Sign in again";
 	}
-	return "That code didn't work. Try again";
+	return WRONG_CODE;
+}
+
+/**
+ * True when the attempt failed because the code itself was wrong, so the
+ * message belongs under the code input. A lock, a throttle or an expired
+ * prompt says nothing about the code and is shown apart from it.
+ */
+export function isWrongCode(code: string | undefined, status?: number) {
+	return twoFactorMessage(code, status) === WRONG_CODE;
 }

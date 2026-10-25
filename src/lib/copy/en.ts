@@ -21,6 +21,8 @@ export const en = {
 		close: "Close",
 		language: "Language",
 		comingSoon: "Coming soon",
+		networkError:
+			"Couldn't reach the server. Check your connection and try again.",
 	},
 	landing: {
 		nav: {
@@ -139,6 +141,7 @@ export const en = {
 		diyTutorials: "DIY tutorials",
 		clear: "Clear",
 		dimensionAriaSuffix: "{label} in millimetres",
+		dimensionRange: "Between {min} and {max} mm",
 		phone: {
 			backHome: "Home",
 			backRooms: "Rooms",
@@ -502,6 +505,7 @@ export const en = {
 		detailsLocked:
 			"These details can no longer be changed here. Message us and we'll help.",
 		detailsError: "We couldn't save your changes. Please try again.",
+		detailsSaved: "Details saved",
 		headingConfirming: "Confirming your payment",
 		bodyConfirming:
 			"Thanks — we're waiting for the payment provider to confirm. This usually takes a few seconds, and this page updates by itself. You don't need to pay again.",
@@ -841,10 +845,12 @@ export const en = {
 		add: "Add another device",
 		rename: "Rename",
 		save: "Save",
+		saved: "Saved",
 		cancel: "Cancel",
 		remove: "Remove",
 		removeLast: "You need at least one passkey",
 		nameLabel: "Device name",
+		nameRequired: "Enter a name for this passkey.",
 	},
 } as const;
 

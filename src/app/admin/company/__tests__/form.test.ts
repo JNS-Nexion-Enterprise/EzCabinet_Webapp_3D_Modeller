@@ -5,8 +5,11 @@ import {
 	addressNeedsPin,
 	fieldErrors,
 	gdexNotice,
+	oneLine,
+	pinStatus,
 	placeFields,
 	readPin,
+	tidyAddress,
 } from "../form";
 
 describe("readPin", () => {
@@ -52,11 +55,27 @@ describe("fieldErrors", () => {
 		});
 		expect(parsed.success).toBe(false);
 		if (!parsed.success)
-			expect(fieldErrors(parsed.error)).toEqual({
+			expect(fieldErrors(parsed.error.issues)).toEqual({
 				postcode: "Five digits.",
 				lat: "The pin must be inside Malaysia.",
 			});
 	});
+
+	it("reads the server's issues, whose paths start with details", () =>
+		expect(
+			fieldErrors(
+				[
+					{ path: ["details", "phone"] },
+					{ path: ["details", "nope"] },
+					{ path: ["loadedAt"] },
+					{ path: ["details", "phone"] },
+				],
+				"details",
+			),
+		).toEqual({ phone: "Enter a Malaysian number a courier can call." }));
+
+	it("is empty for a reply with no issues", () =>
+		expect(fieldErrors(undefined, "details")).toEqual({}));
 });
 
 describe("placeFields", () => {
@@ -86,4 +105,58 @@ describe("addressNeedsPin", () => {
 		expect(addressNeedsPin("Lot 5", " Lot 5 ", false)).toBe(false);
 		expect(addressNeedsPin("Lot 5", "Lot 9", true)).toBe(false);
 	});
+});
+
+describe("oneLine", () => {
+	it("joins a pasted letterhead address with commas", () =>
+		expect(
+			oneLine("Lot 5, Jalan Industri\nTaman Perindustrian\n43800 Dengkil"),
+		).toBe("Lot 5, Jalan Industri, Taman Perindustrian, 43800 Dengkil"));
+	it("does not double a comma already at the line end", () =>
+		expect(oneLine("Lot 5,\nJalan Industri")).toBe("Lot 5, Jalan Industri"));
+	it("treats CRLF and blank lines as one break", () =>
+		expect(oneLine("Lot 5\r\n\r\n  Jalan Industri")).toBe(
+			"Lot 5, Jalan Industri",
+		));
+	it("leaves a line being typed alone, trailing space included", () =>
+		expect(oneLine("Lot 5 ")).toBe("Lot 5 "));
+	it("does not double a comma that starts the next line", () =>
+		expect(oneLine("Lot 5\n, Jalan Industri")).toBe("Lot 5, Jalan Industri"));
+});
+
+describe("tidyAddress", () => {
+	it("drops the comma a trailing line break leaves", () =>
+		expect(tidyAddress(oneLine("Lot 5\nDengkil\n"))).toBe("Lot 5, Dengkil"));
+	it("drops the comma a leading line break leaves", () =>
+		expect(tidyAddress(oneLine("\nLot 5\nDengkil"))).toBe("Lot 5, Dengkil"));
+});
+
+describe("pinStatus", () => {
+	const found = {
+		formattedAddress: "Jalan Industri, 43800 Dengkil",
+		lat: 2.98,
+		lng: 101.86,
+	};
+	const pin = { ok: true as const, lat: 3.1, lng: 101.6 };
+	it("shows what Google found", () =>
+		expect(pinStatus(found, false, pin)).toEqual({ kind: "found", ...found }));
+	it("keeps only the three fields it shows", () => {
+		const geocoded = { ...found, postcode: "43800", city: "Dengkil" };
+		expect(pinStatus(geocoded, false, pin)).toEqual({
+			kind: "found",
+			...found,
+		});
+	});
+	it("asks for a check when the address changed and nothing confirms it", () =>
+		expect(pinStatus(null, true, pin)).toEqual({ kind: "unchecked" }));
+	it("falls back to the pin in the box once found is cleared", () =>
+		expect(pinStatus(null, false, pin)).toEqual({
+			kind: "pinned",
+			lat: 3.1,
+			lng: 101.6,
+		}));
+	it("says nothing when the pin box cannot be read", () =>
+		expect(pinStatus(null, false, { ok: false, message: "x" })).toEqual({
+			kind: "none",
+		}));
 });

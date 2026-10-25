@@ -3,12 +3,20 @@
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { FieldMessage, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import { track } from "@/lib/analytics";
 import { authClient } from "@/lib/auth/client";
+import type { Dictionary } from "@/lib/copy/en";
 import { fill } from "@/lib/copy/fill";
 import { htmlLang } from "@/lib/copy/locales";
+import { fieldsFromIssues } from "@/lib/fieldIssues";
 import { malaysianNational, toE164 } from "@/lib/logistics/phone";
+import {
+	type ContactField,
+	type ContactReason,
+	contactErrors,
+} from "@/lib/orders/contactErrors";
 import type { PaymentClient, PaymentStart } from "@/lib/payments/types";
 import type { FinishId, RoomTypeId } from "@/lib/planner/catalogue";
 import { doorStyleIn, ratesOf, roomTypeIn } from "@/lib/planner/catalogue";
@@ -38,14 +46,33 @@ const PlannerScene = dynamic(() => import("./PlannerScene"), {
 
 const FIELD =
 	// 16px below 760 (not `sm`, which would leave 640-759 at 14): iOS Safari zooms the page on focusing anything smaller.
-	"min-h-[42px] rounded-lg bg-white px-3 py-2.5 max-[760px]:min-h-[50px] max-[760px]:rounded-[10px] max-[760px]:px-3.5 text-base text-[#171717] min-[760px]:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
+	"min-h-[42px] rounded-lg px-3 py-2.5 max-[760px]:min-h-[50px] max-[760px]:rounded-[10px] max-[760px]:px-3.5 text-base text-[#171717] min-[760px]:text-[14px] placeholder:text-[#a3a3a3] disabled:bg-neutral-50";
 const fieldClass = (error: string | undefined) =>
-	`${FIELD} ${error ? "border-[1.5px] border-[#b42318]" : "border border-[#d4d4d4]"}`;
+	`${FIELD} ${error ? `border ${INVALID}` : "border border-[#d4d4d4] bg-white"}`;
 
 /** This page, as somewhere to come back to: `PlannerApp` reopens the quote
  * for `#quote` rather than starting again at the room picker. */
 const quoteUrl = () =>
 	`${window.location.pathname}${window.location.search}#quote`;
+
+/** What each reason `contactErrors` gives says, in the customer's language. */
+const CONTACT_COPY: Record<
+	ContactField,
+	Partial<Record<ContactReason, keyof Dictionary["quote"]>>
+> = {
+	name: { required: "errorNameRequired" },
+	phone: { required: "errorPhoneRequired", invalid: "errorPhone" },
+	email: { required: "errorEmailRequired", invalid: "errorEmailInvalid" },
+	siteAddress: { required: "errorAddressRequired", short: "errorAddressShort" },
+};
+
+/** The words for a field the server refused when our own checks passed: only a limit or a stricter grammar can do that. */
+const SERVER_FIELD_COPY: Record<ContactField, keyof Dictionary["quote"]> = {
+	name: "errorNameRequired",
+	phone: "errorPhone",
+	email: "errorEmailInvalid",
+	siteAddress: "errorAddressShort",
+};
 
 type FieldErrors = Partial<
 	Record<
@@ -193,23 +220,23 @@ export function QuoteScreen({
 		// Checked here rather than by the browser so every problem shows at once,
 		// in our words, next to its field. The server re-checks all of it.
 		const errors: FieldErrors = {};
-		if (!field("name")) errors.name = t.quote.errorNameRequired;
 		// The field holds the national digits; +60 is ours to add.
 		const fullPhone = field("phone") && `+60${field("phone")}`;
-		if (!fullPhone) errors.phone = t.quote.errorPhoneRequired;
-		// The server's own reader, so the two cannot disagree about a number.
-		else if (toE164(fullPhone) === null) errors.phone = t.quote.errorPhone;
-		// Paying online sends a receipt, so the email stops being optional.
-		if (stripeClient && !field("email"))
-			errors.email = t.quote.errorEmailRequired;
-		else if (
-			!(form.elements.namedItem("email") as HTMLInputElement).validity.valid
-		)
-			errors.email = t.quote.errorEmailInvalid;
-		if (!field("siteAddress"))
-			errors.siteAddress = t.quote.errorAddressRequired;
-		else if (field("siteAddress").length < 5)
-			errors.siteAddress = t.quote.errorAddressShort;
+		const contact = contactErrors({
+			name: field("name"),
+			phone: fullPhone,
+			email: field("email"),
+			siteAddress: field("siteAddress"),
+			// Paying online sends a receipt, so the email stops being optional.
+			emailRequired: !!stripeClient,
+			emailValid: (form.elements.namedItem("email") as HTMLInputElement)
+				.validity.valid,
+		});
+		for (const key of Object.keys(contact) as ContactField[]) {
+			const reason = contact[key];
+			const copyKey = reason && CONTACT_COPY[key][reason];
+			if (copyKey) errors[key] = t.quote[copyKey];
+		}
 		if (field("remeasure") !== "on") errors.remeasure = t.quote.errorRemeasure;
 		if (field("terms") !== "on") errors.terms = t.quote.errorTerms;
 		setFieldErrors(errors);
@@ -289,17 +316,29 @@ export function QuoteScreen({
 				setBusy(false);
 				if (body?.error === "bad_phone") {
 					setFieldErrors({ phone: t.quote.errorPhone });
-					(form.elements.namedItem("phone") as HTMLElement | null)?.focus();
+					// Not .focus() now: the fieldset is still disabled until this render.
+					focusFirstInvalid(form);
 					return;
 				}
-				// The server's email check is stricter than the browser's.
-				const issues: { path?: unknown[] }[] = body?.issues ?? [];
-				if (
-					body?.error === "invalid_body" &&
-					issues.some((issue) => issue.path?.join(".") === "customer.email")
-				) {
-					setFieldErrors({ email: t.quote.errorEmailInvalid });
-					(form.elements.namedItem("email") as HTMLElement | null)?.focus();
+				// The server's checks are stricter than ours in places (its email
+				// grammar, the length limits), so name the fields it refused.
+				const refused =
+					body?.error === "invalid_body"
+						? fieldsFromIssues(body.issues, (path) =>
+								path[0] === "customer" &&
+								typeof path[1] === "string" &&
+								Object.hasOwn(SERVER_FIELD_COPY, path[1])
+									? (path[1] as ContactField)
+									: null,
+							)
+						: [];
+				if (refused.length > 0) {
+					setFieldErrors(
+						Object.fromEntries(
+							refused.map((key) => [key, t.quote[SERVER_FIELD_COPY[key]]]),
+						),
+					);
+					focusFirstInvalid(form);
 					return;
 				}
 				setError(
@@ -361,12 +400,13 @@ export function QuoteScreen({
 		);
 	const errorText = (key: keyof FieldErrors) =>
 		fieldErrors[key] && (
-			<p id={`err-${key}`} role="alert" className="text-[#b42318] text-[12px]">
-				{fieldErrors[key]}
-			</p>
+			<FieldMessage id={`err-${key}`}>{fieldErrors[key]}</FieldMessage>
 		);
 	const describedBy = (key: keyof FieldErrors) =>
 		fieldErrors[key] ? `err-${key}` : undefined;
+	// The checkbox itself wears the mark: native checkboxes ignore borders.
+	const checkClass = (key: keyof FieldErrors) =>
+		`mt-px h-4 w-4 shrink-0 accent-[#171717] max-[760px]:mt-0 max-[760px]:size-[22px]${fieldErrors[key] ? " outline-2 outline-danger outline-offset-2" : ""}`;
 	const LABEL = "font-medium text-[#404040] text-[12px]";
 
 	return (
@@ -425,6 +465,15 @@ export function QuoteScreen({
 							{stripeClient ? t.quote.descriptionOnline : t.quote.description}
 						</p>
 
+						{authPending && (
+							<div
+								role="status"
+								className="flex items-center text-[#5c574e] text-[13px]"
+							>
+								<Spinner />
+								{t.quote.loading}
+							</div>
+						)}
 						{signedOut && (
 							// Before the form, not after it: the old stop was a 401 on
 							// Pay, which sent a customer off to sign in with every field
@@ -494,7 +543,12 @@ export function QuoteScreen({
 							}
 							onSubmit={(e) => {
 								e.preventDefault();
-								placeOrder(e.currentTarget);
+								// Only the Stripe calls can throw here (the order request has
+								// its own catch); success keeps `busy` through the redirect.
+								placeOrder(e.currentTarget).catch(() => {
+									setBusy(false);
+									setError(t.common.networkError);
+								});
 							}}
 						>
 							<fieldset className="flex flex-col gap-3" disabled={busy}>
@@ -506,6 +560,7 @@ export function QuoteScreen({
 									<input
 										name="name"
 										type="text"
+										maxLength={200}
 										autoComplete="name"
 										required
 										className={fieldClass(fieldErrors.name)}
@@ -593,6 +648,7 @@ export function QuoteScreen({
 										autoComplete="street-address"
 										required
 										minLength={5}
+										maxLength={500}
 										rows={2}
 										className={`${fieldClass(fieldErrors.siteAddress)} min-h-16 resize-y`}
 										aria-invalid={!!fieldErrors.siteAddress}
@@ -637,20 +693,16 @@ export function QuoteScreen({
 										disabled={busy}
 										aria-invalid={!!fieldErrors.remeasure}
 										aria-describedby={describedBy("remeasure")}
-										className="mt-px h-4 w-4 shrink-0 accent-[#171717] max-[760px]:mt-0 max-[760px]:size-[22px]"
+										className={checkClass("remeasure")}
 									/>
 									<span className="text-[#5c574e] text-[12px] leading-[17px]">
 										{t.quote.remeasureNote}
 									</span>
 								</label>
 								{fieldErrors.remeasure && (
-									<p
-										id="err-remeasure"
-										role="alert"
-										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px] max-[760px]:ml-[31px]"
-									>
-										{fieldErrors.remeasure}
-									</p>
+									<div className="-mt-1.5 ml-[25px] max-[760px]:ml-[31px]">
+										{errorText("remeasure")}
+									</div>
 								)}
 								<label className="flex min-h-9 cursor-pointer items-start gap-[9px] max-[760px]:min-h-11 max-[760px]:items-center">
 									<input
@@ -660,7 +712,7 @@ export function QuoteScreen({
 										disabled={busy}
 										aria-invalid={!!fieldErrors.terms}
 										aria-describedby={describedBy("terms")}
-										className="mt-px h-4 w-4 shrink-0 accent-[#171717] max-[760px]:mt-0 max-[760px]:size-[22px]"
+										className={checkClass("terms")}
 									/>
 									{/* New tabs: the typed form and the design must still be
 									    here when the customer comes back from reading. */}
@@ -686,13 +738,9 @@ export function QuoteScreen({
 									</span>
 								</label>
 								{fieldErrors.terms && (
-									<p
-										id="err-terms"
-										role="alert"
-										className="-mt-1.5 ml-[25px] text-[#b42318] text-[12px] max-[760px]:ml-[31px]"
-									>
-										{fieldErrors.terms}
-									</p>
+									<div className="-mt-1.5 ml-[25px] max-[760px]:ml-[31px]">
+										{errorText("terms")}
+									</div>
 								)}
 								{/* The seller's name, address and contact, before the button
 								    rather than one click away — the Consumer Protection

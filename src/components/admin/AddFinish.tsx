@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import type { PlannerCatalogue } from "@/lib/planner/catalogueSchema";
 
@@ -23,10 +24,17 @@ export function AddFinish() {
 	const [hex, setHex] = useState("#cccccc");
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [nameError, setNameError] = useState<string | null>(null);
+	const boxRef = useRef<HTMLDivElement>(null);
 
 	async function add() {
 		const name = label.trim();
-		if (!name) return;
+		if (!name) {
+			// Add stays pressable so an empty name can say what is wrong.
+			setNameError("Enter a name for the finish.");
+			focusFirstInvalid(boxRef.current);
+			return;
+		}
 		setBusy(true);
 		setError(null);
 		try {
@@ -103,19 +111,38 @@ export function AddFinish() {
 
 	return (
 		<div className="col-span-3 sm:col-span-2">
-			<div className="flex flex-col gap-2 rounded-lg border border-neutral-300 bg-white p-3">
-				<input
-					// biome-ignore lint/a11y/noAutofocus: the field the button opened
-					autoFocus
-					value={label}
-					placeholder="Material name"
-					onChange={(e) => setLabel(e.target.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") add();
-						if (e.key === "Escape") setOpen(false);
-					}}
-					className="rounded border border-neutral-300 px-2 py-1.5 text-[13px] outline-none focus:border-neutral-500"
-				/>
+			<div
+				ref={boxRef}
+				className="flex flex-col gap-2 rounded-lg border border-neutral-300 bg-white p-3"
+			>
+				<Field
+					label="Material name"
+					error={nameError ?? undefined}
+					labelClassName="text-[12px] text-neutral-600"
+				>
+					{(c) => (
+						<input
+							{...c}
+							// biome-ignore lint/a11y/noAutofocus: the field the button opened
+							autoFocus
+							value={label}
+							placeholder="Oak veneer"
+							onChange={(e) => {
+								setLabel(e.target.value);
+								setNameError(null);
+							}}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") add();
+								if (e.key === "Escape") setOpen(false);
+							}}
+							className={`rounded border px-2 py-1.5 text-[13px] outline-none ${
+								c["aria-invalid"]
+									? INVALID
+									: "border-neutral-300 focus:border-neutral-500"
+							}`}
+						/>
+					)}
+				</Field>
 				<div className="flex items-center gap-2">
 					<input
 						type="color"
@@ -126,7 +153,7 @@ export function AddFinish() {
 					/>
 					<button
 						type="button"
-						disabled={busy || !label.trim()}
+						disabled={busy}
 						onClick={add}
 						className="rounded-full bg-neutral-900 px-3 py-1.5 text-[12px] text-white disabled:opacity-40"
 					>
@@ -145,7 +172,11 @@ export function AddFinish() {
 					Publishes the catalogue with this finish added, then drop the board
 					scan on its new slot.
 				</p>
-				{error && <p className="text-[11px] text-red-600">{error}</p>}
+				{error && (
+					<p role="alert" className="text-[11px] text-red-600">
+						{error}
+					</p>
+				)}
 			</div>
 		</div>
 	);

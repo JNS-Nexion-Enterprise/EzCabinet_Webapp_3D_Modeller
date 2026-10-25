@@ -12,6 +12,12 @@ export type Confirm = {
 	danger?: boolean;
 	/** The route is step-up guarded, so say a passkey prompt may follow. */
 	stepUp?: boolean;
+	/**
+	 * Checked when Confirm is pressed, before anything is sent. Returning
+	 * false keeps the dialog open and does nothing else: the caller has
+	 * already said what is missing, on the input that is missing it.
+	 */
+	check?: () => boolean;
 	/** Does the thing. An error message to show, or null when it worked. */
 	run: () => Promise<string | null>;
 };
@@ -28,14 +34,11 @@ export function ConfirmDialog({
 	confirm,
 	onClose,
 	children,
-	blocked,
 }: {
 	confirm: Confirm | null;
 	onClose: () => void;
 	/** Extra fields the action needs, e.g. a reason. */
 	children?: ReactNode;
-	/** Those fields are not filled in yet. */
-	blocked?: boolean;
 }) {
 	const ref = useRef<HTMLDialogElement>(null);
 	const back = useRef<HTMLButtonElement>(null);
@@ -57,7 +60,7 @@ export function ConfirmDialog({
 	}, [open]);
 
 	async function run() {
-		if (!confirm) return;
+		if (!confirm || confirm.check?.() === false) return;
 		setBusy(true);
 		setError(null);
 		let message: string | null;
@@ -127,7 +130,7 @@ export function ConfirmDialog({
 						</button>
 						<button
 							type="button"
-							disabled={busy || blocked}
+							disabled={busy}
 							onClick={run}
 							className={`flex min-h-10 items-center gap-2 rounded-lg px-4 font-medium text-[13px] text-white disabled:opacity-50 ${
 								confirm.danger

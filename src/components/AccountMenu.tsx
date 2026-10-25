@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { Spinner } from "@/components/Spinner";
+import { useAction } from "@/components/useAction";
 import { authClient } from "@/lib/auth/client";
 import { ROLE_PERMISSIONS, type Role } from "@/lib/auth/permissions";
 import { initialsOf } from "@/lib/initials";
@@ -31,6 +33,11 @@ export function AccountMenu({
 	const [open, setOpen] = useState(false);
 	const root = useRef<HTMLDivElement>(null);
 	const trigger = useRef<HTMLButtonElement>(null);
+	const signOut = useAction(async () => {
+		await authClient.signOut();
+		router.push(`/${lang}`);
+		router.refresh();
+	});
 
 	useEffect(() => {
 		if (!open) return;
@@ -127,14 +134,13 @@ export function AccountMenu({
 					<button
 						type="button"
 						role="menuitem"
-						className={`${item} mt-1 rounded-t-none border-[#ecebe7] border-t text-[#5c574e] hover:text-[#171717]`}
-						onClick={async () => {
-							setOpen(false);
-							await authClient.signOut();
-							router.push(`/${lang}`);
-							router.refresh();
-						}}
+						// The menu stays open while this runs, so the spinner is seen;
+						// done keeps it spinning, as the redirect is still on its way.
+						disabled={signOut.busy || signOut.done}
+						className={`${item} mt-1 rounded-t-none border-[#ecebe7] border-t text-[#5c574e] hover:text-[#171717] disabled:opacity-60`}
+						onClick={() => signOut.run()}
 					>
+						{(signOut.busy || signOut.done) && <Spinner />}
 						{labels.signOut}
 					</button>
 				</div>

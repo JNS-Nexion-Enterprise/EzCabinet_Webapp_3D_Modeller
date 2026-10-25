@@ -1,5 +1,5 @@
-import type { z } from "zod";
 import type { CompanyDetails } from "@/lib/company/details";
+import { fieldsFromIssues } from "@/lib/fieldIssues";
 import { parseCoords } from "@/lib/logistics/coords";
 
 /**
@@ -25,18 +25,24 @@ const FIELD_MESSAGES: Record<keyof CompanyDetails, string> = {
 	orderPrefix: "One to five letters or digits.",
 };
 
-/** The first issue per field; a field the schema does not know is dropped. */
+/**
+ * One message per failing field, from zod issues: the form's own parse
+ * (`error.issues`) or the server's reply, whose paths start with `prefix`
+ * (`details`). A field the schema does not know is dropped.
+ */
 export function fieldErrors(
-	error: z.ZodError,
+	issues: unknown,
+	prefix?: string,
 ): Partial<Record<keyof CompanyDetails, string>> {
-	const out: Partial<Record<keyof CompanyDetails, string>> = {};
-	for (const issue of error.issues) {
-		const field = issue.path[0] as keyof CompanyDetails;
-		if (field in FIELD_MESSAGES && !(field in out)) {
-			out[field] = FIELD_MESSAGES[field];
-		}
-	}
-	return out;
+	const at = prefix === undefined ? 0 : 1;
+	const fields = fieldsFromIssues(issues, (path) =>
+		(prefix === undefined || path[0] === prefix) &&
+		typeof path[at] === "string" &&
+		path[at] in FIELD_MESSAGES
+			? (path[at] as keyof CompanyDetails)
+			: null,
+	);
+	return Object.fromEntries(fields.map((f) => [f, FIELD_MESSAGES[f]]));
 }
 
 export type PinReading =
@@ -97,6 +103,48 @@ export function addressNeedsPin(
 	pinConfirmed: boolean,
 ): boolean {
 	return typedAddress.trim() !== savedAddress.trim() && !pinConfirmed;
+}
+
+/**
+ * A pasted letterhead address, as the one line it is stored as. A text input
+ * would delete the line breaks and glue "Industri" to "43800"; carriers, the
+ * seller line and mail all read the address as one line. Not trimmed: it runs
+ * on every keystroke.
+ */
+export const oneLine = (text: string) =>
+	text.replace(/\s*,?\s*[\r\n]+\s*,?\s*/g, ", ");
+
+/**
+ * The address as saved. A copied block usually ends in a line break, which
+ * `oneLine` turned into ", " — and that comma would reach the seller line on
+ * the terms page.
+ */
+export const tidyAddress = (text: string) =>
+	text.replace(/^[\s,]+|[\s,]+$/g, "");
+
+export type PinStatus =
+	| { kind: "found"; formattedAddress: string; lat: number; lng: number }
+	| { kind: "unchecked" }
+	| { kind: "pinned"; lat: number; lng: number }
+	| { kind: "none" };
+
+/**
+ * What the line under the address says about the pin. Google's answer only
+ * while it is still the pin — the caller drops it on any edit — so the line
+ * never vouches for a place Google did not find.
+ */
+export function pinStatus(
+	found: { formattedAddress: string; lat: number; lng: number } | null,
+	needsCheck: boolean,
+	pin: PinReading,
+): PinStatus {
+	if (found) {
+		const { formattedAddress, lat, lng } = found;
+		return { kind: "found", formattedAddress, lat, lng };
+	}
+	if (needsCheck) return { kind: "unchecked" };
+	if (pin.ok) return { kind: "pinned", lat: pin.lat, lng: pin.lng };
+	return { kind: "none" };
 }
 
 export type GdexNotice =

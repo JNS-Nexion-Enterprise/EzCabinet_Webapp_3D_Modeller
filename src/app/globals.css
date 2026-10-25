@@ -17,6 +17,8 @@
 		var(--font-geist-sans), "PingFang SC", "Hiragino Sans GB",
 		"Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
 	--font-mono: var(--font-geist-mono);
+	/* The one error red: checkout's, 6.5:1 on white. */
+	--color-danger: #b42318;
 	--font-serif: var(--font-caslon), Georgia, "Times New Roman", serif;
 	/* A spring, approximated: overshoots a little and settles. `ease-spring`. */
 	--ease-spring: linear(

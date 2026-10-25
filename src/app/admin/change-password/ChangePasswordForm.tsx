@@ -1,24 +1,23 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
+import {
+	changePasswordFailure,
+	checkNewPassword,
+	MIN_LENGTH,
+	type PasswordErrors,
+	type PasswordField,
+} from "../passwordFields";
 import { changeOwnPassword } from "./actions";
 
-const MIN_LENGTH = 12;
-
-/** A message safe to show a customer — never the provider's own wording. */
-function messageFor(code: string): string {
-	if (code === "INVALID_PASSWORD") return "Current password is incorrect.";
-	if (code === "PASSWORD_TOO_SHORT")
-		return `New password must be at least ${MIN_LENGTH} characters.`;
-	// The password did change (and other sessions were revoked); only the
-	// follow-up bookkeeping failed. Distinct from every error above this one,
-	// which all mean the password was never touched.
-	if (code === "flag_not_cleared")
-		return "Your password was changed, but something went wrong finishing up. Sign in again — if you're still asked to change your password, tell an admin.";
-	return "Could not change password. Try again.";
-}
+/** The valid border only when valid, so the invalid look is never beaten by CSS order. */
+const inputClass = (invalid: boolean | undefined) =>
+	`min-h-10 rounded-[9px] border px-3.5 py-2.5 text-sm ${
+		invalid ? INVALID : "border-[#d4d4d4]"
+	}`;
 
 export function ChangePasswordForm() {
 	const router = useRouter();
@@ -26,25 +25,38 @@ export function ChangePasswordForm() {
 	const [newPassword, setNewPassword] = useState("");
 	const [confirmPassword, setConfirmPassword] = useState("");
 	const [error, setError] = useState<string | null>(null);
+	const [errors, setErrors] = useState<PasswordErrors>({});
 	const [busy, setBusy] = useState(false);
+	const formRef = useRef<HTMLFormElement>(null);
+
+	/** Type into one input and clear its mark, since what was wrong is gone. */
+	function edit(field: PasswordField, set: (v: string) => void, value: string) {
+		set(value);
+		setErrors(({ [field]: _gone, ...rest }) => rest);
+	}
+
+	function fail(marks: PasswordErrors, banner: string | null) {
+		setErrors(marks);
+		setError(banner);
+		focusFirstInvalid(formRef.current);
+	}
 
 	async function submit() {
 		setError(null);
 
-		if (newPassword.length < MIN_LENGTH) {
-			setError(`New password must be at least ${MIN_LENGTH} characters.`);
+		const marks = checkNewPassword(newPassword, confirmPassword);
+		if (Object.keys(marks).length > 0) {
+			fail(marks, null);
 			return;
 		}
-		if (newPassword !== confirmPassword) {
-			setError("Passwords don't match.");
-			return;
-		}
+		setErrors({});
 
 		setBusy(true);
 		try {
 			const result = await changeOwnPassword(currentPassword, newPassword);
 			if (!result.ok) {
-				setError(messageFor(result.error));
+				const failure = changePasswordFailure(result.error);
+				fail(failure.errors, failure.banner);
 				setBusy(false);
 				return;
 			}
@@ -57,57 +69,80 @@ export function ChangePasswordForm() {
 
 	return (
 		<form
+			ref={formRef}
 			onSubmit={(e) => {
 				e.preventDefault();
 				submit();
 			}}
 			className="mt-6 flex flex-col gap-4"
 		>
-			<label className="flex flex-col gap-1.5">
-				<span className="font-medium text-neutral-700 text-xs">
-					Current password
-				</span>
-				<input
-					type="password"
-					value={currentPassword}
-					onChange={(e) => setCurrentPassword(e.target.value)}
-					placeholder="The password you were given"
-					autoComplete="current-password"
-					className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3.5 py-2.5 text-sm"
-				/>
-			</label>
+			<Field
+				label="Current password"
+				error={errors.current}
+				className="gap-1.5"
+				labelClassName="font-medium text-neutral-700 text-xs"
+			>
+				{(c) => (
+					<input
+						{...c}
+						type="password"
+						value={currentPassword}
+						onChange={(e) =>
+							edit("current", setCurrentPassword, e.target.value)
+						}
+						placeholder="The password you were given"
+						autoComplete="current-password"
+						className={inputClass(c["aria-invalid"])}
+					/>
+				)}
+			</Field>
 
-			<label className="flex flex-col gap-1.5">
-				<span className="font-medium text-neutral-700 text-xs">
-					New password
-				</span>
-				<input
-					type="password"
-					value={newPassword}
-					onChange={(e) => setNewPassword(e.target.value)}
-					autoComplete="new-password"
-					className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3.5 py-2.5 text-sm"
-				/>
-				<span className="text-neutral-400 text-xs">
-					At least {MIN_LENGTH} characters.
-				</span>
-			</label>
+			<Field
+				label="New password"
+				error={errors.newPassword}
+				hint={`At least ${MIN_LENGTH} characters.`}
+				className="gap-1.5"
+				labelClassName="font-medium text-neutral-700 text-xs"
+			>
+				{(c) => (
+					<input
+						{...c}
+						type="password"
+						value={newPassword}
+						onChange={(e) =>
+							edit("newPassword", setNewPassword, e.target.value)
+						}
+						autoComplete="new-password"
+						className={inputClass(c["aria-invalid"])}
+					/>
+				)}
+			</Field>
 
-			<label className="flex flex-col gap-1.5">
-				<span className="font-medium text-neutral-700 text-xs">
-					Confirm new password
-				</span>
-				<input
-					type="password"
-					value={confirmPassword}
-					onChange={(e) => setConfirmPassword(e.target.value)}
-					autoComplete="new-password"
-					className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3.5 py-2.5 text-sm"
-				/>
-			</label>
+			<Field
+				label="Confirm new password"
+				error={errors.confirm}
+				className="gap-1.5"
+				labelClassName="font-medium text-neutral-700 text-xs"
+			>
+				{(c) => (
+					<input
+						{...c}
+						type="password"
+						value={confirmPassword}
+						onChange={(e) =>
+							edit("confirm", setConfirmPassword, e.target.value)
+						}
+						autoComplete="new-password"
+						className={inputClass(c["aria-invalid"])}
+					/>
+				)}
+			</Field>
 
 			{error && (
-				<p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm">
+				<p
+					role="alert"
+					className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm"
+				>
 					{error}
 				</p>
 			)}

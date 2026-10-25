@@ -5,6 +5,7 @@ import {
 	priceLineDetail,
 	priceLineLabel,
 } from "@/components/planner/priceLineCopy";
+import { Spinner } from "@/components/Spinner";
 import { WhatsAppHelp } from "@/components/WhatsAppHelp";
 import { authEnabled } from "@/lib/auth/enabled";
 import { prisma } from "@/lib/catalogue/db";
@@ -226,6 +227,7 @@ export default async function OrderPage({
 			</div>
 
 			<p className="text-[#404040] text-[14px]" role="status">
+				{settling && <Spinner />}
 				<span className="font-semibold text-[#171717]">{heading}.</span> {body}
 			</p>
 
@@ -280,6 +282,7 @@ export default async function OrderPage({
 								errorText={o.payOnlineError}
 								settlingText={o.bodyConfirming}
 								loadingText={t.quote.loading}
+								networkText={t.common.networkError}
 								locale={lang}
 							/>
 						</section>
@@ -402,8 +405,15 @@ export default async function OrderPage({
 									addressNotes: t.quote.addressNotes,
 									whatsappOptIn: t.quote.whatsappOptIn,
 									errorPhone: t.quote.errorPhone,
+									errorNameRequired: t.quote.errorNameRequired,
+									errorPhoneRequired: t.quote.errorPhoneRequired,
+									errorEmailInvalid: t.quote.errorEmailInvalid,
+									errorAddressRequired: t.quote.errorAddressRequired,
+									errorAddressShort: t.quote.errorAddressShort,
 									errorLocked: o.detailsLocked,
 									errorGeneric: o.detailsError,
+									networkError: t.common.networkError,
+									saved: o.detailsSaved,
 								}}
 							/>
 						)}

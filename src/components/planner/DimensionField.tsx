@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
+import { FieldMessage, INVALID } from "@/components/Field";
 import { fill } from "@/lib/copy/fill";
 import { useCopy } from "./CopyContext";
 
@@ -34,6 +35,15 @@ export function DimensionField({
 }) {
 	const t = useCopy();
 	const [draft, setDraft] = useState(String(valueMm));
+	const messageId = useId();
+	// Held-back text is the only way the box can be out of range, since an
+	// in-range keystroke commits and a blur settles on what the engine chose.
+	const typed = Number(draft);
+	const invalid =
+		draft.trim() === "" ||
+		Number.isNaN(typed) ||
+		typed < minMm ||
+		typed > maxMm;
 
 	// Follow the layout when it moves for any other reason — the slider, a room
 	// switch, or a reset.
@@ -65,6 +75,8 @@ export function DimensionField({
 						max={maxMm}
 						step={stepMm}
 						aria-label={fill(t.planner.dimensionAriaSuffix, { label })}
+						aria-invalid={invalid || undefined}
+						aria-describedby={invalid ? messageId : undefined}
 						onChange={(e) => {
 							const next = e.target.value;
 							setDraft(next);
@@ -83,11 +95,18 @@ export function DimensionField({
 						// The spinner arrows are suppressed rather than styled: at this size
 						// they eat the last digit of a 4-figure millimetre reading, and
 						// the slider beside the box already does what they would.
-						className="w-16 max-[760px]:min-h-11 max-[760px]:w-[84px] max-[760px]:text-[16px] rounded-md border border-neutral-200 px-1.5 py-0.5 text-right text-[12px] tabular-nums [appearance:textfield] focus:border-neutral-400 focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+						className={`w-16 max-[760px]:min-h-11 max-[760px]:w-[84px] max-[760px]:text-[16px] rounded-md border px-1.5 py-0.5 text-right text-[12px] tabular-nums [appearance:textfield] focus:outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${invalid ? INVALID : "border-neutral-200 focus:border-neutral-400"}`}
 					/>
 					<span className="text-[12px] text-neutral-500">mm</span>
 				</span>
 			</div>
+			{invalid && (
+				<div className="mt-1 flex justify-end">
+					<FieldMessage id={messageId}>
+						{fill(t.planner.dimensionRange, { min: minMm, max: maxMm })}
+					</FieldMessage>
+				</div>
+			)}
 			<input
 				type="range"
 				className="mt-1 w-full max-[760px]:h-11"
