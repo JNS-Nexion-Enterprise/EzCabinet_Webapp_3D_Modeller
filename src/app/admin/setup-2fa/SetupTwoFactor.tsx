@@ -1,15 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { renderSVG } from "uqr";
 import { useAdminBrand } from "@/app/admin/AdminUserContext";
+import { Field, focusFirstInvalid, INVALID } from "@/components/Field";
 import { Spinner } from "@/components/Spinner";
 import { authClient } from "@/lib/auth/client";
 import { secretOf } from "./totpSecret";
 
 type Step = "password" | "scan" | "codes";
 
-const FIELD = "rounded-[9px] border border-neutral-300 px-3.5 py-2.5 text-sm";
+/** The border colour is the caller's, so the invalid look is never beaten by CSS order. */
+const field = (invalid: boolean | undefined) =>
+	`rounded-[9px] border px-3.5 py-2.5 text-sm ${
+		invalid ? INVALID : "border-neutral-300"
+	}`;
 const PRIMARY =
 	"rounded-[9px] bg-neutral-900 py-2.5 font-medium text-sm text-white disabled:opacity-60";
 
@@ -29,6 +34,13 @@ export function SetupTwoFactor() {
 	const [saved, setSaved] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 	const [busy, setBusy] = useState(false);
+	const formRef = useRef<HTMLFormElement>(null);
+
+	/** Say what went wrong on the step's one input. */
+	function fail(message: string) {
+		setError(message);
+		focusFirstInvalid(formRef.current);
+	}
 
 	async function start() {
 		setBusy(true);
@@ -41,7 +53,7 @@ export function SetupTwoFactor() {
 		// The result is a union ({ method: "otp" } is the emailed-code flavour),
 		// so checking the discriminant is what makes totpURI readable.
 		if (failure || data?.method !== "totp") {
-			setError(
+			fail(
 				failure?.code === "INVALID_PASSWORD"
 					? "That password is incorrect."
 					: "Could not start setup. Try again.",
@@ -62,7 +74,7 @@ export function SetupTwoFactor() {
 		});
 		setBusy(false);
 		if (failure) {
-			setError(
+			fail(
 				failure.status === 429
 					? "Too many attempts. Wait a few seconds and try again."
 					: "That code didn't work. Check the app and try again.",
@@ -75,25 +87,33 @@ export function SetupTwoFactor() {
 	if (step === "password") {
 		return (
 			<form
+				ref={formRef}
 				onSubmit={(e) => {
 					e.preventDefault();
 					start();
 				}}
 				className="mt-5 flex flex-col gap-4"
 			>
-				<label className="flex flex-col gap-1.5">
-					<span className="font-medium text-neutral-700 text-xs">
-						Confirm your password
-					</span>
-					<input
-						type="password"
-						value={password}
-						onChange={(e) => setPassword(e.target.value)}
-						autoComplete="current-password"
-						className={FIELD}
-					/>
-				</label>
-				{error && <ErrorNote>{error}</ErrorNote>}
+				<Field
+					label="Confirm your password"
+					error={error ?? undefined}
+					className="gap-1.5"
+					labelClassName="font-medium text-neutral-700 text-xs"
+				>
+					{(c) => (
+						<input
+							{...c}
+							type="password"
+							value={password}
+							onChange={(e) => {
+								setPassword(e.target.value);
+								setError(null);
+							}}
+							autoComplete="current-password"
+							className={field(c["aria-invalid"])}
+						/>
+					)}
+				</Field>
 				<button type="submit" disabled={busy || !password} className={PRIMARY}>
 					{busy && <Spinner />}
 					Continue
@@ -105,6 +125,7 @@ export function SetupTwoFactor() {
 	if (step === "scan") {
 		return (
 			<form
+				ref={formRef}
 				onSubmit={(e) => {
 					e.preventDefault();
 					verify();
@@ -143,22 +164,27 @@ export function SetupTwoFactor() {
 						{secretOf(totpURI)}
 					</code>
 				</p>
-				<label className="flex flex-col gap-1.5">
-					<span className="font-medium text-neutral-700 text-xs">
-						6-digit code
-					</span>
-					<input
-						inputMode="numeric"
-						autoComplete="one-time-code"
-						value={code}
-						onChange={(e) =>
-							// A pasted "123 456" must work: digits only, six of them.
-							setCode(e.target.value.replace(/\D/g, "").slice(0, 6))
-						}
-						className={FIELD}
-					/>
-				</label>
-				{error && <ErrorNote>{error}</ErrorNote>}
+				<Field
+					label="6-digit code"
+					error={error ?? undefined}
+					className="gap-1.5"
+					labelClassName="font-medium text-neutral-700 text-xs"
+				>
+					{(c) => (
+						<input
+							{...c}
+							inputMode="numeric"
+							autoComplete="one-time-code"
+							value={code}
+							onChange={(e) => {
+								// A pasted "123 456" must work: digits only, six of them.
+								setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+								setError(null);
+							}}
+							className={field(c["aria-invalid"])}
+						/>
+					)}
+				</Field>
 				<button
 					type="submit"
 					disabled={busy || code.trim().length !== 6}
@@ -204,16 +230,5 @@ export function SetupTwoFactor() {
 				</button>
 			)}
 		</div>
-	);
-}
-
-function ErrorNote({ children }: { children: React.ReactNode }) {
-	return (
-		<p
-			role="alert"
-			className="rounded-lg border border-red-300 bg-red-50 px-3 py-2.5 text-red-900 text-sm"
-		>
-			{children}
-		</p>
 	);
 }
