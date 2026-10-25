@@ -1,5 +1,5 @@
-import type { z } from "zod";
 import type { CompanyDetails } from "@/lib/company/details";
+import { fieldsFromIssues } from "@/lib/fieldIssues";
 import { parseCoords } from "@/lib/logistics/coords";
 
 /**
@@ -25,18 +25,24 @@ const FIELD_MESSAGES: Record<keyof CompanyDetails, string> = {
 	orderPrefix: "One to five letters or digits.",
 };
 
-/** The first issue per field; a field the schema does not know is dropped. */
+/**
+ * One message per failing field, from zod issues: the form's own parse
+ * (`error.issues`) or the server's reply, whose paths start with `prefix`
+ * (`details`). A field the schema does not know is dropped.
+ */
 export function fieldErrors(
-	error: z.ZodError,
+	issues: unknown,
+	prefix?: string,
 ): Partial<Record<keyof CompanyDetails, string>> {
-	const out: Partial<Record<keyof CompanyDetails, string>> = {};
-	for (const issue of error.issues) {
-		const field = issue.path[0] as keyof CompanyDetails;
-		if (field in FIELD_MESSAGES && !(field in out)) {
-			out[field] = FIELD_MESSAGES[field];
-		}
-	}
-	return out;
+	const at = prefix === undefined ? 0 : 1;
+	const fields = fieldsFromIssues(issues, (path) =>
+		(prefix === undefined || path[0] === prefix) &&
+		typeof path[at] === "string" &&
+		path[at] in FIELD_MESSAGES
+			? (path[at] as keyof CompanyDetails)
+			: null,
+	);
+	return Object.fromEntries(fields.map((f) => [f, FIELD_MESSAGES[f]]));
 }
 
 export type PinReading =

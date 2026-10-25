@@ -1,9 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
+import {
+	type Control,
+	Field,
+	focusFirstInvalid,
+	INVALID,
+} from "@/components/Field";
 import { Done, Spinner } from "@/components/Spinner";
 import { DONE_MS, NETWORK_ERROR } from "@/components/useAction";
 import {
@@ -33,56 +39,13 @@ const MAP_MISS =
 
 type Errors = ReturnType<typeof fieldErrors>;
 
-type Control = { id: string; "aria-describedby"?: string };
+/** Every field's wrapper: two to a row on a wide screen, `WIDE_BOX` takes the row. */
+const FIELD_BOX = "min-w-[220px] flex-1 text-[13px]";
+const WIDE_BOX = `${FIELD_BOX} basis-full`;
 
-/**
- * A labelled control. The label is tied by `htmlFor` rather than wrapping, so
- * the control's name is the label alone; hint and error are its description.
- */
-function Field({
-	label,
-	hint,
-	error,
-	wide,
-	children,
-}: {
-	label: string;
-	hint?: ReactNode;
-	error?: string;
-	/** Takes the whole row. */
-	wide?: boolean;
-	children: (control: Control) => ReactNode;
-}) {
-	const id = useId();
-	const describedBy =
-		[hint ? `${id}-hint` : "", error ? `${id}-error` : ""]
-			.filter(Boolean)
-			.join(" ") || undefined;
-	return (
-		<div
-			className={`flex min-w-[220px] flex-1 flex-col gap-1 text-[13px] ${wide ? "basis-full" : ""}`}
-		>
-			<label htmlFor={id} className="font-medium">
-				{label}
-			</label>
-			{children({ id, "aria-describedby": describedBy })}
-			{hint && (
-				<span id={`${id}-hint`} className="text-[#5c574e] text-[12px]">
-					{hint}
-				</span>
-			)}
-			{error && (
-				<span
-					id={`${id}-error`}
-					role="alert"
-					className="text-[#b3261e] text-[12px]"
-				>
-					{error}
-				</span>
-			)}
-		</div>
-	);
-}
+/** The input look, marked when the field's `Field` says it failed. */
+const inputClass = (c: Control, extra = "") =>
+	`${INPUT} ${c["aria-invalid"] ? INVALID : ""} ${extra}`;
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
 	return (
@@ -208,7 +171,12 @@ export function CompanyForm({
 	async function post(
 		details: CompanyDetails,
 		confirmMove: boolean,
-	): Promise<{ message: string } | { move: MovePlan } | { repointed: number }> {
+	): Promise<
+		| { message: string }
+		| { errors: Errors }
+		| { move: MovePlan }
+		| { repointed: number }
+	> {
 		const res = await fetchGuarded("/api/admin/company", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
@@ -224,6 +192,12 @@ export function CompanyForm({
 				message:
 					"Someone saved the company details after you opened this page. Nothing was changed — reload to see theirs, then make your change again.",
 			};
+		}
+		// The server's own parse can disagree with ours; mark what it named, and
+		// keep the generic line for a reply that names nothing we can show.
+		const errors = fieldErrors(data?.issues, "details");
+		if (res.status === 400 && Object.keys(errors).length > 0) {
+			return { errors };
 		}
 		if (!res.ok) return { message: "Could not save. Nothing was changed." };
 		setVersion(data?.savedAt ?? null);
@@ -247,6 +221,7 @@ export function CompanyForm({
 
 	async function save(e: React.FormEvent) {
 		e.preventDefault();
+		const form = e.currentTarget;
 		setMessage(null);
 		const parsed = companyDetailsSchema.safeParse({
 			...v,
@@ -255,13 +230,15 @@ export function CompanyForm({
 			lng: pin.ok ? pin.lng : Number.NaN,
 		});
 		if (!parsed.success) {
-			setErrors(fieldErrors(parsed.error));
+			setErrors(fieldErrors(parsed.error.issues));
+			focusFirstInvalid(form);
 			return;
 		}
 		if (addressNeedsPin(initial.address, parsed.data.address, pinConfirmed)) {
 			setPinNote(
 				"You changed the address. Press Check address, or retype the pin by hand to confirm it.",
 			);
+			focusFirstInvalid(form);
 			return;
 		}
 		setErrors({});
@@ -278,6 +255,10 @@ export function CompanyForm({
 			setSaving(false);
 		}
 		if ("message" in out) return setMessage(out.message);
+		if ("errors" in out) {
+			setErrors(out.errors);
+			return focusFirstInvalid(form);
+		}
 		if ("repointed" in out) return saved(details, out.repointed);
 
 		const { repoint, booked } = out.move;
@@ -306,6 +287,10 @@ export function CompanyForm({
 			run: async () => {
 				const again = await post(details, true);
 				if ("message" in again) return again.message;
+				if ("errors" in again) {
+					setErrors(again.errors);
+					return "Some details need fixing.";
+				}
 				if ("move" in again) return "The open deliveries changed. Try again.";
 				saved(details, again.repointed);
 				return null;
@@ -314,8 +299,15 @@ export function CompanyForm({
 	}
 
 	const text = (k: keyof typeof v, label: string, hint?: ReactNode) => (
-		<Field label={label} hint={hint} error={errors[k]}>
-			{(c) => <input {...c} value={v[k]} onChange={set(k)} className={INPUT} />}
+		<Field label={label} hint={hint} error={errors[k]} className={FIELD_BOX}>
+			{(c) => (
+				<input
+					{...c}
+					value={v[k]}
+					onChange={set(k)}
+					className={inputClass(c)}
+				/>
+			)}
 		</Field>
 	);
 
@@ -343,7 +335,7 @@ export function CompanyForm({
 				<Field
 					label="Address"
 					error={errors.address ?? pinNote ?? undefined}
-					wide
+					className={WIDE_BOX}
 				>
 					{(c) => (
 						<div className="flex items-start gap-2">
@@ -358,7 +350,7 @@ export function CompanyForm({
 									setPinConfirmed(false);
 									setFound(null);
 								}}
-								className={`${INPUT} min-w-0 flex-1 resize-none`}
+								className={inputClass(c, "min-w-0 flex-1 resize-none")}
 							/>
 							<button
 								type="button"
@@ -406,13 +398,13 @@ export function CompanyForm({
 				)}
 				{text("postcode", "Postcode")}
 				{text("city", "City")}
-				<Field label="State" error={errors.state}>
+				<Field label="State" error={errors.state} className={FIELD_BOX}>
 					{(c) => (
 						<select
 							{...c}
 							value={v.state}
 							onChange={set("state")}
-							className={`select-chevron ${INPUT} bg-white pl-3`}
+							className={inputClass(c, "select-chevron bg-white pl-3")}
 						>
 							<option value="">Choose a state</option>
 							{MALAYSIAN_STATES.map((s) => (
@@ -430,6 +422,7 @@ export function CompanyForm({
 							pin.ok ? (errors.lat ?? errors.lng ?? undefined) : pin.message
 						}
 						hint="Paste a Google Maps link, or type latitude, longitude."
+						className={FIELD_BOX}
 					>
 						{(c) => (
 							<input
@@ -442,19 +435,23 @@ export function CompanyForm({
 									setFound(null);
 									clearPinErrors();
 								}}
-								className={INPUT}
+								className={inputClass(c)}
 							/>
 						)}
 					</Field>
 				)}
-				<Field label="Courier close time" error={errors.closeTime}>
+				<Field
+					label="Courier close time"
+					error={errors.closeTime}
+					className={FIELD_BOX}
+				>
 					{(c) => (
 						<input
 							{...c}
 							type="time"
 							value={v.closeTime}
 							onChange={set("closeTime")}
-							className={INPUT}
+							className={inputClass(c)}
 						/>
 					)}
 				</Field>

@@ -55,11 +55,27 @@ describe("fieldErrors", () => {
 		});
 		expect(parsed.success).toBe(false);
 		if (!parsed.success)
-			expect(fieldErrors(parsed.error)).toEqual({
+			expect(fieldErrors(parsed.error.issues)).toEqual({
 				postcode: "Five digits.",
 				lat: "The pin must be inside Malaysia.",
 			});
 	});
+
+	it("reads the server's issues, whose paths start with details", () =>
+		expect(
+			fieldErrors(
+				[
+					{ path: ["details", "phone"] },
+					{ path: ["details", "nope"] },
+					{ path: ["loadedAt"] },
+					{ path: ["details", "phone"] },
+				],
+				"details",
+			),
+		).toEqual({ phone: "Enter a Malaysian number a courier can call." }));
+
+	it("is empty for a reply with no issues", () =>
+		expect(fieldErrors(undefined, "details")).toEqual({}));
 });
 
 describe("placeFields", () => {
