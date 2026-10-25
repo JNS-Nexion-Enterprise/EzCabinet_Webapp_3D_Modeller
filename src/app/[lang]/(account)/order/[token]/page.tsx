@@ -5,6 +5,7 @@ import {
 	priceLineDetail,
 	priceLineLabel,
 } from "@/components/planner/priceLineCopy";
+import { Spinner } from "@/components/Spinner";
 import { WhatsAppHelp } from "@/components/WhatsAppHelp";
 import { authEnabled } from "@/lib/auth/enabled";
 import { prisma } from "@/lib/catalogue/db";
@@ -226,6 +227,7 @@ export default async function OrderPage({
 			</div>
 
 			<p className="text-[#404040] text-[14px]" role="status">
+				{settling && <Spinner />}
 				<span className="font-semibold text-[#171717]">{heading}.</span> {body}
 			</p>
 

@@ -475,27 +475,33 @@ function CabinetDesigns() {
 	 * waiting for a render. */
 	async function load(resetBase = false): Promise<CabinetDesign[] | null> {
 		setLoading(true);
-		const res = await fetch("/api/admin/cabinet-designs");
-		if (res.status === 401) {
-			router.push("/admin/login");
+		try {
+			const res = await fetch("/api/admin/cabinet-designs");
+			if (res.status === 401) {
+				router.push("/admin/login");
+				return null;
+			}
+			if (!res.ok) {
+				setError("Failed to load designs");
+				return null;
+			}
+			const body = await res.json();
+			const rows: CabinetDesign[] = body.designs ?? [];
+			setDesigns(rows);
+			setPublished(body.published);
+			// Settings edits live only in `base`; reloading the rows after an upload
+			// must not throw them away. Only a publish — which made them live — resets.
+			setBase((prev) =>
+				resetBase || !prev ? structuredClone(body.published.data) : prev,
+			);
+			return rows;
+		} catch {
+			// No answer: without this the loading line would never end.
+			setError(NETWORK_ERROR);
 			return null;
-		}
-		if (!res.ok) {
-			setError("Failed to load designs");
+		} finally {
 			setLoading(false);
-			return null;
 		}
-		const body = await res.json();
-		const rows: CabinetDesign[] = body.designs ?? [];
-		setDesigns(rows);
-		setPublished(body.published);
-		// Settings edits live only in `base`; reloading the rows after an upload
-		// must not throw them away. Only a publish — which made them live — resets.
-		setBase((prev) =>
-			resetBase || !prev ? structuredClone(body.published.data) : prev,
-		);
-		setLoading(false);
-		return rows;
 	}
 
 	const loadFinishPhotos = useCallback(async () => {

@@ -48,6 +48,16 @@ export function OnlinePayment({
 	const [settling, setSettling] = useState(false);
 	const payApi = useRef<StripePayApi | null>(null);
 
+	// Back from the gateway can restore this page from the browser's cache with
+	// the button still busy; the spinner is only right while the page unloads.
+	useEffect(() => {
+		const onShow = (event: PageTransitionEvent) => {
+			if (event.persisted) setBusy(false);
+		};
+		window.addEventListener("pageshow", onShow);
+		return () => window.removeEventListener("pageshow", onShow);
+	}, []);
+
 	useEffect(() => {
 		fetch(`/api/orders/${token}/pay`, { method: "POST" })
 			.then((res) => (res.ok ? res.json() : Promise.reject(res.status)))
