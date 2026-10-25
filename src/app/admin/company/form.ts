@@ -106,7 +106,15 @@ export function addressNeedsPin(
  * on every keystroke.
  */
 export const oneLine = (text: string) =>
-	text.replace(/\s*,?\s*[\r\n]+\s*/g, ", ");
+	text.replace(/\s*,?\s*[\r\n]+\s*,?\s*/g, ", ");
+
+/**
+ * The address as saved. A copied block usually ends in a line break, which
+ * `oneLine` turned into ", " — and that comma would reach the seller line on
+ * the terms page.
+ */
+export const tidyAddress = (text: string) =>
+	text.replace(/^[\s,]+|[\s,]+$/g, "");
 
 export type PinStatus =
 	| { kind: "found"; formattedAddress: string; lat: number; lng: number }

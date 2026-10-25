@@ -20,6 +20,7 @@ import {
 	pinStatus,
 	placeFields,
 	readPin,
+	tidyAddress,
 } from "./form";
 
 const INPUT = "min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 py-[10px]";
@@ -242,6 +243,7 @@ export function CompanyForm({
 		setMessage(null);
 		const parsed = companyDetailsSchema.safeParse({
 			...v,
+			address: tidyAddress(v.address),
 			lat: pin.ok ? pin.lat : Number.NaN,
 			lng: pin.ok ? pin.lng : Number.NaN,
 		});
@@ -251,7 +253,7 @@ export function CompanyForm({
 		}
 		if (addressNeedsPin(initial.address, parsed.data.address, pinConfirmed)) {
 			setPinNote(
-				"You changed the address. Press Check address, or set the pin by hand.",
+				"You changed the address. Press Check address, or retype the pin by hand to confirm it.",
 			);
 			return;
 		}
@@ -370,22 +372,16 @@ export function CompanyForm({
 							<>The pin is set. {mapLink(status.lat, status.lng)}</>
 						)}
 					</p>
-					{!pinOpen && (
+					{/* One button that stays mounted, so focus survives the press. */}
+					{(!pinOpen ||
+						(pinByHand && pin.ok && !(errors.lat ?? errors.lng))) && (
 						<button
 							type="button"
-							onClick={() => setPinByHand(true)}
+							aria-expanded={pinOpen}
+							onClick={() => setPinByHand(!pinOpen)}
 							className="underline"
 						>
-							Set the pin by hand
-						</button>
-					)}
-					{pinByHand && pin.ok && !(errors.lat ?? errors.lng) && (
-						<button
-							type="button"
-							onClick={() => setPinByHand(false)}
-							className="underline"
-						>
-							Hide the pin
+							{pinOpen ? "Hide the pin" : "Set the pin by hand"}
 						</button>
 					)}
 				</div>

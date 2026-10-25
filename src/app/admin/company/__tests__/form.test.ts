@@ -9,6 +9,7 @@ import {
 	pinStatus,
 	placeFields,
 	readPin,
+	tidyAddress,
 } from "../form";
 
 describe("readPin", () => {
@@ -103,6 +104,15 @@ describe("oneLine", () => {
 		));
 	it("leaves a line being typed alone, trailing space included", () =>
 		expect(oneLine("Lot 5 ")).toBe("Lot 5 "));
+	it("does not double a comma that starts the next line", () =>
+		expect(oneLine("Lot 5\n, Jalan Industri")).toBe("Lot 5, Jalan Industri"));
+});
+
+describe("tidyAddress", () => {
+	it("drops the comma a trailing line break leaves", () =>
+		expect(tidyAddress(oneLine("Lot 5\nDengkil\n"))).toBe("Lot 5, Dengkil"));
+	it("drops the comma a leading line break leaves", () =>
+		expect(tidyAddress(oneLine("\nLot 5\nDengkil"))).toBe("Lot 5, Dengkil"));
 });
 
 describe("pinStatus", () => {
