@@ -62,17 +62,42 @@ export function UsersTable({
 	// in a dialog first.
 	const [confirming, setConfirming] = useState<Confirm | null>(null);
 
-	const reload = useCallback(async (q: string, s: ScopeFilter) => {
-		const params = new URLSearchParams({ staff: s === "staff" ? "1" : "0" });
-		if (q) params.set("q", q);
-		const res = await fetch(`/api/admin/users?${params.toString()}`);
-		if (!res.ok) return;
-		const data = await res.json();
-		setUsers(data.users);
-	}, []);
+	const [searching, setSearching] = useState(false);
 
+	const reload = useCallback(
+		async (q: string, s: ScopeFilter, signal?: AbortSignal) => {
+			const params = new URLSearchParams({ staff: s === "staff" ? "1" : "0" });
+			if (q) params.set("q", q);
+			const res = await fetch(`/api/admin/users?${params.toString()}`, {
+				signal,
+			});
+			if (!res.ok) return;
+			const data = await res.json();
+			setUsers(data.users);
+		},
+		[],
+	);
+
+	// Typing used to fire a request per keystroke, and an older answer could
+	// land after a newer one and show the wrong list. Wait for a pause, and
+	// abort the request a newer search replaces.
 	useEffect(() => {
-		reload(query, scope);
+		const ctl = new AbortController();
+		const timer = setTimeout(async () => {
+			setSearching(true);
+			try {
+				await reload(query, scope, ctl.signal);
+			} catch {
+				// Aborted by a newer search, or the connection dropped: the list
+				// on screen stays as it was either way.
+			} finally {
+				if (!ctl.signal.aborted) setSearching(false);
+			}
+		}, 250);
+		return () => {
+			clearTimeout(timer);
+			ctl.abort();
+		};
 	}, [query, scope, reload]);
 
 	/** Suspend and restore are one click, but the route still wants a passkey. */
@@ -244,7 +269,7 @@ export function UsersTable({
 						</button>
 					))}
 				</div>
-				<div className="min-w-[220px] flex-1 sm:max-w-[280px]">
+				<div className="relative min-w-[220px] flex-1 sm:max-w-[280px]">
 					<label htmlFor="user-search" className="sr-only">
 						Search by name or email
 					</label>
@@ -256,6 +281,14 @@ export function UsersTable({
 						onChange={(e) => setQuery(e.target.value)}
 						className="min-h-[38px] w-full rounded-[9px] border border-[#d4d4d4] px-3 py-2 text-[13px]"
 					/>
+					{searching && (
+						<span
+							role="status"
+							className="pointer-events-none absolute top-1/2 right-9 -translate-y-1/2 text-[13px] text-neutral-500"
+						>
+							<Spinner />
+						</span>
+					)}
 				</div>
 			</div>
 

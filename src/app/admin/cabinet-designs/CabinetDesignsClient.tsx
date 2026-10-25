@@ -206,7 +206,15 @@ function emptyForm(room: Room): Form {
  */
 const DesignViewer = dynamic(
 	() => import("@/components/admin/DesignViewer").then((m) => m.DesignViewer),
-	{ ssr: false },
+	{
+		ssr: false,
+		loading: () => (
+			<p role="status" className="text-neutral-500 text-sm">
+				<Spinner />
+				Loading viewer…
+			</p>
+		),
+	},
 );
 
 /**
@@ -1285,6 +1293,13 @@ function CabinetDesigns() {
 								Upload to {ROOM_LABELS[tab]}
 							</button>
 						</div>
+
+						{loading && (
+							<p role="status" className="text-neutral-500 text-sm">
+								<Spinner />
+								Loading designs…
+							</p>
+						)}
 
 						{/* Only after a load that worked: a failed one has no rows either, and
 						    "coming soon" would hide the error above it. */}
