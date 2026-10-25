@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useRef, useState } from "react";
 import { type Confirm, ConfirmDialog } from "@/components/admin/ConfirmDialog";
 import { fetchGuarded } from "@/components/admin/stepUp";
 import {
@@ -108,6 +108,7 @@ export function CompanyForm({
 	const [pinConfirmed, setPinConfirmed] = useState(true);
 	const [pinNote, setPinNote] = useState<string | null>(null);
 	const [errors, setErrors] = useState<Errors>({});
+	const formRef = useRef<HTMLFormElement>(null);
 	const [finding, setFinding] = useState(false);
 	const [mapNote, setMapNote] = useState<string | null>(null);
 	// Google's answer for the address as typed; dropped on any edit.
@@ -316,8 +317,16 @@ export function CompanyForm({
 	);
 
 	return (
-		<form onSubmit={save} className="flex flex-col gap-5">
-			<ConfirmDialog confirm={confirming} onClose={() => setConfirming(null)} />
+		<form ref={formRef} onSubmit={save} className="flex flex-col gap-5">
+			<ConfirmDialog
+				confirm={confirming}
+				onClose={() => {
+					setConfirming(null);
+					// The marks sit behind the dialog while it is open, so focus
+					// waits until it closes.
+					focusFirstInvalid(formRef.current);
+				}}
+			/>
 
 			<Section title="Company">
 				{text("brand", "Brand")}

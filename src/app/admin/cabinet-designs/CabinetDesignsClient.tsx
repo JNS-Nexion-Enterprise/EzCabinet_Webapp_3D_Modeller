@@ -1174,8 +1174,8 @@ function CabinetDesigns() {
 				body.meshNote ? [body.meshNote] : [],
 				fresh,
 			);
-		} catch (e) {
-			setError(e instanceof Error ? e.message : String(e));
+		} catch {
+			setError(NETWORK_ERROR);
 		} finally {
 			setSaving(false);
 		}
@@ -1855,6 +1855,9 @@ function CabinetDesigns() {
 													<input
 														{...c}
 														type="number"
+														// A price has sen: without this 450.50 is a step
+														// mismatch and reads as invalid.
+														step="any"
 														value={form.price}
 														onChange={(e) => setField("price", e.target.value)}
 														placeholder="0.00"
@@ -1875,7 +1878,7 @@ function CabinetDesigns() {
 													<input
 														{...c}
 														type="number"
-														step="0.1"
+														step="any"
 														value={form.weight}
 														onChange={(e) => setField("weight", e.target.value)}
 														placeholder="Not weighed"

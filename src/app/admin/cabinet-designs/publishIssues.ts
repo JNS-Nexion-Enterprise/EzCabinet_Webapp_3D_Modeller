@@ -117,6 +117,34 @@ function settingKey(path: Path): { key: string; tab: SettingsTabName } | null {
 }
 
 /**
+ * What to tell the admin about a number the server refused, by the rule it
+ * broke. The inputs here are RM rates (decimals fine), mm figures (positive)
+ * and the whole-number door ladder, so one fixed sentence was wrong for most.
+ */
+export function numberMark(issue: unknown): string {
+	const i = (issue ?? {}) as {
+		code?: unknown;
+		minimum?: unknown;
+		inclusive?: unknown;
+		expected?: unknown;
+	};
+	if (i.code === "too_small" && typeof i.minimum === "number") {
+		if (i.inclusive === false) {
+			return i.minimum === 0
+				? "Enter a number greater than 0."
+				: `Enter a number greater than ${i.minimum}.`;
+		}
+		return i.minimum === 0
+			? "Enter a number that is not negative."
+			: `Enter a number of at least ${i.minimum}.`;
+	}
+	if (i.code === "invalid_type" && i.expected === "int") {
+		return "Enter a whole number.";
+	}
+	return "Enter a valid number.";
+}
+
+/**
  * A rejected publish, split: the issues an input on the settings screen can
  * carry become marks on that input (by `settingKey`), the rest stay sentences
  * for the banner. `tab` is the first marked input's tab, to open before focus.
@@ -147,7 +175,7 @@ export function publishMarks(
 					? "Enter a colour like #1f5138."
 					: last === "label"
 						? "Enter a name."
-						: "The planner cannot use this value. Enter a whole number that is not negative.";
+						: numberMark(issue);
 			tab ??= at.tab;
 		}
 	}

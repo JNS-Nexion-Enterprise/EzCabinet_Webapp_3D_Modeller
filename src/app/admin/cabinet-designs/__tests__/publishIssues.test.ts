@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { PLANNER_CATALOGUE } from "@/lib/planner/catalogue";
-import { publishIssueSentences } from "../publishIssues";
+import { numberMark, publishIssueSentences } from "../publishIssues";
 
 const draft = PLANNER_CATALOGUE;
 
@@ -90,5 +90,52 @@ describe("publishMarks", () => {
 		expect(out.marks).toEqual({});
 		expect(out.tab).toBeNull();
 		expect(out.rest).toHaveLength(2);
+	});
+});
+
+describe("numberMark", () => {
+	it("follows the rule the number broke", () => {
+		expect(numberMark({ code: "too_small", minimum: 0, inclusive: true })).toBe(
+			"Enter a number that is not negative.",
+		);
+		expect(
+			numberMark({ code: "too_small", minimum: 0, inclusive: false }),
+		).toBe("Enter a number greater than 0.");
+		expect(numberMark({ code: "too_small", minimum: 5, inclusive: true })).toBe(
+			"Enter a number of at least 5.",
+		);
+		expect(numberMark({ code: "invalid_type", expected: "int" })).toBe(
+			"Enter a whole number.",
+		);
+	});
+
+	it("falls back to plain words for anything else", () => {
+		expect(numberMark({ code: "invalid_type", expected: "number" })).toBe(
+			"Enter a valid number.",
+		);
+		expect(numberMark(null)).toBe("Enter a valid number.");
+	});
+
+	it("is what publishMarks says for a rate or a ladder rung", () => {
+		const out = publishMarks(
+			[
+				{
+					path: ["rates", "deliveryFlatRm"],
+					code: "too_small",
+					minimum: 0,
+					inclusive: true,
+				},
+				{
+					path: ["doorWidthLadderMm", 0],
+					code: "invalid_type",
+					expected: "int",
+				},
+			],
+			draft,
+		);
+		expect(Object.values(out.marks)).toEqual([
+			"Enter a number that is not negative.",
+			"Enter a whole number.",
+		]);
 	});
 });

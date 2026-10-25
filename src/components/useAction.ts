@@ -66,8 +66,13 @@ export function useAction<A extends unknown[]>(
 			trackAction(guard.current, () => latest.current(...args), setState),
 		[],
 	);
+	/** Forget a finished run (a stale failure banner), never one in flight. */
+	const reset = useCallback(() => {
+		if (!guard.current.inFlight) setState("idle");
+	}, []);
 	return {
 		run,
+		reset,
 		state,
 		busy: state === "busy",
 		done: state === "done",

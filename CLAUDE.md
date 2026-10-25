@@ -1150,4 +1150,4 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
 - Sentence case in UI copy. Prices in RM.
 - Every `lib/planner` function gets a test before it gets a caller.
 - Commit catalogue changes separately from code changes so price history is greppable.
-- An action that waits on the server runs through `useAction` (`src/components/useAction.ts`) with `Spinner`/`Done` (`src/components/Spinner.tsx`) on its button, and an input that fails a check is marked on that input through `Field`/`FieldMessage`/`INVALID` (`src/components/Field.tsx`) in the `danger` colour token — never only a banner above the form.
+- An action that waits on the server shows `Spinner`/`Done` (`src/components/Spinner.tsx`) on its button and always clears its busy flag: a new single-action button uses `useAction` (`src/components/useAction.ts`); a screen with per-row busy keys or its own done window uses try/finally instead, and an input that fails a check is marked on that input through `Field`/`FieldMessage`/`INVALID` (`src/components/Field.tsx`) in the `danger` colour token — never only a banner above the form.

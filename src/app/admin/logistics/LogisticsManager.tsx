@@ -214,9 +214,11 @@ export function LogisticsManager({
 				<button
 					type="button"
 					className={chipClass(form !== null)}
-					onClick={() =>
-						setForm(form === null ? blankForm(workshopAddress) : null)
-					}
+					onClick={() => {
+						// A dropped save's banner belongs to the form being closed.
+						if (form !== null) saving.reset();
+						setForm(form === null ? blankForm(workshopAddress) : null);
+					}}
 				>
 					{form === null ? "New delivery" : "Cancel"}
 				</button>
@@ -541,7 +543,7 @@ function DeliveryForm({
 									<input
 										{...mark("weightKg")}
 										type="number"
-										step="0.1"
+										step="any"
 										placeholder="—"
 										className={fieldClass(bad("weightKg"))}
 										value={item.weightKg ?? ""}

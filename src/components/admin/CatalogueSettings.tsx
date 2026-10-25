@@ -33,6 +33,7 @@ function Num({
 	onChange,
 	width = "w-24",
 	min = 0,
+	step = "any",
 	mark,
 }: {
 	label?: string;
@@ -42,6 +43,8 @@ function Num({
 	onChange: (n: number) => void;
 	width?: string;
 	min?: number;
+	/** "any" because most figures here (RM rates, mm) allow decimals; only the door-width ladder is whole numbers. */
+	step?: number | "any";
 	/** What the server refused this value for, until it is edited. */
 	mark?: string;
 }) {
@@ -63,6 +66,7 @@ function Num({
 				aria-describedby={invalid ? `${id}-error` : undefined}
 				value={Number.isFinite(value) ? value : ""}
 				min={min}
+				step={step}
 				onChange={(e) => onChange(Number(e.target.value))}
 				className={fieldClass(invalid, `${width} tabular-nums`)}
 			/>
@@ -260,6 +264,7 @@ export function CatalogueSettings({
 									mark={m("doorWidthLadderMm", i)}
 									value={mm}
 									min={1}
+									step={1}
 									width="w-20"
 									onChange={(v) =>
 										edit((n) => {
