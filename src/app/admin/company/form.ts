@@ -99,6 +99,40 @@ export function addressNeedsPin(
 	return typedAddress.trim() !== savedAddress.trim() && !pinConfirmed;
 }
 
+/**
+ * A pasted letterhead address, as the one line it is stored as. A text input
+ * would delete the line breaks and glue "Industri" to "43800"; carriers, the
+ * seller line and mail all read the address as one line. Not trimmed: it runs
+ * on every keystroke.
+ */
+export const oneLine = (text: string) =>
+	text.replace(/\s*,?\s*[\r\n]+\s*/g, ", ");
+
+export type PinStatus =
+	| { kind: "found"; formattedAddress: string; lat: number; lng: number }
+	| { kind: "unchecked" }
+	| { kind: "pinned"; lat: number; lng: number }
+	| { kind: "none" };
+
+/**
+ * What the line under the address says about the pin. Google's answer only
+ * while it is still the pin — the caller drops it on any edit — so the line
+ * never vouches for a place Google did not find.
+ */
+export function pinStatus(
+	found: { formattedAddress: string; lat: number; lng: number } | null,
+	needsCheck: boolean,
+	pin: PinReading,
+): PinStatus {
+	if (found) {
+		const { formattedAddress, lat, lng } = found;
+		return { kind: "found", formattedAddress, lat, lng };
+	}
+	if (needsCheck) return { kind: "unchecked" };
+	if (pin.ok) return { kind: "pinned", lat: pin.lat, lng: pin.lng };
+	return { kind: "none" };
+}
+
 export type GdexNotice =
 	| null
 	| { kind: "reminder" }
