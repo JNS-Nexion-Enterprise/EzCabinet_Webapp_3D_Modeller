@@ -880,7 +880,7 @@ ships; a staff member's first passkey is enrolled by whoever holds their
 session (logged, as with customers); the window covers any guarded action in those five minutes, not
 one named action; the step-up is skipped with `AUTH_ENABLED=false`, where no
 session exists to pass one; and user verification (biometric or PIN) is
-required at enrolment (`authenticatorSelection`) but the plugin at 1.7.5
+required at enrolment (`authenticatorSelection`) but the plugin at 1.7.14
 cannot enforce it at authentication.
 
 **Suspend is reversible; Delete is not.** A superadmin's **Delete** on

@@ -29,7 +29,7 @@
 	},
 	"dependencies": {
 		"@better-auth/infra": "^0.4.20",
-		"@better-auth/passkey": "1.7.5",
+		"@better-auth/passkey": "1.7.14",
 		"@flags-sdk/vercel": "^1.5.2",
 		"@mux/mux-player-react": "^3.14.0",
 		"@mux/ts": "^15.6.1",
@@ -50,7 +50,7 @@
 		"@vercel/analytics": "^2.0.1",
 		"@vercel/blob": "^2.8.2",
 		"@vercel/speed-insights": "^2.0.0",
-		"better-auth": "1.7.5",
+		"better-auth": "1.7.14",
 		"botid": "^1.5.11",
 		"fflate": "^0.8.3",
 		"flags": "^4.3.1",
