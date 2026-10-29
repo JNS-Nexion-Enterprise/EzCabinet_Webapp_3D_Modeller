@@ -28,9 +28,9 @@
 		"db:studio": "prisma studio"
 	},
 	"dependencies": {
-		"@better-auth/infra": "^0.4.23",
+		"@better-auth/infra": "^0.4.24",
 		"@better-auth/passkey": "1.7.14",
-		"@flags-sdk/vercel": "^1.5.3",
+		"@flags-sdk/vercel": "^1.5.4",
 		"@mux/mux-player-react": "^3.14.1",
 		"@mux/ts": "^15.6.1",
 		"@mux/upchunk": "^3.5.0",
@@ -38,7 +38,7 @@
 		"@opentelemetry/exporter-logs-otlp-http": "^0.223.0",
 		"@opentelemetry/resources": "^2.12.0",
 		"@opentelemetry/sdk-logs": "^0.223.0",
-		"@pnpm/exe": "^12.16.0",
+		"@pnpm/exe": "^12.16.1",
 		"@posthog/nextjs-config": "^1.12.0",
 		"@prisma/adapter-pg": "^7.10.1",
 		"@prisma/client": "^7.10.1",
