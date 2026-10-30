@@ -87,7 +87,7 @@ async function call(method, path, payload) {
 	}
 }
 
-console.log(`key ${KEY.slice(0, 7)}… · market ${MARKET} · ${BASE}`);
+console.log(`market ${MARKET} · ${BASE}`);
 
 // Credentials, host and market in one call — and the list of service types this
 // city actually accepts.

@@ -35,7 +35,12 @@ jobs:
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Workload identity federation: the job's GitHub OIDC token is
+          # exchanged for a short-lived Anthropic token, so no API key is stored.
+          anthropic_federation_rule_id: fdrl_012hX3VNKW3vmXxRjvMmxCUk
+          anthropic_organization_id: 7b8f3b29-cad6-4402-92e2-cb4681e9a951
+          anthropic_service_account_id: svac_01NwiNTHbWY1EbZHuUotJBCb
+          anthropic_workspace_id: wrkspc_01C1Xs7tAk1aB7cfFDDPN8Z4
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"
           plugins: "code-review@claude-code-plugins"
           prompt: "/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}"
