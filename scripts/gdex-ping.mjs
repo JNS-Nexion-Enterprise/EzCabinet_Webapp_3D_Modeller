@@ -39,6 +39,8 @@
  * and is not.
  */
 
+import { createHash } from "node:crypto";
+
 const LIVE = "https://myopenapi.gdexpress.com/api/MyGDex";
 const TEST = "https://myopenapi.gdexpress.com/test/api/MyGDex";
 
@@ -66,10 +68,14 @@ if (USER_TOKEN === "") {
 	process.exit(1);
 }
 
-/** Enough of the value to recognise it in a log, never enough to use it. */
+/**
+ * Recognisable between runs, with none of the value in it: a fragment would
+ * also slip past the masking GitHub applies to a whole secret in a job log.
+ */
 function fingerprint(value) {
 	if (value === "") return "unset";
-	return `${value.length} chars, ${value.slice(0, 4)}…${value.slice(-2)}`;
+	const hash = createHash("sha256").update(value).digest("hex");
+	return `${value.length} chars, sha256 ${hash.slice(0, 8)}`;
 }
 
 async function call(method, path, body) {
