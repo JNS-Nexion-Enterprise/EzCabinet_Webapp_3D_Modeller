@@ -66,10 +66,12 @@ if (USER_TOKEN === "") {
 	process.exit(1);
 }
 
-/** Enough of the value to recognise it in a log, never enough to use it. */
+/**
+ * Set or not, and how long: none of the value. A fragment would slip past the
+ * masking GitHub applies to a whole secret in a job log.
+ */
 function fingerprint(value) {
-	if (value === "") return "unset";
-	return `${value.length} chars, ${value.slice(0, 4)}…${value.slice(-2)}`;
+	return value === "" ? "unset" : `${value.length} chars`;
 }
 
 async function call(method, path, body) {
