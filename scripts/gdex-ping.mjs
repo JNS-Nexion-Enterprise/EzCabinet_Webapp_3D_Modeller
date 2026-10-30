@@ -39,8 +39,6 @@
  * and is not.
  */
 
-import { createHash } from "node:crypto";
-
 const LIVE = "https://myopenapi.gdexpress.com/api/MyGDex";
 const TEST = "https://myopenapi.gdexpress.com/test/api/MyGDex";
 
@@ -69,13 +67,11 @@ if (USER_TOKEN === "") {
 }
 
 /**
- * Recognisable between runs, with none of the value in it: a fragment would
- * also slip past the masking GitHub applies to a whole secret in a job log.
+ * Set or not, and how long: none of the value. A fragment would slip past the
+ * masking GitHub applies to a whole secret in a job log.
  */
 function fingerprint(value) {
-	if (value === "") return "unset";
-	const hash = createHash("sha256").update(value).digest("hex");
-	return `${value.length} chars, sha256 ${hash.slice(0, 8)}`;
+	return value === "" ? "unset" : `${value.length} chars`;
 }
 
 async function call(method, path, body) {
