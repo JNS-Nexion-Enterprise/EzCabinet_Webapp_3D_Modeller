@@ -18,7 +18,7 @@ module "client" {
 }
 
 # One rule for the whole fleet, replacing docs/ops/vercel-5xx-alert.json.
-resource "vercel_alert_rule" "server_errors" {
+resource "vercel_monitor" "server_errors" {
   type = "built-in"
   name = "Planner server 5xx anomalies"
   rule_scope = {
@@ -33,4 +33,9 @@ resource "vercel_alert_rule" "server_errors" {
   notification_settings = {
     enable_team_owner_notifications = true
   }
+}
+
+moved {
+  from = vercel_alert_rule.server_errors
+  to   = vercel_monitor.server_errors
 }

@@ -296,7 +296,7 @@ export const auth = betterAuth({
 			rpName: seedCompany().brand,
 			// A passkey here is proof the owner is present, so the device must
 			// check them (biometric or PIN), not just that it is plugged in. This
-			// asks for it at enrolment; the plugin (1.7.5) cannot enforce it at
+			// asks for it at enrolment; the plugin (1.7.14) cannot enforce it at
 			// authentication.
 			authenticatorSelection: { userVerification: "required" },
 			authentication: {

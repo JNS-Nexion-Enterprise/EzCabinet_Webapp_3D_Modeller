@@ -45,7 +45,7 @@ export function PasskeyGate({
 		setError(null);
 		if (mode === "enrol") track("passkey_enrol_started");
 		// Both client calls resolve `{ data, error }` and report every failure,
-		// cancelled prompt included, as a truthy `error` (Better Auth 1.7.5).
+		// cancelled prompt included, as a truthy `error` (Better Auth 1.7.14).
 		// `code` is on the runtime error but missing from the inferred type.
 		let failure: { code?: string; message?: string } | null = null;
 		try {

@@ -5,6 +5,7 @@ import {
 	addressNeedsPin,
 	fieldErrors,
 	gdexNotice,
+	mapFailure,
 	oneLine,
 	pinStatus,
 	placeFields,
@@ -105,6 +106,14 @@ describe("addressNeedsPin", () => {
 		expect(addressNeedsPin("Lot 5", " Lot 5 ", false)).toBe(false);
 		expect(addressNeedsPin("Lot 5", "Lot 9", true)).toBe(false);
 	});
+	it("compares the address as it would be saved, so the status line and Save agree", () => {
+		expect(addressNeedsPin("Lot 5, Jalan A", "Lot 5, Jalan A, ", false)).toBe(
+			false,
+		);
+		expect(addressNeedsPin("Lot 5, Jalan A", "Lot 5\nJalan A\n", false)).toBe(
+			false,
+		);
+	});
 });
 
 describe("oneLine", () => {
@@ -118,7 +127,7 @@ describe("oneLine", () => {
 		expect(oneLine("Lot 5\r\n\r\n  Jalan Industri")).toBe(
 			"Lot 5, Jalan Industri",
 		));
-	it("leaves a line being typed alone, trailing space included", () =>
+	it("leaves a single line alone, trailing space included", () =>
 		expect(oneLine("Lot 5 ")).toBe("Lot 5 "));
 	it("does not double a comma that starts the next line", () =>
 		expect(oneLine("Lot 5\n, Jalan Industri")).toBe("Lot 5, Jalan Industri"));
@@ -129,6 +138,27 @@ describe("tidyAddress", () => {
 		expect(tidyAddress(oneLine("Lot 5\nDengkil\n"))).toBe("Lot 5, Dengkil"));
 	it("drops the comma a leading line break leaves", () =>
 		expect(tidyAddress(oneLine("\nLot 5\nDengkil"))).toBe("Lot 5, Dengkil"));
+	it("joins the lines of a paste by itself", () =>
+		expect(tidyAddress("Lot 5\nDengkil\n")).toBe("Lot 5, Dengkil"));
+});
+
+describe("mapFailure", () => {
+	const DOWN =
+		"Could not reach Google Maps. Try again, or set the pin by hand below.";
+	it.each([[null], [200], [502]])("calls %s a Google outage", (status) =>
+		expect(mapFailure(status)).toBe(DOWN),
+	);
+	it("does not tell an admin to retry an address the route will always refuse", () =>
+		expect(mapFailure(400)).toBe(
+			"That address is too long to check. Shorten it, or set the pin by hand below.",
+		));
+	it.each([[401], [403]])(
+		"sends a refused session to sign in on %s",
+		(status) =>
+			expect(mapFailure(status)).toBe(
+				"You are no longer signed in here. Reload the page, then check the address.",
+			),
+	);
 });
 
 describe("pinStatus", () => {

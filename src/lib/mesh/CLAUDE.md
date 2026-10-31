@@ -78,5 +78,6 @@ September 2026), which matched designs into existing families by shape within
 20mm. On the first real uploads it folded BC 600 / 800 / 900 into the seed's
 invented `base-cabinet`, kept that family's invented prices and 607×880 box
 over the ones typed at upload, and left no screen showing which cabinet was
-real. `read.ts` and the run strategies in `strategies.ts` are left over from that
-import with no caller in the app; remove them once that is certain.
+real. `extractCatalogue` and the run strategies in `strategies.ts` are left over
+from that import: only `__tests__/fixture.ts` calls them, so they can go with
+the `grouping` and `extractCatalogue` tests in `pipeline.test.ts`.

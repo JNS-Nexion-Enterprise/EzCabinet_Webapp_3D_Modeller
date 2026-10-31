@@ -222,7 +222,6 @@ src/
     roles.ts             ← what each panel is: naming table, geometric fallback
     strategies.ts        ← flat panels → cabinets, three strategies best-first
     extract.ts           ← cabinets → CatalogueDraft (no money, ever)
-    read.ts              ← whole-run intake; no caller since /admin/import went
     measureDesign.ts     ← one file = one cabinet, for the design library
     renderMesh.ts        ← OBJ → grouped binary geometry the planner draws
   components/planner/    ← R3F scene and the planner screens

@@ -4,7 +4,7 @@ terraform {
   required_providers {
     vercel = {
       source  = "vercel/vercel"
-      version = "~> 5.21"
+      version = "~> 5.23"
     }
     random = {
       source  = "hashicorp/random"

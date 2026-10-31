@@ -28,7 +28,7 @@
 		"db:studio": "prisma studio"
 	},
 	"dependencies": {
-		"@better-auth/infra": "^0.4.24",
+		"@better-auth/infra": "^0.4.25",
 		"@better-auth/passkey": "1.7.14",
 		"@flags-sdk/vercel": "^1.5.4",
 		"@mux/mux-player-react": "^3.14.1",
@@ -51,7 +51,7 @@
 		"@vercel/blob": "^2.8.2",
 		"@vercel/speed-insights": "^2.0.0",
 		"better-auth": "1.7.14",
-		"botid": "^1.5.11",
+		"botid": "^1.5.12",
 		"fflate": "^0.8.3",
 		"flags": "^4.4.0",
 		"next": "16.4.2",
@@ -67,9 +67,9 @@
 		"zod": "^4.6.7"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.6.3",
+		"@biomejs/biome": "^2.6.4",
 		"@tailwindcss/postcss": "^4.3.3",
-		"@types/node": "^20.19.43",
+		"@types/node": "^24.19.2",
 		"@types/pg": "^8.23.1",
 		"@types/react": "^19.3.0",
 		"@types/react-dom": "^19.3.0",

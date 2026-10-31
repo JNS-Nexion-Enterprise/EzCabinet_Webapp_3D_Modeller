@@ -8,8 +8,9 @@ import type { Grouping, StrategyName } from "./strategies";
  * standard, the panel spec, the finish list and the hardware list, as the
  * client actually builds them.
  *
- * The output is a *draft*. A human confirms it at `/admin/import`, and only
- * then does it merge into a DRAFT catalogue version. Nothing here is priced —
+ * The app reads one design at a time and takes only `geometryOf` and `kindOf`
+ * from here, through `measureDesign.ts`. `extractCatalogue` is left over from
+ * the whole-run import and only tests call it. Nothing here is priced —
  * geometry carries no money, so that decision stays a person's.
  */
 
