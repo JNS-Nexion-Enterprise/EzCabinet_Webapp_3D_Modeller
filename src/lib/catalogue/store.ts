@@ -40,6 +40,11 @@ async function fetchPublishedPlannerCatalogue() {
  */
 export const readPublishedPlannerCatalogue = fetchPublishedPlannerCatalogue;
 
+/**
+ * Stays `unstable_cache` despite Next's note that `use cache` replaces it: that
+ * needs Cache Components, and on serverless a plain `use cache` entry rarely
+ * outlives its request, so most reads would reach Postgres.
+ */
 export const getPublishedPlannerCatalogue = unstable_cache(
 	fetchPublishedPlannerCatalogue,
 	["catalogue-planner"],

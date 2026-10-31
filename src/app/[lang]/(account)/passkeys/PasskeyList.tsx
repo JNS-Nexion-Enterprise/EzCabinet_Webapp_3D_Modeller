@@ -13,7 +13,7 @@ import { passkeyDate } from "./passkeyDate";
 type Row = { id: string; name: string | null; createdAt: string | null };
 
 // Every client call resolves `{ data, error }`; `code` is on the runtime
-// error but missing from the inferred type (Better Auth 1.7.5).
+// error but missing from the inferred type (Better Auth 1.7.14).
 type Outcome =
 	| { error?: { status?: number; code?: string } | null }
 	| undefined
