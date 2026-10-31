@@ -24,7 +24,7 @@ import {
 	addressNeedsPin,
 	fieldErrors,
 	gdexNotice,
-	oneLine,
+	mapFailure,
 	pinStatus,
 	placeFields,
 	readPin,
@@ -32,8 +32,6 @@ import {
 } from "./form";
 
 const INPUT = "min-h-10 rounded-[9px] border px-3 py-[10px]";
-const MAP_DOWN =
-	"Could not reach Google Maps. Try again, or set the pin by hand below.";
 const MAP_MISS =
 	"Google Maps could not find that address. Check it for typos, or set the pin by hand below.";
 
@@ -138,14 +136,19 @@ export function CompanyForm({
 	);
 	const pinOpen = pinByHand || !pin.ok || !!(errors.lat ?? errors.lng);
 	const notice = gdexNotice(gdexConfigured, gdexPostcode, v.postcode.trim());
+	const mapLine = found ? null : (mapNote ?? geocoderFault);
 
+	/**
+	 * The address and pin boxes are read-only until this answers: Google's reply
+	 * sets the pin and confirms it, so it must land on the text it was asked about.
+	 */
 	async function findOnMap() {
 		setFinding(true);
 		setMapNote(null);
 		const res = await fetch("/api/admin/company/geocode", {
 			method: "POST",
 			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ address: v.address }),
+			body: JSON.stringify({ address: tidyAddress(v.address) }),
 		}).catch(() => null);
 		const data: { found: GeocodeResult | null; fault: string | null } | null =
 			res?.ok ? await res.json().catch(() => null) : null;
@@ -153,7 +156,9 @@ export function CompanyForm({
 		if (!data?.found) {
 			setFound(null);
 			setPinByHand(true);
-			setMapNote(data ? (data.fault ?? MAP_MISS) : MAP_DOWN);
+			setMapNote(
+				data ? (data.fault ?? MAP_MISS) : mapFailure(res?.status ?? null),
+			);
 			return;
 		}
 		const f = data.found;
@@ -356,19 +361,23 @@ export function CompanyForm({
 								{...c}
 								rows={2}
 								value={v.address}
+								readOnly={finding}
 								onChange={(e) => {
-									set("address")({
-										target: { value: oneLine(e.target.value) },
-									});
+									set("address")(e);
 									setPinConfirmed(false);
+									setPinNote(null);
+									setMapNote(null);
 									setFound(null);
 								}}
+								onBlur={() =>
+									setV((s) => ({ ...s, address: tidyAddress(s.address) }))
+								}
 								className={inputClass(c, "min-w-0 flex-1 resize-none")}
 							/>
 							<button
 								type="button"
 								onClick={findOnMap}
-								disabled={finding || v.address.trim() === ""}
+								disabled={finding || tidyAddress(v.address) === ""}
 								className="min-h-10 rounded-[9px] border border-[#d4d4d4] px-3 text-[13px] hover:bg-neutral-50 disabled:opacity-50"
 							>
 								{finding && <Spinner />}
@@ -404,9 +413,9 @@ export function CompanyForm({
 						</button>
 					)}
 				</div>
-				{(mapNote ?? geocoderFault) && (
+				{mapLine && (
 					<p role="status" className="basis-full text-[#5c574e] text-[12px]">
-						{mapNote ?? geocoderFault}
+						{mapLine}
 					</p>
 				)}
 				{text("postcode", "Postcode")}
@@ -441,10 +450,12 @@ export function CompanyForm({
 							<input
 								{...c}
 								value={pinText}
+								readOnly={finding}
 								onChange={(e) => {
 									setPinText(e.target.value);
 									setPinConfirmed(true);
 									setPinNote(null);
+									setMapNote(null);
 									setFound(null);
 									clearPinErrors();
 								}}

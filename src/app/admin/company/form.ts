@@ -102,25 +102,38 @@ export function addressNeedsPin(
 	typedAddress: string,
 	pinConfirmed: boolean,
 ): boolean {
-	return typedAddress.trim() !== savedAddress.trim() && !pinConfirmed;
+	return (
+		tidyAddress(typedAddress) !== tidyAddress(savedAddress) && !pinConfirmed
+	);
 }
 
 /**
  * A pasted letterhead address, as the one line it is stored as. A text input
  * would delete the line breaks and glue "Industri" to "43800"; carriers, the
- * seller line and mail all read the address as one line. Not trimmed: it runs
- * on every keystroke.
+ * seller line and mail all read the address as one line.
  */
 export const oneLine = (text: string) =>
 	text.replace(/\s*,?\s*[\r\n]+\s*,?\s*/g, ", ");
 
 /**
  * The address as saved. A copied block usually ends in a line break, which
- * `oneLine` turned into ", " — and that comma would reach the seller line on
- * the terms page.
+ * `oneLine` turns into ", " — and that comma would reach the seller line on
+ * the terms page. The form applies this on blur, not per keystroke: rewriting
+ * a controlled box mid-edit sends the caret to its end.
  */
 export const tidyAddress = (text: string) =>
-	text.replace(/^[\s,]+|[\s,]+$/g, "");
+	oneLine(text).replace(/^[\s,]+|[\s,]+$/g, "");
+
+/** Why a check got no answer from Google, as what the admin can do about it. */
+export function mapFailure(status: number | null): string {
+	if (status === 400) {
+		return "That address is too long to check. Shorten it, or set the pin by hand below.";
+	}
+	if (status === 401 || status === 403) {
+		return "You are no longer signed in here. Reload the page, then check the address.";
+	}
+	return "Could not reach Google Maps. Try again, or set the pin by hand below.";
+}
 
 export type PinStatus =
 	| { kind: "found"; formattedAddress: string; lat: number; lng: number }

@@ -1,5 +1,7 @@
 # Workshop address check Implementation Plan
 
+**Status: shipped in #40. Kept as a record; do not re-execute.** `4876cff` supersedes its regex, gate copy and pin toggle, and the form now tidies the address on blur rather than per keystroke. `src/app/admin/company/` is the source of truth.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A superadmin moving the workshop pastes the new address and has Google Maps check it. The raw latitude/longitude box stops being something they have to understand.
