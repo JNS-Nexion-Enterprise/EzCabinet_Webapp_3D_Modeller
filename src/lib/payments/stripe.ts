@@ -19,8 +19,12 @@ import {
  * publishable key and one intent's client secret, nothing else.
  */
 
-/** Also listed client-side, in the deferred Payment Element; the two must agree. */
-export const STRIPE_METHODS = ["fpx", "grabpay", "card"];
+/**
+ * Also listed client-side, in the deferred Payment Element; the two must agree.
+ * Apple Pay and Google Pay are not listed: they ride on `card`, and appear only
+ * on a domain registered with Stripe.
+ */
+export const STRIPE_METHODS = ["fpx", "grabpay", "alipay", "link", "card"];
 
 /** Intent states in which the customer can still try (again) to pay. */
 const RESUMABLE = new Set<Stripe.PaymentIntent.Status>([

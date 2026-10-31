@@ -30,7 +30,7 @@ import type { Locale } from "@/lib/copy/locales";
  */
 
 /** Must match `STRIPE_METHODS` in `lib/payments/stripe.ts` — the intent's list. */
-const METHODS = ["fpx", "grabpay", "card"];
+const METHODS = ["fpx", "grabpay", "alipay", "link", "card"];
 
 const APPEARANCE: Appearance = {
 	theme: "flat",
@@ -195,8 +195,8 @@ function PaymentFields({
 			options={{
 				layout: { type: "accordion", radios: "always" },
 				fields: { billingDetails: collectBilling ? "auto" : "never" },
-				// Link would ask for the email and phone again; our form already has them.
-				wallets: { applePay: "auto", googlePay: "auto", link: "never" },
+				// Link asks for the email and phone again, though our form has them.
+				wallets: { applePay: "auto", googlePay: "auto", link: "auto" },
 			}}
 		/>
 	);

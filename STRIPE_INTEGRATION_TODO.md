@@ -36,17 +36,17 @@ order's stored `totalRm` in sen, priced on the server by `POST /api/orders`.
 | Parameter                | Value                                                                                                                             |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
 | PaymentIntent `currency` | `myr`                                                                                                                             |
-| `payment_method_types`   | `fpx`, `grabpay`, `card`. Listed in both files above and must match.                                                              |
+| `payment_method_types`   | `fpx`, `grabpay`, `alipay`, `link`, `card`. Listed in both files above and must match.                                            |
 | `metadata`               | `orderId`, `orderRef`. The webhook finds the order by `orderId`.                                                                  |
 | `receipt_email`          | the order's email (required on the form when paying online)                                                                       |
 | Payment Element layout   | accordion, radios `always`                                                                                                        |
 | `fields.billingDetails`  | `never` on checkout (name, email, phone and address are passed from our form in `confirmPayment`), `auto` on the order-page retry |
-| `wallets`                | Apple Pay / Google Pay `auto`, **Link `never`**, because Link asks for the email and phone again                                  |
+| `wallets`                | Apple Pay, Google Pay and Link `auto`. Link asks for the email and phone again, though our form has them                          |
 | appearance               | `flat`, Geist, `#171717` primary, `#d4d4d4` borders                                                                               |
 
 ## Setup
 
-1. **Stripe Dashboard → Settings → Payment methods:** activate **FPX** (Stripe warns it is shown in test mode but hidden in live mode until activated), **GrabPay** and **Cards**. Alipay and Link can stay on; the code excludes them.
+1. **Stripe Dashboard → Settings → Payment methods:** activate **FPX** (Stripe warns it is shown in test mode but hidden in live mode until activated), **GrabPay**, **Alipay**, **Link**, **Apple Pay**, **Google Pay** and **Cards**. Apple Pay and Google Pay also need every checkout hostname registered under **Payment method domains**, once per Stripe account or sandbox; they stay hidden on an unregistered domain.
 2. **Which gateway is live** is the `payment-gateway` Vercel flag, not an env var. See [Gateway feature flag](#gateway-feature-flag).
 3. **Local webhooks:**
 
@@ -85,7 +85,7 @@ src/app/[lang]/order/[token]/OnlinePayment.tsx    order-page retry
    - `elements.submit()` validates Stripe's fields;
    - `POST /api/orders` re-prices the design, creates the order (`AWAITING_PAYMENT`), and opens a PaymentIntent for the stored total. It returns `{ token, payment: { clientSecret, … } }`;
    - `stripe.confirmPayment` runs with our name/email/phone/address as billing and shipping details.
-3. **Card:** 3-D Secure opens over the page. **FPX / GrabPay:** the customer goes to the bank or Grab and comes back. Either way success lands on `/[lang]/order/[token]?redirect_status=succeeded` ("Confirming your payment").
+3. **Card:** 3-D Secure opens over the page. **FPX / GrabPay / Alipay:** the customer goes to the bank, Grab or Alipay and comes back. Either way success lands on `/[lang]/order/[token]?redirect_status=succeeded` ("Confirming your payment").
 4. **Declined or cancelled:** the customer stays on the quote page with every field kept, under the "Payment didn't go through" banner. Pay again resumes the **same** order and intent.
 5. `/api/webhooks/payment/stripe` is the source of truth:
    - `payment_intent.succeeded` → amount checked against the order → `PAID`, `paymentRef = pi_…`, WhatsApp queued;
