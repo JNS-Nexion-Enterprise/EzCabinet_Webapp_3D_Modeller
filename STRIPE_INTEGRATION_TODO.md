@@ -51,11 +51,11 @@ order's stored `totalRm` in sen, priced on the server by `POST /api/orders`.
 3. **Local webhooks:**
 
    ```
-   stripe listen --events payment_intent.succeeded,payment_intent.processing,payment_intent.payment_failed --forward-to localhost:3000/api/webhooks/payment/stripe
+   stripe listen --events payment_intent.succeeded,payment_intent.processing,payment_intent.payment_failed,refund.created,refund.updated,refund.failed --forward-to localhost:3000/api/webhooks/payment/stripe
    ```
 
    Put the printed `whsec_…` in `STRIPE_WEBHOOK_SECRET` and restart the dev server.
-4. **Deployed URL:** in the Dashboard, create an event destination → Webhook endpoint → `https://<host>/api/webhooks/payment/stripe`. Select exactly those three `payment_intent.*` events, and put its signing secret in that environment's `STRIPE_WEBHOOK_SECRET`. On a preview URL, deployment protection blocks Stripe's calls unless you add a bypass.
+4. **Deployed URL:** in the Dashboard, create an event destination → Webhook endpoint → `https://<host>/api/webhooks/payment/stripe`. Select exactly those six events, three `payment_intent.*` and three `refund.*`, and put its signing secret in that environment's `STRIPE_WEBHOOK_SECRET`. On a preview URL, deployment protection blocks Stripe's calls unless you add a bypass.
 5. Dependencies: `stripe`, `@stripe/stripe-js`, `@stripe/react-stripe-js`.
 
 ## Project structure
@@ -89,7 +89,8 @@ src/app/[lang]/order/[token]/OnlinePayment.tsx    order-page retry
 4. **Declined or cancelled:** the customer stays on the quote page with every field kept, under the "Payment didn't go through" banner. Pay again resumes the **same** order and intent.
 5. `/api/webhooks/payment/stripe` is the source of truth:
    - `payment_intent.succeeded` → amount checked against the order → `PAID`, `paymentRef = pi_…`, WhatsApp queued;
-   - `processing` and `payment_failed` change nothing.
+   - `processing` and `payment_failed` change nothing;
+   - `refund.*` → the refund is re-read from Stripe and recorded on the cancelled order.
 6. **Order page:**
    - `redirect_status=processing` → "Waiting for your bank";
    - `failed` → the banner plus a retry form;

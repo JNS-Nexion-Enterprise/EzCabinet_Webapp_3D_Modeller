@@ -1,0 +1,12 @@
+# GitHub Actions only: npm packages are upgraded by hand. The workflows pin
+# major tags, so this opens a PR only when an action ships a new major.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: feature/development
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns: ["*"]
