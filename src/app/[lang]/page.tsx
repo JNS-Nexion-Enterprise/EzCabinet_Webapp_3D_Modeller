@@ -124,8 +124,6 @@ function Photo({
 
 const eyebrow =
 	"mb-3 font-bold text-(--eyebrow) text-[12px] uppercase tracking-[0.14em]";
-/** One list item's place in its section's staggered arrival (`globals.css`). */
-const stagger = (i: number) => ({ "--i": i }) as React.CSSProperties;
 const primary =
 	"inline-flex min-h-12 items-center whitespace-nowrap rounded-[9px] bg-(--accent) px-7 font-semibold text-[14px] text-white transition-[background-color,translate,scale] duration-500 ease-spring hover:bg-(--accent-hover) active:translate-y-px active:scale-[0.97] active:bg-(--accent-active)";
 const navLink =
@@ -302,9 +300,9 @@ export default async function Home({
 			    If WebGL fails, the island swaps this for the photo hero (see
 			    `[data-build-failed]` in `globals.css`). It starts under the
 			    translucent header, as the design's does, which is what the
-			    overlays' top padding is for. Under 760px the copy and captions
-			    move to the top and the total to the bottom, so the room shows
-			    between them. */}
+			    overlays' top padding is for. Where there is no `hero-side` (see
+			    `globals.css`) the copy and captions move to the top, and under
+			    760px the total to the bottom, so the room shows between them. */}
 			<div
 				data-build-track
 				className="relative -mt-[68px] hidden h-[500vh] bg-(--stage) motion-safe:block"
@@ -313,18 +311,18 @@ export default async function Home({
 					<HeroBuild labelFont={karla.style.fontFamily} />
 					<div
 						aria-hidden
-						className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(234,230,224,.94)_0%,rgba(234,230,224,.72)_26%,rgba(234,230,224,0)_50%)] min-[760px]:block"
+						className="pointer-events-none absolute inset-0 hidden bg-[linear-gradient(90deg,rgba(234,230,224,.94)_0%,rgba(234,230,224,.72)_26%,rgba(234,230,224,0)_50%)] hero-side:block max-[1100px]:bg-[linear-gradient(90deg,rgba(234,230,224,.94)_0%,rgba(234,230,224,.84)_42%,rgba(234,230,224,0)_70%)]"
 					/>
 					<div
 						aria-hidden
-						className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(234,230,224,.96)_0%,rgba(234,230,224,.8)_34%,rgba(234,230,224,0)_56%)] min-[760px]:hidden"
+						className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(234,230,224,.96)_0%,rgba(234,230,224,.8)_34%,rgba(234,230,224,0)_56%)] hero-side:hidden"
 					/>
 
 					<div
 						data-ov="intro"
-						className="pointer-events-none absolute inset-0 flex items-start min-[760px]:items-center"
+						className="pointer-events-none absolute inset-0 flex items-start hero-side:items-center"
 					>
-						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 min-[760px]:pt-[68px]">
+						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 hero-side:pt-[68px]">
 							<div className="pointer-events-auto max-w-[520px]">
 								<p className={eyebrow}>{t.landing.hero.tagline}</p>
 								<h1 className="mb-5 text-balance font-serif text-[clamp(34px,9vw,52px)] leading-[1.08]">
@@ -345,7 +343,7 @@ export default async function Home({
 						</div>
 					</div>
 
-					<div className="pointer-events-none absolute inset-x-0 top-[88px] min-[760px]:top-auto min-[760px]:bottom-16">
+					<div className="pointer-events-none absolute inset-x-0 top-[88px] hero-side:top-auto hero-side:bottom-16">
 						<div className="mx-auto max-w-[1220px] px-5 min-[760px]:px-8">
 							<div className="relative h-24">
 								{captions.map((caption, i) => (
@@ -369,9 +367,9 @@ export default async function Home({
 
 					<div
 						data-ov="final"
-						className="pointer-events-none invisible absolute inset-0 flex items-start opacity-0 min-[760px]:items-center"
+						className="pointer-events-none invisible absolute inset-0 flex items-start opacity-0 hero-side:items-center"
 					>
-						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 min-[760px]:pt-[68px]">
+						<div className="mx-auto w-full max-w-[1220px] px-5 pt-24 min-[760px]:px-8 hero-side:pt-[68px]">
 							<div className="pointer-events-auto max-w-[440px]">
 								<h2 className="mb-4 text-balance font-serif text-[clamp(30px,8vw,44px)] leading-[1.1]">
 									{t.landing.build.finalTitle}
@@ -503,11 +501,13 @@ export default async function Home({
 			{catalogue.finishes.length > 0 && (
 				<section
 					id="materials"
-					data-reveal="stagger"
 					className="bg-(--walnut) px-4 pt-[88px] pb-14 sm:px-8"
 				>
 					<div className="mx-auto max-w-[1220px]">
-						<div className="mx-auto mb-12 max-w-[640px] text-center">
+						<div
+							data-reveal
+							className="mx-auto mb-12 max-w-[640px] text-center"
+						>
 							<p className="mb-3 font-bold text-[#c99f6b] text-[12px] uppercase tracking-[0.14em]">
 								{t.landing.materials.eyebrow}
 							</p>
@@ -516,8 +516,8 @@ export default async function Home({
 							</h2>
 						</div>
 						<div className="grid grid-cols-[repeat(auto-fit,minmax(150px,1fr))] gap-1">
-							{catalogue.finishes.slice(0, 4).map((finish, i) => (
-								<div key={finish.id} data-stagger style={stagger(i)}>
+							{catalogue.finishes.slice(0, 4).map((finish) => (
+								<div key={finish.id} data-reveal>
 									<div
 										className="h-[200px] bg-center"
 										style={boardStyle(finish)}
@@ -534,9 +534,9 @@ export default async function Home({
 			)}
 
 			{/* How it works — a sticky photo beside the steps on wide screens, above them on phones. */}
-			<section id="how" data-reveal="stagger" className="px-4 py-24 sm:px-8">
+			<section id="how" className="px-4 py-24 sm:px-8">
 				<div className="mx-auto grid max-w-[1220px] grid-cols-1 items-start gap-10 lg:gap-16 lg:grid-cols-[minmax(260px,360px)_1fr]">
-					<div className="flex flex-col gap-4 lg:sticky lg:top-24">
+					<div data-reveal className="flex flex-col gap-4 lg:sticky lg:top-24">
 						<Photo
 							url={photo.get(HOW_SLOT) ?? null}
 							alt=""
@@ -552,8 +552,7 @@ export default async function Home({
 						{howItWorks(t).map((step, i, all) => (
 							<div
 								key={step.title}
-								data-stagger
-								style={stagger(i)}
+								data-reveal
 								className={`border-(--rule) py-14 ${i === 0 ? "pt-8" : ""} ${i < all.length - 1 ? "border-b" : "pb-8"}`}
 							>
 								<div className="mb-5 flex size-10 items-center justify-center rounded-full bg-(--accent) font-serif text-[16px] text-white">
@@ -572,10 +571,9 @@ export default async function Home({
 			{/* Gallery — one editorial row per room, the photo alternating sides. */}
 			<section
 				id="gallery"
-				data-reveal="stagger"
 				className="border-(--rule) border-t bg-white px-4 pt-20 pb-16 sm:px-8"
 			>
-				<div className="mx-auto mb-14 max-w-[900px] text-center">
+				<div data-reveal className="mx-auto mb-14 max-w-[900px] text-center">
 					<p className={eyebrow}>{t.landing.gallery.eyebrow}</p>
 					<h2 className="text-balance font-serif text-[32px]">
 						{t.landing.gallery.heading}
@@ -585,8 +583,7 @@ export default async function Home({
 					{catalogue.roomTypes.map((room, i) => (
 						<div
 							key={room.id}
-							data-stagger
-							style={stagger(i)}
+							data-reveal
 							className="grid grid-cols-1 items-center md:grid-cols-2"
 						>
 							<Photo
@@ -622,24 +619,18 @@ export default async function Home({
 			    planner offers. */}
 			<section
 				id="finishes"
-				data-reveal="stagger"
 				className="border-(--rule) border-y bg-(--oat) px-4 py-[88px] sm:px-8"
 			>
 				<div className="mx-auto max-w-[1220px]">
-					<div className="mx-auto mb-12 max-w-[640px] text-center">
+					<div data-reveal className="mx-auto mb-12 max-w-[640px] text-center">
 						<p className={eyebrow}>{t.landing.finishes.eyebrow}</p>
 						<h2 className="text-balance font-serif text-[32px]">
 							{t.landing.finishes.heading}
 						</h2>
 					</div>
 					<div className="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-6">
-						{catalogue.finishes.map((finish, i) => (
-							<div
-								key={finish.id}
-								data-stagger
-								style={stagger(i)}
-								className="text-center"
-							>
+						{catalogue.finishes.map((finish) => (
+							<div key={finish.id} data-reveal className="text-center">
 								<div
 									className="mb-2.5 h-[88px] rounded-[10px] border border-(--rule) bg-center"
 									style={boardStyle(finish)}
@@ -655,18 +646,16 @@ export default async function Home({
 			{/* FAQ */}
 			<section
 				id="faq"
-				data-reveal="stagger"
 				className="mx-auto w-full max-w-[760px] px-4 py-[88px] sm:px-8"
 			>
-				<h2 className="mb-10 text-center font-serif text-[32px]">
+				<h2 data-reveal className="mb-10 text-center font-serif text-[32px]">
 					{t.landing.faq.heading}
 				</h2>
 				<div className="flex flex-col gap-3">
-					{faqs(t).map((item, i) => (
+					{faqs(t).map((item) => (
 						<details
 							key={item.q}
-							data-stagger
-							style={stagger(i)}
+							data-reveal
 							className="group rounded-[10px] border border-(--rule) bg-white px-5 py-[18px] transition-colors hover:border-[#cdbfa8] [&_summary::-webkit-details-marker]:hidden [&_summary]:list-none"
 						>
 							<summary className="flex min-h-6 cursor-pointer items-center justify-between gap-4 font-semibold text-[14px]">
