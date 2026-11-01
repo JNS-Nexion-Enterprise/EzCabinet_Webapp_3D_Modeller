@@ -54,9 +54,13 @@ export default function RevealOnEnter() {
 		// nothing able to reveal it.
 		const observer = new IntersectionObserver(
 			(entries) => {
+				// Items reaching the screen together arrive one after another; an
+				// item arriving alone has nothing to wait for.
+				let arriving = 0;
 				for (const entry of entries) {
 					if (!entry.isIntersecting) continue;
 					const el = entry.target as HTMLElement;
+					el.style.setProperty("--i", String(arriving++));
 					el.dataset.revealed = "";
 					observer.unobserve(el);
 				}
