@@ -66,14 +66,6 @@ if (USER_TOKEN === "") {
 	process.exit(1);
 }
 
-/**
- * Set or not, and how long: none of the value. A fragment would slip past the
- * masking GitHub applies to a whole secret in a job log.
- */
-function fingerprint(value) {
-	return value === "" ? "unset" : `${value.length} chars`;
-}
-
 async function call(method, path, body) {
 	// `subscription-key`, not `Ocp-Apim-Subscription-Key`. Both are accepted as
 	// header names by APIM in general; this instance only reads the renamed one,
@@ -109,8 +101,8 @@ function report(label, result) {
 
 console.log("GDEX ping");
 console.log(`  base             ${BASE}`);
-console.log(`  User-Token       ${fingerprint(USER_TOKEN)}`);
-console.log(`  subscription key ${fingerprint(SUBSCRIPTION_KEY)}`);
+// Set or not, nothing derived from the value: CodeQL flags even its length.
+console.log(`  subscription key ${SUBSCRIPTION_KEY === "" ? "unset" : "set"}`);
 
 const validity = await call("GET", "GetUserTokenValidity");
 report("GetUserTokenValidity", validity);

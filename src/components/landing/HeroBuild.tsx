@@ -905,7 +905,7 @@ function build(
 	const TB = new T.Vector3(2.5, 1.0, 1.55);
 	const aim = new T.Vector3();
 	let distance = 1;
-	// On a portrait phone the room is too small to watch whole, so the camera
+	// On a portrait stage the room is too small to watch whole, so the camera
 	// follows the build instead: in close on each part as it lands, back out
 	// for the finished kitchen. Each key is [progress, aim x, y, z, azimuth,
 	// elevation, distance at 390×844].
@@ -919,7 +919,7 @@ function build(
 		[0.92, 2.4, 1.0, 1.5, 0.45, 0.28, 22],
 		[1, 2.4, 1.0, 1.4, 0.42, 0.24, 22],
 	];
-	// How far the room sits below centre on a phone, as a fraction of the
+	// How far the room sits below centre on portrait, as a fraction of the
 	// stage's height: clear of the intro copy and the final card, which sit at
 	// the top, less so while only a caption is there.
 	const PHONE_SHIFT = [
@@ -980,11 +980,13 @@ function build(
 		camera.aspect = a;
 		// Pull back on narrow stages so the whole run stays in frame.
 		distance = a >= 1.35 ? 1 : Math.min(2.6, 1 + (1.35 - a) * 1.6);
-		// Shift the room right of centre on wide stages, clear of the copy. A
-		// portrait phone takes its own path and shift in `placeCamera`.
-		if (w > 900) camera.setViewOffset(w, h, -w * 0.13, 0, w, h);
+		// A portrait stage takes its own path and shift in `placeCamera`, at any
+		// width: the same line as `hero-side` in `globals.css`, which puts the
+		// copy above the room there. Beside the copy, the room shifts right of
+		// centre to clear it.
+		phone = a < 0.85;
+		if (w >= 760 && !phone) camera.setViewOffset(w, h, -w * 0.13, 0, w, h);
 		else camera.clearViewOffset();
-		phone = w <= 900 && a < 0.85;
 		shift = null;
 		camera.updateProjectionMatrix();
 		width = w;
