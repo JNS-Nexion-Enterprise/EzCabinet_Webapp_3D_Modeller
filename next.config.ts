@@ -8,7 +8,8 @@ import type { NextConfig } from "next";
  * violations in the console. The third-party hosts are the ones the browser
  * talks to directly: Mux for video and uploads, Blob for admin client uploads.
  * Stripe.js and its API for the checkout Payment Element; `payment` in the
- * Permissions-Policy lets its iframe offer Apple Pay and Google Pay.
+ * Permissions-Policy lets its iframe offer Apple Pay and Google Pay. Fiuu's
+ * hosted payment page is a form the order page posts to.
  * PostHog, Vercel Analytics and BotID are same-origin rewrites. `frame-src`
  * is `https:` because the delivery panel previews a carrier's label, whose
  * host is theirs to choose.
@@ -27,7 +28,7 @@ const csp = [
 	"worker-src 'self' blob:",
 	"frame-src 'self' https:",
 	"frame-ancestors 'self'",
-	"form-action 'self' https://accounts.google.com",
+	"form-action 'self' https://accounts.google.com https://pay.fiuu.com https://sandbox-payment.fiuu.com",
 	"base-uri 'self'",
 	"object-src 'none'",
 ].join("; ");

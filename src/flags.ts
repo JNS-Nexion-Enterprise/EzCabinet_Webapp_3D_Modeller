@@ -21,7 +21,6 @@ import { flag } from "flags/next";
  * with. Unset, that is `manual`: bank transfer always works, but an
  * environment selling through a gateway must name it, or a flags outage
  * quietly turns online payment off.
- * Add `fiuu` as a variant (`vercel flags update`) when its adapter exists.
  */
 export const paymentGatewayFlag = flag<string>({
 	key: "payment-gateway",
@@ -30,6 +29,7 @@ export const paymentGatewayFlag = flag<string>({
 	options: [
 		{ value: "manual", label: "Bank transfer (manual)" },
 		{ value: "stripe", label: "Stripe" },
+		{ value: "fiuu", label: "Fiuu" },
 	],
 	adapter: vercelAdapter,
 });

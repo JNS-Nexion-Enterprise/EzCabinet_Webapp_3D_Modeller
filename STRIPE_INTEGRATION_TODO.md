@@ -136,18 +136,24 @@ The rules that must not differ live in the webhook route:
 - idempotent;
 - the return URL is never trusted.
 
-**Adding Fiuu** (once the merchant account exists):
-1. `src/lib/payments/fiuu.ts`: `fiuuGateway()` with `client: { kind: "redirect" }`.
-   - **`start`** returns `{ kind: "redirect", ref, url, method: "POST", fields }`. The fields are amount, `orderid` = order.id, bill_name / bill_email / bill_mobile, `currency: "MYR"`, `returnurl`, `callbackurl` = `notifyUrl`, and `vcode`. The quote page then shows **Place order** and hands over to the order page, whose `OnlinePayment` renders the signed form. Nothing client-side is Fiuu-specific.
-   - **`verify`**: parse the `x-www-form-urlencoded` body. Recompute `skey`; a mismatch throws `BadSignature`. Map status `00` → paid, `11` → failed, `22` → pending.
-   - **`ack`**: Fiuu's IPN retries every 15 minutes, 4 times max, until acknowledged.
-   - Take the exact `vcode` / `skey` formulas, URLs and ACK format **from Fiuu's merchant docs**, not from memory.
-2. One line in `registry.ts`: `fiuu: fiuuGateway`. Add a `fiuu` variant to the flag (`vercel flags update payment-gateway`) and to `options` in `src/flags.ts`.
-3. **Return route:** Fiuu's return URL is a browser **POST**, and a page answers only GET. Add `src/app/api/orders/[token]/return/route.ts` answering POST/GET with a 303 to `/[lang]/order/[token]?redirect_status=succeeded|processing|failed`, mapped from Fiuu's status. The order page already reads that parameter.
-4. CSP: add Fiuu's payment host to `form-action` in `next.config.ts`.
-5. Fiuu sandbox needs **IP whitelisting** with their support.
-6. Write a test like `route.test.ts` against a Fiuu-signed body.
-7. Try it with a Flags Explorer override, then `vercel flags set payment-gateway --environment production --variant fiuu`. Keep Stripe's keys until in-flight Stripe payments have settled.
+**Fiuu (POC, sandbox)** — built: `src/lib/payments/fiuu.ts`, hosted payment page.
+
+- **Out:** the order page posts a signed form (`vcode`, extended format: amount, merchant ID, order id, verify key, currency) to `https://sandbox-payment.fiuu.com/RMS/pay/<merchant>/`. A merchant ID starting `SB_` picks the sandbox hosts; any other picks production.
+- **In:** `/api/webhooks/payment/fiuu` takes the Notification URL (`nbcb=2`) and Callback URL (`nbcb=1`) posts, checks `skey`, maps `00` paid / `11` failed / `22` pending. Ack: `CBTOKEN:MPSTATOK` for a callback; the IPN post back (`treq=1`) for a notification.
+- **Back:** `/api/payments/fiuu/return` takes the browser's return POST and 303s to `/[lang]/order/[token]?redirect_status=…`. Display only.
+- **No double charge:** a retry first asks Fiuu's `q_oid_batch` for the order; a `00` or `22` transaction refuses it (409 `payment_in_progress`), and an answer it cannot read refuses it too.
+- **No refunds through Fiuu yet:** a cancelled Fiuu order is refunded in Fiuu's portal, then **Mark refunded**. FPX refunds need the customer's bank details (Fiuu error PR014).
+
+Setup, in order:
+1. Keys in `.env.local` and on Vercel (Preview, branch `feature/fiuu`): `FIUU_MERCHANT_ID`, `FIUU_VERIFY_KEY`, `FIUU_SECRET_KEY`.
+2. `pnpm fiuu:ping` — prints Fiuu's requery answer for an order with no transactions. **Not in the spec; until `settlingIn` accepts it, every retry is refused.** Paste it into a test in `fiuu.test.ts`.
+3. Sandbox portal (`sandbox-portal.fiuu.com`) → Transactions → Settings:
+   - turn on **Use extended format for Verify Payment**;
+   - Notification URL and Callback URL: `https://<preview host>/api/webhooks/payment/fiuu?x-vercel-protection-bypass=<secret>`, **Enable IPN** on both;
+   - Return URL: `https://<preview host>/api/payments/fiuu/return?x-vercel-protection-bypass=<secret>`. Fiuu's return is a cross-site POST, which carries no Vercel login cookie.
+4. Portal → Domain Registration: the preview host (it differs from the company's website). Merchant Profile → Profile Settings: whitelist the tester's IP, or the demo bank refuses.
+5. Flag: `vercel flags update payment-gateway` to add a `fiuu` variant, then override it in Flags Explorer on the preview, or set `PAYMENT_GATEWAY_FALLBACK=fiuu` for the branch.
+6. Before production: CSP already allows `pay.fiuu.com`; production keys, URLs and IPN settings repeat on the production portal, and `vercel flags set payment-gateway --environment production --variant fiuu`. Keep Stripe's keys until in-flight Stripe payments have settled.
 
 **Removing Stripe:**
 1. Delete `lib/payments/stripe.ts` and its line in `registry.ts`.
@@ -157,7 +163,8 @@ The rules that must not differ live in the webhook route:
 
 ## Next steps
 
-- Refunds: none yet, in the app or at the gateway.
+- Fiuu refunds through its Refund API (`refund` on the adapter); Stripe's are built.
+- Fiuu's page is English; `langcode=cn` would serve Chinese, but `PaymentOrder` does not carry the locale yet.
 - Fields edited after a failed attempt reach Stripe but not the stored order (a `ponytail:` note in `QuoteScreen.tsx`).
 - "Confirming your payment" relies on the customer refreshing the page; add polling if webhooks prove slow.
 - `lib/orders/payment.ts` `BANK_TRANSFER` is still a placeholder; it remains the fallback whenever no gateway is set.

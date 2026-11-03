@@ -36,7 +36,7 @@ describe("activeGateway", () => {
 	// payment is on. Nothing on screen says so, so the log must.
 	it.each([
 		["a gateway whose keys are missing", "stripe"],
-		["a gateway this build does not know", "fiuu"],
+		["a gateway this build does not know", "paypal"],
 	])("says so when the flag names %s", async (_label, id) => {
 		paymentGatewayFlag.mockResolvedValue(id);
 		stripeGateway.mockReturnValue(null);

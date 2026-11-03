@@ -1,5 +1,6 @@
 import "server-only";
 import { paymentGatewayFlag } from "@/flags";
+import { fiuuGateway } from "./fiuu";
 import { stripeGateway } from "./stripe";
 import type { PaymentGateway } from "./types";
 
@@ -9,12 +10,13 @@ import type { PaymentGateway } from "./types";
  * missing means none: the order page falls back to manual bank transfer
  * (`lib/orders/payment.ts`).
  *
- * Adding Fiuu is one import and one line in `GATEWAYS`, plus a `fiuu`
- * variant on the flag; removing Stripe is deleting its line, `stripe.ts` and
- * `StripeForm.tsx`.
+ * A gateway is one import and one line in `GATEWAYS`, plus a variant on
+ * the flag; removing Stripe is deleting its line, `stripe.ts` and
+ * `StripePayment.tsx`.
  */
 const GATEWAYS: Record<string, () => PaymentGateway | null> = {
 	stripe: stripeGateway,
+	fiuu: fiuuGateway,
 };
 
 /** The gateway new payments start on. Evaluated per request. */
