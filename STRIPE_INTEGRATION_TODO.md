@@ -138,21 +138,21 @@ The rules that must not differ live in the webhook route:
 
 **Fiuu (POC, sandbox)** — built: `src/lib/payments/fiuu.ts`, hosted payment page.
 
-- **Out:** the order page posts a signed form (`vcode`, extended format: amount, merchant ID, order id, verify key, currency) to `https://sandbox-payment.fiuu.com/RMS/pay/<merchant>/`. A merchant ID starting `SB_` picks the sandbox hosts; any other picks production.
+- **Out:** checkout posts a signed form straight to Fiuu on the press that placed the order (`checkoutNext`, `components/planner/checkoutNext.ts`); any later press, and the order page, go through `/api/orders/[token]/pay` instead. The form is `vcode`, extended format: amount, merchant ID, order id, verify key, currency) to `https://sandbox-payment.fiuu.com/RMS/pay/<merchant>/`. A merchant ID starting `SB_` picks the sandbox hosts; any other picks production.
 - **In:** `/api/webhooks/payment/fiuu` takes the Notification URL (`nbcb=2`) and Callback URL (`nbcb=1`) posts, checks `skey`, maps `00` paid / `11` failed / `22` pending. Ack: `CBTOKEN:MPSTATOK` for a callback; the IPN post back (`treq=1`) for a notification.
 - **Back:** `/api/payments/fiuu/return` takes the browser's return POST and 303s to `/[lang]/order/[token]?redirect_status=…`. Display only.
-- **No double charge:** a retry first asks Fiuu's `q_oid_batch` for the order; a `00` or `22` transaction refuses it (409 `payment_in_progress`), and an answer it cannot read refuses it too.
+- **No double charge:** a retry first asks Fiuu's `q_oid_batch` for the order; a `00` or `22` transaction refuses it (409 `payment_in_progress`); `Error Q203 : Transaction record not found.` is no transaction (not in the spec, seen on the sandbox 2026-11-04); any other answer, `Q202 : Incorrect skey.` among them, refuses it too.
 - **No refunds through Fiuu yet:** a cancelled Fiuu order is refunded in Fiuu's portal, then **Mark refunded**. FPX refunds need the customer's bank details (Fiuu error PR014).
 
 Setup, in order:
-1. Keys in `.env.local` and on Vercel (Preview, branch `feature/fiuu`): `FIUU_MERCHANT_ID`, `FIUU_VERIFY_KEY`, `FIUU_SECRET_KEY`.
-2. `pnpm fiuu:ping` — prints Fiuu's requery answer for an order with no transactions. **Not in the spec; until `settlingIn` accepts it, every retry is refused.** Paste it into a test in `fiuu.test.ts`.
+1. Keys in `.env.local` and on Vercel (Preview, branch `feature/fiuu`): `FIUU_MERCHANT_ID`, `FIUU_VERIFY_KEY`, `FIUU_SECRET_KEY`. Done 2026-11-04 with the sandbox (`SB_…`) set; Fiuu issues it on request, it cannot be self-registered.
+2. `pnpm fiuu:ping` — `Error Q203` means the ID and verify key match; `Error Q202 : Incorrect skey.` means they do not. The secret key is only checked by the first real notification (a bad one logs a bad signature and the order stays `AWAITING_PAYMENT`).
 3. Sandbox portal (`sandbox-portal.fiuu.com`) → Transactions → Settings:
    - turn on **Use extended format for Verify Payment**;
    - Notification URL and Callback URL: `https://<preview host>/api/webhooks/payment/fiuu?x-vercel-protection-bypass=<secret>`, **Enable IPN** on both;
    - Return URL: `https://<preview host>/api/payments/fiuu/return?x-vercel-protection-bypass=<secret>`. Fiuu's return is a cross-site POST, which carries no Vercel login cookie.
 4. Portal → Domain Registration: the preview host (it differs from the company's website). Merchant Profile → Profile Settings: whitelist the tester's IP, or the demo bank refuses.
-5. Flag: `vercel flags update payment-gateway` to add a `fiuu` variant, then override it in Flags Explorer on the preview, or set `PAYMENT_GATEWAY_FALLBACK=fiuu` for the branch.
+5. Flag: `vercel flags update payment-gateway` to add a `fiuu` variant, (done 2026-11-04; preview still answers `stripe`), then override it to `fiuu` in Flags Explorer on the `feature/fiuu` preview. `PAYMENT_GATEWAY_FALLBACK` does not do this: it is only read when Vercel Flags cannot answer.
 6. Before production: CSP already allows `pay.fiuu.com`; production keys, URLs and IPN settings repeat on the production portal, and `vercel flags set payment-gateway --environment production --variant fiuu`. Keep Stripe's keys until in-flight Stripe payments have settled.
 
 **Removing Stripe:**

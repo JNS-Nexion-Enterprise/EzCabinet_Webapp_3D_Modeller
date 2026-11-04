@@ -181,13 +181,16 @@ export async function refuseWhilePaying(
 
 /** The tranID of a successful or pending transaction in a requery answer, if any. */
 export function settlingIn(answer: string): string | null {
+	// Fiuu's answer for an order it holds no transaction for — a customer who
+	// left the payment page without paying. Not in the spec; seen with
+	// `pnpm fiuu:ping` on the sandbox, 2026-11-04.
+	if (/^Error Q203\b/.test(answer.trim())) return null;
 	const lines = answer
 		.split(/\r?\n/)
 		.map((line) => line.trim())
 		.filter((line) => line !== "" && !/^TranID\b/.test(line));
-	// ponytail: the answer for an order with no transactions is not in the
-	// spec. Until `pnpm fiuu:ping` has shown it, anything but transaction
-	// rows, blank lines and the header counts as unreadable.
+	// Anything else that is not transaction rows — another error, such as
+	// Q202 for a wrong key — is unreadable, and the retry is refused.
 	if (lines.some((line) => !/^\d+\t/.test(line))) {
 		throw new Error("fiuu requery: unreadable answer");
 	}

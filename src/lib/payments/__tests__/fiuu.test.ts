@@ -159,4 +159,15 @@ describe("settlingIn", () => {
 	it("is null with no transactions listed", () => {
 		expect(settlingIn("")).toBeNull();
 	});
+
+	it("is null for Fiuu's no-record answer", () => {
+		// Verbatim from the sandbox, for an order abandoned on Fiuu's page.
+		expect(settlingIn("Error Q203 : Transaction record not found.")).toBeNull();
+	});
+
+	it("refuses any other error, such as a wrong key", () => {
+		expect(() => settlingIn("Error Q202 : Incorrect skey.")).toThrow(
+			"unreadable answer",
+		);
+	});
 });
