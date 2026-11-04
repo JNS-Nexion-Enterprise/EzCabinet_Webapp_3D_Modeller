@@ -49,7 +49,8 @@ export async function POST(
 		}
 		throw error;
 	}
-	const ack = () => gateway.ack?.() ?? NextResponse.json({ ok: true });
+	const ack = async () =>
+		(await gateway.ack?.(rawBody)) ?? NextResponse.json({ ok: true });
 	if (event?.outcome === "refunded" || event?.outcome === "refund_failed") {
 		// Our own refunds name their order; one made in the gateway's dashboard
 		// is found by the payment it refunds.

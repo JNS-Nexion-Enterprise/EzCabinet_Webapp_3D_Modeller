@@ -103,8 +103,12 @@ export type PaymentGateway = {
 	 * forgery; null for a genuine event that needs no action.
 	 */
 	verify(rawBody: string, headers: Headers): Promise<PaymentEvent | null>;
-	/** The body the gateway expects back, when it wants more than a 200. */
-	ack?(): Response;
+	/**
+	 * The answer the gateway expects, when it wants more than a 200 — given the
+	 * notification it is answering, already verified, since some gateways
+	 * acknowledge by echoing it.
+	 */
+	ack?(rawBody: string): Promise<Response>;
 	/**
 	 * Send the whole payment back. Absent on a gateway that cannot. Throws
 	 * `RefundRefused` when the gateway definitely refused; anything else

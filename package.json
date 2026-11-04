@@ -18,6 +18,7 @@
 		"fedex:ping": "node --env-file=.env.local scripts/fedex-ping.mjs",
 		"gdex:ping": "node --env-file=.env.local scripts/gdex-ping.mjs",
 		"whatsapp:ping": "node --env-file=.env.local scripts/whatsapp-ping.mjs",
+		"fiuu:ping": "node --env-file=.env.local scripts/fiuu-ping.mjs",
 		"db:up": "docker compose up -d",
 		"db:down": "docker compose down",
 		"db:migrate": "prisma migrate dev",

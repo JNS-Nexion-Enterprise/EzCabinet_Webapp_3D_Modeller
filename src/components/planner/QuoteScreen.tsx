@@ -25,6 +25,7 @@ import type { RoomLayout } from "@/lib/planner/room";
 import { clearDraft } from "@/lib/plannerDraft";
 import { useCatalogue, useRoomEngine } from "./CatalogueContext";
 import { useCopy, useLocale } from "./CopyContext";
+import { checkoutNext, postToGateway } from "./checkoutNext";
 import { PhoneHeader, phoneBar, phonePrimary } from "./PhoneChrome";
 import { PlannerHeader } from "./PlannerHeader";
 import { priceLineDetail, priceLineLabel } from "./priceLineCopy";
@@ -148,6 +149,15 @@ export function QuoteScreen({
 		null,
 	);
 	const [busy, setBusy] = useState(false);
+	// Back from a hosted payment page can restore this page from the browser's
+	// cache with the button still busy; the spinner is only right while it unloads.
+	useEffect(() => {
+		const onShow = (event: PageTransitionEvent) => {
+			if (event.persisted) setBusy(false);
+		};
+		window.addEventListener("pageshow", onShow);
+		return () => window.removeEventListener("pageshow", onShow);
+	}, []);
 	const [error, setError] = useState<string | null>(null);
 	// Per-field, shown under the field, so a customer on a phone sees which
 	// box to fix rather than the browser's own bubble over the first one.
@@ -265,6 +275,7 @@ export function QuoteScreen({
 			}
 		}
 
+		const placedNow = !created.current;
 		if (!created.current) {
 			const res = await fetch("/api/orders", {
 				method: "POST",
@@ -362,10 +373,19 @@ export function QuoteScreen({
 
 		const { token, payment } = created.current;
 		const orderUrl = `/${locale}/order/${token}`;
-		// Anything but an intent to confirm here — bank transfer, a hosted-page
-		// gateway, or a gateway that failed to open — continues on the order page.
+		const next = checkoutNext(payment, {
+			placedNow,
+			stripeReady: !!stripeClient && !!payApi.current,
+		});
+		if (next === "gateway" && payment?.kind === "redirect") {
+			// The page unloads; the button stays busy until it does.
+			postToGateway(payment);
+			return;
+		}
+		// Bank transfer, a gateway that failed to open, or a second press on a
+		// hosted-page gateway — continues on the order page.
 		if (
-			!stripeClient ||
+			next !== "confirm" ||
 			payment?.kind !== "stripe-elements" ||
 			!payApi.current
 		) {

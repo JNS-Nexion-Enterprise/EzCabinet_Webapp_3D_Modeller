@@ -192,11 +192,12 @@ src/
     payment.ts           ← manual bank transfer, the fallback when no gateway is set
     markPaid.ts          ← the one AWAITING_PAYMENT → PAID write, admin and webhook alike
     stage.ts             ← production stages, forward-only, one at a time
-  lib/payments/          ← online payment gateways, one adapter each (Stripe; Fiuu next)
+  lib/payments/          ← online payment gateways, one adapter each (Stripe; Fiuu POC)
     types.ts             ← the PaymentGateway contract: start / verify / ack
     registry.ts          ← `payment-gateway` flag → adapter; old gateways' webhooks stay live
     start.ts             ← start or resume an order's payment: one intent per order, never two charges
     stripe.ts            ← PaymentIntent + Payment Element; our form sends the billing details
+    fiuu.ts              ← hosted page: signed form out, skey-checked notification in, requery before a retry
   lib/whatsapp/          ← customer WhatsApp updates via Meta's Cloud API
     templates.ts         ← event → template name, variables, payload; pure
     send.ts              ← one API call; retryable or not
