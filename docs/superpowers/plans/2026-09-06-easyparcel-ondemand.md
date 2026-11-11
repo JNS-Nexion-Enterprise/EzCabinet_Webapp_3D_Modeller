@@ -24,6 +24,7 @@
 ## Prerequisite — confirm before Task 4
 
 Two of the open questions in `CLAUDE.md` become blocking here, and neither is answerable from code:
+
 1. **Does EzCabinet's EasyParcel account have OnDemand enabled, and is the wallet funded?** OnDemand submit deducts at booking time exactly as `submit_orders` does. Tasks 1–3 are safe to build without an answer; Task 4 onward cannot be verified against the live API without one.
 2. **`WORKSHOP_PIN` is real but `WORKSHOP_PHONE` is a placeholder.** OnDemand's `waypoint[].shipment_info.phone_number` is required and is the number the driver rings from the loading bay. Booking with a placeholder produces a real driver calling a wrong number.
 
@@ -57,11 +58,13 @@ Tasks 1–3 and 7's `measure.ts` half are pure and testable against fixtures tod
 Two adapters cannot both own `call()`. Pull the transport out first, with no behaviour change, so Task 4 has something to import.
 
 **Files:**
+
 - Create: `src/lib/logistics/adapters/easyparcelClient.ts`
 - Modify: `src/lib/logistics/adapters/easyparcel.ts` (remove the extracted definitions, import them instead)
 - Test: `src/lib/logistics/__tests__/easyparcel.test.ts` (existing suite is the regression test)
 
 **Interfaces:**
+
 - Consumes: `accessTokenFor` from `../tokens`, `carrierFetch` from `../http`, `trace` from `../trace`.
 - Produces:
   - `PARCEL_BASE: string`
@@ -190,10 +193,12 @@ export { EasyParcelNotDeliverable } from "./easyparcelClient";
 
 Run: `pnpm vitest run src/lib/logistics`
 Expected: PASS, same count as before the change (279 at time of writing).
+
 - [ ] **Step 4: Typecheck and lint**
 
 Run: `pnpm tsc --noEmit && pnpm biome check src/lib/logistics`
 Expected: no errors; one pre-existing optional-chain warning in `easyparcel.ts` `book()` is expected and unrelated.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -206,11 +211,13 @@ git commit -m "refactor(logistics): share the EasyParcel transport between produ
 ### Task 2: The OnDemand vocabulary and status table
 
 **Files:**
+
 - Modify: `src/lib/logistics/carriers.ts`
 - Modify: `src/lib/logistics/status.ts`
 - Test: `src/lib/logistics/__tests__/status.test.ts`, `src/lib/logistics/__tests__/carriers.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: carrier id `"easyparcel_ondemand"` with `kind: "vehicle"`; `CARRIER_STATUS_MAPS.easyparcel_ondemand` keyed on OnDemand's numeric status codes as strings.
 
@@ -252,6 +259,7 @@ it("lists EasyParcel OnDemand as a vehicle partner, not a parcel one", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/status.test.ts src/lib/logistics/__tests__/carriers.test.ts`
 Expected: FAIL — `mapCarrierStatus` returns `null` for an unknown carrier, and `KIND.easyparcel_ondemand` is `undefined`.
+
 - [ ] **Step 3: Add the carrier**
 
 In `src/lib/logistics/carriers.ts`, inside `CARRIERS`, after the `easyparcel` entry:
@@ -296,6 +304,7 @@ In `src/lib/logistics/status.ts`, inside `CARRIER_STATUS_MAPS`, after the `easyp
 
 Run: `pnpm vitest run src/lib/logistics`
 Expected: PASS.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -310,11 +319,13 @@ git commit -m "feat(logistics): name EasyParcel OnDemand as a vehicle partner"
 This is the heart of the plan and the only pure-logic task. OnDemand's quotation returns one row per vehicle, each carrying its real limits as prose (`"weight_limit": "800kg"`, `"dimension": "270cmx130cmx120cm"`). Parsing those and choosing the cheapest vehicle the job actually fits is what replaces the guessing in `measure.ts`.
 
 **Files:**
+
 - Create: `src/lib/logistics/__tests__/fixtures/easyparcelOndemand.ts`
 - Create: `src/lib/logistics/adapters/easyparcelOndemand.ts` (partial — the pure functions only)
 - Test: `src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 
 **Interfaces:**
+
 - Consumes: `EasyParcelNotDeliverable`, `num` from `./easyparcelClient`; `longestEdgeMm` from `../measure`; `DeliveryJob` from `../types`.
 - Produces:
   - `parseWeightLimitKg(raw: string | null | undefined): number | null`
@@ -673,6 +684,7 @@ describe("cheapestFitting", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: FAIL — `Cannot find module '../adapters/easyparcelOndemand'`.
+
 - [ ] **Step 4: Write the implementation**
 
 ```ts
@@ -846,6 +858,7 @@ export function cheapestFitting(
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: PASS, 14 tests.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -858,10 +871,12 @@ git commit -m "feat(logistics): read EasyParcel OnDemand's vehicle ladder and pi
 ### Task 4: Quote an OnDemand job
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/easyparcelOndemand.ts`
 - Test: `src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 
 **Interfaces:**
+
 - Consumes: `cheapestFitting`, `optionsOf`, `quotationSchema` (Task 3); `call`, `ONDEMAND_BASE`, `readReply` (Task 1); `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` from `../carriers`; `easyparcelAppConfigured` from `../oauth`. The job's own `pickupLat`/`pickupLng` are used directly — `pickupPlace` is a postcode helper and has no part in a coordinate API.
 - Produces:
   - `ondemandQuotationBody(job: DeliveryJob): { schedule_pickup_date: string; schedule_pickup_time: string; timezone: string; waypoint: Waypoint[] }`
@@ -987,6 +1002,7 @@ describe("easyparcelOndemandAdapter.quote", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: FAIL — `ondemandQuotationBody`, `packOndemandRef`, `unpackOndemandRef` and `easyparcelOndemandAdapter` are not exported.
+
 - [ ] **Step 3: Write the implementation**
 
 Append to `src/lib/logistics/adapters/easyparcelOndemand.ts`:
@@ -1168,6 +1184,7 @@ export const easyparcelOndemandAdapter: CarrierAdapter = {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1180,10 +1197,12 @@ git commit -m "feat(logistics): quote a vehicle job against EasyParcel OnDemand"
 ### Task 5: Book an OnDemand job
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/easyparcelOndemand.ts`
 - Test: `src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 
 **Interfaces:**
+
 - Consumes: `unpackOndemandRef` (Task 4); `toE164` from `../phone`.
 - Produces: `ondemandSubmitBody(job, serviceId, quotationId)`; `easyparcelOndemandAdapter.book` returning `carrierOrderId` = `booking_id`.
 
@@ -1286,6 +1305,7 @@ describe("easyparcelOndemandAdapter.book", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: FAIL — `ondemandSubmitBody` is not exported and `book` throws "not implemented until Task 5".
+
 - [ ] **Step 3: Write the implementation**
 
 Replace the `book` stub in `src/lib/logistics/adapters/easyparcelOndemand.ts`:
@@ -1458,6 +1478,7 @@ and the adapter method:
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1472,10 +1493,12 @@ git commit -m "feat(logistics): book a vehicle job through EasyParcel OnDemand"
 OnDemand's order details carry the driver's name, phone, plate and coordinates — the same fields Lalamove fills. This is the task that gives EasyParcel live driver tracking, which until now only Lalamove had.
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/easyparcelOndemand.ts`
 - Test: `src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 
 **Interfaces:**
+
 - Consumes: `mapCarrierStatus` from `../status` (Task 2's table).
 - Produces: `easyparcelOndemandAdapter.track(bookingId)`, `easyparcelOndemandAdapter.cancel(bookingId)`.
 
@@ -1551,6 +1574,7 @@ describe("easyparcelOndemandAdapter.cancel", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: FAIL — `track` throws "not implemented until Task 6" and `cancel` is undefined.
+
 - [ ] **Step 3: Write the implementation**
 
 Add the schema and replace the `track` stub:
@@ -1656,6 +1680,7 @@ const cancelSchema = z.object({
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/easyparcelOndemand.test.ts`
 Expected: PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1668,12 +1693,14 @@ git commit -m "feat(logistics): track and cancel an EasyParcel OnDemand booking"
 ### Task 7: Wire it up — webhook, registry, and the corrected vehicle table
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/easyparcelOndemand.ts` (add `verifyWebhook`)
 - Modify: `src/lib/logistics/registry.ts`
 - Modify: `src/lib/logistics/measure.ts`
 - Test: `src/lib/logistics/__tests__/easyparcelOndemand.test.ts`, `src/lib/logistics/__tests__/measure.test.ts`
 
 **Interfaces:**
+
 - Consumes: everything from Tasks 1–6.
 - Produces: `easyparcelOndemandAdapter.verifyWebhook`; `ADAPTERS.easyparcel_ondemand`; corrected `VEHICLE_LIMITS`.
 
@@ -1763,6 +1790,7 @@ it("keeps the ladder ordered smallest first, so the first fit is the smallest", 
 
 Run: `pnpm vitest run src/lib/logistics`
 Expected: FAIL — `verifyWebhook` is undefined on the OnDemand adapter; `van.maxWeightKg` is 600; there is no `van_large`.
+
 - [ ] **Step 3: Add the webhook verifier**
 
 Append to the adapter object in `src/lib/logistics/adapters/easyparcelOndemand.ts`:
@@ -1947,10 +1975,12 @@ export const SERVICE_TYPE: Record<VehicleClass, string> = {
 
 Run: `pnpm vitest run && pnpm tsc --noEmit && pnpm biome check src`
 Expected: all tests PASS, no type errors, no new lint findings.
+
 - [ ] **Step 7: Verify against the live API**
 
 Run: `pnpm easyparcel:ping`
 Expected: the ping script's existing checks still pass. This is the only thing in the repo that sees a renamed field — CI runs against fixtures and cannot. If the OnDemand endpoints are not enabled on the account, this is where that surfaces.
+
 - [ ] **Step 8: Commit**
 
 ```bash

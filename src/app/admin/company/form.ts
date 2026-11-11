@@ -23,6 +23,15 @@ const FIELD_MESSAGES: Record<keyof CompanyDetails, string> = {
 	bankAccountName: "Enter the name on the account.",
 	bankAccountNumber: "Digits only. Spaces and dashes are fine.",
 	orderPrefix: "One to five letters or digits.",
+	warrantyYears: "A whole number of years, 0 to 25. 0 means no warranty.",
+	installationOffered: "Choose whether you install.",
+	deliveryWeeksMin: "A whole number of weeks, 1 to 52.",
+	deliveryWeeksMax: "A whole number of weeks, no less than the shortest.",
+	damageReportDays: "A whole number of days, 1 to 90.",
+	refundWorkingDays: "A whole number of working days, 1 to 60.",
+	dpoName: "Up to 80 characters.",
+	dpoEmail: "Enter an email address, or leave it empty.",
+	policiesApproved: "Tick only once counsel has approved the wording.",
 };
 
 /**

@@ -9,4 +9,4 @@
  *
  * Written by the server only. A request never supplies it.
  */
-export const TERMS_VERSION = "2026-10-07";
+export const TERMS_VERSION = "2026-11-11";

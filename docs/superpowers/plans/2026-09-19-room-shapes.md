@@ -56,10 +56,12 @@ Also: the camera refits to a newly tapped wall automatically only in elevation v
 ### Task 1: Floor plan module
 
 **Files:**
+
 - Create: `src/lib/planner/floorplan.ts`
 - Test: `src/lib/planner/__tests__/floorplan.test.ts`
 
 **Interfaces:**
+
 - Consumes: `WALL_LIMITS` (`layout.ts`), `ROOM_DEPTH_LIMITS` (`catalogue.ts`), `Vec3Mm` (`parts.ts`).
 - Produces (later tasks rely on these exact names):
   - `type FloorPlan`, `type RoomShape = "rect" | "l" | "l-mirror"`, `type Vec2 = { xMm; zMm }`, `type WallGeom`, `type WallFrame = { yawRad; xMm; zMm }`
@@ -73,6 +75,7 @@ Also: the camera refits to a newly tapped wall automatically only in elevation v
   - `nearestWall(plan, point: Vec2): { run: number; xMm: number }`
 
 Coordinates: plan millimetres, origin at the centre of the bounding box, `x` to the right, `z` toward the viewer (three.js world axes, scaled ×1000). Winding: facing any wall from inside, its start is on the left.
+
 - [ ] **Step 1: Write the failing test**
 
 `src/lib/planner/__tests__/floorplan.test.ts`:
@@ -274,6 +277,7 @@ describe("nearestWall", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/floorplan.test.ts`
 Expected: FAIL — `Failed to resolve import "../floorplan"`.
+
 - [ ] **Step 3: Write the implementation**
 
 `src/lib/planner/floorplan.ts`:
@@ -577,6 +581,7 @@ export function nearestWall(
 
 Run: `pnpm vitest run src/lib/planner/__tests__/floorplan.test.ts`
 Expected: PASS, all tests. If a `toEqual` on a `Vec2` fails only by `-0` vs `0`, change that assertion to `toBeCloseTo` per field — do not change the implementation.
+
 - [ ] **Step 5: Lint and commit**
 
 ```bash
@@ -594,12 +599,14 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 A U's back wall has a corner at each end, so a run view needs more than one reserved span per row. And whether a wall stands at each end of a run becomes a per-end fact rather than one `wallToWall` flag.
 
 **Files:**
+
 - Modify: `src/lib/planner/layout.ts` (`PlannerLayout` type ~l.95–130, `occupiedSpans` ~l.495, `snapTargets` ~l.691, `exposureOf` ~l.1504, `closeGaps` ~l.1784)
 - Modify: `src/lib/planner/exposure.ts` (`EndWalls`, `exposedSides`, `sideGapsMm`)
 - Modify (keep compiling until Task 3 rewrites it): `src/lib/planner/room.ts`, `src/components/planner/PlannerScene.tsx` (~l.1199–1241, ~l.1272–1277), `src/components/planner/StudioScreen.tsx` (~l.418–423)
 - Test: `src/lib/planner/__tests__/reserved.test.ts`, `src/lib/planner/__tests__/exposure.test.ts`, `src/lib/planner/__tests__/room.test.ts` (lines 86–110 only)
 
 **Interfaces:**
+
 - Produces:
   - `PlannerLayout.reserved?: Partial<Record<Row, Span[]>>`
   - `PlannerLayout.endWalls?: { left: boolean; right: boolean }` — absent means both ends follow `wallToWall`
@@ -694,10 +701,12 @@ expect(runView(lRoom("left"), 0).reserved).toEqual({
 ```
 
 and each `.reserved?.floor` expectation becomes `.reserved?.floor).toEqual([{ … }])`.
+
 - [ ] **Step 2: Run tests to verify they fail**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/reserved.test.ts src/lib/planner/__tests__/exposure.test.ts`
 Expected: FAIL (spreading a `Span` object, `endWalls` ignored).
+
 - [ ] **Step 3: Implement in `layout.ts` and `exposure.ts`**
 
 `layout.ts`, `PlannerLayout`:
@@ -787,9 +796,11 @@ if (walls?.right)
 ```
 
 Update the file's header comment sentence "Pass `EndWalls` and the run's two outer ends stop counting as exposed" to "Pass `EndWalls` and an end with a wall at it stops counting as exposed".
+
 - [ ] **Step 4: Keep today's callers compiling (Task 3 replaces `room.ts`)**
 
 `room.ts`:
+
 - `runView`: `...(floor && wall ? { reserved: { floor: [floor], wall: [wall] } } : {})`
 - `fromCorner`: the `reserved` rebuild becomes
 
@@ -806,14 +817,17 @@ Update the file's header comment sentence "Pass `EndWalls` and the run's two out
 - `cornerShutSides`: `const span = view.reserved?.[row]?.[0];`
 
 `PlannerScene.tsx`:
+
 - In `Run`'s `sideGaps` memo: `walls` becomes `{ wallWidthMm: layout.wallWidthMm, left: layout.endWalls?.left ?? layout.wallToWall, right: layout.endWalls?.right ?? layout.wallToWall }`, and `const span = cornerFilled[row] ? layout.reserved?.[row]?.[0] : undefined;`
 - Corner worktop: `{cornerWorktop && layout.reserved?.floor?.[0] && (` and `layout.reserved.floor[0].startMm +`.
 
 `StudioScreen.tsx`, the `cornerMm` computation: `...Object.values(runView(layout, 0).reserved ?? {}).flat().map(`.
+
 - [ ] **Step 5: Run tests to verify they pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/reserved.test.ts src/lib/planner/__tests__/exposure.test.ts src/lib/planner/__tests__/layout.test.ts src/lib/planner/__tests__/room.test.ts`
 Expected: PASS. `pnpm typecheck` should also pass at this point.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -831,12 +845,14 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 Rewrites `room.ts` around the floor plan: one run per wall, corner units by vertex, corner squares that switch on when both walls meeting at an inside corner hold cabinets. Also moves `pricing.ts` to the list of corner worktops, since it is `lib/planner` and its tests live beside the room's.
 
 **Files:**
+
 - Rewrite: `src/lib/planner/room.ts`
 - Rewrite: `src/lib/planner/__tests__/room.test.ts`
 - Modify: `src/lib/planner/pricing.ts` (`worktopFt`)
 - Modify: `src/lib/planner/__tests__/pricing.test.ts` (L-room block, end-panel block)
 
 **Interfaces:**
+
 - Consumes (Task 1): `FloorPlan`, `RoomShape`, `wallsOf`, `vertexKind`, `setWallLength` (imported as `planWithWallLength`), `reshape`, `shapeOf`.
 - Consumes (Task 2): `PlannerLayout.reserved` lists, `PlannerLayout.endWalls`.
 - Produces (module exports):
@@ -1307,6 +1323,7 @@ describe("cornerShutSides", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts`
 Expected: FAIL — `cornerVertexFor` is not exported, `plan` is undefined.
+
 - [ ] **Step 3: Rewrite `src/lib/planner/room.ts`**
 
 Keep the existing file's long comments on `cascadeCorner`, `cornerShutSides` and `cornerWorktop` where the logic is unchanged — they record bugs this code has already been through. The code:
@@ -2125,10 +2142,12 @@ export type RoomEngine = ReturnType<typeof roomEngine>;
 ```
 
 Where the block above says "unchanged", paste the old entries exactly — they only call `runView`, `views`, `pooled`, `inRunOf` and `setting`, which keep their names.
+
 - [ ] **Step 4: Run the room tests**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts src/lib/planner/__tests__/floorplan.test.ts src/lib/planner/__tests__/reserved.test.ts`
 Expected: PASS. If a cascade expectation is off by the `spreadMm` of a turned cabinet, the fixture is wrong, not the engine — none of these fixtures turn a cabinet except "ignores a turned cabinet".
+
 - [ ] **Step 5: Pricing — every corner's worktop, and the flush-end change**
 
 `src/lib/planner/pricing.ts`, end of `worktopFt`:
@@ -2142,6 +2161,7 @@ Expected: PASS. If a cascade expectation is off by the `spreadMm` of a turned ca
 ```
 
 `src/lib/planner/__tests__/pricing.test.ts`:
+
 1. Remove `setWallToWall` from the import list.
 2. Replace the two tests "charges nothing once the run is enclosed and unbroken" and "costs less enclosed than open, by exactly the two buried ends" with:
 
@@ -2190,10 +2210,12 @@ const lWithBases = () => {
 The two tests in that block keep their expectations (`600 + 600 + 607`, and `600 + 600 + 900` with the corner unit).
 
 Then run `pnpm vitest run src/lib/planner`. Any other failure must be the same cause — a cabinet flush with a side wall at `x = 0` or at the wall's end — and gets the same treatment: fix the expected number, with a comment naming the buried end. A failure with any other cause is a bug in Step 3.
+
 - [ ] **Step 6: Run the planner suite**
 
 Run: `pnpm vitest run src/lib/planner`
 Expected: PASS.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -2213,11 +2235,13 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 4: Orders — schema v3, migrations, validation
 
 **Files:**
+
 - Modify: `src/lib/orders/layoutSchema.ts`
 - Modify: `src/lib/orders/validate.ts`
 - Test: `src/lib/orders/__tests__/orders.test.ts` (the "an L-shaped order", "roomLayoutSchema" and "orderDesignSchema" blocks)
 
 **Interfaces:**
+
 - Consumes: `planIsValid`, `vertexKind`, `wallsOf` (Task 1); `asRoom`, `RoomLayout`, `CornerUnits`, `Run` (Task 3).
 - Produces: `ORDER_DESIGN_VERSION = 3`; `roomLayoutSchema` (v3); `orderDesignSchema` accepting versions 1, 2 and 3, always yielding `{ schemaVersion: 3, layout: RoomLayout }`; `plannerLayoutSchema` unchanged.
 
@@ -2405,6 +2429,7 @@ describe("orderDesignSchema", () => {
 
 Run: `pnpm vitest run src/lib/orders`
 Expected: FAIL — `schemaVersion` is 2, `corners` undefined.
+
 - [ ] **Step 3: Rewrite `src/lib/orders/layoutSchema.ts`**
 
 ```ts
@@ -2629,14 +2654,17 @@ The corner rows:
 ```
 
 Update the comment above `isClear` to "A cabinet inside a corner square, or a square grown into a run, is not a design anyone can fit."
+
 - [ ] **Step 5: Find other writers of the version**
 
 Run: `grep -rn "ORDER_DESIGN_VERSION\|schemaVersion: 2\|roomLayoutSchema\|\.corner\b" src --include=*.ts --include=*.tsx | grep -v __tests__`
 Every hit outside `layoutSchema.ts` must read the constant or the parsed layout, never a literal `2` or `layout.corner`. Fix any that do. (The checkout route should already write `ORDER_DESIGN_VERSION`.)
+
 - [ ] **Step 6: Run the tests**
 
 Run: `pnpm test`
 Expected: PASS, whole suite.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -2654,12 +2682,14 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 No unit tests: this is three.js wiring over the tested `floorplan.ts`. Verification is typecheck-free-of-scene-errors plus the browser pass in Task 6.
 
 **Files:**
+
 - Rewrite: `src/components/planner/Room.tsx`
 - Modify: `src/components/planner/PlannerScene.tsx`
 - Create: `src/components/planner/WallLengths.tsx`
 - Modify: `src/components/planner/PositionDimensions.tsx` (export `EditableFigure`)
 
 **Interfaces:**
+
 - Consumes: `wallsOf`, `frameOf`, `outlineOf`, `toLocalMm`, `toWorldMm`, `nearestWall`, `WallFrame`, `FloorPlan` (Task 1); `cornerSpans`, `cornerAt`, `runView`, `withRun`, engine `cornerPositionsOf`, `cornerWorktops`, `cornerShutSides`, `exposureOf` (Task 3).
 - Produces (`PlannerScene` default export props, used by Task 6):
   - `PlannerView = "3d" | "elevation" | "plan"` (the `"side"` view is gone — elevation now faces whichever wall is targeted)
@@ -2772,6 +2802,7 @@ export function Room({
 ```
 
 The plank rows no longer start whole at the back wall (the old `offset` trick assumed a rectangle). Accepted: nobody counts floor planks.
+
 - [ ] **Step 2: Frames instead of yaws in `PlannerScene.tsx`**
 
 Imports: add `import { frameOf, nearestWall, toLocalMm, toWorldMm, type WallFrame, wallsOf } from "@/lib/planner/floorplan";`; from `@/lib/planner/room` import `cornerAt, cornerSpans, type RoomLayout, runView, withRun` (drop `runYawRad`); from `@/lib/planner/layout` add `type Span`.
@@ -2798,12 +2829,14 @@ function localRay(ray: Ray, frame: WallFrame): Ray {
 ```
 
 Then in `Run`:
+
 - prop `yaw: number` → `frame: WallFrame` (doc: "Where this run's group stands — see `localRay`.")
 - every `localRay(x, yaw)` → `localRay(x, frame)` (three sites: `beginDrag`, `beginRotate`, the window drag move)
 - `turnMm(p, -yaw)` → `toLocalMm(p, frame)` (two sites: `snapAt`, `beginDrag`)
 - `turnMm(p, yaw)` → `toWorldMm(p, frame)` (two sites in `snapAt`)
 
 Confirm with `grep -n "turnMm\|\byaw\b" src/components/planner/PlannerScene.tsx` — nothing left.
+
 - [ ] **Step 3: Corners per run in `Run`**
 
 Replace the props `cornerFilled: { floor: boolean; wall: boolean }` and `cornerWorktop` doc with:
@@ -2849,6 +2882,7 @@ In the `sideGaps` memo:
 
 Corner worktop: it now always sits at this run's start, so
 `{cornerWorktop && (` and the x position `m(cornerWorktop.sizeMm / 2 - runWidthMm / 2)`.
+
 - [ ] **Step 4: The scene root**
 
 In `PlannerScene` (the default export), add the three props from **Produces**, drop `"side"` from `PlannerView`, and replace the `runs`/`corners`/`cornerFilled`/`cornerWorktop`/`pickerRuns` memos with:
@@ -2935,6 +2969,7 @@ The runs:
 ```
 
 Delete `NO_CORNERS` if nothing else uses it.
+
 - [ ] **Step 5: `DropPicker` returns a wall**
 
 ```tsx
@@ -2982,6 +3017,7 @@ function DropPicker({
 ```
 
 Import `type FloorPlan` from `floorplan.ts`, and render it as `<DropPicker plan={layout.plan} pickerRef={pickerRef} />`.
+
 - [ ] **Step 6: Camera framing follows the target wall**
 
 `FitCamera` props: replace `cornerSide` with `frame: WallFrame`, add `planWidthMm`, `planDepthMm`. Inside the effect, replace the `centre`, `radius` and `direction` blocks:
@@ -3034,6 +3070,7 @@ const elevationWall =
 ```
 
 Delete `SIDE_RIGHT_DIRECTION` and `VIEW_DIRECTION.side`.
+
 - [ ] **Step 7: The pan puck, in the target wall's frame**
 
 `PanGizmo` props: replace `cornerSide` with `frame: WallFrame`; keep a `frameRef` like `boundsRef`. Delete `side` from `PAN_AXES` and `panAnchor`'s `view === "side"` branch. Replace `panPlane`:
@@ -3111,6 +3148,7 @@ At the call sites:
 ```
 
 Also update `lib/planner/camera.ts`'s header comment: "centred on the run" → "in the targeted wall's own frame".
+
 - [ ] **Step 8: Plan-view wall lengths**
 
 In `PositionDimensions.tsx`, `export` `EditableFigure` and `CHIP`.
@@ -3182,6 +3220,7 @@ export function WallLengths({
 ```
 
 `t.planner.room.wallName` is added in Task 6; until then this file does not typecheck.
+
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -3197,12 +3236,14 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 6: Studio — target wall, shape picker, wall lengths, copy
 
 **Files:**
+
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/ms.ts`, `src/lib/copy/zh.ts`
 - Rewrite: `src/components/planner/studio/RoomPanel.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
 - Modify: `src/app/[lang]/planner/PlannerApp.tsx` (~l.196), `src/components/planner/QuoteScreen.tsx` (~l.298)
 
 **Interfaces:**
+
 - Consumes: Task 3's engine (`setShape`, `setWallLength`, `wallLengthRangeMm`, `cornerVertexFor`), Task 5's `PlannerScene` props.
 - Produces: the finished feature. `pnpm typecheck` must pass at the end of this task.
 
@@ -3225,6 +3266,7 @@ Add:
 Check the placeholder syntax against an existing key that `fill` fills (e.g. `fitFree`) and match it — `{n}` above assumes single braces.
 
 Then: `grep -rnE "shapeStraight|shapeLeft|shapeRight|shapeRefused|sideWallLength|roomDepth\b|wallLength\b|narrowWallNote|openEnds|toWalls|runAria|noPanelNeededNote|panelNeededNote|sideHint|mainWall|sideWall|view\.side" src --include=*.tsx --include=*.ts | grep -v "src/lib/copy/"` — every hit is fixed in the steps below; none may remain at the end.
+
 - [ ] **Step 2: `RoomPanel.tsx`**
 
 ```tsx
@@ -3385,6 +3427,7 @@ export function RoomPanel({
 ```
 
 Paste the two blocks the comments name from the old file verbatim, and keep its header comment, reworded for walls.
+
 - [ ] **Step 3: `StudioScreen.tsx`**
 
 Imports: from `@/lib/planner/room` import `cornerVertexFor, emptyRoom, nearCornerMm, type RoomLayout, runIndexOf, runView, setDoors, setHinge` (drop `shapeOf`); add `import { type RoomShape, shapeOf } from "@/lib/planner/floorplan";`.
@@ -3508,19 +3551,23 @@ and the corner-category guard with `if (category.startsWith("CORNER_") && corner
 ```
 
 Finally `grep -n "layout\.corner\|wallWidthMm\|roomDepthMm\|wallToWall" src/components/planner/StudioScreen.tsx` — fix any remaining hit the same way (the back wall's length is `runView(layout, 0).wallWidthMm`).
+
 - [ ] **Step 4: The other readers of the old fields**
 
 `PlannerApp.tsx` ~l.196 and `QuoteScreen.tsx` ~l.298: `layout.wallWidthMm` → `wallsOf(layout.plan)[0].lengthMm` (import `wallsOf` from `@/lib/planner/floorplan`). Then:
 
 Run: `grep -rnE "\.corner\b|wallWidthMm|roomDepthMm|wallToWall|runYawRad|setCornerSide|cornerWorktop\b|minRoomDepthMm|setRoomDepth" src --include=*.tsx | grep -v __tests__`
 Every remaining hit must be on a `PlannerLayout` (a run view), not a `RoomLayout`.
+
 - [ ] **Step 5: Typecheck, lint, test**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: all three PASS.
+
 - [ ] **Step 6: Browser check**
 
 Start the dev server (`pnpm dev`) and open the kitchen planner. Record a GIF of steps 2–6.
+
 1. The room opens as a rectangle with four walls; the back wall is tinted as the target.
 2. Room panel → pick **L-shaped**. The floor becomes an L; six walls. In **plan** view, each wall shows its length; set the notch's top wall (wall 3) to 1500 and see walls 2 and 4 follow.
 3. Tap the left wall in 3D; the tint moves; add a base cabinet from the menu — it lands on the left wall. Add one to the back wall: both slide clear of the corner square.
@@ -3532,6 +3579,7 @@ Start the dev server (`pnpm dev`) and open the kitchen planner. Record a GIF of 
 9. `/admin/orders`: an order placed before this change still renders.
 
 Expected: all nine as described. Any failure goes back to the task that owns it.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -3547,6 +3595,7 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 7: Documentation
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Rewrite the architecture notes**
@@ -3585,11 +3634,13 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 Today a placed cabinet stores only `xMm` along its own wall, `hangAtMm` and `rotationDeg`. The drag solves the pointer against the cabinet's own wall plane, so it can never leave its wall. The user chose: **dragging a cabinet across the room hands it to the wall it is dropped nearest.** It still stands against a wall. There is no data-format change and no island or pull-off.
 
 **Files:**
+
 - Modify: `src/lib/planner/floorplan.ts` (+ `transferTarget`), `src/lib/planner/__tests__/floorplan.test.ts`
 - Modify: `src/lib/planner/room.ts` (+ engine `moveToRun`), `src/lib/planner/__tests__/room.test.ts`
 - Modify: `src/components/planner/PlannerScene.tsx` (drag release → transfer; target-wall preview tint), `src/components/planner/StudioScreen.tsx` (retarget after a transfer)
 
 **Interfaces:**
+
 - `transferTarget(plan: FloorPlan, ownRun: number, point: Vec2): { run: number; xMm: number } | null`: `nearestWall(plan, point)`, or `null` when that is `ownRun`.
 - Engine `moveToRun(room: RoomLayout, id: string, run: number, xMm: number): RoomLayout`:
   - Returns `room` unchanged if the id is unknown, is a corner unit, is already on `run`, or the cabinet does not fit on the new wall.
@@ -3632,6 +3683,7 @@ Spec §5. TDD throughout; `lib/planner` stays framework-free. Runs after Task 8'
 **Files:** `src/lib/planner/room.ts`, `src/lib/planner/floorplan.ts` (pure geometry helpers), `src/lib/planner/pricing.ts`, `src/lib/orders/layoutSchema.ts`, `src/lib/orders/validate.ts`, their tests.
 
 **Interfaces (produce exactly these):**
+
 - `floorplan.ts`:
   - `pointInPlan(plan, p: Vec2): boolean` — ray casting against `outlineOf(plan)`; points on the boundary count as inside.
   - `rectCorners(centre: Vec2, widthMm, depthMm, yawRad): Vec2[]` — 4 corners, where the front faces local +z turned by yaw (same sense as `WallGeom.yawRad`).
@@ -3655,6 +3707,7 @@ Spec §5. TDD throughout; `lib/planner` stays framework-free. Runs after Task 8'
 - `validate.ts`: free rows go through the same per-cabinet checks. A wall/corner family in `free` → `does_not_fit`. `!freeIsClear` → `does_not_fit`.
 
 **Tests first (minimum):**
+
 - floorplan: `pointInPlan` (rect inside/outside; the L's notch is outside); `rectsOverlap` (disjoint, overlapping, touching-not-overlapping, rotated 45°); `distanceToWallMm`.
 - room:
   - A run base cabinet dropped at the room centre becomes free: it is gone from the run, is in `free`, and keeps id/door/hinge.
@@ -3674,6 +3727,7 @@ Spec §5. TDD throughout; `lib/planner` stays framework-free. Runs after Task 8'
 ### Task 10: Free-standing cabinets — scene and studio (added 2026-09-19)
 
 **Files:** `src/components/planner/PlannerScene.tsx`, `StudioScreen.tsx` (and only what else typecheck forces).
+
 - **Drawing.** Each free cabinet is drawn as a one-cabinet `Run`:
   - Build a `PlannerLayout` view: `wallWidthMm = widthMm`, `roomDepthMm = depthMm + 2 × WALL_GAP_MM`, the cabinet at `xMm 0`, `endWalls {false,false}`, no `reserved`.
   - Give it a frame `{ yawRad: rotationDeg·π/180, xMm, zMm }` (the cabinet's local centre is then at the frame origin).
@@ -3708,6 +3762,7 @@ While being dragged on the floor, a free cabinet (or a floor cabinet floated off
 **Interface:** `clampIntoPlan(plan: FloorPlan, centre: Vec2, widthMm: number, depthMm: number, yawRad: number): Vec2`. It returns `centre` unchanged (same object) when the footprint (`rectCorners`) is already inside (`footprintInPlan`). Otherwise it pushes the centre along each offending wall's inward normal by that wall's penetration, running two passes so a corner of the room is resolved. `// ponytail:` note: two passes resolve every 90° corner; a general polygon would need iteration to convergence.
 
 **Tests first:**
+
 - Rect 4200×3600, a 600×580 cabinet at yaw 0 with centre `{0, −1900}` (through the back wall) → its back edge sits on the back wall (`zMm = −1800 + 290`) and x is unchanged.
 - A centre past both the back and left walls ends in that corner.
 - An inside centre returns the same object.
@@ -3715,6 +3770,7 @@ While being dragged on the floor, a free cabinet (or a floor cabinet floated off
 - L notch: a centre inside the notch is pushed out of it, onto the nearer of the two notch walls.
 
 **Scene:**
+
 - The floor-follow drag (free cabinets, and floor cabinets floated off their wall) positions the preview at `clampIntoPlan(...)` of the pointer-derived centre.
 - The release passes that same clamped centre to `dropAt`.
 - No new three.js allocations per move.
@@ -3722,6 +3778,7 @@ While being dragged on the floor, a free cabinet (or a floor cabinet floated off
 **Gates:** `pnpm vitest run --dir src`, `pnpm typecheck` and `pnpm lint` all pass.
 
 **Browser:**
+
 - Drag a free cabinet hard into the back wall: it stops at the wall, and on release joins it.
 - Drag into a room corner: it stops in the corner.
 - Drag toward the L's notch: it stays out of it.

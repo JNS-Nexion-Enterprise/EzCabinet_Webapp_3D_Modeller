@@ -50,10 +50,12 @@
 ### Task 1: Pure helpers — one-line address, pin status
 
 **Files:**
+
 - Modify: `src/app/admin/company/form.ts` (add after `addressNeedsPin`, ~line 150)
 - Test: `src/app/admin/company/__tests__/form.test.ts`
 
 **Interfaces:**
+
 - Consumes: `PinReading` (already in `form.ts`)
 - Produces:
   - `oneLine(text: string): string`
@@ -106,13 +108,16 @@ describe("pinStatus", () => {
 
 Run: `pnpm vitest run src/app/admin/company/__tests__/form.test.ts`
 Expected: FAIL, with `oneLine` / `pinStatus` not exported.
+
 - [ ] **Step 3: Implement both helpers in `form.ts`**
 
 `oneLine`: replace every run of optional whitespace, an optional comma, optional whitespace, one or more `\r`/`\n`, then whitespace, with `", "`. That is one regex, `/\s*,?\s*[\r\n]+\s*/g`. Don't trim: it runs on every keystroke. `pinStatus`: check `found`, then `needsCheck`, then `pin.ok`, in that order; the `found` branch copies only `formattedAddress`, `lat` and `lng`, since the caller passes a whole `GeocodeResult`. Give each a one-line doc comment that says _why_, in the file's own style. The `oneLine` comment should mention the text input deleting line breaks and the address being stored as one line.
+
 - [ ] **Step 4: Run the tests and confirm they pass**
 
 Run: `pnpm vitest run src/app/admin/company/__tests__/form.test.ts`
 Expected: PASS, with the existing `readPin` / `placeFields` / `addressNeedsPin` tests still green.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -125,6 +130,7 @@ git commit -m "feat(company): one-line a pasted address and say what the pin is"
 ### Task 2: Company form — paste, check, pin tucked away
 
 **Files:**
+
 - Modify: `src/app/admin/company/CompanyForm.tsx`:
   - copy constants (lines 24–27)
   - state (lines 117–124)
@@ -133,6 +139,7 @@ git commit -m "feat(company): one-line a pasted address and say what the pin is"
   - Workshop section (300–381)
 
 **Interfaces:**
+
 - Consumes: `oneLine`, `pinStatus`, `PinStatus` from Task 1. Also `addressNeedsPin`, `readPin`, `placeFields`, `mapsLink`, and `GeocodeResult.formattedAddress`, which already exist.
 
 - [ ] **Step 1: Replace the copy and state**
@@ -176,9 +183,11 @@ git commit -m "feat(company): one-line a pasted address and say what the pin is"
 
 Run: `pnpm typecheck && pnpm lint && pnpm vitest run src/app/admin/company`
 Expected: all three exit 0.
+
 - [ ] **Step 5: Check it in the browser**
 
 Run `pnpm dev` with `AUTH_ENABLED="false"` in `.env.local` and the existing `GOOGLE_GEOCODING_API_KEY`, then open `/admin/company`. Each line is one check:
+
 - Paste a three-line address. It comes out as one line with commas.
 - Press **Check address**. Postcode, city and state fill in, the "Google Maps found: …" line shows with a working link, and the pin field stays hidden.
 - Type one more character into the address. The status switches to "Press Check address…" and **Save** shows the gate message under Address.

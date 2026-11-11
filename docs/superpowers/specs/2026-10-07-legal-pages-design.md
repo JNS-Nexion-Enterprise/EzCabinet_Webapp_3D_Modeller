@@ -10,6 +10,7 @@ number on the account, and the notice that covers it must exist first.
 
 The planner takes full payment for made-to-order goods and shows the customer
 no terms, no refund policy and no seller address before they pay.
+
 - **Consumer Protection (Electronic Trade Transactions) Regulations 2024**
   (in force 25 December 2024, replacing the 2012 regulations) — an online
   seller must disclose: name, website, email and phone, physical address, a
@@ -119,6 +120,7 @@ written to match that line so staff and customer read the same boundary.
 ### Privacy notice — additions
 
 New sections, added to the existing ones:
+
 - **Your account** — signing in with Google gives us your name, email and
   profile photo. (Piece B adds: the phone number and address you save.)
 - **Your orders** — name, phone, email, delivery address, the design and the
@@ -145,6 +147,7 @@ New sections, added to the existing ones:
 `QuoteScreen.tsx` already carries one required condition
 (`remeasureAccepted`) and one optional consent (`whatsappOptIn`). Terms follow
 the first pattern exactly.
+
 - **Checkbox**, unticked by default: "I agree to the Terms of sale and the
   Refund policy" — both linked, opening in a new tab so the design and the
   typed form are not lost. Pay / Place order stays disabled until ticked.

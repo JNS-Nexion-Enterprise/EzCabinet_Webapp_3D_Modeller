@@ -41,10 +41,12 @@
 `catalogue.ts` already has an `explicit-catalogue reads` section (`sizePriceRmIn`, `doorStyleIn`, `doorPriceRmIn`). Everything later in this plan needs four more of the same shape. Linear scans, deliberately — the existing section documents why (a catalogue holds tens of families; building a Map per call costs more than the scan).
 
 **Files:**
+
 - Modify: `src/lib/planner/catalogue.ts` (add to the `explicit-catalogue reads` section, around line 386–440)
 - Test: `src/lib/planner/__tests__/catalogue.test.ts` (create)
 
 **Interfaces:**
+
 - Consumes: `PlannerCatalogue`, `Family`, `RoomType`, `Construction`, `Rates` from `./catalogueSchema`; the existing `CONSTRUCTION` and `RATES` seed objects.
 - Produces:
   - `familyIn(catalogue: PlannerCatalogue, familyId: string): Family | undefined`
@@ -176,6 +178,7 @@ describe("ratesOf", () => {
 
 Run: `pnpm test src/lib/planner/__tests__/catalogue.test.ts`
 Expected: FAIL — `familyIn`, `roomTypeIn`, `defaultWidthMmIn`, `constructionOf`, `ratesOf` are not exported by `../catalogue`.
+
 - [ ] **Step 3: Add the five reads**
 
 In `src/lib/planner/catalogue.ts`, extend the import at the top of the file to pull the two extra schema types:
@@ -250,10 +253,12 @@ export function ratesOf(catalogue: PlannerCatalogue): ResolvedRates {
 
 Run: `pnpm test src/lib/planner/__tests__/catalogue.test.ts`
 Expected: PASS, 13 tests.
+
 - [ ] **Step 5: Run the whole suite and the linter**
 
 Run: `pnpm test && pnpm lint`
 Expected: PASS — nothing else changed yet.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -268,10 +273,12 @@ git commit -m "feat(planner): catalogue-explicit reads for families, rooms, cons
 The provider that will hand the live catalogue — and, from Task 6, the engine built from it — to the client tree. Added first and left unused so the tasks that need it can land one at a time.
 
 **Files:**
+
 - Create: `src/components/planner/CatalogueContext.tsx`
 - Modify: `src/app/planner/PlannerApp.tsx`
 
 **Interfaces:**
+
 - Consumes: `PlannerCatalogue` from `@/lib/planner/catalogueSchema`.
 - Produces:
   - `<CatalogueProvider catalogue={…}>{children}</CatalogueProvider>`
@@ -362,12 +369,14 @@ export function PlannerApp({
 ```
 
 `PlannerScreens` keeps the same props and the same body — including the `setActivePlannerCatalogue(catalogue)` call, which stays until Task 7. Removing it now would blank every palette that still reads the global.
+
 - [ ] **Step 3: Verify**
 
 There is no component test harness in this repo, so the check here is the type-checker and the build.
 
 Run: `pnpm lint && pnpm build`
 Expected: PASS. `useCatalogue` is exported and unused — that is intended at this point.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -382,6 +391,7 @@ git commit -m "feat(planner): catalogue react context, provided by PlannerApp"
 Fixes **Known issue 1** and a fourth, unlisted bug of the same family: `pricing.ts` reads the module-level `RATES` for worktop, ceiling trim, skirting and all three end-panel rates. `setActivePlannerCatalogue` is client-only, so on the server — where CLAUDE.md says price is authoritative — those six rates are always the bundled placeholders, whatever the published catalogue says.
 
 **Files:**
+
 - Modify: `src/lib/planner/pricing.ts`
 - Modify: `src/components/planner/QuoteScreen.tsx:44`
 - Modify: `src/components/planner/StartScreen.tsx:155`
@@ -389,6 +399,7 @@ Fixes **Known issue 1** and a fourth, unlisted bug of the same family: `pricing.
 - Test: `src/lib/planner/__tests__/pricing.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ratesOf`, `ResolvedRates` from Task 1; `useCatalogue` from Task 2.
 - Produces:
   - `computePlannerPrice(layout, finish, catalogue): KitchenPrice` — `catalogue` **required**
@@ -454,6 +465,7 @@ it("charges the catalogue's skirting and ceiling-trim rates", () => {
 
 Run: `pnpm test src/lib/planner/__tests__/pricing.test.ts`
 Expected: FAIL — the doubled catalogue produces the same total, because the rates come from the module global. (`endPanelPriceRm` also fails to compile with two arguments.)
+
 - [ ] **Step 3: Rewrite `pricing.ts` to take its rates from the catalogue**
 
 Replace the import block at the top of `src/lib/planner/pricing.ts`:
@@ -601,6 +613,7 @@ const price = computePlannerPrice(layout, finish, catalogue);
 ```
 
 `src/app/page.tsx:163` already passes its catalogue — leave it alone.
+
 - [ ] **Step 5: Pass the catalogue at every test call site**
 
 In `src/lib/planner/__tests__/pricing.test.ts`, the seed catalogue is the right one for these tests — they are asserting the engine, not a publish. Rather than editing ~35 calls, add a local wrapper directly under the existing `run()` helper and rename the calls to it:
@@ -620,10 +633,12 @@ sed -i '' -E 's/computePlannerPrice\((.*), "white"\)/price(\1)/g' src/lib/planne
 ```
 
 Review the diff by hand afterwards — the three tests you added in Step 1 pass an explicit catalogue and must keep doing so, and the two existing tests in `describe("catalogue is a real parameter…")` that compare `PLANNER_CATALOGUE` against `pricier` must keep their explicit third argument. Add `import type { PlannerLayout } from "../layout";` if it is not already imported, and fix the one `endPanelPriceRm(` call in the file to pass `PLANNER_CATALOGUE`.
+
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm test`
 Expected: PASS, including the three new rate tests.
+
 - [ ] **Step 7: Lint, build, commit**
 
 ```bash
@@ -643,6 +658,7 @@ git commit -m "fix(planner): price against the catalogue's rates, not a mutable 
 This one keeps a **default**, unlike `pricing.ts` and `layout.ts`, and the difference is deliberate: after Task 7 the seed is immutable, so defaulting to it is a documented constant rather than "whatever was installed last". `parts.ts` draws the _fallback_ cabinet — it decides no money and no placement — and a required argument here would churn ~25 assertions in `parts.test.ts` for no bug caught.
 
 **Files:**
+
 - Modify: `src/lib/planner/catalogue.ts` (`doorLeavesFor`)
 - Modify: `src/lib/planner/parts.ts:97` (`standOf`), `:147`, `:164` (`cabinetPartsMm`), `:169`
 - Modify: `src/lib/planner/measure.ts:209` (`designPartBoxes`)
@@ -651,6 +667,7 @@ This one keeps a **default**, unlike `pricing.ts` and `layout.ts`, and the diffe
 - Test: `src/lib/planner/__tests__/parts.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Construction`, `CONSTRUCTION`, `constructionOf` from Task 1; `useCatalogue` from Task 2.
 - Produces:
   - `doorLeavesFor(widthMm: number, thresholdMm?: number): number`
@@ -696,10 +713,12 @@ describe("construction comes from the catalogue, not a global", () => {
 ```
 
 Add `CONSTRUCTION` to the file's existing `from "../catalogue"` import if it is not already there. `base` is the fixture the existing tests in this file already use — reuse it rather than defining another.
+
 - [ ] **Step 2: Run the tests to verify they fail**
 
 Run: `pnpm test src/lib/planner/__tests__/parts.test.ts`
 Expected: FAIL — `cabinetPartsMm` takes three arguments, `standOf` takes one.
+
 - [ ] **Step 3: Thread construction through**
 
 `src/lib/planner/catalogue.ts` — give `doorLeavesFor` the threshold:
@@ -754,6 +773,7 @@ export function cabinetPartsMm(
 ```
 
 Follow the type errors from there: any private helper in the file that reads `CONSTRUCTION` takes `construction: Construction` as a required parameter (they are internal, so no default) and its callers pass theirs down.
+
 - [ ] **Step 4: Pass it at the callers that have a live catalogue**
 
 `src/lib/planner/measure.ts` — `designPartBoxes` (the function containing line 209) appends an optional `construction` and forwards it:
@@ -792,10 +812,12 @@ const construction = constructionOf(useCatalogue());
 ```
 
 Drop `CONSTRUCTION` from its `@/lib/planner/catalogue` import and add `constructionOf`. Note that `PlannerScene` renders inside `<Canvas>`; React context crosses the R3F reconciler boundary in `@react-three/fiber` v8+, but if the value comes back `null` at runtime, read it in the outer component and pass it down as a prop rather than reaching for a workaround.
+
 - [ ] **Step 5: Run the tests to verify they pass**
 
 Run: `pnpm test`
 Expected: PASS. The ~25 existing `cabinetPartsMm` / `standOf` calls in `parts.test.ts`, `measure.test.ts` and `layout.test.ts` are unchanged and still pass, because the parameter is optional.
+
 - [ ] **Step 6: Lint, build, commit**
 
 ```bash
@@ -815,11 +837,13 @@ The core of the plan. `layout.ts` resolves a `familyId` into a `Family` in one p
 A factory avoids all of them: `plannerEngine(catalogue)` closes over the catalogue, the function bodies are untouched, and consumers destructure once. Catalogue-free exports (`emptyLayout`, `rowFor`, `setDoor`, `setHinge`, `setDoors`, `SNAP_MM`, `WALL_LIMITS`, and every type) stay at module scope — moving them in would buy nothing and cost every import.
 
 **Files:**
+
 - Modify: `src/lib/planner/layout.ts`
 - Modify: `src/lib/planner/pricing.ts`
 - Test: `src/lib/planner/__tests__/layout.test.ts`, `src/lib/planner/__tests__/exposure.test.ts`, `src/lib/planner/__tests__/measure.test.ts`, `src/lib/planner/__tests__/pricing.test.ts`
 
 **Interfaces:**
+
 - Consumes: `familyIn`, `roomTypeIn`, `defaultWidthMmIn`, `constructionOf` from Task 1.
 - Produces:
   - `plannerEngine(catalogue: PlannerCatalogue): PlannerEngine`
@@ -887,10 +911,12 @@ describe("the engine is bound to the catalogue it was given", () => {
 ```
 
 Add `PLANNER_CATALOGUE` to the existing `from "../catalogue"` import and `plannerEngine` to the `from "../layout"` import.
+
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm test src/lib/planner/__tests__/layout.test.ts`
 Expected: FAIL — `plannerEngine` is not exported by `../layout`.
+
 - [ ] **Step 3: Wrap the catalogue-dependent functions in the factory**
 
 In `src/lib/planner/layout.ts`, replace the import block:
@@ -1016,6 +1042,7 @@ export type PlannerEngine = ReturnType<typeof plannerEngine>;
 ```
 
 Two functions that are still module-scope call into the engine's set — `setDoors` calls `setDoor` (both catalogue-free, fine), and `flushWallToTallTops` calls `setHangingHeight` (both inside the factory, fine). If the type-checker finds any other module-scope function reaching an engine function, move it inside the factory and add it to the returned object.
+
 - [ ] **Step 4: Point `pricing.ts` at an engine built from its own catalogue**
 
 This is the fix for the deepest part of **Known issue 3**: `positionsOf` resolved families off the global palette, so on the server `position.family` was a seed family while `sizePriceRmIn` looked the width up in the published one — and mismatched widths fell through `?? 0`.
@@ -1140,10 +1167,12 @@ const {
 ```
 
 Do the same in `exposure.test.ts` (`addModule`, `positionsOf`), `measure.test.ts` (`addModule`, `allPositions`) and `pricing.test.ts` (`addModule`, `removeModule`, `setBaseSkirting`, `setWallToCeiling`, `setWallToWall`, `setWallWidth`, `setWidth`, `starterFor`) — keeping `emptyLayout` and `setDoor` as plain imports, since they stayed at module scope. In `pricing.test.ts`, also pass `PLANNER_CATALOGUE` to the `worktopFt` / `ceilingTrimFt` / `skirtingFt` calls.
+
 - [ ] **Step 6: Run the tests to verify they pass**
 
 Run: `pnpm test`
 Expected: PASS, including the four new engine tests.
+
 - [ ] **Step 7: Commit**
 
 The app does not build yet — the components still import the deleted module-level `addModule` and friends. That is Task 6. Commit `lib/` on its own so the refactor is reviewable apart from the call-site churn.
@@ -1161,6 +1190,7 @@ git commit -m "refactor(planner): bind the layout engine to an explicit catalogu
 Fixes **Known issue 3** outright: `app/page.tsx` builds its starter layout from the same catalogue it prices it against.
 
 **Files:**
+
 - Modify: `src/components/planner/CatalogueContext.tsx` (add `useEngine`)
 - Modify: `src/app/planner/PlannerApp.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
@@ -1170,6 +1200,7 @@ Fixes **Known issue 3** outright: `app/page.tsx` builds its starter layout from 
 - Modify: `src/app/page.tsx:148-170`
 
 **Interfaces:**
+
 - Consumes: `plannerEngine`, `PlannerEngine` from Task 5; `CatalogueProvider`, `useCatalogue` from Task 2.
 - Produces: `useEngine(): PlannerEngine`
 
@@ -1250,6 +1281,7 @@ const [rooms, setRooms] = useState<Record<RoomTypeId, PlannerLayout>>(() =>
 ```
 
 Drop `ROOM_TYPES`, `roomType` and `starterFor` from the `@/lib/planner/catalogue` and `@/lib/planner/layout` imports, add `roomTypeIn`, and keep `emptyLayout` — it stayed at module scope. Keep `setActivePlannerCatalogue` for now (Task 7 deletes it).
+
 - [ ] **Step 3: Move the four screens onto the engine**
 
 In each of `StudioScreen.tsx`, `PlannerScene.tsx`, `StartScreen.tsx` and `QuoteScreen.tsx`, destructure the engine once near the top of the component and delete the corresponding names from the `@/lib/planner/layout` import:
@@ -1284,6 +1316,7 @@ At the same time, swap the palette reads in those files onto the catalogue, sinc
 `doorStyleIn` returns the schema's string-keyed `DoorStyle`. Everything above reads `id`, `label`, `look` and `note`, none of which changed shape — but if the type-checker points at a `priceRmBySizeMm` read in a component, that component was pricing on the client and belongs in `pricing.ts`. Move it there rather than re-keying.
 
 Leave `CEILING_LIMITS`, `ROOM_DEPTH_LIMITS`, `WALL_HANG_LIMITS`, `CEILING_TRIM_MM`, `WALL_GAP_MM`, `WORKTOP_COLOR` and the other colour constants imported as they are — they are genuine constants, not catalogue data.
+
 - [ ] **Step 4: Fix the landing page**
 
 `src/app/page.tsx` — delete the `ponytail:` comment at lines 148–156 describing the bug, build an engine from the fetched catalogue, and read the room strip off it:
@@ -1307,16 +1340,19 @@ const kitchenPrice = computePlannerPrice(
 ```
 
 and at line 381, `{catalogue.roomTypes.map((room, i) => (`. Drop `ROOM_TYPES` from the `@/lib/planner/catalogue` import (keep `RoomTypeId`) and add `import { plannerEngine } from "@/lib/planner/layout";`.
+
 - [ ] **Step 5: Verify**
 
 Run: `pnpm test && pnpm lint && pnpm build`
 Expected: PASS on all three. The build is the real check here — it type-checks every component the engine refactor touched.
+
 - [ ] **Step 6: Check it in the browser**
 
 Run: `pnpm dev`, then open `http://localhost:3000` and `http://localhost:3000/planner`.
 Expected: the landing page shows a non-zero "Starter kitchen run" figure; the planner opens on the kitchen starter with cabinets on the wall; the door-style and finish strips are populated; dragging a cabinet still snaps.
 
 A **zero** starter price means the published catalogue's kitchen ladder no longer carries the starter's widths — a real data problem this task has now made visible instead of silently pricing at RM 0. Report it rather than papering over it.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1331,11 +1367,13 @@ git commit -m "fix(planner): build layouts and palettes from the live catalogue"
 Fixes **Known issue 2** by removing the thing being mutated, and closes **Known issue 1** by leaving nothing that can go stale. Nothing should still reference these names after Task 6 — this task is mostly deletion, and the type-checker proves it.
 
 **Files:**
+
 - Modify: `src/lib/planner/catalogue.ts`
 - Modify: `src/app/planner/PlannerApp.tsx`
 - Test: `src/lib/planner/__tests__/pricing.test.ts`, `src/lib/planner/__tests__/layout.test.ts`
 
 **Interfaces:**
+
 - Produces: `catalogue.ts` exporting seed data (`FAMILIES`, `ROOM_TYPES`, `FINISHES`, `CONSTRUCTION`, `RATES`, `PLANNER_CATALOGUE`), the true constants, and the `…In` / `…Of` reads. Nothing else.
 
 - [ ] **Step 1: Write the failing test**
@@ -1366,13 +1404,16 @@ describe("the seed catalogue is one consistent document", () => {
 ```
 
 Import `plannerCatalogueSchema` from `../catalogueSchema`.
+
 - [ ] **Step 2: Run it**
 
 Run: `pnpm test src/lib/planner/__tests__/catalogue.test.ts`
 Expected: PASS already — this is a characterisation test, capturing what must survive the deletion. If it fails now, stop: the seed is broken before you touch it.
+
 - [ ] **Step 3: Delete the palette machinery**
 
 From `src/lib/planner/catalogue.ts`, delete outright:
+
 - `setActivePlannerCatalogue` (and its whole doc comment)
 - `FAMILY_BY_ID`, `ROOM_BY_ID`, `DOOR_BY_ID`
 - `family()`, `roomType()`, `sizesOf()`, `sizePriceRm()`, `defaultWidthMm()`
@@ -1454,6 +1495,7 @@ export const PLANNER_CATALOGUE: PlannerCatalogue = Object.freeze({
 ```
 
 Update the doc comment on `CONSTRUCTION` and `RATES` — they are no longer "mutable so `setActivePlannerCatalogue` can swap them"; they are the fallbacks `constructionOf` and `ratesOf` fill from. Update the comment above `FAMILIES` / `ROOM_TYPES` / `FINISHES` the same way.
+
 - [ ] **Step 4: Take the mutation out of `PlannerApp`**
 
 In `src/app/planner/PlannerApp.tsx`, delete the `setActivePlannerCatalogue(catalogue);` line and its import, and the doc comment on the `catalogue` prop that describes the swap. Replace it with:
@@ -1488,6 +1530,7 @@ it("charges the next rung up for a width between rungs", () => {
 ```
 
 `layout.test.ts` imports `FAMILIES` and `family` — swap `family(id)` for `familyIn(PLANNER_CATALOGUE, id)` and `FAMILIES` for `PLANNER_CATALOGUE.families`, and drop `ROOM_TYPES` in favour of `PLANNER_CATALOGUE.roomTypes`. Do the same in `parts.test.ts` and `pricing.test.ts` for any remaining palette import.
+
 - [ ] **Step 6: Verify nothing still reaches for the palette**
 
 Run:
@@ -1500,6 +1543,7 @@ Expected: no output. Then:
 
 Run: `pnpm test && pnpm lint && pnpm build`
 Expected: PASS on all three.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1512,10 +1556,12 @@ git commit -m "refactor(planner): delete the mutable catalogue palette"
 ### Task 8: The server routes validate against the live catalogue, and CLAUDE.md stops listing fixed bugs
 
 **Files:**
+
 - Modify: `src/app/planner/page.tsx:4,8,16-18`
 - Modify: `CLAUDE.md` — "Known issues", "The catalogue: two reads, and why"
 
 **Interfaces:**
+
 - Consumes: `getPublishedPlannerCatalogue` (already imported there), the live `catalogue.roomTypes`.
 
 - [ ] **Step 1: Validate `?room=` against the published catalogue**
@@ -1557,6 +1603,7 @@ published catalogue omits. `PLANNER_CATALOGUE` is frozen. Nothing swaps it.
 
 The live catalogue comes from the published `CatalogueVersion` and is passed
 explicitly to the three things that consume it:
+
 - `plannerEngine(catalogue)` — the placement functions in `layout.ts`, bound to
   one catalogue. A factory rather than a per-function parameter because
   `positioned` is the only place a `familyId` becomes a `Family`, but nearly
@@ -1582,6 +1629,7 @@ Expected: PASS.
 
 Run: `pnpm dev`, then open `http://localhost:3000/planner?room=bedroom` and `http://localhost:3000/planner?room=nonsense`.
 Expected: the first opens on the bedroom starter, the second falls back to the kitchen.
+
 - [ ] **Step 4: Commit**
 
 ```bash

@@ -104,15 +104,19 @@ export const en = {
 		faq: {
 			heading: "Frequently asked questions",
 			q1: "How long does delivery take?",
-			a1: "Most orders arrive within 4-6 weeks of confirming your plan, depending on finish and cabinet size.",
+			a1: "Most orders arrive {deliveryWeeks} weeks after we re-measure your site, depending on finish and cabinet size.",
 			q2: "Can I get cabinets installed too?",
-			a2: "Yes. Installation can be added when you send your plan to our team for a final quote.",
+			a2: "Yes. Ask for installation when our team confirms your plan, and we quote it separately.",
+			/** Shown instead of `a2` when the maker does not install. */
+			a2None:
+				"Installation is not included. Our team can talk it through when they confirm your plan.",
 			q3: "What are the cabinets made of?",
-			a3: "Solid carcasses with a choice of veneer, laminate or painted finishes. The full range is in the planner.",
+			a3: "The finishes for each cabinet are shown in the planner, and our team confirms the materials with you before production.",
 			q4: "Can I change my design after ordering?",
-			a4: "Changes are free before production starts. Our team will confirm your plan with you first.",
+			a4: "You can correct your design until production starts. If the re-measure changes it, we quote the difference before production.",
 			q5: "Do you offer a warranty?",
-			a5: "Every cabinet comes with a 5-year warranty on hardware and construction.",
+			/** Only shown when the maker states a warranty (`warrantyYears` > 0). */
+			a5: "Every cabinet comes with a {warrantyYears}-year warranty. Its terms come with your order confirmation.",
 		},
 		footer: {
 			tagline:
@@ -127,6 +131,9 @@ export const en = {
 			privacy: "Privacy",
 			terms: "Terms of sale",
 			refunds: "Refund policy",
+			cookieSettings: "Cookie settings",
+			/** The registered seller: Consumer Protection (Electronic Trade Transactions) Regulations. */
+			seller: "{seller}",
 			copyright: "© 2026 {brand}. All rights reserved.",
 		},
 	},
@@ -430,7 +437,8 @@ export const en = {
 		errorAddressRequired: "Enter the delivery address.",
 		errorAddressShort: "That address looks too short.",
 		errorRemeasure: "Tick this to continue.",
-		termsAgree: "I agree to the terms of sale and the refund policy.",
+		termsAgree:
+			"I am 18 or older and agree to the terms of sale and the refund policy.",
 		termsLink: "Terms of sale",
 		refundsLink: "Refund policy",
 		errorTerms: "Tick this to place your order.",
@@ -629,6 +637,7 @@ export const en = {
 	/** Draft wording — EzCabinet's counsel approves it before production. */
 	privacy: {
 		title: "Privacy notice",
+		/** Shown until `policiesApproved` is ticked at /admin/company; empty after. */
 		draft: "Draft — pending review by {legalName} before it takes effect.",
 		intro:
 			"This notice explains what the {brand} planner records when you use it, and why.",
@@ -657,24 +666,34 @@ export const en = {
 			"When you place an order we keep your name, phone number, email, delivery address, the design you ordered and the price, as the record of the sale.",
 		recipientsHeading: "Who else receives your data",
 		recipients:
-			"Our payment processor receives your card and billing details — these never reach our servers. The courier that delivers your order receives your name, phone number and address. The sign-in provider you choose handles your sign-in, and our email service delivers sign-in codes to your address. Mux streams our tutorial videos and so sees a viewer's IP address. Some of these companies process data outside Malaysia.",
+			"Our payment processor receives your card and billing details — these never reach our servers. The courier that delivers your order receives your name, phone number and address. The sign-in provider you choose handles your sign-in, and our email service delivers sign-in codes to your address. Mux streams our tutorial videos and so sees a viewer's IP address. Our host, Vercel, checks sign-in and checkout requests for bots and counts page views without cookies. Some of these companies process data outside Malaysia.",
 		obligatoryHeading: "What you must give us",
 		obligatory:
-			"All of this comes from you directly, or from the sign-in provider you choose. Browsing and planning need none of it. To place an order you must give your name, phone number and delivery address — without them we cannot deliver it. Email and WhatsApp updates are optional.",
+			"All of this comes from you directly, or from the sign-in provider you choose. Browsing and planning need none of it. To place an order you must give your name, phone number, email and delivery address — without them we cannot confirm or deliver it. Order emails are part of the service; WhatsApp updates are optional.",
 		retentionHeading: "How long we keep it",
 		retention:
-			"Order records are kept for as long as tax and accounting law requires. An account with no orders is kept until you ask us to delete it.",
+			"Order records are kept for seven years, as Malaysian tax law requires. If you ask us to delete your account, we remove your sign-in details, name and passkeys, and keep only those order records.",
 		rightsHeading: "Your rights",
 		rights:
-			"You may ask to see the personal data we hold about you, correct it, receive a copy in a portable form, withdraw your consent, or tell us to stop using it for direct marketing. Write to the contact address below.",
+			"You may ask to see the personal data we hold about you, correct it, receive a copy in a portable form, withdraw your consent, ask us to delete your account, or tell us to stop using it for direct marketing. Write to the contact address below.",
 		otherLawsHeading: "Other laws",
 		otherLaws:
 			"This notice is given under Malaysia's Personal Data Protection Act 2010. Our analytics provider processes usage data in the European Union under its own data processing agreement; {brand} sells in Malaysia only.",
+		cookiesHeading: "Cookies and local storage",
+		cookies:
+			"We set a sign-in cookie when you sign in, which keeps you signed in and is needed for checkout. Your browser keeps your unfinished design and your analytics choice in local storage, on your device only. If you allow analytics, PostHog sets its own cookies to recognise your visits. Our payment processor sets cookies inside the payment form to prevent fraud.",
+		cookieSettings: "Change your choice",
+		dpoHeading: "Data protection officer",
+		dpo: "Our data protection officer is {dpoName}. Write to {dpoEmail} with any question or request about your personal data.",
+		/** When no officer is named at /admin/company. */
+		dpoUnnamed:
+			"Write to {dpoEmail} with any question or request about your personal data.",
 		choiceHeading: "Your choice",
 		choice:
-			"If you decline, we only count visits without cookies or local storage, with an identifier that resets daily, and no recordings are made. You can change your choice at any time by clearing this site's data in your browser.",
+			"If you decline, we only count visits without cookies or local storage, with an identifier that resets daily, and no recordings are made. You can change your choice at any time with Cookie settings, at the foot of the home page or below.",
 		contactHeading: "Contact",
-		contact: "Questions, or requests to access or correct your data: {email}",
+		contact:
+			"Questions, or requests to access, correct or delete your data: {email}",
 		back: "Back to home",
 	},
 	/** Draft wording — EzCabinet's counsel approves it before production. */
@@ -698,7 +717,7 @@ export const en = {
 			"A designer measures your site before production. If the design has to change, we quote the change and agree it with you before production starts.",
 		deliveryHeading: "Delivery",
 		delivery:
-			"We deliver to the address you give at checkout, normally within 4 to 6 weeks of the re-measure, and tell you when the delivery is booked. Please make sure someone can receive it.",
+			"We deliver to the address you give at checkout, normally within {deliveryWeeks} weeks of the re-measure, and tell you when the delivery is booked. Please make sure someone can receive it.",
 		changesHeading: "Correcting your order",
 		changes:
 			"You can change your design and your details at any time before you pay. If you notice a mistake afterwards, write to {email} straight away; we can correct it until production starts.",
@@ -708,6 +727,8 @@ export const en = {
 		complaintsHeading: "Complaints",
 		complaints:
 			"Write to {email} with your order reference and we will respond. If we cannot resolve it, you may bring the matter to the Tribunal for Consumer Claims Malaysia.",
+		ageHeading: "Who can order",
+		age: "You must be 18 or older to place an order. Ask a parent or guardian to order for you if you are younger.",
 		lawHeading: "Governing law",
 		law: "These terms are governed by the laws of Malaysia.",
 	},
@@ -724,13 +745,13 @@ export const en = {
 			"Once production has started the order cannot be cancelled or refunded, because the cabinets are being made to your design.",
 		damagedHeading: "Damaged or defective on delivery",
 		damaged:
-			"Tell us within 7 days of delivery, with photos. We will repair or replace the affected cabinet at no cost to you, re-delivery included.",
+			"Tell us within {damageReportDays} days of delivery, with photos. We will repair or replace the affected cabinet at no cost to you, re-delivery included.",
 		remeasureHeading: "If the design changes at re-measure",
 		remeasure:
 			"We re-quote the changed design. Any difference is refunded to you or charged before production starts.",
 		howPaidHeading: "How refunds are paid",
 		howPaid:
-			"Refunds go back to the payment method you used, within 14 working days of our agreeing the refund.",
+			"Refunds go back to the payment method you used, within {refundWorkingDays} working days of our agreeing the refund.",
 		howToAskHeading: "How to ask",
 		howToAsk:
 			"Write to {email} with your order reference, which looks like {orderPrefix}-20261007-001.",

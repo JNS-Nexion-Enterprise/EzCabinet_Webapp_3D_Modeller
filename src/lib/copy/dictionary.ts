@@ -1,5 +1,9 @@
 import "server-only";
-import { type CompanyDetails, sellerLine } from "@/lib/company/details";
+import {
+	type CompanyDetails,
+	deliveryWeeks,
+	sellerLine,
+} from "@/lib/company/details";
 import { getCompany } from "@/lib/company/store";
 import type { Dictionary } from "./en";
 import { fill } from "./fill";
@@ -27,6 +31,10 @@ function branded<T>(node: T, c: CompanyDetails): T {
 			brand: c.brand,
 			legalName: c.legalName,
 			orderPrefix: c.orderPrefix,
+			deliveryWeeks: deliveryWeeks(c),
+			warrantyYears: c.warrantyYears,
+			damageReportDays: c.damageReportDays,
+			refundWorkingDays: c.refundWorkingDays,
 		}) as T;
 	if (Array.isArray(node)) return node.map((n) => branded(n, c)) as T;
 	if (node && typeof node === "object")
@@ -56,12 +64,34 @@ export async function getDictionary(locale: Locale): Promise<Dictionary> {
 			email: company.contactEmail,
 			phone: company.phone,
 		};
+		const { faq, footer } = t.landing;
+		const dpoEmail = company.dpoEmail ?? company.contactEmail;
 		dictionary = {
 			...t,
 			common: { ...t.common, brand: company.brand },
 			landing: {
 				...t.landing,
-				footer: { ...t.landing.footer, email: company.contactEmail },
+				faq: {
+					...faq,
+					a2: company.installationOffered ? faq.a2 : faq.a2None,
+					// No warranty stated, no warranty question: an empty pair is dropped.
+					q5: company.warrantyYears > 0 ? faq.q5 : "",
+					a5: company.warrantyYears > 0 ? faq.a5 : "",
+				},
+				footer: {
+					...footer,
+					email: company.contactEmail,
+					seller: fill(footer.seller, seller),
+				},
+			},
+			privacy: {
+				...t.privacy,
+				// The pages say "Draft" until counsel's approval is recorded.
+				draft: company.policiesApproved ? "" : t.privacy.draft,
+				dpo: company.dpoName
+					? fill(t.privacy.dpo, { dpoName: company.dpoName, dpoEmail })
+					: fill(t.privacy.dpoUnnamed, { dpoEmail }),
+				dpoUnnamed: fill(t.privacy.dpoUnnamed, { dpoEmail }),
 			},
 			quote: { ...t.quote, soldBy: fill(t.quote.soldBy, seller) },
 			terms: { ...t.terms, seller: fill(t.terms.seller, seller) },

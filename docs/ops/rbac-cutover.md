@@ -17,6 +17,7 @@ is the mistake this runbook exists to prevent.
 
 Do these before the deploy, not during it — all are easy to get wrong quietly,
 and none of them fail loudly at deploy time.
+
 1. **Set all four Better Auth environment variables in the Vercel project —
    not just the two for Google:**
    - `BETTER_AUTH_SECRET` — **critical.** Better Auth throws outright in

@@ -47,6 +47,7 @@ is deployed yet.
 ## Status
 
 Done:
+
 - The code above, committed and pushed on `feature/demo-tenant`, no pull
   request.
 - 2026-10-14: Vercel project `planner-demo` created in the JNS team
@@ -56,6 +57,7 @@ Done:
   cabinets (three base, two wall, one tall) for a demo catalogue.
 
 Checked:
+
 - Lint, typecheck and the whole test suite pass.
 - All 32 mails from `pnpm email:preview` are byte-identical to
   `feature/development`'s.
@@ -67,6 +69,7 @@ Checked:
   projects on `main`, `feature/development` and `feature/demo-tenant`.
 
 Not checked:
+
 - How the app looks as "JNS Nexion Enterprise" against a real database, including
   the landing page without its hero image.
 - The demo project's first real production build. The fallback is in step 3
@@ -141,6 +144,7 @@ vercel deploy --prebuilt --prod
 The catalogue settings seed themselves: `scripts/vercel-build.sh` runs
 `prisma/seed.ts` on every build of a project with `TENANT` set. It only
 creates what is missing, and the landing page cannot be built without it.
+
 1. Create the first admin, with the demo database's URL in the environment.
    Vercel will not hand out a sensitive variable, so copy the URL from the
    database's page in the Storage tab. A value already in the environment
@@ -177,6 +181,7 @@ Subang Jaya's industrial area) and the bundled images now all come from
 `tenants/demo.json`. The build deletes `public/hero-frames` and
 `public/finishes` when the tenant file turns them off, so they cannot be
 fetched by path either. What is left:
+
 - The six seeded finish names and the kitchen dimensions in `CONSTRUCTION`.
   Rename the finishes by hand in step 4.
 - The browser keys `ezcabinet.planner.*` (draft, sign-in nudge). Only visible

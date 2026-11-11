@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { consentStatus, setConsent } from "@/lib/analytics";
+import { OPEN_CONSENT_EVENT } from "@/lib/consentEvents";
 import type { Dictionary } from "@/lib/copy/en";
 import type { Locale } from "@/lib/copy/locales";
 
 /**
  * Starts telemetry on idle and asks for consent once.
  *
- * Renders nothing until PostHog has loaded and reports "pending", so the
+ * Renders nothing until PostHog has loaded and reports "pending" (or a
+ * Cookie settings button asks for it again), so the
  * banner never competes with the first paint — and never appears at all where
  * analytics is off (no token, script blocked). Mounted in the public layout
  * only; admin is not tracked.
@@ -28,8 +30,16 @@ export function Analytics({
 		consentStatus().then((status) => {
 			if (live) setPending(status === "pending");
 		});
+		// Cookie settings reopens it whatever was chosen before. Only where
+		// analytics loaded at all: `consentStatus` is null without a token.
+		const reopen = () =>
+			consentStatus().then((status) => {
+				if (live && status !== null) setPending(true);
+			});
+		window.addEventListener(OPEN_CONSENT_EVENT, reopen);
 		return () => {
 			live = false;
+			window.removeEventListener(OPEN_CONSENT_EVENT, reopen);
 		};
 	}, []);
 
