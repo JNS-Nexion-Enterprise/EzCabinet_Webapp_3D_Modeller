@@ -175,6 +175,7 @@ propagating it.
 | Picked up / delivered / failed or cancelled | `applyTrackingUpdate` (`lib/logistics/store.ts`) and the admin status route `POST /api/admin/deliveries/[id]/advance` — the only way the `manual` carrier moves | order ref                                                | `/track/{publicToken}` |
 
 Rules:
+
 - **No opt-in, no row.** `enqueue` checks `order.whatsappOptIn` and returns.
 - **A delivery with no `orderId`** (a job an admin made by hand) sends nothing —
   there is no consent record for its phone.
@@ -190,6 +191,7 @@ Rules:
 ## Module: `src/lib/whatsapp/`
 
 Server-only, like `lib/logistics`.
+
 - **`templates.ts`** — pure. `(kind, vars, locale, stage?) → Meta template
   payload`. One table holds each kind's template name and variable order;
   stage names come from the site dictionaries. The template wording itself is in
@@ -233,6 +235,7 @@ a real customer.
 ## Webhook: `/api/whatsapp/webhook`
 
 Public prefix, so it authenticates itself — `proxy.ts` only gates `/admin`.
+
 - **`GET`** — Meta's subscription handshake: echo `hub.challenge` when
   `hub.verify_token` matches `WHATSAPP_VERIFY_TOKEN` (compared with
   `secretsMatch`).
@@ -307,6 +310,7 @@ Public prefix, so it authenticates itself — `proxy.ts` only gates `/admin`.
 These block go-live, not the build. The full checklist, with how-to steps and
 the template copy to submit, is `docs/ops/whatsapp-ezcabinet-setup.md` — that
 file is the source of the approved wording `templates.ts` must match.
+
 1. **Meta Business verification** and a **dedicated phone number** for the
    Cloud API. That number cannot also be used in the WhatsApp phone app.
 2. **Template approval:** 7 templates × 3 languages.

@@ -51,10 +51,12 @@
 ### Task 1: Schema and migration
 
 **Files:**
+
 - Modify: `prisma/schema.prisma` (the `Order` model at ~line 330, append new models/enums at the end)
 - Create: `prisma/migrations/20260922000000_whatsapp_notifications/migration.sql`
 
 **Interfaces:**
+
 - Produces: Prisma models `Notification`, `WhatsappAutoReply`; `Order.whatsappOptIn`, `Order.whatsappOptInAt`, `Order.locale`, `Order.productionStage`, `Order.notifications`; enums `ProductionStage`, `NotificationKind`, `NotificationStatus` exported from `@/generated/prisma/enums`.
 
 - [ ] **Step 1: Add fields to `Order`.** In `prisma/schema.prisma`, inside `model Order`, directly after the `paidAt DateTime?` line, add:
@@ -229,10 +231,12 @@ pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.pris
 ```
 
 Expected: `migrate deploy` applies `20260922000000_whatsapp_notifications`; `migrate diff` prints an empty migration (`-- This is an empty migration.`). Any SQL in the diff output means the hand-written file and the schema disagree — fix the SQL file until it is empty.
+
 - [ ] **Step 5: Regenerate the client and typecheck.**
 
 Run: `pnpm prisma generate && pnpm typecheck`
 Expected: both pass.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -245,10 +249,12 @@ git commit -m "feat(whatsapp): notification outbox and production stage schema"
 ### Task 2: Copy — opt-in label, stage names, auto-reply, privacy paragraph
 
 **Files:**
+
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/zh.ts`, `src/lib/copy/ms.ts`
 - Test: `src/lib/copy/__tests__/dictionary.test.ts` (existing — already enforces identical keys, no untranslated values, no empty strings)
 
 **Interfaces:**
+
 - Produces: `t.quote.whatsappOptIn`, `t.order.stages.{MEASURE,CUTTING,EDGING,ASSEMBLY,QC,READY}`, `t.whatsapp.autoReply` (contains `{number}`), `t.privacy.whatsappHeading`, `t.privacy.whatsapp`.
 - Removes: `t.order.stageMeasure`, `t.order.stageBuild` (replaced by `t.order.stages.MEASURE` and the stage list; `stageMeasureDetail` stays).
 
@@ -385,10 +391,12 @@ with (temporary — Task 9 replaces it with the full stage strip):
 ```
 
 Run `grep -rn "stageMeasure\b\|stageBuild\b" src` — expected: no matches.
+
 - [ ] **Step 5: Run the dictionary tests and typecheck.**
 
 Run: `pnpm vitest run src/lib/copy && pnpm typecheck`
 Expected: PASS. A failure listing a path means a key is missing or left in English in one locale — fix that locale.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -401,10 +409,12 @@ git commit -m "feat(whatsapp): opt-in, stage, auto-reply and privacy copy"
 ### Task 3: Production stage rules
 
 **Files:**
+
 - Create: `src/lib/orders/stage.ts`
 - Test: `src/lib/orders/__tests__/stage.test.ts`
 
 **Interfaces:**
+
 - Consumes: `ProductionStage` type from `@/generated/prisma/enums` (Task 1).
 - Produces:
   - `STAGES: readonly ProductionStage[]` in the order above
@@ -471,6 +481,7 @@ describe("production stages", () => {
 
 Run: `pnpm vitest run src/lib/orders/__tests__/stage.test.ts`
 Expected: FAIL — cannot resolve `../stage`.
+
 - [ ] **Step 3: Implement** — `src/lib/orders/stage.ts`:
 
 ```ts
@@ -521,6 +532,7 @@ export const stageReached = (
 
 Run: `pnpm vitest run src/lib/orders/__tests__/stage.test.ts`
 Expected: PASS (6 tests).
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -533,10 +545,12 @@ git commit -m "feat(orders): forward-only production stages"
 ### Task 4: Templates — which event becomes which message
 
 **Files:**
+
 - Create: `src/lib/whatsapp/templates.ts`
 - Test: `src/lib/whatsapp/__tests__/templates.test.ts`
 
 **Interfaces:**
+
 - Consumes: `orderRef` (`@/lib/orders/ref`), `isLocale`/`Locale` (`@/lib/copy/locales`), `LABEL` (`@/lib/logistics/carriers`), `DeliveryStatusName` (`@/lib/logistics/types`), enums from Task 1.
 - Produces:
   - `NOTIFY_ORDER_SELECT` — a Prisma `select` object for the order fields a message needs
@@ -717,6 +731,7 @@ describe("payloads", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/templates.test.ts`
 Expected: FAIL — cannot resolve `../templates`.
+
 - [ ] **Step 3: Implement** — `src/lib/whatsapp/templates.ts`:
 
 ```ts
@@ -938,10 +953,12 @@ export const textPayload = (to: string, body: string) => ({
 ```
 
 Note: `LABEL` in `carriers.ts` is `Record<string, string>`, so `?? carrierId` is the fallback for an id not in the list.
+
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/templates.test.ts`
 Expected: PASS. If the `IC-20260826-014` assertion fails, check `orderRef` — `2026-08-26T04:00:00Z` is noon in Kuala Lumpur, so the date is the 26th.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -954,10 +971,12 @@ git commit -m "feat(whatsapp): events to Meta template payloads"
 ### Task 5: Send — one Cloud API call and what it means for the row
 
 **Files:**
+
 - Create: `src/lib/whatsapp/send.ts`
 - Test: `src/lib/whatsapp/__tests__/send.test.ts`
 
 **Interfaces:**
+
 - Consumes: `carrierFetch`, `CarrierHttpError` (`@/lib/logistics/http`).
 - Produces:
   - `whatsappConfigured(): boolean`
@@ -1094,6 +1113,7 @@ describe("nextState", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/send.test.ts`
 Expected: FAIL — cannot resolve `../send`.
+
 - [ ] **Step 3: Implement** — `src/lib/whatsapp/send.ts`:
 
 ```ts
@@ -1197,6 +1217,7 @@ export function nextState(result: SendResult, attempts: number, now: Date) {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/send.test.ts`
 Expected: PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1209,10 +1230,12 @@ git commit -m "feat(whatsapp): Cloud API send and error classification"
 ### Task 6: Outbox — enqueue, flush, retry on the cron
 
 **Files:**
+
 - Create: `src/lib/whatsapp/outbox.ts`
 - Modify: `src/app/api/cron/track-deliveries/route.ts`
 
 **Interfaces:**
+
 - Consumes: `prisma` (`@/lib/catalogue/db`), `Prisma` (`@/generated/prisma/client`), Task 4 (`NotificationDraft`, `TemplateVars`, `localeOf`, `templatePayload`, `textPayload`), Task 5 (`sendMessage`, `nextState`, `whatsappConfigured`), `getDictionary` (`@/lib/copy/dictionary`), `fill` (`@/lib/copy/fill`).
 - Produces:
   - `enqueue(tx: Prisma.TransactionClient, drafts: (NotificationDraft | null)[]): Promise<string[]>` — ids of rows actually inserted
@@ -1221,6 +1244,7 @@ git commit -m "feat(whatsapp): Cloud API send and error classification"
   - `autoReply(phone: string): Promise<void>` — used by Task 10
 
 This module is all database I/O; its decisions are the pure functions tested in Tasks 4 and 5. It is exercised end to end in Task 11's manual check.
+
 - [ ] **Step 1: Implement** — `src/lib/whatsapp/outbox.ts`:
 
 ```ts
@@ -1400,6 +1424,7 @@ export async function autoReply(phone: string): Promise<void> {
 ```
 
 Check `fill`'s signature before using it: `sed -n 1,17p src/lib/copy/fill.ts`. It takes `(template: string, values: Record<string, string | number>)` — if it differs, adapt the two call sites in this file.
+
 - [ ] **Step 2: Retry from the tracking cron.** In `src/app/api/cron/track-deliveries/route.ts`, add the import
 
 ```ts
@@ -1427,10 +1452,12 @@ with
 ```
 
 Also update the file's doc comment: after the paragraph starting "Webhooks are the fast path", add one line: `It also retries pending WhatsApp messages — lib/whatsapp/outbox.ts.`
+
 - [ ] **Step 3: Typecheck and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: pass. If `createManyAndReturn` is flagged as not existing, run `pnpm prisma generate` (Task 1) first.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1443,10 +1470,12 @@ git commit -m "feat(whatsapp): outbox flush, retry on the tracking cron, auto-re
 ### Task 7: Order placed — checkout opt-in and the first message
 
 **Files:**
+
 - Modify: `src/app/api/orders/route.ts`
 - Modify: `src/components/planner/QuoteScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: `LOCALES` (`@/lib/copy/locales`), `NOTIFY_ORDER_SELECT`, `draftFor` (Task 4), `enqueue`, `flushSoon` (Task 6), `t.quote.whatsappOptIn` (Task 2).
 - Produces: `POST /api/orders` accepts `whatsappOptIn: boolean` (default `false`) and `locale: "en" | "zh" | "ms"` (default `"en"`).
 
@@ -1515,6 +1544,7 @@ Replace the whole `const order = await prisma.order.create({ … });` statement 
 ```
 
 (The existing `const price = priceOrder(…)` line moves inside this replacement — make sure it appears once.)
+
 - [ ] **Step 2: The checkbox.** In `src/components/planner/QuoteScreen.tsx`, directly after the re-measure `<label className="mt-1 flex items-start gap-2">…</label>` block, add:
 
 ```tsx
@@ -1539,6 +1569,7 @@ In `placeOrder`, the body currently ends with `remeasureAccepted: true,`. After 
 ```
 
 (`locale` is already in scope from `const locale = useLocale();`.)
+
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -1551,6 +1582,7 @@ pnpm prisma studio
 ```
 
 Expected: the order has `whatsappOptIn = true`, `locale` = the URL's language, and one `Notification` row `ORDER_PLACED`, `PENDING` (no token locally, so it stays pending). Place a second order unticked: no `Notification` row.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1563,11 +1595,13 @@ git commit -m "feat(whatsapp): checkout opt-in and order-placed message"
 ### Task 8: Payment confirmed, delivery booked, delivery progress
 
 **Files:**
+
 - Modify: `src/app/api/admin/orders/[id]/paid/route.ts`
 - Modify: `src/app/api/admin/deliveries/[id]/book/route.ts`
 - Modify: `src/lib/logistics/store.ts` (`applyTrackingUpdate`)
 
 **Interfaces:**
+
 - Consumes: `NOTIFY_ORDER_SELECT`, `draftFor`, `deliveryKindFor` (Task 4), `enqueue`, `flushSoon` (Task 6).
 
 - [ ] **Step 1: Payment confirmed.** In `src/app/api/admin/orders/[id]/paid/route.ts` add imports:
@@ -1722,12 +1756,14 @@ Replace `const [row] = await prisma.$transaction([ …delivery.update…, …del
 ```
 
 When editing, move the existing `where:`/`data:` object literals into the two `/* … */` slots exactly as they are; only `prisma.` becomes `tx.`.
+
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass (logistics tests do not touch `applyTrackingUpdate`'s DB path).
 
 Manual (local, no token): mark the opted-in order from Task 7 paid at `/admin/orders/[id]` → a `PAYMENT_CONFIRMED` row. Create a delivery from it and book with the `manual` carrier → a `DELIVERY_BOOKED` row. Advance it via the delivery page's manual status control to picked up, then picked up again (or poll twice) → exactly one `PICKED_UP` row.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1740,6 +1776,7 @@ git commit -m "feat(whatsapp): payment, booking and delivery progress messages"
 ### Task 9: Production stages and the messages log — admin and customer pages
 
 **Files:**
+
 - Create: `src/app/api/admin/orders/[id]/stage/route.ts`
 - Create: `src/app/api/admin/orders/[id]/notifications/[notificationId]/resend/route.ts`
 - Modify: `src/app/admin/orders/[id]/page.tsx`
@@ -1747,6 +1784,7 @@ git commit -m "feat(whatsapp): payment, booking and delivery progress messages"
 - Modify: `src/app/[lang]/order/[token]/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `STAGES`, `stageRefusal`, `stageReached`, `nextStage` (Task 3), `draftFor`, `NOTIFY_ORDER_SELECT`, `localeOf` (Task 4), `enqueue`, `flushSoon` (Task 6), `getDictionary`, `en.order.stages` (Task 2).
 - Produces: `POST /api/admin/orders/[id]/stage` body `{ stage: ProductionStage }` → `200 { ok: true }` | `404 not_found` | `409 not_paid` | `409 not_next_stage`; `POST /api/admin/orders/[id]/notifications/[notificationId]/resend` → `200 { ok: true }` | `409 not_failed`.
 
@@ -2067,6 +2105,7 @@ In the `<aside>`, after the Customer `</section>`, add the WhatsApp card:
 ```
 
 Update the component's doc comment: "its admin moves — mark it paid, advance production, create its delivery".
+
 - [ ] **Step 6: Customer order page stage strip.** In `src/app/[lang]/order/[token]/page.tsx`:
 
 Add import:
@@ -2098,6 +2137,7 @@ Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass.
 
 Manual: on the paid, opted-in order: "Advance to: Site re-measure" → card shows "Now at: Site re-measure", WhatsApp card lists "Production step · Site re-measure · Queued". Open two tabs, advance in one, then click in the other → "Someone else moved this order on." The customer page `/en/order/<token>` ticks Payment received and Site re-measure. In Prisma Studio set one notification to `FAILED` → Resend button appears; pressing it returns it to Queued.
+
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -2110,11 +2150,13 @@ git commit -m "feat(orders): admin-advanced production stages and WhatsApp log"
 ### Task 10: Meta webhook — status updates and auto-reply
 
 **Files:**
+
 - Create: `src/lib/whatsapp/webhook.ts`
 - Test: `src/lib/whatsapp/__tests__/webhook.test.ts`
 - Create: `src/app/api/whatsapp/webhook/route.ts`
 
 **Interfaces:**
+
 - Consumes: `secretsMatch` (`@/lib/secretsMatch`), `NotificationStatus` enum, `autoReply` (Task 6).
 - Produces:
   - `signatureValid(raw: string, header: string | null, secret: string): boolean`
@@ -2220,6 +2262,7 @@ describe("statusAdvances", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/webhook.test.ts`
 Expected: FAIL — cannot resolve `../webhook`.
+
 - [ ] **Step 3: Implement** — `src/lib/whatsapp/webhook.ts`:
 
 ```ts
@@ -2346,6 +2389,7 @@ export function statusAdvances(
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/webhook.test.ts`
 Expected: PASS.
+
 - [ ] **Step 5: The route** — `src/app/api/whatsapp/webhook/route.ts`:
 
 ```ts
@@ -2436,6 +2480,7 @@ curl -s -o /dev/null -w "%{http_code}\n" -X POST http://localhost:3000/api/whats
 ```
 
 Then run: `pnpm typecheck && pnpm lint && pnpm test` — expected: pass.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -2448,6 +2493,7 @@ git commit -m "feat(whatsapp): signed Meta webhook for status and auto-reply"
 ### Task 11: Privacy paragraph, ping script, docs
 
 **Files:**
+
 - Modify: `src/app/[lang]/privacy/page.tsx`
 - Create: `scripts/whatsapp-ping.mjs`
 - Modify: `package.json`
@@ -2534,12 +2580,14 @@ In `package.json` `scripts`, after `"gdex:ping": …,` add:
 and under `lib/orders/` add a line `    stage.ts             ← production stages, forward-only, one at a time`.
 3. **Non-negotiables** — add: "- **A WhatsApp message is queued in the same transaction as the change it reports**, deduplicated by `dedupeKey` — except delivery booked, which queues after the booking commits so a failed insert can never roll back money spent at a carrier. Preview deployments never get `WHATSAPP_TOKEN`."
 4. **Phasing** row 4: append "Factory Tracker pushes production stages onto `POST /api/admin/orders/[id]/stage` (today an admin presses it)."
+
 - [ ] **Step 4: Spec status.** In the spec, change `Status: approved in brainstorming, awaiting spec review` to `Status: implemented — go-live waits on docs/ops/whatsapp-ezcabinet-setup.md`.
 
 - [ ] **Step 5: Final gate**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test && pnpm build`
 Expected: all pass. (`pnpm build` needs `BETTER_AUTH_SECRET` in the environment — set any value locally.)
+
 - [ ] **Step 6: Commit**
 
 ```bash

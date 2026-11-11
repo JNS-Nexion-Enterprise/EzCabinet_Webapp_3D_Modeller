@@ -11,6 +11,7 @@ filling a five-rung ladder means five uploads that must all land on the same
 family.
 
 Most of that loop already exists and is not the problem:
+
 - `/admin/cabinet-designs` already accepts multiple files in one drop
   (`page.tsx:450` loops them; the input carries `multiple`)
 - `POST /api/admin/cabinet-designs/publish` already takes an array of ids and
@@ -39,6 +40,7 @@ exists.
 `familySchema.category`, an optional enum of the library's five values. Optional
 so every already-published catalogue keeps validating — the escape hatch
 `geometry` already uses.
+
 - `mergeIntoCatalogue` writes it when it creates a family, from the design's
   category.
 - After that it is a dropdown on the family card, beside Type, and the admin
@@ -116,6 +118,7 @@ read 5 files → 4 rungs, 1 needs you
 ### 3. One new argument on the server
 
 `publishDesigns(ids, { targetFamilyId, forced })`.
+
 - `targetFamilyId` overrides `matchesFamily` entirely. Dropping on a card is an
   explicit instruction; inference has nothing to add to it.
 - `forced` carries the per-design "anyway" decisions.

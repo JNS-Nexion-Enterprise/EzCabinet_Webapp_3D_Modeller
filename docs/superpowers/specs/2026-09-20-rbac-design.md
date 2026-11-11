@@ -22,6 +22,7 @@ them.
 ## Scope
 
 In:
+
 - Better Auth wired to Google (everyone) and email+password (staff fallback)
 - A `User` table with a `role` column, and the permission vocabulary the roles
   map onto
@@ -33,6 +34,7 @@ In:
 - `AUTH_ENABLED`, a development-only bypass
 
 Out — sub-project C, its own spec:
+
 - "My designs" and "my orders" screens
 - Back-filling `Order.userId` on pre-cutover orders
 - Share links owned by an account
@@ -332,6 +334,7 @@ Nothing is back-filled.
 ## Client dependencies
 
 Not a code task, and it has a lead time worth starting now:
+
 - **Google OAuth consent screen.** Needs a verified domain and a privacy
   policy URL — which points at `/[lang]/privacy`, still a draft awaiting
   EzCabinet's counsel. Until the app is verified, Google caps it at 100 test

@@ -3,10 +3,12 @@
 ## Context
 
 Two needs raised while demoing FPX payment:
+
 1. **An admin must not cancel an order (or do other money/people actions) by mistake.** Today "Cancel order" is a browser `confirm()`, "Mark paid" has no confirmation, and nothing proves the person at the keyboard is the account owner.
 2. **Cancelling a paid order must refund the customer automatically**, and the refund's status must come back from the payment gateway, the same way "paid" does today. Today a paid order cannot be cancelled at all and there is no refund code.
 
 Decisions already made by the user:
+
 - Guard scope: cancel order, mark paid by hand, delete user, reset customer passkey, reset 2FA, remove password, and the new refund.
 - Authorisation: **staff passkey**, prompted on each guarded action.
 - Refund: **through the gateway**, **full amount only**, **only before production starts**, **superadmin only**.
@@ -122,10 +124,12 @@ Only the gateway's signed webhook moves an online order to `REFUNDED`, mirroring
 ## Verification
 
 Automated:
+
 - `pnpm test`, `pnpm exec tsc --noEmit`, `pnpm exec biome check`.
 - New tests: `stepUp`, `withAuth` step-up branch, `refundRefusal`, `requestRefund` (claim, gateway error reverts, manual path, retry), `markOrderRefunded`, permissions table, webhook route with real signed `refund.updated` / `refund.failed` events (same style as the existing webhook test), `templates` case, coverage list, `passkeyWiring` still green with the new session field.
 
 End to end on localhost:
+
 1. `stripe listen --events payment_intent.succeeded,payment_intent.processing,payment_intent.payment_failed,refund.created,refund.updated,refund.failed --forward-to localhost:3000/api/webhooks/payment/stripe`.
 2. Pay a test order by FPX; order shows Paid.
 3. As superadmin, enrol a passkey at `/admin/security` (Touch ID, or Chrome DevTools → WebAuthn virtual authenticator).

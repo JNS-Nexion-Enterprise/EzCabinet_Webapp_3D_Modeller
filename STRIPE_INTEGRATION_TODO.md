@@ -16,6 +16,7 @@ twice. The Payment Element draws only the payment method.
 No placeholders remain in code. Set these per environment.
 
 **Files containing placeholders:**
+
 - [.env.example](.env.example): copy the names into `.env.local` (local) and the Vercel project (Preview/Production)
 
 | Field                    | Current Value | What to Set                                                                                              |
@@ -30,6 +31,7 @@ order's stored `totalRm` in sen, priced on the server by `POST /api/orders`.
 ## Configured Parameters
 
 **Files containing these parameters:**
+
 - [src/lib/payments/stripe.ts](src/lib/payments/stripe.ts): the PaymentIntent
 - [src/components/planner/StripePayment.tsx](src/components/planner/StripePayment.tsx): Elements and the Payment Element
 
@@ -125,12 +127,14 @@ src/app/[lang]/order/[token]/OnlinePayment.tsx    order-page retry
 ## Swapping gateways / adding Fiuu
 
 Every gateway is one adapter implementing `PaymentGateway`. It owns only what differs between gateways:
+
 - `client`: what the checkout draws;
 - `start`;
 - `verify`;
 - `ack`.
 
 The rules that must not differ live in the webhook route:
+
 - the amount must match;
 - one write path;
 - idempotent;
@@ -145,6 +149,7 @@ The rules that must not differ live in the webhook route:
 - **No refunds through Fiuu yet:** a cancelled Fiuu order is refunded in Fiuu's portal, then **Mark refunded**. FPX refunds need the customer's bank details (Fiuu error PR014).
 
 Setup, in order:
+
 1. Keys in `.env.local` and on Vercel (Preview, branch `feature/fiuu`): `FIUU_MERCHANT_ID`, `FIUU_VERIFY_KEY`, `FIUU_SECRET_KEY`. Done 2026-11-04 with the sandbox (`SB_…`) set; Fiuu issues it on request, it cannot be self-registered.
 2. `pnpm fiuu:ping` — `Error Q203` means the ID and verify key match; `Error Q202 : Incorrect skey.` means they do not. The secret key is only checked by the first real notification (a bad one logs a bad signature and the order stays `AWAITING_PAYMENT`).
 3. Sandbox portal (`sandbox-portal.fiuu.com`) → Transactions → Settings:
@@ -156,6 +161,7 @@ Setup, in order:
 6. Before production: CSP already allows `pay.fiuu.com`; production keys, URLs and IPN settings repeat on the production portal, and `vercel flags set payment-gateway --environment production --variant fiuu`. Keep Stripe's keys until in-flight Stripe payments have settled.
 
 **Removing Stripe:**
+
 1. Delete `lib/payments/stripe.ts` and its line in `registry.ts`.
 2. Delete `StripePayment.tsx` and the `stripe-elements` branches in `QuoteScreen.tsx` and `OnlinePayment.tsx`.
 3. Delete the Stripe hosts in `next.config.ts` and the `STRIPE_*` variables.

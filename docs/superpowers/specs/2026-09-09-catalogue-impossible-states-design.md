@@ -42,6 +42,7 @@ wall unit (rare, but a real product).
 In every family the repo ships, `hasWorktop === (kind === "base")`, and intake
 already computes it that way. The field is redundant with `kind`, and its only
 independent value is an impossible one.
+
 - Remove `hasWorktop` from `familySchema`, from the seed families, and from the
   admin form.
 - `pricing.ts` and `PlannerScene.tsx` read `family.kind === "base"` directly.

@@ -154,6 +154,7 @@ as it does today.
 ## Every reader that moves
 
 From `grep` on 2026-10-19:
+
 - Carriers: `adapters/lalamove.ts`, `easyparcel.ts`, `fedex.ts` (brand,
   legal name, phone, close time, pickup place), `api/admin/deliveries`,
   `admin/logistics` (default pickup address).

@@ -58,10 +58,12 @@ All operations are `POST {BASE}/{operation}` with JSON. Credentials travel in **
 ### Task 1: City-Link status table
 
 **Files:**
+
 - Modify: `src/lib/logistics/status.ts` (the `citylink: {},` line and the docblock above `CARRIER_STATUS_MAPS`)
 - Test: `src/lib/logistics/__tests__/status.test.ts`
 
 **Interfaces:**
+
 - Consumes: `mapCarrierStatus(carrierId, raw)`, which normalises keys to lowercase.
 - Produces: `mapCarrierStatus("citylink", cpCode)` is used by Task 3's `track`.
 
@@ -106,6 +108,7 @@ describe("citylink statuses", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/status.test.ts`
 Expected: FAIL — `expected null to be 'BOOKED'`.
+
 - [ ] **Step 3: Implement**
 
 In `status.ts`, replace `citylink: {},` with:
@@ -143,10 +146,12 @@ In `status.ts`, replace `citylink: {},` with:
 ```
 
 In the docblock above `CARRIER_STATUS_MAPS`, delete the paragraph beginning "`manual`, `lalamove` and `easyparcel` are filled in" and its `ponytail:` line — every table is now filled.
+
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/status.test.ts`
 Expected: PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -159,10 +164,12 @@ git commit -m "feat(logistics): map City-Link tracking events to delivery status
 ### Task 2: Shipment payload builders
 
 **Files:**
+
 - Rewrite: `src/lib/logistics/adapters/citylink.ts` (builders only in this task; the adapter object in Task 3)
 - Create: `src/lib/logistics/__tests__/citylink.test.ts`
 
 **Interfaces:**
+
 - Consumes: `pickupPlace(address, place)` and `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` from `../carriers`; `MALAYSIAN_STATES` from `../malaysia`; `toE164` from `../phone`; `DeliveryJob` from `../types`.
 - Produces (all exported from `adapters/citylink.ts`):
   - `class CitylinkNotDeliverable extends Error`
@@ -175,6 +182,7 @@ git commit -m "feat(logistics): map City-Link tracking events to delivery status
   - `shipmentBody(job: DeliveryJob): ShipmentBody`
 
 This task leaves `citylinkAdapter` still exported as the stub so `registry.ts` keeps compiling; Task 3 replaces it.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `src/lib/logistics/__tests__/citylink.test.ts`:
@@ -439,6 +447,7 @@ describe("shipmentBody", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/citylink.test.ts`
 Expected: FAIL — `addressLines` (and the rest) is not exported.
+
 - [ ] **Step 3: Implement the builders**
 
 Replace the whole of `src/lib/logistics/adapters/citylink.ts` with:
@@ -714,14 +723,17 @@ export const citylinkAdapter = stubAdapter("citylink", () => {
 ```
 
 Note: `Remarks` is optional, so `body.Remarks` must still type-check in the "clips fields" test. The spread yields `Remarks?: string`, which `toHaveLength` accepts.
+
 - [ ] **Step 4: Run to verify it passes**
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/citylink.test.ts`
 Expected: PASS, all describe blocks.
+
 - [ ] **Step 5: Typecheck and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: both clean. If biome reformats, run `pnpm biome check --write src/lib/logistics` and re-run.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -734,12 +746,14 @@ git commit -m "feat(logistics): build City-Link shipment payloads from a deliver
 ### Task 3: The City-Link adapter
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/citylink.ts` (append `call`, schemas, label store, adapter; drop the stub import)
 - Delete: `src/lib/logistics/adapters/stub.ts`
 - Modify: `src/app/api/admin/deliveries/[id]/label/route.ts`
 - Test: `src/lib/logistics/__tests__/citylink.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 2's `shipmentBody`, `weightOf`, `piecesOf`, `CitylinkNotDeliverable`; Task 1's `mapCarrierStatus("citylink", …)`; `carrierFetch<T>(url, { carrierId, method, headers, body, idempotent })` from `../http`; `put` from `@vercel/blob`.
 - Produces:
   - `citylinkAdapter: CarrierAdapter` with `isConfigured`, `quote`, `book`, `track` (no `cancel`, no `verifyWebhook`)
@@ -965,9 +979,11 @@ describe("labelPathname", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/citylink.test.ts`
 Expected: FAIL — `citylinkAdapter.isConfigured()` is false, and `latestEvent`/`labelPathname` are not exported.
+
 - [ ] **Step 3: Implement the adapter**
 
 In `adapters/citylink.ts`:
+
 1. Replace the import block with:
 
 ```ts
@@ -1205,10 +1221,12 @@ export const citylinkAdapter: CarrierAdapter = {
 ```
 
 `call` references `citylinkAdapter` before its declaration in source order. That is fine, because `call` only runs after the module has loaded.
+
 1. Delete `src/lib/logistics/adapters/stub.ts`. Check nothing else imports it:
 
 Run: `grep -rn "adapters/stub" src`
 Expected: no output.
+
 - [ ] **Step 4: Serve City-Link notes from the label route**
 
 In `src/app/api/admin/deliveries/[id]/label/route.ts`, replace the gdex import with:
@@ -1239,14 +1257,17 @@ Replace the guard and the `get` call with:
 ```
 
 In the route's docblock, change "GDEX only serves the PDF while a shipment is pending, so this reads the copy taken at booking time." to "GDEX only serves the PDF while a shipment is pending, and City-Link only returns it in the booking reply, so this reads the copy taken at booking time."
+
 - [ ] **Step 5: Run to verify it passes**
 
 Run: `pnpm vitest run src/lib/logistics`
 Expected: PASS across the folder, including `gdex.test.ts` and `status.test.ts`.
+
 - [ ] **Step 6: Full verification**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all clean.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1260,10 +1281,12 @@ git commit -m "feat(logistics): book and track City-Link parcels"
 ### Task 4: Docs, and keep the confidential PDF out of git
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 - Modify: `.gitignore`
 
 **Interfaces:** none, documentation only.
+
 - [ ] **Step 1: Ignore the PDF**
 
 Append to `.gitignore`:
@@ -1276,6 +1299,7 @@ Append to `.gitignore`:
 
 Run: `git status --short | grep -c "City Link"`
 Expected: `0`.
+
 - [ ] **Step 2: Update CLAUDE.md**
 
 In the directory layout, change
@@ -1314,14 +1338,17 @@ git commit -m "docs(logistics): record City-Link's gaps and keep its guide out o
 ### Task 5: `citylink:ping` — check the real API shape
 
 **Files:**
+
 - Create: `scripts/citylink-ping.mjs`
 - Modify: `package.json` (`scripts`)
 
 **Interfaces:**
+
 - Consumes: env `CITYLINK_COMPANY_CODE`, `CITYLINK_ACCOUNT_NUMBER`, `CITYLINK_METER_NUMBER`; optional `CITYLINK_PING_BOOK=1`; optional argv HAWB.
 - Produces: a console report. Nothing imports it.
 
 CI tests against the guide's sample replies, which is our _belief_ about City-Link. This script checks City-Link itself, the same role `scripts/gdex-ping.mjs` plays. It is not run in CI, because it needs credentials.
+
 - [ ] **Step 1: Write the script**
 
 Create `scripts/citylink-ping.mjs`:
@@ -1461,10 +1488,12 @@ In `package.json` `scripts`, after `"gdex:ping"`, add:
 
 Run: `CITYLINK_COMPANY_CODE= node scripts/citylink-ping.mjs; echo "exit $?"`
 Expected: `Set CITYLINK_COMPANY_CODE, …` then `exit 1`. No network call is made.
+
 - [ ] **Step 4: Lint**
 
 Run: `pnpm lint`
 Expected: clean.
+
 - [ ] **Step 5: Commit**
 
 ```bash

@@ -25,6 +25,7 @@ Phase 0 (catalogue + pricing spec with client) not yet complete — see Open que
 ## Stack
 
 The dependency list is `package.json`. The two that need saying:
+
 - Mux for the DIY tutorial videos — the one thing in the app that is streamed rather than generated
 - Deployed on Vercel, functions pinned to `sin1` (Singapore) — users are in Klang Valley
 
@@ -48,6 +49,7 @@ Room document (JSON) — RoomLayout, src/lib/planner/room.ts
 ### One design, one cabinet
 
 The customer does not drag a slider or step through a size ladder. EzCabinet draws **one export per width** — BC 600, BC 800, BC 900 — and each export is its own cabinet: its own name, all-in price (door included), box and drawn model. A catalogue family is exactly one design with exactly one size, and its id is the design's id. This is deliberate:
+
 - It matches how EzCabinet manufactures — standard modules, each a SKU.
 - It is what makes rendering the drafted model 1:1 possible: every cabinet has a real file behind it.
 - The price a customer sees is the one the admin typed, and the Phase 4 SKU list falls straight out of the layout.
@@ -234,6 +236,7 @@ src/
 ```
 
 `lib/planner` must stay framework-free. Everything in it is `(layout, catalogue) => result`. This lets us:
+
 - build and test the whole engine against fixtures before any UI exists
 - run the same code client-side for instant feedback and server-side as the authority
 - lift the folder into Factory Tracker in Phase 4 without dragging UI along
@@ -249,6 +252,7 @@ catalogue omits. The seed publishes no cabinets. `PLANNER_CATALOGUE` is frozen. 
 
 The live catalogue comes from the published `CatalogueVersion` and is passed
 explicitly to the three things that consume it:
+
 - `plannerEngine(catalogue)` — the placement functions in `layout.ts`, bound to
   one catalogue. A factory rather than a per-function parameter because
   `positioned` is the only place a `familyId` becomes a `Family`, but nearly
@@ -326,6 +330,7 @@ BC 800mm.obj  (private Blob — carries their part naming)
 
 **The mesh is grouped by role, and that is load-bearing.** Two features carry
 the sale, and both need to know which triangles are fronts:
+
 - the **finish picker**, which paints the customer's colour onto exactly the
   surfaces a sprayer would paint;
 - the **doors-open/hidden toggle**, which hides those groups and nothing else.
@@ -427,6 +432,7 @@ it, price it, publish it. That is what lets one person maintain the catalogue.
 ### Mobile performance rules
 
 Mid-range Android is the target device.
+
 - Lazy-load the 3D bundle behind `Suspense` so it never blocks LCP on the landing page
 - **Nothing in the planner's first load may import three.** `StudioScreen`, `StartScreen` and `PlannerApp` are in it; the scene is not. One static import of a file that imports three (it was `peekDesignMesh` from `DesignedCabinet.tsx`) put 238 KB gzipped of three and R3F on the room picker. The mesh cache lives in `designMesh.ts`, which is three-free, for that reason. Check with `.next/diagnostics/route-bundle-stats.json` after a build: `/[lang]/planner` was 295 KB gzipped once fixed.
 - **The quote screen is a lazy chunk** (`PlannerApp.tsx`), fetched while the customer is in the studio, and Stripe is imported from `@stripe/stripe-js/pure` — the main entry requests js.stripe.com the moment it is imported.
@@ -469,6 +475,7 @@ Test: if you could delete it and rebuild it from a `git clone`, it belongs in th
 ## UX flow
 
 Three screens. Rooms open on an **empty wall**: there is no invented starter run to price, and one assembled from whatever designs exist would look random. Blank canvases still cost conversion, which is what the preset designs below are for.
+
 1. **Start** — pick a room; a room with no designs yet is shown as coming soon and cannot be picked
 2. **Studio** — an empty room opens on the Room panel (shape, wall lengths, ceiling) with a **Next: add cabinets** button, since a wall cannot shrink below what its cabinets need; then drag cabinets in from a menu grouped by category, choose door style and finish, measure. A placed cabinet always wears a door style — its price includes the door
 3. **Checkout** — one page: contact, delivery, and (with a gateway live) Stripe's Payment Element drawing only the payment method, then one **Pay** button that creates the order and confirms its payment → `/[lang]/order/[token]`. With no gateway (`payment-gateway` flag on `manual`) it is **Place order**, and the order page shows bank transfer details until an admin marks it paid
@@ -581,6 +588,7 @@ This is the one place the app streams something it did not generate. It is a sep
 ### Telemetry
 
 PostHog **Cloud EU**, installed from the Vercel Marketplace, so we can see where customers drop out of the funnel and what broke in their browser. Vercel Web Analytics could not do that job — anonymous aggregate counts, no per-visitor journeys, no replay, no alerts — so it runs beside PostHog as a plain page-view count, never instead of it.
+
 - **One module:** `lib/analytics.ts` — `track`, `captureError`, consent. `posthog-js` is imported on idle, never on the LCP path. `<Analytics>` mounts in `app/[lang]/layout.tsx` only; **admin is not tracked**.
 - **Through our origin:** `next.config.ts` rewrites `/api/ph/*` to the EU hosts, so ad blockers do not hide drop-offs. `/api/` already bypasses the locale redirect and the admin gate. The region is hardcoded there and in `analytics.ts` because PostHog fixes it at install.
 - **Consent (PDPA s.129):** cookieless until the visitor accepts (`opt_out_capturing_by_default` + `cookieless_mode: "on_reject"` — drop the first and "pending" sets cookies). Accepting enables cookies and the error-triggered replay. `/[lang]/privacy` is a **draft** for EzCabinet's counsel.
@@ -958,6 +966,7 @@ Better Auth's in-memory adapter — keep it passing; the unit tests alone
 passed while a real bug shipped.
 
 Three rules in those hooks look like candidates for tidying and are not:
+
 - **A session is marked verified after a registration only on positive
   evidence** — the result is not an API error by `isAPIError`, _and_ the
   account now has at least one passkey row. An earlier `instanceof APIError`
@@ -1024,6 +1033,7 @@ Separate Postgres database from Factory Tracker.
 ## Known issues
 
 Recorded rather than fixed. Do not paper over them; fix them deliberately.
+
 1. **Drafter naming is load-bearing now.** `roles.ts` classifies mesh groups from the drafter's own names, and that classification decides which triangles take the customer's finish and which disappear on the doors-hidden toggle. A renamed group used to cost an inferred shelf count; it now costs the finish picker on that cabinet. The review table shows the classification before publish and the fallback is one material across the whole mesh, but this belongs in the Phase 0 conversation about drafting conventions.
 2. **Until the first publish after the one-design-one-cabinet change, the live catalogue is the old one** — seed families with invented prices, and the junk `Testing123` among them. The first publish from `/admin/cabinet-designs` rebuilds it from design rows and removes them all. Set the base door style's surcharge to RM 0 before that publish, or every cabinet is charged its door twice.
 3. **EasyParcel's webhooks are unsigned.** Nothing in their payload identifies the sender, so the callback URL carries a secret query token and that is the entire check — see `verifyWebhook` in `adapters/easyparcel.ts`.

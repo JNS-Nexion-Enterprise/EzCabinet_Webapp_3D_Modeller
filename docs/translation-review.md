@@ -81,6 +81,7 @@ turn around a batch of corrections the same day you send them.
 
 Three pages are now translated in full and need a native read **and** a legal
 one — these are the words a customer agrees to before paying:
+
 - **Terms of sale** — `/ms/terms`, `/zh/terms`
 - **Refund policy** — `/ms/refunds`, `/zh/refunds`
 - **Privacy notice** — `/ms/privacy`, `/zh/privacy` (seven new sections: your

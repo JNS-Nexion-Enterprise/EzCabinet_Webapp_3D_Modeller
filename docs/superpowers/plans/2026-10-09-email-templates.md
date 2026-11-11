@@ -28,6 +28,7 @@
 ## Deviations from the spec, decided while planning
 
 Task 8 writes these back into the spec.
+
 1. **Email copy lives in `src/lib/email/copy.ts`, not `src/lib/copy/{en,ms,zh}.ts`.** The site dictionary is handed whole to the planner's client tree (`CopyProvider`), so mail wording there would ship to every phone.
 2. **The eight order mails are one file, `templates/order.ts`, with a switch on the kind**, the shape `draftFor` already has. Three account mails keep a file each.
 3. **A failed email send is retried up to `MAX_ATTEMPTS` (5), then `FAILED`**, through the existing `nextState`. The spec said "until the 48-hour expiry"; that would let a permanently refused address fill every cron run.
@@ -67,11 +68,13 @@ Task 8 writes these back into the spec.
 ### Task 1: The shell, `renderEmail`
 
 **Files:**
+
 - Create: `src/lib/email/layout.ts`
 - Create: `src/lib/email/copy.ts` (only `BRAND` and `shared` in this task; Task 2 fills the rest)
 - Test: `src/lib/email/__tests__/layout.test.ts`
 
 **Interfaces:**
+
 - Produces:
 
   ```ts
@@ -186,6 +189,7 @@ describe("renderEmail", () => {
 
 Run: `pnpm vitest run src/lib/email/__tests__/layout.test.ts`
 Expected: FAIL, cannot resolve `../layout`.
+
 - [ ] **Step 3: Write `src/lib/email/copy.ts` (shared lines only)**
 
 ```ts
@@ -428,6 +432,7 @@ ${footnote}
 
 Run: `pnpm vitest run src/lib/email/__tests__/layout.test.ts`
 Expected: PASS, 6 tests.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -440,10 +445,12 @@ git commit -m "feat(email): one shared layout for every mail"
 ### Task 2: The wording, three languages
 
 **Files:**
+
 - Modify: `src/lib/email/copy.ts`
 - Test: `src/lib/email/__tests__/copy.test.ts`
 
 **Interfaces:**
+
 - Consumes: `EMAIL_COPY`, `EmailCopy` from Task 1.
 - Produces: `EMAIL_COPY[locale]` with sections `shared`, `signInCode`, `orderPlaced`, `paymentConfirmed`, `orderRefunded`, `stage`, `deliveryBooked`, `pickedUp`, `delivered`, `deliveryFailed`. Keys are exactly those in the `en` object below. Placeholders are `{name}`, `{ref}`, `{total}`, `{date}`, `{code}`, `{minutes}`, `{stage}`, `{carrier}`, `{siteAddress}`, `{bank}`, `{accountName}`, `{accountNumber}`, `{phone}`.
 
@@ -518,6 +525,7 @@ describe("email copy", () => {
 
 Run: `pnpm vitest run src/lib/email/__tests__/copy.test.ts`
 Expected: FAIL on "covers every mail" (only `shared` exists).
+
 - [ ] **Step 3: Fill in `en`**
 
 In `src/lib/email/copy.ts`, add these sections to the `en` object after `shared`:
@@ -761,6 +769,7 @@ Add after `shared` in the `zh` object:
 
 Run: `pnpm vitest run src/lib/email && pnpm typecheck`
 Expected: PASS. A missing key in `ms` or `zh` is a type error on its `EmailCopy` annotation.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -773,11 +782,13 @@ git commit -m "feat(email): wording for every customer mail in en, ms and zh"
 ### Task 3: Account mails on the shell
 
 **Files:**
+
 - Create: `src/lib/email/templates/staffInvite.ts`, `src/lib/email/templates/staffReset.ts`, `src/lib/email/templates/signInCode.ts`
 - Modify: `src/lib/auth/inviteMail.ts` (whole file), `src/lib/auth/passwordReset.ts` (the `select` and the `sendEmail` call in `sendStaffReset`)
 - Test: `src/lib/email/__tests__/accountTemplates.test.ts`; existing `src/lib/auth/__tests__/inviteMail.test.ts` and `passwordReset.test.ts` must still pass
 
 **Interfaces:**
+
 - Consumes: `renderEmail`, `EMAIL_COPY`, `fill`.
 - Produces:
 
@@ -867,6 +878,7 @@ describe("signInCode", () => {
 
 Run: `pnpm vitest run src/lib/email/__tests__/accountTemplates.test.ts`
 Expected: FAIL, cannot resolve `../templates/signInCode`.
+
 - [ ] **Step 3: Write the three templates**
 
 `src/lib/email/templates/staffReset.ts`:
@@ -1033,6 +1045,7 @@ export function sendStaffInvite(input: {
 In `src/lib/auth/passwordReset.ts`:
 
 Add the import:
+
 ```ts
 import { staffReset } from "@/lib/email/templates/staffReset";
 ```
@@ -1040,6 +1053,7 @@ import { staffReset } from "@/lib/email/templates/staffReset";
 In `sendStaffReset`'s `prisma.user.findUnique` `select`, add `name: true,` beside `email: true,`.
 
 Replace the whole `await sendEmail({ … });` call at the end of `sendStaffReset` with:
+
 ```ts
 await sendEmail({
 	to: row.email,
@@ -1048,10 +1062,12 @@ await sendEmail({
 ```
 
 In `src/lib/auth/__tests__/passwordReset.test.ts`, the mocked user row is built near the top of the file: add `name: "Ali",` to it so the row matches the new `select`.
+
 - [ ] **Step 6: Run the tests**
 
 Run: `pnpm vitest run src/lib/email src/lib/auth/__tests__/inviteMail.test.ts src/lib/auth/__tests__/passwordReset.test.ts && pnpm typecheck`
 Expected: PASS. The three existing invite tests pass unchanged (link in text and `href`, no "password" for Google-only, names escaped).
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1064,10 +1080,12 @@ git commit -m "feat(email): staff invite, password reset and sign-in code on the
 ### Task 4: The eight order mails
 
 **Files:**
+
 - Create: `src/lib/email/templates/order.ts`
 - Test: `src/lib/email/__tests__/orderTemplate.test.ts`
 
 **Interfaces:**
+
 - Consumes: `renderEmail`, `EMAIL_COPY`, `fill`; `summaryLines`, `summaryExtras` (`src/lib/orders/summary.ts`); `BANK_TRANSFER` (`src/lib/orders/payment.ts`); `orderRef` (`src/lib/orders/ref.ts`); `NotificationKind` (`@/generated/prisma/enums`).
 - Produces:
 
@@ -1267,6 +1285,7 @@ describe("orderEmail", () => {
 
 Run: `pnpm vitest run src/lib/email/__tests__/orderTemplate.test.ts`
 Expected: FAIL, cannot resolve `../templates/order`.
+
 - [ ] **Step 3: Write `src/lib/email/templates/order.ts`**
 
 ```ts
@@ -1485,10 +1504,12 @@ export function orderEmail(input: OrderMailInput): {
 ```
 
 Note for the implementer: `paragraph` fills `vars` a second time over an already-filled bank-transfer string. That is harmless (`fill` leaves text with no `{token}` alone) unless a customer's own name contains `{ref}`-style text, in which case it is substituted with the order's own values, never anything secret.
+
 - [ ] **Step 4: Run the tests**
 
 Run: `pnpm vitest run src/lib/email && pnpm typecheck`
 Expected: PASS. If "payment confirmed" fails on the date string, print `mail.text` and match the test to what `en-MY` produces in this Node version; the day (27, not 26) is the assertion that matters.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1501,6 +1522,7 @@ git commit -m "feat(email): the eight order mails"
 ### Task 5: `Notification.channel` and the overlap rule
 
 **Files:**
+
 - Modify: `prisma/schema.prisma` (`Notification` model, new enum)
 - Create: `prisma/migrations/20261009000000_notification_channel/migration.sql`
 - Modify: `src/lib/whatsapp/templates.ts`
@@ -1508,6 +1530,7 @@ git commit -m "feat(email): the eight order mails"
 - Test: `src/lib/whatsapp/__tests__/templates.test.ts`
 
 **Interfaces:**
+
 - Produces:
 
   ```ts
@@ -1554,11 +1577,13 @@ ALTER TABLE "Notification" ADD COLUMN "channel" "NotificationChannel" NOT NULL D
 ```
 
 Run:
+
 ```bash
 pnpm prisma migrate deploy && pnpm prisma generate
 pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script
 ```
 Expected: the diff prints an empty migration (no SQL statements). Anything else means the hand-written SQL and the schema disagree: fix the SQL.
+
 - [ ] **Step 2: Write the failing tests**
 
 In `src/lib/whatsapp/__tests__/templates.test.ts`:
@@ -1673,15 +1698,18 @@ describe("emailDraftFor", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/templates.test.ts`
 Expected: FAIL, `draftsFor` is not exported.
+
 - [ ] **Step 4: Implement in `src/lib/whatsapp/templates.ts`**
 
 Add to `NOTIFY_ORDER_SELECT`:
+
 ```ts
 	customerEmail: true,
 	user: { select: { email: true } },
 ```
 
 Add to `NotifyOrder`:
+
 ```ts
 customerEmail: string | null;
 user: {
@@ -1690,6 +1718,7 @@ user: {
 ```
 
 Add to `NotificationDraft`, after `kind`:
+
 ```ts
 channel: "WHATSAPP" | "EMAIL";
 ```
@@ -1743,6 +1772,7 @@ export function draftsFor(event: NotifyEvent): NotificationDraft[] {
 - [ ] **Step 5: Switch the seven call sites**
 
 Each one calls `enqueue(tx, [draftFor({ … })])`. Change every one to `enqueue(tx, draftsFor({ … }))` (drop the array brackets, keep the argument) and change its import of `draftFor` to `draftsFor`:
+
 - `src/app/api/orders/route.ts` — `draftsFor({ kind: "ORDER_PLACED", order })`
 - `src/lib/orders/markPaid.ts` — `draftsFor({ kind: "PAYMENT_CONFIRMED", order })`
 - `src/lib/orders/cancel.ts` — `draftsFor({ kind: "ORDER_REFUNDED", order })`
@@ -1752,10 +1782,12 @@ Each one calls `enqueue(tx, [draftFor({ … })])`. Change every one to `enqueue(
 - `src/lib/logistics/store.ts` — `draftsFor({ kind, order: current.order, delivery: { … } })`
 
 Then: `grep -rn "draftFor(" src | grep -v __tests__` must list only `src/lib/whatsapp/templates.ts`.
+
 - [ ] **Step 6: Run everything**
 
 Run: `pnpm typecheck && pnpm test`
 Expected: PASS. Typecheck names any test fixture that builds a `NotifyOrder` or mocks a `NOTIFY_ORDER_SELECT` row without the two new fields; add `customerEmail: null, user: { email: "c@example.com" }` to each. A test asserting the exact array passed to `enqueue` for an opted-out order now sees one email draft where it saw none: update the assertion to expect it.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1768,12 +1800,14 @@ git commit -m "feat(notifications): queue order mail beside WhatsApp, receipts a
 ### Task 6: Send email rows from the outbox
 
 **Files:**
+
 - Modify: `src/lib/email.ts` (add `emailConfigured`)
 - Create: `src/lib/email/orderMail.ts`
 - Modify: `src/lib/whatsapp/outbox.ts` (`flush`, header comment)
 - Test: `src/lib/whatsapp/__tests__/outbox.test.ts`, `src/lib/email/__tests__/orderMail.test.ts`
 
 **Interfaces:**
+
 - Consumes: `orderEmail`, `OrderMailInput` (Task 4); `Notification.channel` (Task 5); `sendEmail`; `localeOf`; `getDictionary`; `CARRIER_LABEL`.
 - Produces:
 
@@ -1909,6 +1943,7 @@ describe("sendOrderEmail", () => {
 
 Run: `pnpm vitest run src/lib/email/__tests__/orderMail.test.ts`
 Expected: FAIL, cannot resolve `../orderMail`.
+
 - [ ] **Step 3: Write `src/lib/email/orderMail.ts`**
 
 ```ts
@@ -1992,6 +2027,7 @@ export async function sendOrderEmail(
 
 Run: `pnpm vitest run src/lib/email/__tests__/orderMail.test.ts`
 Expected: PASS, 6 tests.
+
 - [ ] **Step 4: Write the failing outbox tests**
 
 In `src/lib/whatsapp/__tests__/outbox.test.ts`:
@@ -2023,6 +2059,7 @@ vi.mock("@/lib/email/orderMail", () => ({ sendOrderEmail }));
 ```
 
 In `beforeEach` add:
+
 ```ts
 sendOrderEmail.mockReset().mockResolvedValue(true);
 vi.stubEnv("RESEND_API_KEY", "re_test");
@@ -2109,15 +2146,18 @@ describe("flush with email rows", () => {
 
 Run: `pnpm vitest run src/lib/whatsapp/__tests__/outbox.test.ts`
 Expected: the new tests FAIL (email rows are sent to Meta as WhatsApp templates); the two existing ones still pass.
+
 - [ ] **Step 5: Rewrite `flush` in `src/lib/whatsapp/outbox.ts`**
 
 Add imports:
+
 ```ts
 import { emailConfigured } from "@/lib/email";
 import { sendOrderEmail } from "@/lib/email/orderMail";
 ```
 
 Replace the file's header comment's first line `* The WhatsApp outbox.` with:
+
 ```ts
  * The notification outbox: WhatsApp messages and order emails.
 ```
@@ -2274,6 +2314,7 @@ export async function flush(
 
 Run: `pnpm vitest run src/lib/whatsapp src/lib/email && pnpm typecheck`
 Expected: PASS, including the two pre-existing outbox tests ("dead token" still reports one fetch and both rows at `attempts` 0).
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -2286,12 +2327,14 @@ git commit -m "feat(notifications): send order mail from the outbox, per channel
 ### Task 7: Corrected details reach queued mail; admin sees both channels
 
 **Files:**
+
 - Modify: `src/app/api/orders/[token]/route.ts` (the `tx.notification.updateMany` inside the transaction)
 - Modify: `src/app/admin/orders/[id]/page.tsx` (notification `select`), `src/app/admin/orders/[id]/OrderDetail.tsx` (props type, the "WhatsApp" card)
 - Modify: `src/app/api/admin/orders/[id]/notifications/[notificationId]/resend/route.ts` (comment only)
 - Test: `src/app/api/orders/[token]/__tests__/route.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Notification.channel` (Task 5).
 
 - [ ] **Step 1: Update the route test**
@@ -2322,6 +2365,7 @@ it("a cleared email sends queued mail to the account's address", async () => {
 
 Run: `pnpm vitest run "src/app/api/orders/[token]/__tests__/route.test.ts"`
 Expected: both FAIL (the call has no `channel`).
+
 - [ ] **Step 2: Implement**
 
 In `src/app/api/orders/[token]/route.ts`, replace the comment and the single `tx.notification.updateMany` call with:
@@ -2344,6 +2388,7 @@ await tx.notification.updateMany({
 
 Run: `pnpm vitest run "src/app/api/orders/[token]/__tests__/route.test.ts"`
 Expected: PASS.
+
 - [ ] **Step 3: Admin panel**
 
 In `src/app/admin/orders/[id]/page.tsx`, add `channel: true,` to the `notifications` `select`.
@@ -2353,6 +2398,7 @@ In `src/app/admin/orders/[id]/OrderDetail.tsx`:
 Add `NotificationChannel` to the type import from `@/generated/prisma/enums`, and `channel: NotificationChannel;` to the `notifications` item type.
 
 Add beside `KIND_LABEL`:
+
 ```ts
 const CHANNEL_LABEL: Record<NotificationChannel, string> = {
 	WHATSAPP: "WhatsApp",
@@ -2361,6 +2407,7 @@ const CHANNEL_LABEL: Record<NotificationChannel, string> = {
 ```
 
 Replace the card's heading and its first branch. The card currently opens:
+
 ```tsx
 						<h2 className={EYEBROW}>WhatsApp</h2>
 						{!order.whatsappOptIn ? (
@@ -2372,6 +2419,7 @@ Replace the card's heading and its first branch. The card currently opens:
 						) : (
 ```
 Change it to:
+
 ```tsx
 						<h2 className={EYEBROW}>Messages</h2>
 						{!order.whatsappOptIn && (
@@ -2385,23 +2433,27 @@ Change it to:
 ```
 
 In the list item, change
+
 ```tsx
 {
 	KIND_LABEL[n.kind];
 }
 ```
 to
+
 ```tsx
 											{CHANNEL_LABEL[n.channel]} · {KIND_LABEL[n.kind]}
 ```
 
 In `resend/route.ts`, change the comment's first line from `Put a failed WhatsApp message back in the queue.` to `Put a failed message — WhatsApp or email — back in the queue.` The code needs no change: it resets the row and `flush` picks the channel.
+
 - [ ] **Step 4: Run and look**
 
 Run: `pnpm typecheck && pnpm test`
 Expected: PASS.
 
 Then `pnpm dev`, open `/admin/orders/<any order id>` and check the card reads "Messages", shows the no-opt-in line for an order without WhatsApp, and each row starts with its channel.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -2414,6 +2466,7 @@ git commit -m "feat(orders): corrected email reaches queued mail; admin lists bo
 ### Task 8: Preview script, privacy line, docs
 
 **Files:**
+
 - Create: `scripts/preview-emails.ts`
 - Modify: `package.json` (one script)
 - Modify: `src/lib/copy/en.ts`, `ms.ts`, `zh.ts` (`privacy` section), `src/app/[lang]/privacy/page.tsx`
@@ -2537,6 +2590,7 @@ console.log(`${Object.keys(mails).length} mails written to ${dir}`);
 ```
 
 In `package.json` `scripts`, add:
+
 ```json
 		"email:preview": "tsx scripts/preview-emails.ts",
 ```
@@ -2545,11 +2599,13 @@ Run: `pnpm email:preview /tmp/email-preview`
 Expected: `29 mails written to /tmp/email-preview` (2 staff + 9 × 3). If `tsx` fails on a `server-only` import, something under `src/lib/email/templates`, `layout.ts` or `copy.ts` imports a server-only module: remove that import, do not stub it.
 
 Open four files in a browser, in light and dark (`prefers-color-scheme` in dev tools), at 375 px and 600 px wide: `order-placed.en.html`, `payment-confirmed.zh.html`, `sign-in-code.ms.html`, `staff-invite.html`. Check: no horizontal scroll at 375 px, the receipt's amounts stay on one line, the button is readable in dark mode, Chinese text renders.
+
 - [ ] **Step 2: Privacy notice**
 
 Add two keys to the `privacy` section of each dictionary, directly after the `whatsapp` value.
 
 `src/lib/copy/en.ts`:
+
 ```ts
 		emailHeading: "Order emails",
 		email:
@@ -2557,6 +2613,7 @@ Add two keys to the `privacy` section of each dictionary, directly after the `wh
 ```
 
 `src/lib/copy/ms.ts`:
+
 ```ts
 		emailHeading: "E-mel pesanan",
 		email:
@@ -2564,6 +2621,7 @@ Add two keys to the `privacy` section of each dictionary, directly after the `wh
 ```
 
 `src/lib/copy/zh.ts`:
+
 ```ts
 		emailHeading: "订单邮件",
 		email:
@@ -2571,6 +2629,7 @@ Add two keys to the `privacy` section of each dictionary, directly after the `wh
 ```
 
 In `src/app/[lang]/privacy/page.tsx`, add one row to the sections array directly after `[p.whatsappHeading, p.whatsapp],`:
+
 ```ts
 		[p.emailHeading, p.email],
 ```
@@ -2579,9 +2638,11 @@ Do not change the `obligatory` paragraph ("Email and WhatsApp updates are option
 
 Run: `pnpm vitest run src/lib/copy && pnpm typecheck`
 Expected: PASS (the dictionary parity tests cover the two new keys).
+
 - [ ] **Step 3: CLAUDE.md**
 
 Make these edits to `CLAUDE.md`:
+
 1. In **Status**, replace `Opted-in customers get WhatsApp updates for the order, each admin-advanced production stage and the delivery (`lib/whatsapp`, Meta Cloud API); go-live waits on EzCabinet — see Open questions.` with:
    `Customers get order updates for the order, each admin-advanced production stage and the delivery: by WhatsApp when they opted in (`lib/whatsapp`, Meta Cloud API; go-live waits on EzCabinet — see Open questions), and by email (`lib/email`, Resend) — receipts always, the rest when WhatsApp is off.`
 
@@ -2611,6 +2672,7 @@ Make these edits to `CLAUDE.md`:
 - [ ] **Step 4: Bring the spec in line**
 
 In `docs/superpowers/specs/2026-10-08-email-templates-design.md`:
+
 - "One file per mail": change the first sentence to say the three account mails have a file each under `src/lib/email/templates/` and the eight order mails are one file, `order.ts`, switching on the kind; and that customer wording lives in `src/lib/email/copy.ts`, kept out of the site dictionary because that dictionary ships to the browser.
 - In the outbox section, replace the bullet `sendEmail returns only true or false. A false is retried by the cron until the 48-hour expiry…` with: `A failed send is retried up to five times through the existing `nextState`, then marked failed and shown on the order's Messages card for a staff resend.`
 - In "D. Order placed", replace `The rows are the order's own breakdown.categories lines…` with: `The rows are `summaryLines`and`summaryExtras` of the stored breakdown — the lines the order page shows — then delivery, then the total.`
@@ -2631,6 +2693,7 @@ git commit -m "feat(email): preview script, privacy paragraph, docs"
 ## After the last task
 
 By hand, once `RESEND_API_KEY`, `EMAIL_FROM` and `BETTER_AUTH_URL` are set somewhere safe (not preview):
+
 1. Place an order with the WhatsApp box unticked. Expect the order-placed mail.
 2. Mark it paid. Expect the receipt.
 3. Advance one production stage. Expect the stage mail.

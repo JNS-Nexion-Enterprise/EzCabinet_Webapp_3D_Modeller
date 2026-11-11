@@ -52,6 +52,7 @@ renderEmail({
 | `button`    | one call to action and the paste-this-link fallback | all but the sign-in code                          |
 
 Rules:
+
 - `text` is built from the same blocks as `html`, so the two cannot drift.
 - `renderEmail` escapes every value it is given. Callers pass raw strings. The
   invite's "every value arrives already escaped" contract goes away.
@@ -93,6 +94,7 @@ changes.
 `Notification` already queues in the state change's transaction, dedupes,
 retries from the cron and expires after 48 hours. It gains one column:
 `channel`, `WHATSAPP` (default, so existing rows are right) or `EMAIL`.
+
 - `draftFor(event)` in `lib/whatsapp/templates.ts` becomes `draftsFor(event)`
   and returns zero, one or two drafts. Its seven call sites already pass an
   array to `enqueue`, so each one spreads the result.
@@ -288,6 +290,7 @@ WhatsApp repeats the order reference.
 ## Before go-live
 
 These are not built here, and each one is now printed in mail a customer keeps:
+
 - `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` and `BANK_TRANSFER` are placeholders.
 - "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads, or a
   `reply_to` added to `sendEmail`.

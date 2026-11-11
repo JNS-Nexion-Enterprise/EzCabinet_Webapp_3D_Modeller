@@ -38,6 +38,7 @@ reads, and render the result with the planner's own `DesignedCabinet` inside the
 planner's own `StudioLighting`.
 
 Rejected:
+
 - **Fetch `/api/cabinet-mesh/[id]`.** That mesh only exists after the design is
   saved and converted, so a freshly picked file — the main case — would have
   nothing to show.

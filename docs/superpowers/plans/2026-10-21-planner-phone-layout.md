@@ -13,6 +13,7 @@
 ## Global Constraints
 
 Amended (Ruling 7): the boundary is spelled `max-[760px]` / `min-[760px]` / `(width < 760px)`; 759 spellings below are superseded.
+
 - Phone = viewport `< 760px`. At `≥ 760px` every planner screen renders byte-for-byte as before (desktop and the `max-lg` tablet stack). Use `max-[759px]:` / `min-[760px]:` variants, never `sm`/`md`/`lg`, for phone-only rules.
 - No new dependencies. No testing-library — logic goes in pure modules with vitest tests; layout is checked in a browser.
 - Copy lives in `src/lib/copy/{en,ms,zh}.ts`; `ms` and `zh` are typed against `Dictionary`, so a missing key fails `pnpm typecheck`. Sentence case. No new user-facing string outside the dictionary.
@@ -36,12 +37,14 @@ Amended (Ruling 7): the boundary is spelled `max-[760px]` / `min-[760px]` / `(wi
 ### Task 1: Phone tab rules and the phone hook
 
 **Files:**
+
 - Create: `src/components/planner/studio/phoneStudio.ts`
 - Create: `src/components/planner/usePhone.ts`
 - Test: `src/components/planner/__tests__/phoneStudio.test.ts`
 - Modify: `src/components/planner/StudioScreen.tsx:111-121` (the `DoorView` type moves out)
 
 **Interfaces:**
+
 - Produces, in `phoneStudio.ts`:
   - `type PhoneTab = "selected" | "add" | "room" | "run"`
   - `const PHONE_TABS: readonly PhoneTab[]` = `["selected", "add", "room", "run"]` (design order)
@@ -91,6 +94,7 @@ describe("doors button", () => {
 
 Run: `pnpm vitest run src/components/planner/__tests__/phoneStudio.test.ts`
 Expected: FAIL, cannot resolve `../studio/phoneStudio`.
+
 - [ ] **Step 3: Implement `phoneStudio.ts`** with the exports above. It is a pure module: no React and no copy. Move `DoorView` and its doc comment out of `StudioScreen.tsx` and import it back there. `doorModes` stays in `StudioScreen`.
 
 - [ ] **Step 4: Implement `usePhone.ts`.** Use `useSyncExternalStore(subscribe, () => matchMedia(PHONE_QUERY).matches, () => false)`, where `subscribe` adds and removes a `change` listener on `matchMedia(PHONE_QUERY)`. The server snapshot is `false` because only the studio uses this, and the studio never renders on the server. Say so in a one-line comment, so nobody reaches for it on the start screen.
@@ -99,6 +103,7 @@ Expected: FAIL, cannot resolve `../studio/phoneStudio`.
 
 Run: `pnpm vitest run src/components/planner/__tests__/phoneStudio.test.ts && pnpm lint && pnpm typecheck`
 Expected: 4 tests pass; lint and typecheck clean.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -111,12 +116,14 @@ git commit -m "feat(planner): phone tab rules and the phone media hook"
 ### Task 2: Phone chrome, copy, and the start screen
 
 **Files:**
+
 - Create: `src/components/planner/PhoneChrome.tsx`
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/ms.ts`, `src/lib/copy/zh.ts` (new `planner.phone` block, beside `planner.tools`)
 - Modify: `src/components/planner/StartScreen.tsx`
 - Modify: `src/components/LanguageSwitcher.tsx`
 
 **Interfaces:**
+
 - Consumes: nothing from Task 1.
 - Produces, in `PhoneChrome.tsx` (spec § Shared chrome has every value):
   - `PhoneHeader({ back, title, subtitle?, right?, className? })`. `back` is `{ label: string; href: string } | { label: string; onClick: () => void }`; it renders a `next/link` or a `<button>` styled as the back pill. `className` lets Start and Quote add `min-[760px]:hidden`.
@@ -140,6 +147,7 @@ git commit -m "feat(planner): phone tab rules and the phone media hook"
 | `doorsAria`     | Doors: {mode}. Tap to change. | Pintu: {mode}. Ketik untuk tukar. | 门板：{mode}。点击切换。 |
 
 (`{mode}` is filled with the existing `planner.room.doorsClosed` / `doorsOpen` / `doorsHidden`. "Susunan" and "布局" match the words `planner.run.heading` already uses.)
+
 - [ ] **Step 1: Add the copy** to all three dictionaries, then run `pnpm typecheck && pnpm vitest run src/lib/copy`.
   Expected: clean. The dictionary tests pass, including "has no empty strings".
 
@@ -175,11 +183,13 @@ git commit -m "feat(planner): phone start screen and the shared phone header and
 ### Task 3: The phone studio
 
 **Files:**
+
 - Create: `src/components/planner/studio/PhoneStudio.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
 - Modify: `src/components/planner/studio/PriceFooter.tsx`
 
 **Interfaces:**
+
 - Consumes:
   - From Task 1: `PhoneTab`, `PHONE_TABS`, `DoorView`, `initialPhoneTab`, `tabAfterSelection`, `nextDoorView`, `usePhone`.
   - From Task 2: `PhoneHeader`, `PhoneBar`, `Segmented`, and `t.planner.phone.*`.
@@ -278,12 +288,14 @@ git commit -m "feat(planner): phone studio — view toggle, canvas card, four ta
 ### Task 4: Phone tap sizes
 
 **Files:**
+
 - Modify: `src/components/planner/studio/chrome.ts`
 - Modify: `src/components/planner/studio/RunList.tsx:66-70`
 - Modify: `src/components/planner/DimensionField.tsx:86-93`
 - Modify: `src/components/planner/StudioScreen.tsx` (the finish swatch class inside `finishBody`)
 
 **Interfaces:**
+
 - Consumes: nothing new. It changes only class strings, and only below 760 px.
 
 - [ ] **Step 1: Phone-only additions** (spec § Shared chrome, last bullet):
@@ -311,9 +323,11 @@ git commit -m "feat(planner): 44px tap targets in the studio on phone"
 ### Task 5: The phone quote screen
 
 **Files:**
+
 - Modify: `src/components/planner/QuoteScreen.tsx` (`FIELD` at 38–42, the shell at 373–405, the submit at 724–748, the aside at 753–772)
 
 **Interfaces:**
+
 - Consumes: from Task 2, `PhoneHeader`, `phoneBar`, `phonePrimary` and `t.planner.phone.backEdit`.
 
 - [ ] **Step 1: CSS-only changes.**
@@ -345,6 +359,7 @@ git commit -m "feat(planner): phone quote screen — summary first, pay button i
 ### Task 6: Bundle check and docs
 
 **Files:**
+
 - Modify: `CLAUDE.md` (§ UX flow → "The studio's own chrome")
 
 - [ ] **Step 1: The bundle.** Run `pnpm build`, then read `.next/diagnostics/route-bundle-stats.json` for `/[lang]/planner`. The first-load JS must not include `three` or `@react-three`, and must stay within 10 KB gzipped of the figure on `feature/development` (measure that first, from a build of the base commit).

@@ -46,15 +46,19 @@
 The before/after comparison needs a "before". Nothing is changed in this task.
 
 **Files:** none (outputs go to the session scratchpad, not the repo)
+
 - [ ] **Step 1: Start the app**
 
 Run: `pnpm dev` (background). Open `http://localhost:3000/en/planner`.
+
 - [ ] **Step 2: Build the reference scene**
 
 Pick the kitchen. Place a straight run of at least three base units with wall units above, including one glass-door design if the catalogue has one. Note the finish in use.
+
 - [ ] **Step 3: Capture screenshots**
 
 Capture the 3D, elevation and plan views. Then switch the room to L-shaped in the Room panel and capture 3D once more. Save them as `before-3d.png`, `before-elevation.png`, `before-plan.png`, `before-l.png` in the scratchpad directory.
+
 - [ ] **Step 4: Record baseline frame times**
 
 Chrome DevTools → Performance, 4× CPU throttle, mobile viewport (e.g. Pixel 7). Record 5 s of idle orbiting and 5 s of dragging a base unit along the wall. Write the average frame time for each into `baseline.txt` in the scratchpad.
@@ -64,10 +68,12 @@ Chrome DevTools → Performance, 4× CPU throttle, mobile viewport (e.g. Pixel 7
 ### Task 2: `<StudioLighting />` with neutral tone mapping and a Lightformer environment
 
 **Files:**
+
 - Create: `src/components/planner/Lighting.tsx`
 - Modify: `src/components/planner/PlannerScene.tsx` (the two light lines after `<color attach="background" …/>`, currently ~line 2547)
 
 **Interfaces:**
+
 - Produces: `export function StudioLighting(): JSX.Element` (Phase 2 adds props in Task 6)
 
 - [ ] **Step 1: Create `Lighting.tsx`**
@@ -192,9 +198,11 @@ import { StudioLighting } from "./Lighting";
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
+
 - [ ] **Step 4: Tune by eye**
 
 With `pnpm dev` running, rebuild the Task 1 scene. Adjust `ENVIRONMENT_INTENSITY` (range 0.5–1.2), `AMBIENT_INTENSITY` (0–0.4) and `KEY_INTENSITY` (1.0–2.5) until:
+
 - the door finish beside its swatch on the finish picker reads as the same colour,
 - white walls are light but not clipped to pure white,
 - glass and handles show a visible soft highlight,
@@ -209,6 +217,7 @@ Record the final values in the constants.
 Tone mapping applies to `meshBasicMaterial` and line materials too. UI geometry has to render its hex exactly, matching the DOM UI in the same brand green.
 
 **Files:**
+
 - Modify: `src/components/planner/PlannerScene.tsx` — every `<meshBasicMaterial` that draws visible UI: the pan gizmo (~lines 664–693) and `MoveHandle` (~lines 1864–1913). Not the invisible `opacity={0}` deselect plane (~line 1604).
 - Modify: `src/components/planner/MeasureOverlay.tsx` — the glyph `<meshBasicMaterial` (~line 103) and the `<Line` (~line 167)
 - Modify: `src/components/planner/PositionDimensions.tsx` — the three `<Line` (~lines 179–181)
@@ -254,10 +263,12 @@ Example, lines and edges (drei passes material props through):
 ```
 
 Find every one with: `grep -n "meshBasicMaterial\|<Line\|<Edges" src/components/planner/*.tsx`
+
 - [ ] **Step 2: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass. If `typecheck` rejects `toneMapped` on `Line` or `Edges`, read drei's `LineProps` / `EdgesProps` in `node_modules/@react-three/drei/core/` for how that version passes material props, apply `toneMapped: false` that way, and note which component needed it.
+
 - [ ] **Step 3: Check colours by eye**
 
 Select a cabinet, open the measure tool, show the position dimensions. The selection outline, move handle, pan puck and dimension lines match the green `#1f5138` of the DOM labels beside them.
@@ -267,15 +278,19 @@ Select a cabinet, open the measure tool, show the position dimensions. The selec
 ### Task 4: Phase 1 verification
 
 **Files:** none
+
 - [ ] **Step 1: After screenshots**
 
 Repeat Task 1 Steps 2–3 and save `after1-*.png` beside the baselines. Compare in pairs: finishes truer to swatch, glass/handle highlights present, no clipped whites.
+
 - [ ] **Step 2: Functional regression pass (spec "Must not break")**
 
 On `pnpm dev`, each must behave exactly as on `main`: select, multi-select, drag along a wall, drag to another wall, drop free-standing, rotate a free cabinet, resize, measure (snap points land on the same edges), doors open, doors hidden, wall paint, room shape rect ↔ L, wall length edit, 3D / elevation / plan views, quote screen preview.
+
 - [ ] **Step 3: Performance**
 
 Repeat Task 1 Step 4. Pass: idle and drag frame times within noise of `baseline.txt` (Phase 1 adds no per-frame work).
+
 - [ ] **Step 4: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
@@ -288,10 +303,12 @@ Expected: all pass. Report to the user: Phase 1 ready for their commit as PR 1.
 ### Task 5: Pure lighting helpers
 
 **Files:**
+
 - Create: `src/components/planner/lightingRig.ts`
 - Test: `src/components/planner/__tests__/lightingRig.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `type Quality = "low" | "high"`
   - `const SHADOW_MAP: { enabled: true; type: typeof PCFShadowMap; autoUpdate: false }`
@@ -448,6 +465,7 @@ describe("qualityFromSearch", () => {
 
 Run: `pnpm vitest run src/components/planner/__tests__/lightingRig.test.ts`
 Expected: FAIL — cannot resolve `../lightingRig`.
+
 - [ ] **Step 3: Write `lightingRig.ts`**
 
 ```ts
@@ -593,6 +611,7 @@ export function qualityFromSearch(
 
 Run: `pnpm vitest run src/components/planner/__tests__/lightingRig.test.ts`
 Expected: PASS, all tests.
+
 - [ ] **Step 5: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
@@ -603,6 +622,7 @@ Expected: all pass.
 ### Task 6: On-demand shadow map
 
 **Files:**
+
 - Modify: `src/components/planner/Lighting.tsx`
 - Modify: `src/components/planner/PlannerScene.tsx` (Canvas props; `<StudioLighting />` call; a dirty effect; `onDragMove` in `Run`)
 - Modify: `src/components/planner/Room.tsx` (floor and wall meshes)
@@ -610,6 +630,7 @@ Expected: all pass.
 - Modify: `src/components/planner/DesignedCabinet.tsx` (`useDesignMesh`)
 
 **Interfaces:**
+
 - Consumes: everything from Task 5
 - Produces: `StudioLighting({ plan, ceilingHeightMm, quality }: { plan: FloorPlan; ceilingHeightMm: number; quality: Quality })`
 
@@ -756,6 +777,7 @@ useEffect(() => {
 ```
 
 Imports: `import { markShadowsDirty, type Quality, SHADOW_MAP } from "./lightingRig";`
+
 - [ ] **Step 3: Mark dirty during a drag**
 
 In `Run`, in `onDragMove.current = (event) => { … }`, right after `if (!drag) return;`:
@@ -789,6 +811,7 @@ if (current !== target) {
 ```
 
 Both files: `import { markShadowsDirty } from "./lightingRig";`
+
 - [ ] **Step 5: Mark dirty when a drafted mesh arrives**
 
 `DesignedCabinet.tsx`, in `useDesignMesh`, after the existing `useEffect`:
@@ -802,6 +825,7 @@ useEffect(() => {
 ```
 
 Import: `import { markShadowsDirty } from "./lightingRig";`
+
 - [ ] **Step 6: Walls and floor receive only**
 
 `Room.tsx`: add `userData={RECEIVE_ONLY}` to the floor `<mesh rotation={[-Math.PI / 2, 0, 0]}>` and to each wall `<mesh …>`, and define once near the colour constants:
@@ -817,9 +841,11 @@ const RECEIVE_ONLY = { shadow: "receive" };
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
+
 - [ ] **Step 8: Check by eye, and tune**
 
 `pnpm dev`, the Task 1 scene:
+
 - a soft shadow under wall units on the worktop, a shadow line where base units meet the floor, a hint on the wall behind;
 - no striping on cabinet faces (acne → make `SHADOW_BIAS` more negative, e.g. −0.001);
 - no light gap between a cabinet's foot and its shadow (peter-panning → reduce `SHADOW_NORMAL_BIAS`);
@@ -834,14 +860,17 @@ Expected: all pass.
 ### Task 7: Retire the wall patch, soften the floor pools
 
 **Files:**
+
 - Modify: `src/components/planner/PlannerScene.tsx` (`WallShadow`, `SHADOW_VIEW`, `ContactShadows`, `Run` props and its two `<ContactShadows>`, the two `<Run>` call sites)
 
 **Interfaces:**
+
 - Produces: `Run` gains `blobShadows: boolean`
 
 - [ ] **Step 1: Delete `WallShadow`**
 
 Delete the `WallShadow` function with its doc comment, the `SHADOW_VIEW` constant with its comment, and the whole wall-unit branch at the end of `ContactShadows` (the comment "Wall units get a soft patch on the wall itself…" and the `positionsOf(layout, "wall").map(…<WallShadow …/>)` block). Remove imports left unused (`MeshBasicMaterial`, `PlaneGeometry`, and `useFrame` / `Vector3` only if nothing else uses them — `pnpm lint` reports unused imports).
+
 - [ ] **Step 2: Fainter floor pools**
 
 In `ContactShadows`, change the floor `<Shadow>`'s `opacity={0.5}` to `opacity={0.35}`, and update its doc comment's first line to:
@@ -854,6 +883,7 @@ In `ContactShadows`, change the floor `<Shadow>`'s `opacity={0.5}` to `opacity={
 ```
 
 (keep the rest of that comment about the pool being wider than the cabinet).
+
 - [ ] **Step 3: A switch for the pools**
 
 Add `blobShadows: boolean` to `Run`'s props (destructure it beside `freeStanding`), and wrap both `<ContactShadows …/>` in `Run`:
@@ -880,6 +910,7 @@ Add `blobShadows: boolean` to `Run`'s props (destructure it beside `freeStanding
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
+
 - [ ] **Step 5: Check by eye**
 
 Wall units: the real shadow shows below them on the wall; from a side angle no grey smudge floats on bare wall. Floor units: the pool still grounds them, lighter than before.
@@ -889,9 +920,11 @@ Wall units: the real shadow shows below them on the wall; from a side angle no g
 ### Task 8: Quality tiers
 
 **Files:**
+
 - Modify: `src/components/planner/PlannerScene.tsx`
 
 **Interfaces:**
+
 - Consumes: `qualityFromSearch`, `Quality` (Task 5); `StudioLighting` `quality` prop (Task 6); `Run` `blobShadows` (Task 7)
 
 - [ ] **Step 1: Replace the constant with state**
@@ -934,10 +967,12 @@ Inside `<Canvas>`, right after `<StudioLighting …/>`:
 Add `PerformanceMonitor` to the existing `@react-three/drei` import, and `qualityFromSearch` to the `./lightingRig` import.
 
 Note — redraw on tier change needs nothing extra: `StudioLighting`'s refit effect depends on `mapSize`, which changes with the tier, and it calls `markShadowsDirty()`.
+
 - [ ] **Step 3: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
+
 - [ ] **Step 4: Check the tiers**
 
 `/en/planner?quality=high`: shadows sharper (2048²), floor pools gone. `?quality=low`: 1024², pools present. No param on a desktop: starts `low`, moves to `high` within a few seconds (confirm by the pools vanishing).
@@ -947,6 +982,7 @@ Expected: all pass.
 ### Task 9: Ambient occlusion on the `high` tier
 
 **Files:**
+
 - Modify: `package.json` / `pnpm-lock.yaml` (via pnpm)
 - Create: `src/components/planner/HighQualityEffects.tsx`
 - Modify: `src/components/planner/PlannerScene.tsx`
@@ -955,6 +991,7 @@ Expected: all pass.
 
 Run: `pnpm add @react-three/postprocessing postprocessing`
 Expected: `@react-three/postprocessing` 3.x and `postprocessing` 6.36+ in `dependencies`; no peer warnings about `three` or `@react-three/fiber`.
+
 - [ ] **Step 2: Create `HighQualityEffects.tsx`**
 
 ```tsx
@@ -1011,6 +1048,7 @@ Add `lazy` and `Suspense` to the `react` import. Inside `<Canvas>`, after `<Perf
 
 Run: `pnpm test && pnpm typecheck && pnpm lint && pnpm build`
 Expected: all pass. In the `pnpm build` output, confirm `postprocessing` is not in the planner route's first-load JS (it lands in a separate async chunk).
+
 - [ ] **Step 5: Check by eye and on the network tab**
 
 - `?quality=high`: soft darkening in the creases (cabinet/wall, cabinet/floor, between neighbours, under wall units). The network tab shows the postprocessing chunk load.
@@ -1024,6 +1062,7 @@ Expected: all pass. In the `pnpm build` output, confirm `postprocessing` is not 
 ### Task 10: CLAUDE.md rule change
 
 **Files:**
+
 - Modify: `CLAUDE.md` (the "Mobile performance rules" list)
 
 - [ ] **Step 1: Replace the rule**
@@ -1053,19 +1092,24 @@ Expected: pass.
 ### Task 11: Phase 2 verification
 
 **Files:** none
+
 - [ ] **Step 1: After screenshots**
 
 Repeat Task 1 Steps 2–3 at `?quality=low` and `?quality=high`, saving `after2-low-*.png` and `after2-high-*.png`. Compare with the baselines and with `after1-*`.
+
 - [ ] **Step 2: Functional regression pass**
 
 Repeat Task 4 Step 2 in full, on both tiers. Also: in elevation and plan views, check whether shadows or AO clutter the technical drawing. If they do, report it to the user with screenshots rather than deciding alone — the spec allows switching them off in those views, but it is a visible change.
+
 - [ ] **Step 3: Performance**
 
 Repeat Task 1 Step 4 at `?quality=low`. Pass: idle orbit within noise of `baseline.txt`; drag at ≥ ~30 fps (≤ 33 ms/frame). Record the numbers for the PR description.
+
 - [ ] **Step 4: Gate**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint && pnpm build`
 Expected: all pass.
+
 - [ ] **Step 5: Hand back**
 
 Report to the user: what changed, the tuned constants, the frame-time numbers, the screenshot paths, any overlay needing `depthWrite={false}`, and the elevation/plan call if one arose. The user commits and pushes.
