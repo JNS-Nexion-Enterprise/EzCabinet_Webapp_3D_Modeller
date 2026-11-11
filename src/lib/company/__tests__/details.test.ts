@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
 	bankChanged,
 	companyDetailsSchema,
+	deliveryWeeks,
 	lastFour,
 	mapsLink,
 	seedCompany,
@@ -156,3 +157,58 @@ it("mapsLink opens the pin in Google Maps", () =>
 	expect(mapsLink(2.98, 101.86)).toBe(
 		"https://www.google.com/maps/search/?api=1&query=2.98,101.86",
 	));
+
+describe("the promises a maker makes", () => {
+	it("takes numbers typed into a form box", () => {
+		const parsed = companyDetailsSchema.parse(
+			input({
+				warrantyYears: "5",
+				deliveryWeeksMin: "3",
+				deliveryWeeksMax: "8",
+			}),
+		);
+		expect(parsed.warrantyYears).toBe(5);
+		expect(parsed.deliveryWeeksMax).toBe(8);
+	});
+
+	it("refuses a longest delivery shorter than the shortest", () => {
+		const parsed = companyDetailsSchema.safeParse(
+			input({ deliveryWeeksMin: 6, deliveryWeeksMax: 4 }),
+		);
+		expect(parsed.success).toBe(false);
+		if (!parsed.success)
+			expect(parsed.error.issues[0]?.path).toEqual(["deliveryWeeksMax"]);
+	});
+
+	it("refuses fractions and negatives", () => {
+		expect(ok({ warrantyYears: 1.5 })).toBe(false);
+		expect(ok({ warrantyYears: -1 })).toBe(false);
+		expect(ok({ damageReportDays: 0 })).toBe(false);
+	});
+
+	it("stores an empty officer as null, and checks a given email", () => {
+		const parsed = companyDetailsSchema.parse(
+			input({ dpoName: " ", dpoEmail: "" }),
+		);
+		expect(parsed.dpoName).toBeNull();
+		expect(parsed.dpoEmail).toBeNull();
+		expect(ok({ dpoEmail: "not an email" })).toBe(false);
+		expect(ok({ dpoEmail: "dpo@example.com" })).toBe(true);
+	});
+
+	it("claims no warranty and no installation until the maker says so", () => {
+		const seed = seedCompany();
+		expect(seed.warrantyYears).toBe(0);
+		expect(seed.installationOffered).toBe(false);
+		expect(seed.policiesApproved).toBe(false);
+	});
+
+	it("words the delivery window", () => {
+		expect(deliveryWeeks({ deliveryWeeksMin: 4, deliveryWeeksMax: 6 })).toBe(
+			"4-6",
+		);
+		expect(deliveryWeeks({ deliveryWeeksMin: 3, deliveryWeeksMax: 3 })).toBe(
+			"3",
+		);
+	});
+});

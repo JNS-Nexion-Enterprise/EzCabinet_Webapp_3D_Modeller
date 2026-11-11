@@ -1,5 +1,5 @@
 import type { NotificationKind } from "@/generated/prisma/enums";
-import type { CompanyDetails } from "@/lib/company/details";
+import { type CompanyDetails, deliveryWeeks } from "@/lib/company/details";
 import { fill } from "@/lib/copy/fill";
 import type { Locale } from "@/lib/copy/locales";
 import { orderRef } from "@/lib/orders/ref";
@@ -90,6 +90,7 @@ export function orderEmail(input: OrderMailInput): {
 		bank: input.company.bankName,
 		accountName: input.company.bankAccountName,
 		accountNumber: input.company.bankAccountNumber,
+		deliveryWeeks: deliveryWeeks(input.company),
 	};
 
 	const mail = (

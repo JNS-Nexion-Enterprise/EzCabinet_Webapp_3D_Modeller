@@ -711,6 +711,19 @@ model CompanyDetails {
   bankAccountName   String
   bankAccountNumber String
   orderPrefix       String
+  /// What this maker promises its customers; the site's FAQ, terms and
+  /// refund policy read these. 0 warranty years means none is claimed.
+  warrantyYears       Int     @default(0)
+  installationOffered Boolean @default(false)
+  deliveryWeeksMin    Int     @default(4)
+  deliveryWeeksMax    Int     @default(6)
+  damageReportDays    Int     @default(7)
+  refundWorkingDays   Int     @default(14)
+  /// PDPA s.12A data protection officer, named in the privacy notice.
+  dpoName             String?
+  dpoEmail            String?
+  /// Counsel approved the policies: the pages stop saying "Draft".
+  policiesApproved    Boolean @default(false)
   /// No relation, so deleting a staff row keeps the record; `savedByName`
   /// stays, like `Order.paidByName`.
   savedById         String?

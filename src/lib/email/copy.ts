@@ -49,7 +49,7 @@ const en = {
 		delivery: "Delivery",
 		paid: "Paid",
 		paidOn: "Paid on {date}",
-		next: "What happens next: we'll contact you to arrange a site re-measure, then start making your cabinets. Delivery is normally within 4 to 6 weeks of the re-measure.",
+		next: "What happens next: we'll contact you to arrange a site re-measure, then start making your cabinets. Delivery is normally within {deliveryWeeks} weeks of the re-measure.",
 		button: "View your order",
 	},
 	orderRefunded: {
@@ -142,7 +142,7 @@ const ms: EmailCopy = {
 		delivery: "Penghantaran",
 		paid: "Dibayar",
 		paidOn: "Dibayar pada {date}",
-		next: "Langkah seterusnya: kami akan menghubungi anda untuk mengatur ukur semula di tapak, kemudian mula membuat kabinet anda. Penghantaran biasanya dalam masa 4 hingga 6 minggu selepas ukur semula.",
+		next: "Langkah seterusnya: kami akan menghubungi anda untuk mengatur ukur semula di tapak, kemudian mula membuat kabinet anda. Penghantaran biasanya dalam masa {deliveryWeeks} minggu selepas ukur semula.",
 		button: "Lihat pesanan anda",
 	},
 	orderRefunded: {
@@ -226,7 +226,7 @@ const zh: EmailCopy = {
 		delivery: "送货费",
 		paid: "已付",
 		paidOn: "付款日期 {date}",
-		next: "接下来：我们会联系您安排到场重新测量，然后开始制作您的橱柜。一般在重新测量后 4 至 6 周内送货。",
+		next: "接下来：我们会联系您安排到场重新测量，然后开始制作您的橱柜。一般在重新测量后 {deliveryWeeks} 周内送货。",
 		button: "查看订单",
 	},
 	orderRefunded: {

@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type React from "react";
 import { Suspense } from "react";
 import { AccountMenu } from "@/components/AccountMenu";
+import { CookieSettingsButton } from "@/components/CookieSettingsButton";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import HeroBuild from "@/components/landing/HeroBuild";
 import LandingMenu from "@/components/landing/LandingMenu";
@@ -89,13 +90,15 @@ const howItWorks = (t: Dictionary) => [
 	{ title: t.landing.how.step3Title, detail: t.landing.how.step3Detail },
 ];
 
-const faqs = (t: Dictionary) => [
-	{ q: t.landing.faq.q1, a: t.landing.faq.a1 },
-	{ q: t.landing.faq.q2, a: t.landing.faq.a2 },
-	{ q: t.landing.faq.q3, a: t.landing.faq.a3 },
-	{ q: t.landing.faq.q4, a: t.landing.faq.a4 },
-	{ q: t.landing.faq.q5, a: t.landing.faq.a5 },
-];
+const faqs = (t: Dictionary) =>
+	[
+		{ q: t.landing.faq.q1, a: t.landing.faq.a1 },
+		{ q: t.landing.faq.q2, a: t.landing.faq.a2 },
+		{ q: t.landing.faq.q3, a: t.landing.faq.a3 },
+		{ q: t.landing.faq.q4, a: t.landing.faq.a4 },
+		{ q: t.landing.faq.q5, a: t.landing.faq.a5 },
+		// A question the maker has no answer to (no warranty stated) is blank.
+	].filter((f) => f.q !== "");
 
 /**
  * A homepage photo, or what stands in until someone drops one on
@@ -724,10 +727,20 @@ export default async function Home({
 							<Link href={`/${lang}/refunds`} className={footerLink}>
 								{t.landing.footer.refunds}
 							</Link>
+							<CookieSettingsButton
+								label={t.landing.footer.cookieSettings}
+								className={`${footerLink} text-left`}
+							/>
 						</div>
 					</div>
 				</div>
 				<div className="border-[#322418] border-t px-4 py-[18px] text-center sm:px-8">
+					{/* Name, registration number and address on every visit, not
+					    only at checkout: the Consumer Protection (Electronic Trade
+					    Transactions) Regulations ask for them on the site. */}
+					<p className="mb-1 text-[#a8977f] text-[12px]">
+						{t.landing.footer.seller}
+					</p>
 					<p className="text-[#a8977f] text-[12px]">
 						{fill(t.landing.footer.copyright, { brand: t.common.brand })}
 					</p>

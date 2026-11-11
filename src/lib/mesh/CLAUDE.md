@@ -9,6 +9,7 @@ with the result stay in the root `CLAUDE.md` under "3D".
 The admin keeps adding designs, so each import is a file nobody has seen. A
 `.skp` gave cabinets for free — component instances _are_ cabinets — but an OBJ
 is one flat namespace of boxes with no units and no up-axis. So:
+
 - **Scale** (`normalise.ts`) is found by trying mm/cm/inch/metre and keeping the
   one that puts the modal panel thickness in 12–25mm. Board thickness is a
   constant of the trade; model size is not.

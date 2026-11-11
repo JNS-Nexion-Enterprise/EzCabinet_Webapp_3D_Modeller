@@ -481,7 +481,12 @@ ticked terms box; `POST /api/orders` refuses a body without
 `lib/orders/terms.ts`) and `termsAcceptedAt`. Bump `TERMS_VERSION` by hand
 whenever the wording of `/[lang]/terms` or `/[lang]/refunds` changes in
 meaning. Both pages and the privacy notice are **drafts**, rendered by
-`components/LegalPage.tsx` from `lib/copy`; the refund policy's boundary is
+`components/LegalPage.tsx` from `lib/copy`, and say so until a superadmin
+ticks counsel's approval at `/admin/company` (`policiesApproved`). What they
+promise — warranty, installation, delivery weeks, the damage and refund
+windows, the data protection officer — is each maker's own, saved there too
+and filled into the copy by `getDictionary`; a warranty of 0 years hides the
+FAQ's warranty question. The refund policy's boundary is
 `Order.productionStage` being set. Staff cancel an order from
 `/admin/orders/[id]` (`lib/orders/cancel.ts`) on that boundary: unpaid any
 time, paid only before production starts and with a reason. Cancelling moves
@@ -885,9 +890,14 @@ cannot enforce it at authentication.
 
 **Suspend is reversible; Delete is not.** A superadmin's **Delete** on
 `/admin/users` (`lib/auth/deleteUser.ts`) removes the row with its sessions,
-sign-ins and second factor. It is refused on your own row and on any account
-that placed orders — `Order.userId` is `Restrict`, so that account can only
-be suspended. Orders a deleted staff member marked paid keep the name in
+sign-ins and second factor. It is refused on your own row. A customer who
+placed orders is **anonymised** instead (`anonymiseCustomer`) — name, email,
+photo, sessions, Google link and passkeys go, the row is suspended and its
+email becomes `deleted-<id>@anonymised.invalid` — because `Order.userId` is
+`Restrict` and the order rows, with their own checkout snapshot, are a tax
+record kept seven years. This is how a customer's PDPA deletion request is
+honoured. A staff account with orders is still refused and can only be
+suspended. Orders a deleted staff member marked paid keep the name in
 `Order.paidByName`; only `paidByUserId` goes null.
 
 **Forgot password is email, staff only, and only after enrolment.**
@@ -1143,7 +1153,7 @@ Recorded rather than fixed. Do not paper over them; fix them deliberately.
   written-contract requirement comes from commentary on the 2015 Standards,
   and the s.4 wording from an unofficial 2010 copy of the Act. Counsel
   confirms both.
-- **Order emails print placeholders.** The workshop address and phone and the bank account now appear in mail a customer keeps, and until EzCabinet enters them at `/admin/company` they are placeholders; "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads. The ms and zh mail wording (`lib/email/copy.ts`) needs a native read, as the WhatsApp templates do. The privacy notice's "Email and WhatsApp updates are optional" is no longer exact — order emails are not optional — and goes to counsel with the new "Order emails" paragraph.
+- **Order emails print placeholders.** The workshop address and phone and the bank account now appear in mail a customer keeps, and until EzCabinet enters them at `/admin/company` they are placeholders; "Reply to this email" needs `EMAIL_FROM` to be a mailbox someone reads. The ms and zh mail wording (`lib/email/copy.ts`) needs a native read, as the WhatsApp templates do. The privacy notice now says order emails are part of the service and only WhatsApp is optional; it goes to counsel with the "Order emails" paragraph.
 
 ## Conventions
 

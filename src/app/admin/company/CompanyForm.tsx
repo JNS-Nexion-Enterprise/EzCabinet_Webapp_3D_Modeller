@@ -71,6 +71,14 @@ const mapLink = (lat: number, lng: number) => (
 	</a>
 );
 
+/** The form's own copy: optional text as "", so every box is controlled. */
+const formValues = (c: CompanyDetails) => ({
+	...c,
+	ssmNumber: c.ssmNumber ?? "",
+	dpoName: c.dpoName ?? "",
+	dpoEmail: c.dpoEmail ?? "",
+});
+
 const jobRows = (jobs: MoveJob[]) => (
 	<ul className="mt-1 mb-2 list-disc pl-5">
 		{jobs.map((j) => (
@@ -96,10 +104,7 @@ export function CompanyForm({
 	geocoderFault: string | null;
 }) {
 	const router = useRouter();
-	const [v, setV] = useState({
-		...initial,
-		ssmNumber: initial.ssmNumber ?? "",
-	});
+	const [v, setV] = useState(formValues(initial));
 	const [pinText, setPinText] = useState(`${initial.lat}, ${initial.lng}`);
 	// Pin and postcode start as the saved workshop's; a new address is not
 	// saved on top of them until the pin is found or retyped.
@@ -122,6 +127,12 @@ export function CompanyForm({
 	// Moves on with each save, so this tab is never stale against itself.
 	const [version, setVersion] = useState(loadedAt);
 
+	const tick =
+		(k: "installationOffered" | "policiesApproved") =>
+		(e: { target: { checked: boolean } }) => {
+			setV((s) => ({ ...s, [k]: e.target.checked }));
+			setErrors((er) => ({ ...er, [k]: undefined }));
+		};
 	const set = (k: keyof typeof v) => (e: { target: { value: string } }) => {
 		setV((s) => ({ ...s, [k]: e.target.value }));
 		setErrors((er) => ({ ...er, [k]: undefined }));
@@ -216,7 +227,7 @@ export function CompanyForm({
 
 	function saved(details: CompanyDetails, repointed: number) {
 		// Show what was stored: "po" reads "PO", an account number loses its spaces.
-		setV({ ...details, ssmNumber: details.ssmNumber ?? "" });
+		setV(formValues(details));
 		setPinConfirmed(true);
 		setPinNote(null);
 		setJustSaved(true);
@@ -308,17 +319,42 @@ export function CompanyForm({
 		});
 	}
 
-	const text = (k: keyof typeof v, label: string, hint?: ReactNode) => (
+	const text = (
+		k: Exclude<keyof typeof v, "installationOffered" | "policiesApproved">,
+		label: string,
+		hint?: ReactNode,
+		inputMode?: "numeric",
+	) => (
 		<Field label={label} hint={hint} error={errors[k]} className={FIELD_BOX}>
 			{(c) => (
 				<input
 					{...c}
+					inputMode={inputMode}
 					value={v[k]}
 					onChange={set(k)}
 					className={inputClass(c)}
 				/>
 			)}
 		</Field>
+	);
+
+	const checkbox = (
+		k: "installationOffered" | "policiesApproved",
+		label: string,
+		hint: string,
+	) => (
+		<label className="flex basis-full items-start gap-2 text-[13px]">
+			<input
+				type="checkbox"
+				checked={v[k]}
+				onChange={tick(k)}
+				className="mt-[3px] h-4 w-4 accent-[#1f5138]"
+			/>
+			<span>
+				{label}
+				<span className="block text-[#5c574e] text-[12px]">{hint}</span>
+			</span>
+		</label>
 	);
 
 	return (
@@ -512,6 +548,66 @@ export function CompanyForm({
 						New orders only. Orders already placed keep their number. Example:{" "}
 						{v.orderPrefix.trim().toUpperCase() || "—"}-20261022-001
 					</>,
+				)}
+			</Section>
+
+			<Section title="What you promise customers">
+				<p className="basis-full text-[#5c574e] text-[12px]">
+					The home page FAQ, the terms of sale and the refund policy say these.
+					State only what you will honour: they are promises to customers.
+				</p>
+				{text(
+					"warrantyYears",
+					"Warranty, in years",
+					"0 means the site makes no warranty claim.",
+					"numeric",
+				)}
+				{text(
+					"deliveryWeeksMin",
+					"Delivery, shortest (weeks)",
+					"Counted from the re-measure.",
+					"numeric",
+				)}
+				{text(
+					"deliveryWeeksMax",
+					"Delivery, longest (weeks)",
+					undefined,
+					"numeric",
+				)}
+				{text(
+					"damageReportDays",
+					"Days to report damage",
+					"After delivery, with photos.",
+					"numeric",
+				)}
+				{text(
+					"refundWorkingDays",
+					"Working days to pay a refund",
+					undefined,
+					"numeric",
+				)}
+				{checkbox(
+					"installationOffered",
+					"We install cabinets",
+					"Unticked, the FAQ says installation is not included.",
+				)}
+			</Section>
+
+			<Section title="Privacy and policies">
+				{text(
+					"dpoName",
+					"Data protection officer",
+					"PDPA s.12A. Named in the privacy notice.",
+				)}
+				{text(
+					"dpoEmail",
+					"Data protection officer's email",
+					"Empty means the contact email is used.",
+				)}
+				{checkbox(
+					"policiesApproved",
+					"Counsel has approved the terms, refund policy and privacy notice",
+					"Until this is ticked, those pages say they are a draft.",
 				)}
 			</Section>
 
