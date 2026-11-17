@@ -43,6 +43,7 @@ export default async function TermsPage({
 				[s.deliveryHeading, s.delivery],
 				[s.changesHeading, fill(s.changes, { email })],
 				[s.rightsHeading, s.rights],
+				[s.ageHeading, s.age],
 				[s.complaintsHeading, fill(s.complaints, { email })],
 				[s.lawHeading, s.law],
 			]}

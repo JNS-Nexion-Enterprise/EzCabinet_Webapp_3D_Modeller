@@ -56,10 +56,12 @@
 No behaviour change. The privacy page's markup becomes a component the next task reuses.
 
 **Files:**
+
 - Create: `src/components/LegalPage.tsx`
 - Modify: `src/app/[lang]/privacy/page.tsx`
 
 **Interfaces:**
+
 - Produces: `LegalPage({ lang, back, title, draft, intro, sections })` where `sections: readonly (readonly [heading: string, body: string])[]`.
 
 - [ ] **Step 1: Create the component**
@@ -142,6 +144,7 @@ Expected: no errors.
 
 Run `pnpm dev`, open `http://localhost:3000/en/privacy`.
 Expected: identical to before — back link, title, amber banner, seven sections.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -156,12 +159,14 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 2: Terms of sale and refund policy pages, privacy additions, links
 
 **Files:**
+
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/ms.ts`, `src/lib/copy/zh.ts`
 - Create: `src/app/[lang]/terms/page.tsx`, `src/app/[lang]/refunds/page.tsx`
 - Modify: `src/app/[lang]/privacy/page.tsx`, `src/app/[lang]/page.tsx`, `src/app/[lang]/sign-in/page.tsx`
 - Test: `src/lib/copy/__tests__/dictionary.test.ts` (existing, unchanged)
 
 **Interfaces:**
+
 - Consumes: `LegalPage` from Task 1; `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` from `@/lib/logistics/carriers`; `fill` from `@/lib/copy/fill`.
 - Produces: dictionary groups `terms`, `refunds`; keys `landing.footer.terms`, `landing.footer.refunds`, `signIn.privacyNote`; routes `/[lang]/terms`, `/[lang]/refunds`.
 
@@ -479,6 +484,7 @@ After the `privacy` group:
 
 Run: `pnpm vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: PASS. A failure lists the exact key path that is missing or still English — fix that key, do not add it to `SHARED`.
+
 - [ ] **Step 5: Extend the privacy page's sections**
 
 In `src/app/[lang]/privacy/page.tsx`, replace the `sections` array with:
@@ -671,6 +677,7 @@ Expected: no errors, all pass.
 
 With `pnpm dev`, open each of `/en/terms`, `/ms/terms`, `/zh/terms`, `/en/refunds`, `/ms/refunds`, `/zh/refunds`, `/en/privacy`.
 Expected: each renders with the amber draft banner; the terms page's first section shows the workshop address, email and phone with no `{braces}` left; the privacy page has fourteen sections. The landing footer shows three legal links; `/en/sign-in` shows the privacy line under the Google button.
+
 - [ ] **Step 11: Commit**
 
 ```bash
@@ -687,6 +694,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 3: The order API requires and records acceptance
 
 **Files:**
+
 - Create: `src/lib/orders/terms.ts`
 - Create: `prisma/migrations/20261007000000_order_terms_acceptance/migration.sql`
 - Modify: `prisma/schema.prisma` (model `Order`)
@@ -694,6 +702,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 - Test: `src/app/api/orders/__tests__/route.test.ts`
 
 **Interfaces:**
+
 - Produces: `TERMS_VERSION: string` from `@/lib/orders/terms`; request body field `termsAccepted: true` (required); columns `Order.termsVersion String?`, `Order.termsAcceptedAt DateTime?`.
 
 - [ ] **Step 1: Write the failing test**
@@ -745,6 +754,7 @@ describe("POST /api/orders terms acceptance", () => {
 
 Run: `pnpm vitest run src/app/api/orders/__tests__/route.test.ts`
 Expected: the first two new tests FAIL (`expected [ … ] to contain 'termsAccepted'`); the third passes already.
+
 - [ ] **Step 3: Create the version constant**
 
 `src/lib/orders/terms.ts`:
@@ -820,6 +830,7 @@ Then confirm the version has exactly one source:
 
 Run: `grep -rn "termsVersion" src --include="*.ts" --include="*.tsx" | grep -v generated`
 Expected: one line, in `src/app/api/orders/route.ts`, reading `TERMS_VERSION`.
+
 - [ ] **Step 7: Regenerate, apply locally, and check the migration against the schema**
 
 Run: `pnpm prisma generate`
@@ -830,10 +841,12 @@ Expected: the two `ADD COLUMN` lines above, plus any migration not yet applied t
 Run: `pnpm prisma migrate deploy`
 Expected: the migration applies. Then re-run the `migrate diff` command.
 Expected: an empty script (`-- This is an empty migration.`).
+
 - [ ] **Step 8: Run the tests**
 
 Run: `pnpm vitest run src/app/api/orders && pnpm typecheck`
 Expected: all PASS, no type errors.
+
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -853,11 +866,13 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 Must ship in the same deploy as Task 3 — from that task on, the API refuses a checkout that does not send `termsAccepted`.
 
 **Files:**
+
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/ms.ts`, `src/lib/copy/zh.ts` (group `quote`)
 - Modify: `src/components/planner/QuoteScreen.tsx`
 - Test: `src/lib/copy/__tests__/dictionary.test.ts` (existing)
 
 **Interfaces:**
+
 - Consumes: request field `termsAccepted: true` from Task 3; routes `/[lang]/terms`, `/[lang]/refunds` from Task 2; `WORKSHOP_ADDRESS`, `WORKSHOP_PHONE` from `@/lib/logistics/carriers`.
 - Produces: `quote.termsAgree`, `quote.termsLink`, `quote.refundsLink`, `quote.errorTerms`, `quote.soldBy`.
 
@@ -897,6 +912,7 @@ In each file's `quote` group, directly after the `errorRemeasure` entry.
 
 Run: `pnpm vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: PASS.
+
 - [ ] **Step 2: Add `terms` to the field-error type and the validation**
 
 In `src/components/planner/QuoteScreen.tsx`:
@@ -946,6 +962,7 @@ import { WORKSHOP_ADDRESS, WORKSHOP_PHONE } from "@/lib/logistics/carriers";
 ```
 
 `carriers.ts` is isomorphic and holds no secrets (its own header says so), so a client component may import it.
+
 - [ ] **Step 5: Render the checkbox and the seller line**
 
 In `QuoteScreen.tsx`, find the end of the re-measure error block:
@@ -1027,12 +1044,14 @@ Directly after it, add:
 ```
 
 `describedBy`, `fill`, `locale`, `busy` and `fieldErrors` already exist in this component. If `describedBy` is typed to a union of field names, add `"terms"` to that union.
+
 - [ ] **Step 6: Verify in the browser**
 
 Run: `pnpm typecheck && pnpm biome check src/components/planner/QuoteScreen.tsx src/lib/copy`
 Expected: no errors.
 
 With `pnpm dev` and `AUTH_ENABLED=false` in `.env.local`:
+
 1. Open `/en`, pick a room, place a cabinet, continue to checkout.
 2. Fill name, phone and address; tick re-measure; leave the terms box unticked; press the pay / place-order button.
    Expected: no order is created; "Tick this to place your order." appears under the terms box and the box takes focus.
@@ -1059,6 +1078,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 5: Documentation
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 - Modify: `docs/translation-review.md`
 
@@ -1109,6 +1129,7 @@ Append at the end of the file:
 
 Three pages are now translated in full and need a native read **and** a legal
 one — these are the words a customer agrees to before paying:
+
 - **Terms of sale** — `/ms/terms`, `/zh/terms`
 - **Refund policy** — `/ms/refunds`, `/zh/refunds`
 - **Privacy notice** — `/ms/privacy`, `/zh/privacy` (seven new sections: your
@@ -1133,6 +1154,7 @@ one says what you mean. Terms worth checking by name:
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: all clean, all tests pass.
+
 - [ ] **Step 5: Commit**
 
 ```bash

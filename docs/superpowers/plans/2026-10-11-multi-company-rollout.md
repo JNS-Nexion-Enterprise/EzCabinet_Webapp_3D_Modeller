@@ -94,6 +94,7 @@ a hero switch. It covers part of the first, second, third and sixth items
 below, and its guard test covers the dictionaries only. Three English-only
 mails, the accent colour and `mode` are untouched. See
 `docs/ops/demo-site-runbook.md`.
+
 - [ ] `src/lib/tenant.ts` and a zod `tenantSchema` that loads
   `tenants/<slug>.json`. Extend the tenant file with: legal name, contact
   email, order reference prefix, workshop details, bank details, accent

@@ -56,10 +56,12 @@
 ### Task 1: The rules
 
 **Files:**
+
 - Create: `src/lib/auth/passkeyRules.ts`
 - Test: `src/lib/auth/__tests__/passkeyRules.test.ts`
 
 **Interfaces:**
+
 - Produces:
   - `needsPasskeyCheck(u: { role: Role; sessionVerified: boolean }): boolean`
   - `type PasskeyAction = "register" | "manage" | "delete" | "authenticate"`
@@ -179,6 +181,7 @@ describe("passkeyDecision", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyRules.test.ts`
 Expected: FAIL — cannot resolve `@/lib/auth/passkeyRules`.
+
 - [ ] **Step 3: Implement**
 
 ```ts
@@ -241,6 +244,7 @@ export function passkeyDecision(s: {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyRules.test.ts`
 Expected: PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -253,12 +257,14 @@ git commit -m "feat(auth): rules for the customer passkey step"
 ### Task 2: Plugin, table, and the guard around it
 
 **Files:**
+
 - Modify: `package.json` (add `@better-auth/passkey@1.7.5`)
 - Modify: `prisma/schema.prisma`; Create: `prisma/migrations/20261006020000_customer_passkey/migration.sql`
 - Create: `src/lib/auth/passkeyHooks.ts`; Test: `src/lib/auth/__tests__/passkeyHooks.test.ts`
 - Modify: `src/lib/auth.ts`, `src/lib/auth/client.ts`
 
 **Interfaces:**
+
 - Consumes: `passkeyDecision`, `PasskeyAction` (Task 1).
 - Produces: `prisma.passkey`; `session.passkeyVerified: boolean | null`; `authClient.passkey.addPasskey`, `authClient.signIn.passkey`, `authClient.passkey.deletePasskey`, `authClient.passkey.updatePasskey`; from `passkeyHooks.ts`: `actionFor(path: string): PasskeyAction | null`, `checkPasskeyRequest(path: string, session: { userId: string; verified: boolean } | null): Promise<void>`, `assertPasskeyOwner(sessionUserId: string | null, credentialId: string): Promise<void>`, `markSessionVerified(token: string): Promise<void>`. Error codes thrown to the client: `PASSKEY_SIGN_IN_REQUIRED`, `PASSKEY_VERIFICATION_REQUIRED`, `PASSKEY_LAST_ONE`, `PASSKEY_NOT_YOURS`.
 
@@ -269,6 +275,7 @@ pnpm add @better-auth/passkey@1.7.5
 ```
 
 Pin the exact version: it must match the installed `better-auth` (its peer range is `^1.7.5`).
+
 - [ ] **Step 2: Schema**
 
 In `model User`, after `twoFactors`:
@@ -344,6 +351,7 @@ pnpm prisma migrate diff --from-config-datasource --to-schema prisma/schema.pris
 ```
 
 Expected: the migration applies; the diff reports no difference and exits 0. Local database only.
+
 - [ ] **Step 4: Failing test for the glue**
 
 ```ts
@@ -531,6 +539,7 @@ describe("markSessionVerified", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyHooks.test.ts`
 Expected: FAIL — module not found.
+
 - [ ] **Step 5: Implement the glue**
 
 ```ts
@@ -635,6 +644,7 @@ export async function markSessionVerified(token: string): Promise<void> {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyHooks.test.ts`
 Expected: PASS.
+
 - [ ] **Step 6: Wire Better Auth**
 
 `src/lib/auth.ts` — imports:
@@ -730,6 +740,7 @@ Replace the `plugins` line:
 The relying-party id defaults to the hostname of `BETTER_AUTH_URL`, and the expected origin to the request's `Origin` header — leave both unset.
 
 Before moving on, confirm three things in `node_modules` and note what you found in your report; if any differs, adapt the wiring to what the installed version does while keeping the behaviour:
+
 1. `createAuthMiddleware` and `getSessionFromCtx` are exported from `better-auth/api`.
 2. In an `after` hook the endpoint's result is on `ctx.context.returned`, and a thrown `APIError` appears there as an `APIError` instance (search `returned` under `node_modules/better-auth/dist/api/`).
 3. `getSessionFromCtx(ctx)` inside the plugin's `afterVerification` returns the session from the request's cookie (the Google session), not the one the endpoint is about to create.
@@ -763,6 +774,7 @@ git commit -m "feat(auth): passkey plugin, table, and the guard around its write
 ### Task 3: `mustVerifyPasskey` and where it bites
 
 **Files:**
+
 - Modify: `src/lib/auth/session.ts`, `src/lib/auth/requireAuth.ts` (`BYPASS_USER`), `src/lib/auth/demoCustomer.ts`
 - Modify: `src/lib/orders/access.ts`, `src/app/api/orders/route.ts`, `src/app/api/orders/[token]/pay/route.ts`
 - Modify: `src/components/planner/QuoteScreen.tsx`
@@ -770,6 +782,7 @@ git commit -m "feat(auth): passkey plugin, table, and the guard around its write
 - Test: `src/lib/auth/__tests__/session.test.ts`, `src/lib/orders/__tests__/access.test.ts`, `src/lib/auth/__tests__/coverage.test.ts`, and the existing tests beside the two routes
 
 **Interfaces:**
+
 - Consumes: `needsPasskeyCheck` (Task 1); `session.passkeyVerified` (Task 2).
 - Produces: `AuthUser.mustVerifyPasskey: boolean`; `viewerOf` redirects an unverified customer to `/${lang}/verify?next=<path>`; `POST /api/orders` and `POST /api/orders/[token]/pay` answer `401 { error: "passkey_required" }`.
 
@@ -877,6 +890,7 @@ This one passes already (both existing pages call `viewerOf`); it is a guard for
 
 Run: `pnpm vitest run src/lib/auth/__tests__/session.test.ts src/lib/orders/__tests__/access.test.ts src/app/api/orders`
 Expected: FAIL on the new cases.
+
 - [ ] **Step 2: Implement**
 
 `src/lib/auth/session.ts`:
@@ -950,6 +964,7 @@ Update the function's doc comment to say so.
 - [ ] **Step 3: Fix every other `AuthUser` the compiler finds**
 
 Run: `pnpm typecheck`. Add `mustVerifyPasskey: false` to each object the compiler reports and nothing else. Expect the same files as the `mustSetupTwoFactor` change: the fixtures under `src/lib/auth/__tests__/`, `src/app/admin/change-password/__tests__/`, `src/app/api/orders/[token]/pay/__tests__/`, `src/app/[lang]/(account)/**/__tests__/`, `src/app/[lang]/track/[token]/__tests__/`, and the route tests under `src/app/api/admin/users/`.
+
 - [ ] **Step 4: Verify and commit**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -969,6 +984,7 @@ After this commit a customer is redirected to `/[lang]/verify`, which Task 4 bui
 ### Task 4: The verify screen
 
 **Files:**
+
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/zh.ts`, `src/lib/copy/ms.ts`
 - Modify: `src/lib/analytics.ts`
 - Create: `src/lib/auth/safeCustomerNext.ts`; Test: `src/lib/auth/__tests__/safeCustomerNext.test.ts`
@@ -976,6 +992,7 @@ After this commit a customer is redirected to `/[lang]/verify`, which Task 4 bui
 - Create: `src/app/[lang]/verify/page.tsx`, `src/app/[lang]/verify/PasskeyGate.tsx`
 
 **Interfaces:**
+
 - Consumes: `currentUser()` with `mustVerifyPasskey`; `prisma.passkey`; `authClient.passkey.addPasskey()`, `authClient.signIn.passkey()` — both resolve `{ data, error }`-shaped results where a truthy `error` means failure.
 - Produces: `/[lang]/verify?next=`; `safeCustomerNext(next: string | undefined, lang: string): string`; `passkeysSupported(win: { PublicKeyCredential?: unknown } | undefined): boolean`; dictionary section `t.passkey`; events `passkey_enrol_started | passkey_enrol_completed | passkey_enrol_failed | passkey_verify_failed`.
 
@@ -1036,6 +1053,7 @@ describe("passkeysSupported", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/safeCustomerNext.test.ts "src/app/[lang]/verify"`
 Expected: FAIL — modules not found.
+
 - [ ] **Step 2: Implement the helpers**
 
 ```ts
@@ -1074,6 +1092,7 @@ export function passkeysSupported(
 ```
 
 Run the two test files again. Expected: PASS.
+
 - [ ] **Step 3: Copy, in all three languages**
 
 `src/lib/copy/en.ts` — add a `passkey` section after `signIn`, and `passkeys` to `account`:
@@ -1371,9 +1390,11 @@ export function PasskeyGate({
 ```
 
 Read `node_modules/@better-auth/passkey/dist/client.mjs` for what `addPasskey()` and `signIn.passkey()` resolve to on success and on failure in 1.7.5 (for example whether success is `undefined` or `{ data }`, and where the error's `code` sits). Adjust the three lines that read `result` to match, and say what you found in your report. If `track`'s signature requires a second argument, pass `{}`.
+
 - [ ] **Step 6: Check by hand**
 
 With `AUTH_ENABLED=true`, signed in with Google as a customer in Chrome:
+
 1. Open `/en/orders` → redirected to `/en/verify?next=%2Fen%2Forders`.
 2. "Set up passkey" → the browser's passkey sheet. Cancel it → "That didn't work. Try again.", button live again.
 3. Again, complete it → lands on `/en/orders`.
@@ -1394,10 +1415,12 @@ git commit -m "feat: passkey step after Google sign-in"
 ### Task 5: Passkeys in the account area
 
 **Files:**
+
 - Create: `src/app/[lang]/(account)/passkeys/page.tsx`, `src/app/[lang]/(account)/passkeys/PasskeyList.tsx`
 - Modify: `src/app/[lang]/(account)/layout.tsx` (nav item)
 
 **Interfaces:**
+
 - Consumes: `viewerOf` (Task 3), `t.passkey` and `t.account.passkeys` (Task 4), `authClient.passkey.addPasskey({ name })`, `authClient.passkey.updatePasskey({ id, name })`, `authClient.passkey.deletePasskey({ id })`, `authClient.signIn.passkey()`.
 - Produces: `/[lang]/passkeys`.
 
@@ -1636,6 +1659,7 @@ export function PasskeyList({
 ```
 
 Biome may reformat long lines; run `pnpm biome check --write` on the two files. As in Task 4, match the client methods' real result shape in 1.7.5.
+
 - [ ] **Step 3: Nav item**
 
 `src/app/[lang]/(account)/layout.tsx` — count passkeys beside orders and add the item:
@@ -1659,6 +1683,7 @@ const [orders, passkeys] = user
 ```
 
 If `src/app/[lang]/(account)/__tests__/layout.test.ts` mocks `prisma.order.count` only, add `passkey: { count }` to its mock so it keeps passing, and assert the new nav item is rendered with its count.
+
 - [ ] **Step 4: Check by hand**
 
 1. Verified customer → **Your account → Passkeys** shows one row; Remove is disabled with the "at least one" tooltip.
@@ -1679,11 +1704,13 @@ git commit -m "feat(account): manage passkeys"
 ### Task 6: Staff reset
 
 **Files:**
+
 - Create: `src/lib/auth/resetPasskeys.ts`; Test: `src/lib/auth/__tests__/resetPasskeys.test.ts`
 - Create: `src/app/api/admin/users/[id]/reset-passkey/route.ts`; Test: beside it
 - Modify: `src/lib/auth/userRow.ts`, `src/app/api/admin/users/route.ts`, `src/app/admin/users/page.tsx`, `src/app/admin/users/UsersTable.tsx`
 
 **Interfaces:**
+
 - Produces: `resetPasskeys(userId: string): Promise<void>`; `POST /api/admin/users/[id]/reset-passkey` → `200 { ok: true }` | `404 { error: "not_found" }`; people-list rows gain `passkeyCount: number` and `recentOrders: { ref: string; phone: string }[]`.
 
 - [ ] **Step 1: Failing test for the function**
@@ -1720,6 +1747,7 @@ describe("resetPasskeys", () => {
 ```
 
 Run: `pnpm vitest run src/lib/auth/__tests__/resetPasskeys.test.ts` → FAIL, module not found.
+
 - [ ] **Step 2: Implement**
 
 ```ts
@@ -1745,6 +1773,7 @@ export async function resetPasskeys(userId: string): Promise<void> {
 ```
 
 Run again → PASS.
+
 - [ ] **Step 3: Route, test first**
 
 ```ts
@@ -1852,15 +1881,18 @@ export const POST = withAuth<{ params: Promise<{ id: string }> }>(
 ```
 
 Run: `pnpm vitest run "src/app/api/admin/users/[id]/reset-passkey" src/lib/auth/__tests__/coverage.test.ts` → PASS.
+
 - [ ] **Step 4: People list**
 
 `src/lib/auth/userRow.ts` currently exports `HAS_PASSWORD_SELECT` and `withHasPassword`. Read it, then extend it so the page and the GET route still share one select and one mapper:
+
 - the select also takes `_count: { select: { passkeys: true } }` and `orders: { select: { number: true, createdAt: true, customerPhone: true }, orderBy: { createdAt: "desc" }, take: 3 }` (the relation on `User` is `orders`, relation name `"OrderCustomer"`);
 - the mapper also returns `passkeyCount: row._count.passkeys` and `recentOrders: row.orders.map((o) => ({ ref: orderRef(o), phone: o.customerPhone }))`, and strips `_count` and `orders` from what reaches the browser. `orderRef` is in `src/lib/orders/ref.ts`; call it the way `src/app/[lang]/(account)/orders/page.tsx` does and select whatever fields it needs.
 
 Rename the exports to what they now are (`USER_ROW_SELECT`, `toUserRow`), update both callers, and add `src/lib/auth/__tests__/userRow.test.ts` asserting, for one input row: `hasPassword`, `passkeyCount`, `recentOrders` are present and correct, and `accounts`, `_count`, `orders` are absent.
 
 `src/app/admin/users/UsersTable.tsx`:
+
 - `UserRow` gains `passkeyCount: number` and `recentOrders: { ref: string; phone: string }[]`.
 - A `resetPasskey(id)` handler that POSTs to `/api/admin/users/${id}/reset-passkey`, mirroring the existing `resetTwoFactor` handler (same busy/armed/error handling; failure message "Could not reset the passkey.").
 - For a `CUSTOMER` row: under the email, when `recentOrders.length > 0`, one muted line listing them as `IC-… · +60…` separated by commas — so staff can confirm who is calling before resetting. In the actions cell, when `passkeyCount > 0`, an `ArmedButton` labelled "Reset passkey" (confirm label as the existing ones use), sharing the existing armed-state key scheme (`passkey:${id}`).
@@ -1879,6 +1911,7 @@ git commit -m "feat(admin): reset a customer's passkeys"
 ### Task 7: Record it
 
 **Files:**
+
 - Modify: `CLAUDE.md`, `docs/ops/staff-2fa-test-checklist.md`
 
 - [ ] **Step 1: `CLAUDE.md`**
@@ -1927,6 +1960,7 @@ In `## Known issues`, append:
 - [ ] **Step 2: Test checklist**
 
 Append a section "## Customer passkey" to `docs/ops/staff-2fa-test-checklist.md` with checkboxes for: first Google sign-in lands on the verify page and enrols; cancelling the browser sheet leaves a retry; second sign-in prompts and passes; My orders, an order page and an order's tracking page all bounce an unverified session; placing an order from the quote screen while unverified detours through verify and returns with the design intact; Passkeys page lists, renames, adds a second device, refuses to remove the last; the three console attempts (register a second passkey, delete one, both from an unverified session → `403`; delete the last from a verified one → `400`); a passkey from another account on the same device is refused with "belongs to a different account"; Reset passkey on the customer's row signs them out and the next sign-in enrols again; the verify page inside an in-app browser shows the "open in Chrome or Safari" message; zh and ms render translated; a staff account is never sent to the verify page.
+
 - [ ] **Step 3: Commit**
 
 ```bash
@@ -1940,6 +1974,7 @@ git commit -m "docs: customer passkey in the auth notes and test checklist"
 ### Task 8: End-to-end check (controller, not a subagent)
 
 Against a production build on a spare port with `AUTH_ENABLED=true` and `BETTER_AUTH_URL` set to that origin, using a throwaway local `CUSTOMER` created with `auth.api.signUpEmail` (a password session stands in for the Google session — the passkey rules do not care which first step made the session) and Chromium's virtual authenticator (`WebAuthn.addVirtualAuthenticator` over CDP). Remove the account afterwards.
+
 - [ ] Unverified session: `/en/orders` → 307 to `/en/verify?next=%2Fen%2Forders`; `POST /api/orders` → 401 `passkey_required`.
 - [ ] Enrol on the verify page → lands on `/en/orders`; the session row has `passkeyVerified = true`; one `passkey` row.
 - [ ] New unverified session for the same account: `POST /api/auth/passkey/generate-register-options` → 403 `PASSKEY_VERIFICATION_REQUIRED`; `POST /api/auth/passkey/delete-passkey` → 403 (Review Focus 2).

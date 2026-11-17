@@ -64,11 +64,13 @@ build on it.
 ### Task 1: The edit path, extracted and tested
 
 **Files:**
+
 - Create: `src/app/admin/logistics/form.ts`
 - Create: `src/app/admin/logistics/__tests__/form.test.ts`
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx`
 
 **Interfaces:**
+
 - Consumes: `DeliveryItem` from `@/lib/logistics/types`; `DeliveryRow` as
   exported today from `LogisticsManager.tsx`.
 - Produces:
@@ -86,6 +88,7 @@ that imports `form.ts`), move the `DeliveryRow`, `DeliveryEventRow` and
 `QuoteRow` type declarations **into `form.ts`** and re-export them from
 `LogisticsManager.tsx` for any existing importer:
 `export type { DeliveryRow } from "./form";`
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/app/admin/logistics/__tests__/form.test.ts`:
@@ -188,6 +191,7 @@ describe("toPayload", () => {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/form.test.ts`
 Expected: FAIL — `Failed to resolve import "../form"`.
+
 - [ ] **Step 3: Create `form.ts` by moving code out of the component**
 
 Cut `FormItem`, `emptyItem`, `blankForm`, `FormState`, `localDateTime`,
@@ -353,6 +357,7 @@ Move the existing `parseCoords` into `form.ts` unchanged for now — it returns
 `{ lat, lng } | null`. Task 2 replaces it with the `{ ok }` result from
 `@/lib/logistics/coords` and rewrites those four lines. The tests above assert
 the payload, not the parser, so they hold across that swap.
+
 - [ ] **Step 4: Point the component at the new module**
 
 In `LogisticsManager.tsx`: delete the moved declarations, add
@@ -373,6 +378,7 @@ export type { DeliveryEventRow, DeliveryRow, QuoteRow } from "./form";
 ```
 
 and reduce `save()`'s body to `body: JSON.stringify(toPayload(state))`.
+
 - [ ] **Step 5: Say which job is being edited**
 
 The form renders at the top of the page, far from the row that opened it. In
@@ -402,6 +408,7 @@ onClick={() => {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/form.test.ts && npx tsc --noEmit`
 Expected: all form tests PASS, tsc silent.
+
 - [ ] **Step 7: Format and commit**
 
 ```bash
@@ -415,12 +422,14 @@ git commit -m "feat(logistics): edit a delivery that has not been booked"
 ### Task 2: A pasted pin that is read, or refused out loud
 
 **Files:**
+
 - Create: `src/lib/logistics/coords.ts`
 - Create: `src/lib/logistics/__tests__/coords.test.ts`
 - Modify: `src/app/admin/logistics/form.ts` (import `parseCoords` from the new module, delete the local copy)
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx` (render the hint under the two pin fields)
 
 **Interfaces:**
+
 - Produces:
   - `type ParsedCoords = { ok: true; lat: number; lng: number } | { ok: false; reason: "empty" | "short-link" | "unreadable" }`
   - `parseCoords(raw: string): ParsedCoords`
@@ -496,6 +505,7 @@ describe("parseCoords", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: FAIL — `Failed to resolve import "../coords"`.
+
 - [ ] **Step 3: Write `coords.ts`**
 
 ```ts
@@ -577,6 +587,7 @@ export const COORDS_HINT = {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: PASS, 9 tests.
+
 - [ ] **Step 5: Use it in the form, and show the hint**
 
 In `form.ts`, delete the local `parseCoords`, add
@@ -608,10 +619,12 @@ In `DeliveryForm`, under each of the two pin inputs:
 Same block for `state.pickupCoords`, reading `COORDS_HINT` and `parseCoords`
 from `@/lib/logistics/coords`. Both inputs already sit inside a `<label>` with
 `flex-col`, so the hint lands under the field.
+
 - [ ] **Step 6: Prove the wiring holds**
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/form.test.ts src/lib/logistics/__tests__/coords.test.ts && npx tsc --noEmit`
 Expected: PASS, tsc silent.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -625,6 +638,7 @@ git commit -m "feat(logistics): read a pasted maps pin, and say so when it canno
 ### Task 3: A pin state that names its own cause, in the list as well as the row
 
 **Files:**
+
 - Modify: `src/lib/logistics/coords.ts` (add `pinState`)
 - Modify: `src/lib/logistics/__tests__/coords.test.ts`
 - Modify: `src/app/api/admin/deliveries/route.ts:14-20` (GET reports `geocodingConfigured`)
@@ -632,6 +646,7 @@ git commit -m "feat(logistics): read a pasted maps pin, and say so when it canno
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx` (badge on the row, warn about pickup too, keep the saved row open)
 
 **Interfaces:**
+
 - Consumes: `isGeocodingConfigured()` from `@/lib/logistics/geocode` (server-only — imported by `page.tsx` and the route, never by the client component).
 - Produces:
   - `type PinState = "located" | "geocoder-off" | "not-found"`
@@ -668,6 +683,7 @@ describe("pinState", () => {
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: FAIL — `pinState is not a function`.
+
 - [ ] **Step 3: Add `pinState` to `coords.ts`**
 
 ```ts
@@ -693,6 +709,7 @@ export function pinState(
 
 Run: `pnpm vitest run src/lib/logistics/__tests__/coords.test.ts`
 Expected: PASS, 13 tests.
+
 - [ ] **Step 5: Plumb the flag through the server**
 
 In `src/app/api/admin/deliveries/route.ts`, add the import and one field:
@@ -783,6 +800,7 @@ const PIN_TROUBLE: Record<Exclude<PinState, "located">, string> = {
 ```
 
 Keep the existing "Site pin: …" line for the located case.
+
 - [ ] **Step 7: Show the result of a save without a second click**
 
 At the end of `save()`, after `await load()`, open the row that was just
@@ -794,6 +812,7 @@ if (body?.delivery?.id) setOpenId(body.delivery.id);
 ```
 
 (`POST` returns `{ delivery }` with 201; `PATCH` returns `{ delivery }`.)
+
 - [ ] **Step 8: Verify**
 
 Run: `pnpm vitest run src/lib/logistics src/app/admin/logistics && npx tsc --noEmit`
@@ -803,6 +822,7 @@ Then check by hand: `pnpm dev`, open `/admin/logistics`, save a job with a
 nonsense address, and confirm the row shows "No map pin", the row opens by
 itself, and the panel blames the geocoder (locally, with no key set) rather
 than the address.
+
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -816,11 +836,13 @@ git commit -m "feat(logistics): say why a stop has no pin, and flag it in the li
 ### Task 4: Errors in words
 
 **Files:**
+
 - Create: `src/app/admin/logistics/errors.ts`
 - Create: `src/app/admin/logistics/__tests__/errors.test.ts`
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx` (`save`, `remove`, `book`, `refreshFromCarrier`, `advance`)
 
 **Interfaces:**
+
 - Produces: `messageFor(code: unknown, fallback: string): string`
 
 - [ ] **Step 1: Write the failing test**
@@ -860,6 +882,7 @@ describe("messageFor", () => {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/errors.test.ts`
 Expected: FAIL — `Failed to resolve import "../errors"`.
+
 - [ ] **Step 3: Write `errors.ts`**
 
 ```ts
@@ -889,6 +912,7 @@ export function messageFor(code: unknown, fallback: string): string {
 
 Run: `pnpm vitest run src/app/admin/logistics/__tests__/errors.test.ts`
 Expected: PASS, 4 tests.
+
 - [ ] **Step 5: Use it at all five call sites**
 
 Replace each `setError(body?.error ?? "…")` / `onError(body?.error ?? "…")`
@@ -918,6 +942,7 @@ onError(messageFor(body?.error, "Could not update this job"));
 
 Run: `pnpm vitest run src/app/admin/logistics && npx tsc --noEmit`
 Expected: PASS, tsc silent.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -931,9 +956,11 @@ git commit -m "feat(logistics): show an admin a sentence, not an error code"
 ### Task 5: The admin's name, typed once
 
 **Files:**
+
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx` (`DeliveryDetail`: `bookedBy` state, `advance`, the booking confirm block)
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces: nothing exported. `localStorage` key `"ic.logistics.actor"`.
 
@@ -941,6 +968,7 @@ git commit -m "feat(logistics): show an admin a sentence, not an error code"
 some browser contexts, and asks the same three people for the same name every
 time. The booking panel already has the field; make it the one place, and
 remember it.
+
 - [ ] **Step 1: Seed the field from the last name used**
 
 ```ts
@@ -959,6 +987,7 @@ const rememberActor = (name: string) => {
 ```
 
 Point the booking input's `onChange` at `rememberActor(e.target.value)`.
+
 - [ ] **Step 2: Give the status buttons the same field**
 
 Above the row of `Mark …` / `Cancel job` buttons in the booked branch:
@@ -1001,6 +1030,7 @@ timeline records the name, and the name is still in the field after a reload.
 Then: `pnpm vitest run && npx tsc --noEmit` — the whole suite, since this is
 the last task.
 Expected: PASS, tsc silent.
+
 - [ ] **Step 5: Commit**
 
 ```bash

@@ -25,45 +25,92 @@ const coordinate = (axis: keyof typeof inMalaysia) =>
 		.min(inMalaysia[axis][0], `${axis} is outside Malaysia`)
 		.max(inMalaysia[axis][1], `${axis} is outside Malaysia`);
 
-export const companyDetailsSchema = z.object({
-	brand: required("Brand").pipe(z.string().min(2).max(60)),
-	legalName: required("Legal name"),
-	ssmNumber: z
+/** A whole number typed into a form box: "7" and 7 both parse. */
+const wholeNumber = (min: number, max: number) =>
+	z.coerce
+		.number()
+		.int(`Enter a whole number`)
+		.min(min, `At least ${min}`)
+		.max(max, `At most ${max}`);
+
+/** Optional text: empty means "not set", stored as null. */
+const optionalText = (max: number) =>
+	z
 		.string()
 		.trim()
-		.max(40)
+		.max(max)
 		.nullable()
-		.transform((v) => v || null),
-	contactEmail: z.string().trim().pipe(z.email()),
-	phone: required("Phone").refine((v) => toE164(v) !== null, {
-		message: "Enter a phone number a courier can call",
-	}),
-	address: required("Address"),
-	postcode: z
-		.string()
-		.trim()
-		.regex(/^\d{5}$/, "Postcode is five digits"),
-	city: required("City"),
-	state: z.enum(MALAYSIAN_STATES.map((s) => s.code) as [string, ...string[]]),
-	lat: coordinate("lat"),
-	lng: coordinate("lng"),
-	closeTime: z
-		.string()
-		.trim()
-		.regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM, Malaysia time"),
-	bankName: required("Bank name"),
-	bankAccountName: required("Account name"),
-	bankAccountNumber: z
-		.string()
-		.trim()
-		.transform((v) => v.replace(/[\s-]/g, ""))
-		.pipe(z.string().regex(/^\d+$/, "Account number is digits only")),
-	orderPrefix: z
-		.string()
-		.trim()
-		.transform((v) => v.toUpperCase())
-		.pipe(z.string().regex(/^[A-Z0-9]{1,5}$/, "1 to 5 letters or digits")),
-});
+		.transform((v) => v || null);
+
+export const companyDetailsSchema = z
+	.object({
+		brand: required("Brand").pipe(z.string().min(2).max(60)),
+		legalName: required("Legal name"),
+		ssmNumber: z
+			.string()
+			.trim()
+			.max(40)
+			.nullable()
+			.transform((v) => v || null),
+		contactEmail: z.string().trim().pipe(z.email()),
+		phone: required("Phone").refine((v) => toE164(v) !== null, {
+			message: "Enter a phone number a courier can call",
+		}),
+		address: required("Address"),
+		postcode: z
+			.string()
+			.trim()
+			.regex(/^\d{5}$/, "Postcode is five digits"),
+		city: required("City"),
+		state: z.enum(MALAYSIAN_STATES.map((s) => s.code) as [string, ...string[]]),
+		lat: coordinate("lat"),
+		lng: coordinate("lng"),
+		closeTime: z
+			.string()
+			.trim()
+			.regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Use HH:MM, Malaysia time"),
+		bankName: required("Bank name"),
+		bankAccountName: required("Account name"),
+		bankAccountNumber: z
+			.string()
+			.trim()
+			.transform((v) => v.replace(/[\s-]/g, ""))
+			.pipe(z.string().regex(/^\d+$/, "Account number is digits only")),
+		orderPrefix: z
+			.string()
+			.trim()
+			.transform((v) => v.toUpperCase())
+			.pipe(z.string().regex(/^[A-Z0-9]{1,5}$/, "1 to 5 letters or digits")),
+		/**
+		 * The promises this maker makes to its customers. Each maker is its own
+		 * seller, so the landing page, terms and refund policy read these rather
+		 * than carry one maker's promises into every deployment. 0 years means no
+		 * warranty is claimed anywhere on the site.
+		 */
+		warrantyYears: wholeNumber(0, 25),
+		installationOffered: z.boolean(),
+		deliveryWeeksMin: wholeNumber(1, 52),
+		deliveryWeeksMax: wholeNumber(1, 52),
+		damageReportDays: wholeNumber(1, 90),
+		refundWorkingDays: wholeNumber(1, 60),
+		/** PDPA s.12A: the data protection officer the privacy notice names. */
+		dpoName: optionalText(80),
+		dpoEmail: z
+			.string()
+			.trim()
+			.nullable()
+			.transform((v) => v || null)
+			.pipe(z.email().nullable()),
+		/**
+		 * Counsel has approved the terms, refund policy and privacy notice: the
+		 * pages stop saying "Draft".
+		 */
+		policiesApproved: z.boolean(),
+	})
+	.refine((c) => c.deliveryWeeksMax >= c.deliveryWeeksMin, {
+		path: ["deliveryWeeksMax"],
+		message: "Must not be less than the shortest estimate",
+	});
 
 export type CompanyDetails = z.output<typeof companyDetailsSchema>;
 
@@ -90,8 +137,26 @@ export function seedCompany(): CompanyDetails {
 		bankAccountName: tenant.legalName,
 		bankAccountNumber: "To be confirmed",
 		orderPrefix: tenant.orderPrefix,
+		// No promise is made until the maker states its own.
+		warrantyYears: 0,
+		installationOffered: false,
+		deliveryWeeksMin: 4,
+		deliveryWeeksMax: 6,
+		damageReportDays: 7,
+		refundWorkingDays: 14,
+		dpoName: null,
+		dpoEmail: null,
+		policiesApproved: false,
 	};
 }
+
+/** "4-6", or "4" when both ends agree. */
+export const deliveryWeeks = (
+	c: Pick<CompanyDetails, "deliveryWeeksMin" | "deliveryWeeksMax">,
+) =>
+	c.deliveryWeeksMin === c.deliveryWeeksMax
+		? String(c.deliveryWeeksMin)
+		: `${c.deliveryWeeksMin}-${c.deliveryWeeksMax}`;
 
 /** "Legal name (SSM), address" — the name is not repeated when the address starts with it. */
 export function sellerLine(

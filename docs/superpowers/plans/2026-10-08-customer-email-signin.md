@@ -42,6 +42,7 @@ Claude-Session: https://claude.ai/code/session_01Sf6WzEGocpitLL31ex4uQQ
 ## Review Focus
 
 The spec says what the sign-in must do. These are the five things a real customer will do to it that the spec does not spell out, most likely first. Each has a test in the task that owns the code.
+
 1. **The customer mistypes the address, or the mail is slow, and sits on "code sent".** The server cannot tell them the address is wrong (its answer must not vary by address). They expect to see the address they typed, a way to change it, a junk-folder hint, and, once they have asked three times, to be told so rather than get a fourth "sent" that mails nothing and kills their third code. Tests: Task 3 (`mails three codes an hour and drops the fourth`), Task 8 (`shows the address a code went to`), Task 9 (`stops the form at the server's cap`, `a failed send`).
 2. **The customer closes the tab at the name step and comes back another day.** The account exists with no name. They expect the next sign-in to land on the name step again, and then to carry on to wherever they were going — not to reach an order page, a passkey prompt labelled with a random id, or a dead end. Tests: Task 5 (`asks for the name before the passkey when both are owed`, `401s name_required before the passkey is even asked about`, `sends a customer with no name to the name step first`), Task 9 (`asks again on a later sign-in, however long ago the account was made`, `passes a customer who has a name straight on`).
 3. **The name is typed with spaces round it, with an emoji, or in Chinese, Jawi or Tamil.** They expect it accepted, trimmed, and stored exactly as typed. Tests: Task 5 (`accepts %s, stored as typed and trimmed`, `stores a name in %s as typed`).
@@ -53,6 +54,7 @@ Three more are pinned beside these: a customer in WhatsApp's or a mail app's bui
 ## Deviations and decisions
 
 Where the spec's wording could not be built exactly as written, the intent is kept and the mechanism is the smallest that is correct. One line each.
+
 1. **Per-address cap has its own counter.** Better Auth's limiter keys on `<ip>|<path>` only, so "three codes per address per hour" is `takeSendSlot` in `emailCodeMail.ts`: one row per address in the same `rateLimit` table, key `email-code|<address>`, a fixed hour from the first send.
 2. **"Identical response when rate-limited" and "Too many codes requested" both stand.** The per-address cap is silent on the server. The message is shown for the per-network limit (Better Auth's 429) and by the form itself after its third send, so an honest customer is told and a prober learns nothing.
 3. **The per-network limit is 20 send requests an hour.** The spec gives no number. This replaces the plugin's default of 3 per 60 seconds for that one route (`rateLimit.customRules`), because Malaysian mobile networks share addresses. The verify route keeps the plugin's 3 per 60 seconds.
@@ -109,6 +111,7 @@ DATABASE_URL=postgresql://cabinet:cabinet@127.0.0.1:5432/cabinet_email_signin
 ```
 
 Leave `RESEND_API_KEY` unset in it, so codes are logged rather than mailed.
+
 - [ ] **Confirm the host, then install and migrate.**
 
 ```bash
@@ -151,10 +154,12 @@ Expected: migrations apply; a superadmin row exists for `SUPERADMIN_EMAIL` (the 
 ### Task 1: The rules
 
 **Files:**
+
 - Create: `src/lib/auth/emailCodeRules.ts`
 - Test: `src/lib/auth/__tests__/emailCodeRules.test.ts`
 
 **Interfaces:**
+
 - Consumes: `type Role` from `@/lib/auth/permissions` (`"SUPERADMIN" | "ADMIN" | "CUSTOMER"`).
 - Produces (all from `@/lib/auth/emailCodeRules`, no `server-only`, safe in client components):
   - `SEND_PATH = "/email-otp/send-verification-otp"`, `SIGN_IN_PATH = "/sign-in/email-otp"`
@@ -278,6 +283,7 @@ describe("codeRequest", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/emailCodeRules.test.ts`
 Expected: FAIL, the suite cannot load: `Cannot find module '@/lib/auth/emailCodeRules'` (wording varies by Vite version; the point is no test runs).
+
 - [ ] **Step 3: Write the rules**
 
 Create `src/lib/auth/emailCodeRules.ts`:
@@ -365,6 +371,7 @@ export function codeRequest(
 
 Run: `pnpm vitest run src/lib/auth/__tests__/emailCodeRules.test.ts`
 Expected: PASS, 32 tests.
+
 - [ ] **Step 5: Lint and commit**
 
 ```bash
@@ -386,18 +393,21 @@ git commit -m "feat(auth): rules for customer sign-in by emailed code" -m $'Co-A
 ### Task 2: The rate-limit table and the code mail
 
 **Files:**
+
 - Modify: `prisma/schema.prisma` (after `model Verification`)
 - Create: `prisma/migrations/20261009000000_rate_limit/migration.sql`
 - Create: `src/lib/auth/emailCodeMail.ts`
 - Test: `src/lib/auth/__tests__/emailCodeMail.test.ts`
 
 **Interfaces:**
+
 - Consumes: `mayUseCode`, `withinSendCap`, `CODE_TTL_S`, `SEND_WINDOW_S` from Task 1; `sendEmail(message: { to: string; subject: string; text: string; html?: string }): Promise<boolean>` from `@/lib/email` (never throws); `prisma` from `@/lib/catalogue/db`.
 - Produces:
   - Prisma model `RateLimit` (`prisma.rateLimit`): `id String @id`, `key String @unique`, `count Int`, `lastRequest BigInt` (epoch milliseconds). Better Auth's limiter uses it once Task 4 turns on `storage: "database"`.
   - `sendSignInCode(email: string, code: string): Promise<void>` from `@/lib/auth/emailCodeMail`. `email` is already lower-case (the plugin lower-cases it). It mails, logs, or deletes the stored code; it never throws on a refused address.
 
 The plugin stores a code under `Verification.identifier = "sign-in-otp-<email>"` (`node_modules/better-auth/dist/plugins/email-otp/utils.mjs`). That is the row `sendSignInCode` deletes when it decides not to mail.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/lib/auth/__tests__/emailCodeMail.test.ts`:
@@ -541,6 +551,7 @@ describe("sendSignInCode", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/emailCodeMail.test.ts`
 Expected: FAIL, the suite cannot load: `Cannot find module '@/lib/auth/emailCodeMail'`.
+
 - [ ] **Step 3: Add the table to the schema**
 
 In `prisma/schema.prisma`:
@@ -603,6 +614,7 @@ pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema
 Expected: `migrate deploy` applies `20261009000000_rate_limit`; `migrate diff` prints `-- This is an empty migration.` and nothing else. Any SQL in that output means the file and the schema disagree: fix the SQL file, never the check.
 
 If a dev server is running in this worktree, restart it now.
+
 - [ ] **Step 6: Write the mail module**
 
 Create `src/lib/auth/emailCodeMail.ts`:
@@ -691,6 +703,7 @@ export async function sendSignInCode(
 
 Run: `pnpm vitest run src/lib/auth/__tests__/emailCodeMail.test.ts`
 Expected: PASS, 8 tests.
+
 - [ ] **Step 8: Typecheck, lint and commit**
 
 ```bash
@@ -713,16 +726,19 @@ git commit -m "feat(auth): rate-limit table and the sign-in code mail" -m $'Co-A
 ### Task 3: The hooks, proven on the real plugin
 
 **Files:**
+
 - Create: `src/lib/auth/emailCodeHooks.ts`
 - Test: `src/lib/auth/__tests__/emailCodeWiring.test.ts`
 
 **Interfaces:**
+
 - Consumes: `codeRequest`, `mayUseCode`, `SIGN_IN_PATH`, `SEND_PATH`, `CLOSED_PATHS`, the constants (Task 1); `sendSignInCode` (Task 2); `passkeyBeforeHook(ctx)`, `verifiedIfPasskeySession(session, ctx)` from `@/lib/auth/passkeyHooks` (existing); `checkBotId(): Promise<{ isBot: boolean }>` from `botid/server`.
 - Produces (from `@/lib/auth/emailCodeHooks`, `server-only`):
   - `emailCodeBeforeHook(ctx: HookContext): Promise<void>`: throws `APIError` to refuse, returns to allow. `HookContext` is `Parameters<Parameters<typeof createAuthMiddleware>[0]>[0]`, the same private alias `passkeyHooks.ts` declares.
   - `refuseStaffCodeSession(session: { userId: string }, ctx: { path?: string } | null): Promise<void>`: throws to refuse.
 
 Facts this test leans on, all read from `node_modules/better-auth/dist`:
+
 - The plugin's stored code is unsalted SHA-256, base64url, followed by `:<attempts>` (`plugins/email-otp/utils.mjs`, `otp-token.mjs`). `plantCode` builds one by hand.
 - The plugin checks the newest `Verification` row by `createdAt`. Two sends in the same millisecond tie, so the "older code" test moves the clock between them.
 - Rate limiting is off outside production unless `rateLimit.enabled` is set, and the limiter falls back to `127.0.0.1` in tests.
@@ -1272,6 +1288,7 @@ describe("Google joining an existing account", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/emailCodeWiring.test.ts`
 Expected: FAIL, the suite cannot load: `Cannot find module '@/lib/auth/emailCodeHooks'`.
+
 - [ ] **Step 3: Write the hooks**
 
 Create `src/lib/auth/emailCodeHooks.ts`:
@@ -1355,6 +1372,7 @@ export async function refuseStaffCodeSession(
 
 Run: `pnpm vitest run src/lib/auth/__tests__/emailCodeWiring.test.ts`
 Expected: PASS, 37 tests.
+
 - [ ] **Step 5: Prove the two staff refusals are each pinned**
 
 Layered guards hide each other: with both in place, breaking one changes nothing a customer could see. Check each test bites, then undo.
@@ -1366,10 +1384,12 @@ Restore the line. Temporarily change `if (row?.role !== "CUSTOMER") throw invali
 Expected: exactly one failure, `are refused where the session is made, without the request hook`.
 
 Restore the line. Run again. Expected: PASS, 37 tests.
+
 - [ ] **Step 6: Make sure the passkey wiring still holds**
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyWiring.test.ts src/lib/auth/__tests__/passkeyHooks.test.ts`
 Expected: PASS. Nothing in those files changed; this is the baseline for Task 4, which touches the slot they share.
+
 - [ ] **Step 7: Lint and commit**
 
 ```bash
@@ -1389,12 +1409,14 @@ git commit -m "feat(auth): guards for the email-code plugin, tested on the real 
 ### Task 4: Wire it into the app
 
 **Files:**
+
 - Modify: `src/lib/auth.ts`
 - Modify: `src/lib/auth/client.ts`
 - Modify: `src/instrumentation-client.ts`
 - Test: `src/lib/auth/__tests__/emailCodeConfig.test.ts` (new)
 
 **Interfaces:**
+
 - Consumes: everything Tasks 1 to 3 produce; `after` from `next/server` (already imported in `auth.ts`).
 - Produces:
   - On `authClient` (`@/lib/auth/client`): `authClient.emailOtp.sendVerificationOtp({ email, type: "sign-in" })` and `authClient.signIn.emailOtp({ email, otp })`, each resolving `{ data, error }` where `error` is `{ status: number; code?: string; message?: string } | null`. Task 9's form calls both.
@@ -1403,6 +1425,7 @@ git commit -m "feat(auth): guards for the email-code plugin, tested on the real 
 `lib/auth.ts` cannot be imported in a test (it opens a database), and Task 3's test builds its own instance. So the wiring of the real file is checked by reading it as text, the way `coverage.test.ts` reads the admin routes. The test collapses whitespace first, so formatting does not matter but the code's shape does.
 
 BotID needs both halves at the same level: the server check (`emailCodeBeforeHook`, Task 3) and the path in `instrumentation-client.ts`. The path listed there must be the one the browser actually requests, `/api/auth/email-otp/send-verification-otp` with the `/api/auth` prefix. A path checked on the server and not listed in the client refuses every real visitor. Locally `checkBotId` answers "human".
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/lib/auth/__tests__/emailCodeConfig.test.ts`:
@@ -1483,6 +1506,7 @@ describe("the browser side", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/emailCodeConfig.test.ts`
 Expected: FAIL, 15 of 18 with `expected '…' to contain '…'`. The three that pass are `keeps password sign-up closed`, `keeps role out of request bodies` and `never awaits the mail`, which are already true.
+
 - [ ] **Step 3: Wire `lib/auth.ts`**
 
 The two composed slots are the point of this step. `hooks.before` held `passkeyBeforeHook` alone and `session.create.before` held `verifiedIfPasskeySession` alone; each now runs the email-code guard first and the passkey one second. Neither guard does anything on a path that is not its own.
@@ -1713,6 +1737,7 @@ In `src/instrumentation-client.ts`:
 
 Run: `pnpm vitest run src/lib/auth`
 Expected: PASS, every file, including `passkeyWiring.test.ts` and `coverage.test.ts`.
+
 - [ ] **Step 6: Typecheck and lint**
 
 ```bash
@@ -1721,6 +1746,7 @@ pnpm exec biome check src/lib/auth.ts src/lib/auth/client.ts src/instrumentation
 ```
 
 Expected: both clean. If Biome reorders the imports in `auth.ts`, accept its order (`pnpm exec biome check --write src/lib/auth.ts`) and re-run the config test.
+
 - [ ] **Step 7: Try the two routes by hand**
 
 Restart the dev server (`pnpm dev`): the schema changed in Task 2. Then, with `RESEND_API_KEY` unset:
@@ -1744,6 +1770,7 @@ curl -s -X POST http://localhost:3000/api/auth/email-otp/send-verification-otp -
 Expected: a 403 body with `"code":"EMAIL_CODE_ROUTE_REFUSED"`.
 
 Then send a code for the seeded superadmin's address (`SUPERADMIN_EMAIL` in `.env.local`). Expected: `{"success":true}` again, and no `Sign-in code for` line in the terminal.
+
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -1759,6 +1786,7 @@ git commit -m "feat(auth): wire email-code sign-in and database rate limits" -m 
 ### Task 5: The name: rule, route, and where it is owed
 
 **Files:**
+
 - Create: `src/lib/auth/customerName.ts`
 - Test: `src/lib/auth/__tests__/customerName.test.ts`
 - Create: `src/app/api/account/name/route.ts`
@@ -1771,6 +1799,7 @@ git commit -m "feat(auth): wire email-code sign-in and database rate limits" -m 
 - Modify: `src/lib/auth/__tests__/coverage.test.ts`
 
 **Interfaces:**
+
 - Consumes: `type Role`; `currentUser(): Promise<AuthUser | null>` from `@/lib/auth/session`; `authEnabled()`; `prisma`.
 - Produces:
   - From `@/lib/auth/customerName` (pure, no `server-only`): `customerNameSchema` (Zod string: trimmed, 2 to 80, no hidden characters, not business-posing); `parseCustomerName(input: unknown): { name: string } | { error: "name_required" | "name_refused" }`; `owesName(user: { role: Role; name: string | null }): boolean`.
@@ -1782,6 +1811,7 @@ git commit -m "feat(auth): wire email-code sign-in and database rate limits" -m 
 A code sign-in creates the row with `name: ""` (Task 3 pins that). This task is what makes an empty name mean something: the row owes one, and until it is given the account is stopped in every place an account that owes a passkey is stopped, and first, because the device's passkey prompt shows the name. `/[lang]/welcome` itself is built in Task 9; between this task and that one the redirects point at a page that is not there yet.
 
 `mustSetName` is checked beside `authEnabled()` in the order routes for the same reason `mustVerifyPasskey` is: with `AUTH_ENABLED=false` checkout must keep working locally. The name route has no such bypass. It reads `currentUser()` only, with no demo-customer fallback, so with auth off and nobody signed in it answers 401.
+
 - [ ] **Step 1: Write the rule's failing test**
 
 Create `src/lib/auth/__tests__/customerName.test.ts`:
@@ -1872,6 +1902,7 @@ describe("owesName", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/customerName.test.ts`
 Expected: FAIL, the suite cannot load: `Cannot find module '@/lib/auth/customerName'`.
+
 - [ ] **Step 3: Write the rule**
 
 Create `src/lib/auth/customerName.ts`:
@@ -1944,6 +1975,7 @@ export function owesName(user: { role: Role; name: string | null }): boolean {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/customerName.test.ts`
 Expected: PASS, 43 tests.
+
 - [ ] **Step 5: Write the failing tests for the flag and the route**
 
 In `src/lib/auth/__tests__/session.test.ts`:
@@ -2098,6 +2130,7 @@ describe("POST /api/account/name", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/session.test.ts account/name`
 Expected: FAIL. In `session.test.ts`, the three `mustSetName for …` cases and every case that compares against the whole `user` object fail, because `mustSetName` is not in the answer yet. The route's suite cannot load: `Cannot find module '../route'`.
+
 - [ ] **Step 7: Derive the flag**
 
 In `src/lib/auth/session.ts`:
@@ -2188,6 +2221,7 @@ export async function POST(request: Request) {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/session.test.ts account/name`
 Expected: PASS, 16 tests in `session.test.ts` and 17 in the route's.
+
 - [ ] **Step 10: Write the failing tests for where it is owed**
 
 In `src/lib/orders/__tests__/access.test.ts`:
@@ -2472,6 +2506,7 @@ In `src/lib/auth/__tests__/coverage.test.ts`:
 
 Run: `pnpm vitest run access.test verify/__tests__/page api/orders payments/config coverage`
 Expected: FAIL, and only the new cases: the two name cases in `access.test.ts` (`does not ask for a name with AUTH_ENABLED off` passes already); `sends a customer with no name to the name step first` in the verify page's; one `name_required` case in each of the three order route files; `still answers 200 with the gateway` and all three `nameRequired` cases in the config file; and `checks the name and the passkey in each order route`, which lists all three order routes.
+
 - [ ] **Step 12: Enforce it**
 
 In `src/lib/orders/access.ts`:
@@ -2632,6 +2667,7 @@ In `src/app/api/payments/config/route.ts`:
 
 Run: `pnpm vitest run src/lib/auth src/lib/orders src/app/api "src/app/\[lang\]/verify"`
 Expected: PASS. If the last filter matches nothing in your shell, run `pnpm vitest run verify/__tests__` instead.
+
 - [ ] **Step 14: Typecheck, lint and commit**
 
 ```bash
@@ -2654,6 +2690,7 @@ git commit -m "feat(auth): a code customer owes a name, enforced where the passk
 ### Task 6: The owner hears when the lock changes
 
 **Files:**
+
 - Create: `src/lib/auth/passkeyMail.ts`
 - Test: `src/lib/auth/__tests__/passkeyMail.test.ts`
 - Modify: `src/lib/auth/inviteMail.ts` (export `esc`)
@@ -2662,6 +2699,7 @@ git commit -m "feat(auth): a code customer owes a name, enforced where the passk
 - Modify: `prisma/resetPasskey.ts`
 
 **Interfaces:**
+
 - Consumes: `sendEmail` (`@/lib/email`, never throws, returns `false` and logs only the subject when mail is not configured); `after` from `next/server`; `WORKSHOP_PHONE` from `@/lib/logistics/carriers`; `process.env.WHATSAPP_SALES_NUMBER`; `passkeyAfterHook`'s existing positive-evidence branch.
 - Produces (from `@/lib/auth/passkeyMail`, `server-only`):
   - `type PasskeyChange = "added" | "removed" | "reset"`
@@ -2674,6 +2712,7 @@ Until an account's first passkey exists, whoever can sign in can enrol their own
 Three places queue it. A registration, on the branch of `passkeyAfterHook` that already requires the result not to be an error and the account to hold a passkey. A removal, when `/passkey/delete-passkey` returns something that is not an error: the before-hook has already refused every removal the rules forbid. A staff reset, in the route after `resetPasskeys` returns. No existing passkey rule changes.
 
 `after()` throws when there is no request to run after. `queuePasskeyMail` catches that, so a passkey change can never fail on the mail. The reset script is the one caller with no request: it awaits `sendPasskeyChange` itself, because the process is about to exit.
+
 - [ ] **Step 1: Write the mail's failing test**
 
 Create `src/lib/auth/__tests__/passkeyMail.test.ts`:
@@ -2817,6 +2856,7 @@ describe("queuePasskeyMail", () => {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyMail.test.ts`
 Expected: FAIL, the suite cannot load: `Cannot find module '@/lib/auth/passkeyMail'`.
+
 - [ ] **Step 3: Export the escaper and write the mail**
 
 In `src/lib/auth/inviteMail.ts`:
@@ -2936,6 +2976,7 @@ export function queuePasskeyMail(userId: string, change: PasskeyChange): void {
 
 Run: `pnpm vitest run src/lib/auth/__tests__/passkeyMail.test.ts src/lib/auth/__tests__/inviteMail.test.ts`
 Expected: PASS, 13 tests in `passkeyMail.test.ts`; the invite mail's tests unchanged.
+
 - [ ] **Step 5: Write the failing tests for where it is queued**
 
 In `src/lib/auth/__tests__/passkeyHooks.test.ts`:
@@ -3109,6 +3150,7 @@ In `src/app/api/admin/users/[id]/reset-passkey/__tests__/route.test.ts`:
 
 Run: `pnpm vitest run passkeyHooks passkeyWiring reset-passkey`
 Expected: FAIL on exactly three: `queues a mail to the account when a passkey is registered`, `queues a mail to the account when a passkey is removed`, and `tells the account's own address, after the reset and whatever its role`. Every "queues none" case and every existing case passes.
+
 - [ ] **Step 7: Queue it**
 
 In `src/lib/auth/passkeyHooks.ts` (the three comment changes are because Google is no longer the only way in):
@@ -3232,6 +3274,7 @@ In `prisma/resetPasskey.ts`:
 
 Run: `pnpm vitest run src/lib/auth reset-passkey`
 Expected: PASS, every file. `passkeyWiring.test.ts` has 8 tests, as before.
+
 - [ ] **Step 9: Typecheck, lint and commit**
 
 ```bash
@@ -3255,15 +3298,18 @@ git commit -m "feat(auth): mail the account when a passkey is added, removed or 
 ### Task 7: Promotion gives a code customer a password
 
 **Files:**
+
 - Modify: `src/app/api/admin/users/route.ts`
 - Modify: `src/app/admin/users/InviteStaff.tsx`
 - Test: `src/app/api/admin/users/__tests__/route.test.ts`
 
 **Interfaces:**
+
 - Consumes: `auth.$context` (a promise of Better Auth's context, whose `password.hash(password: string): Promise<string>` is the hasher sign-in verifies against); `sendStaffInvite({ to, name, inviterName, role, base, hasPassword })` (existing); `inviteSchema` (unchanged: the form always posts a `password` of 12+ characters).
 - Produces: the promotion branch of `POST /api/admin/users` now answers `{ ok: true, id, promoted: true, passwordSet: boolean, emailed: boolean }`. `passwordSet` is true when the promoted row had no `google` account, in which case the posted password is on the row and `mustChangePassword` is set.
 
 Staff cannot use a mailed code (Task 3 refuses it three times). A customer who signed up with a code and is then promoted would have no way in at all. The row is therefore given the same password a fresh invite sets, handed over the same way. A credential account's shape is Better Auth's own: `providerId: "credential"`, `accountId` equal to the user id (`node_modules/better-auth/dist/api/routes/sign-up.mjs`).
+
 - [ ] **Step 1: Write the failing tests**
 
 In `src/app/api/admin/users/__tests__/route.test.ts`:
@@ -3432,6 +3478,7 @@ In `src/app/api/admin/users/__tests__/route.test.ts`:
 
 Run: `pnpm vitest run src/app/api/admin/users/__tests__/route.test.ts`
 Expected: the two existing tests pass. Of the five new ones, four fail: `gives a code-only customer the invite password` (no `passwordSet` in the answer), `leaves a Google customer signing in with Google` (same), `finds the customer when the address is typed with capitals` (looked up as typed), `uses the typed name for a customer who never gave one` (the name is not written). `still refuses an address that is already staff` passes already.
+
 - [ ] **Step 3: Change the route**
 
 In `src/app/api/admin/users/route.ts`:
@@ -3540,6 +3587,7 @@ In `src/app/api/admin/users/route.ts`:
 
 Run: `pnpm vitest run src/app/api/admin/users`
 Expected: PASS, 7 tests in `route.test.ts`, and the `[id]` route tests untouched.
+
 - [ ] **Step 5: Show the password in the form when one was set**
 
 In `src/app/admin/users/InviteStaff.tsx`:
@@ -3619,6 +3667,7 @@ pnpm vitest run src/lib/auth/__tests__/coverage.test.ts
 ```
 
 Expected: all clean. The coverage test is what confirms `POST` is still a literal `export const POST = withAuth(` with its step-up.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -3634,6 +3683,7 @@ git commit -m "feat(admin): promoting a customer with no Google sign-in sets the
 ### Task 8: Copy, and the screens that only change words
 
 **Files:**
+
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/ms.ts`, `src/lib/copy/zh.ts`
 - Modify: `src/app/[lang]/not-found.tsx`
 - Modify: `src/app/[lang]/sign-in/page.tsx` (one line; Task 9 rewrites the page)
@@ -3645,6 +3695,7 @@ git commit -m "feat(admin): promoting a customer with no Google sign-in sets the
 - Test: `src/lib/copy/__tests__/dictionary.test.ts`
 
 **Interfaces:**
+
 - Consumes: `nameRequired` from `GET /api/payments/config` and the `name_required` answer of `POST /api/orders` (Task 5); `useCopy()`, `useLocale()` from `src/components/planner/CopyContext`.
 - Produces, on `Dictionary["signIn"]` (every value a plain string):
   - renamed: `error` becomes `googleError`
@@ -3659,6 +3710,7 @@ git commit -m "feat(admin): promoting a customer with no Google sign-in sets the
 `ms.ts` and `zh.ts` are typed against `Dictionary`, so a key added to `en.ts` and missing from either is a compile error, and `dictionary.test.ts` already fails on a value left in English.
 
 The order form's name field is already pre-filled from the account's name and stays editable (`QuoteScreen.tsx`, `setName((current) => current || session.user.name || "")`). Nothing changes there: a code customer reaches the form only after the name step, so there is a name to fill in.
+
 - [ ] **Step 1: Write the failing tests**
 
 In `src/lib/copy/__tests__/dictionary.test.ts`:
@@ -3734,6 +3786,7 @@ In `src/lib/copy/__tests__/dictionary.test.ts`:
 
 Run: `pnpm vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: FAIL. `names a sign-in provider only on its own button and error` lists, for each locale, `privacy.account`, `privacy.recipients`, `privacy.obligatory`, `signIn.error` and `passkey.sessionStale`. `shows the address a code went to` fails because `signIn.codeSent` is undefined. `names no provider on the page a wrong-account link lands on` fails on `Google`.
+
 - [ ] **Step 3: English**
 
 In `src/lib/copy/en.ts`:
@@ -4042,6 +4095,7 @@ Its strings are inline, not in the dictionary. In `src/app/[lang]/not-found.tsx`
 
 Run: `pnpm vitest run src/lib/copy`
 Expected: PASS, every file.
+
 - [ ] **Step 8: Follow the renamed key on the sign-in page**
 
 `signIn.error` no longer exists. In `src/app/[lang]/sign-in/page.tsx`, change the one line that reads it. Task 9 replaces this page; this keeps the build green until then.
@@ -4418,6 +4472,7 @@ pnpm test
 ```
 
 Expected: all clean. `typecheck` is what catches a reader of `signIn.error` that this task missed, or a key missing from `ms.ts` or `zh.ts`.
+
 - [ ] **Step 14: Commit**
 
 ```bash
@@ -4433,6 +4488,7 @@ git commit -m "feat(copy): sign-in and name-step text, and no provider named off
 ### Task 9: The sign-in page and the name step
 
 **Files:**
+
 - Modify: `src/lib/auth/safeCustomerNext.ts`; Test: `src/lib/auth/__tests__/safeCustomerNext.test.ts`
 - Create: `src/app/[lang]/sign-in/emailCode.ts`; Test: `src/app/[lang]/sign-in/__tests__/emailCode.test.ts`
 - Create: `src/app/[lang]/sign-in/EmailCodeForm.tsx`
@@ -4441,6 +4497,7 @@ git commit -m "feat(copy): sign-in and name-step text, and no provider named off
 - Test: `src/app/[lang]/welcome/__tests__/page.test.ts`
 
 **Interfaces:**
+
 - Consumes: `CODES_PER_HOUR` (Task 1); the two `authClient` calls (Task 4); `AuthUser.mustSetName` and `POST /api/account/name` with its answers (Task 5); `Dictionary["signIn"]` and `Dictionary["welcome"]` (Task 8); `passkeysSupported(win): boolean` from `src/app/[lang]/verify/passkeySupport.ts` (existing); `fill(template, values)` from `@/lib/copy/fill`; `Spinner`; `GoogleSignInButton` (existing, untouched: props `callbackURL`, `label`, `errorMessage`).
 - Produces:
   - `safeWelcomeNext(next: string | string[] | undefined, lang: string): string` from `@/lib/auth/safeCustomerNext`: a same-site path, the verify page allowed, the welcome page not, falling back to `/${lang}`. `safeCustomerNext` keeps its signature and behaviour.
@@ -4451,6 +4508,7 @@ git commit -m "feat(copy): sign-in and name-step text, and no provider named off
 `next` is handled as today for the Google button: the raw `?next=` goes to Better Auth as `callbackURL`, which checks it against trusted origins. The code path is new and navigates by itself with `window.location.assign`, so it gets a checked value. `safeCustomerNext` cannot be reused as it is: it refuses the verify page, and a customer whose session lapsed on the verify page is sent here with exactly that as `next`. `safeCustomerNext` was broken twice in review, so the change is a refactor to one shared parser, told which page may not be the target, with the whole hostile-input table run against the new function too.
 
 After the code is accepted the form always goes to `/[lang]/welcome?next=<checked next>`. Only the server knows whether the account owes a name. The welcome page redirects a customer who owes nothing straight to the target, so a returning customer never sees it; a new one gives their name and carries on, usually into the passkey step. A customer who closes the tab at the name step meets it again at their next sign-in by the same road, and Task 5's gates cover every other way in.
+
 - [ ] **Step 1: Write the failing tests**
 
 In `src/lib/auth/__tests__/safeCustomerNext.test.ts`:
@@ -4755,6 +4813,7 @@ describe("nameMessage", () => {
 
 Run: `pnpm vitest run safeCustomerNext sign-in/__tests__/emailCode welcome/__tests__/page`
 Expected: FAIL. `safeWelcomeNext` cases fail with `safeWelcomeNext is not a function`; the existing `safeCustomerNext` cases pass; the other two suites cannot load (`Cannot find module '../emailCode'`, and the welcome page's module).
+
 - [ ] **Step 3: One parser, two callers**
 
 Replace `src/lib/auth/safeCustomerNext.ts` whole. The body of the old function becomes `sameSitePath`, returning `null` where it returned the fallback; the refused page is the only thing that depends on the caller.
@@ -5423,6 +5482,7 @@ export default async function WelcomePage({
 
 Run: `pnpm vitest run safeCustomerNext sign-in/__tests__/emailCode welcome/__tests__/page`
 Expected: PASS: 52 tests in `safeCustomerNext.test.ts`, 34 in `emailCode.test.ts`, 16 in the welcome page's. Every existing `safeCustomerNext` case still passes unchanged.
+
 - [ ] **Step 9: Typecheck, lint, full tests**
 
 ```bash
@@ -5432,9 +5492,11 @@ pnpm test
 ```
 
 Expected: all clean.
+
 - [ ] **Step 10: Walk it in a browser**
 
 `pnpm dev`, `RESEND_API_KEY` unset, Chrome. Codes appear in the dev server's terminal as `Sign-in code for <address>: <code>`.
+
 1. Open `/en/sign-in`. Expected: heading, "Any email address works", a Google button, "or continue with email", an email field.
 2. Type ` New.Customer@Example.com` and press **Continue**. Expected: "We sent a 6-digit code to new.customer@example.com", a code field, "Send a new code in 30s" counting down, "Use a different email".
 3. Type a wrong code. Expected: "That code is not right. Check it and try again."
@@ -5470,11 +5532,13 @@ git commit -m "feat(sign-in): continue with any email, then your name, in the sa
 ### Task 10: Docs, the Vercel side, and the whole journey
 
 **Files:**
+
 - Modify: `CLAUDE.md` (Auth section, two cross-references, known issue 14, Open questions)
 - Modify: `docs/ops/customer-passkey-runbook.md`
 - Modify: `.env.example`
 
 **Interfaces:**
+
 - Consumes: the names every earlier task produced. Nothing here is code.
 - Produces: the house record of the feature, and the deploy checklist the operator works from, including the firewall rule.
 
@@ -5829,6 +5893,7 @@ pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema
 ```
 
 Expected: lint and typecheck clean; every test passes; the diff prints `-- This is an empty migration.`
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -5842,6 +5907,7 @@ git commit -m "docs: customers sign in with any email and give a name; staff can
 - [ ] **Step 6: On a Vercel preview**
 
 None of this can be checked locally. Do it on a preview before merging to `main`, and report each line to the user as checked or not checked. A preview has no `RESEND_API_KEY`, so codes are read from the function logs there.
+
 1. Apply the migration to the preview database before the preview serves traffic. Then sign in by code once and give a name. Expected: it works, which also proves `after()` runs inside the plugin's callback on Vercel.
 2. **BotID, both halves.** In the browser's Network tab, find the send-code request. Expected: its path is exactly `/api/auth/email-otp/send-verification-otp`, the string in `src/instrumentation-client.ts`, and it answers 200. Then send the same request with `curl` from a terminal. Expected: 403 with `EMAIL_CODE_BOT`. A real browser refused means the client path does not match what is requested; `curl` allowed means the server check is not running.
 3. **One address per visitor.** Vercel overwrites `x-forwarded-for` and does not pass on a value the client sent, so a forged header cannot dodge the per-network limit. What is left to confirm is only that Better Auth reads it. Look at the `rateLimit` table after two people on different networks have each asked for a code. Expected: two keys ending `|/email-otp/send-verification-otp`, each starting with a different address, and `email-code|<address>` rows. A key starting `no-trusted-ip` means every visitor shares one bucket: stop and tell the user.
@@ -5851,6 +5917,7 @@ None of this can be checked locally. Do it on a preview before merging to `main`
 - [ ] **Step 7: For a person with access to the Vercel project**
 
 These change the live project, not the repo. Do not run them yourself: hand them to the user, with the runbook section they come from (`docs/ops/customer-passkey-runbook.md`, "Deploy checklist" and "The firewall rule in front of sign-in codes").
+
 1. Store the mail key as a sensitive variable, so it cannot be read back from the dashboard:
 
    ```bash
@@ -5885,6 +5952,7 @@ These change the live project, not the repo. Do not run them yourself: hand them
 - [ ] **Step 8: Tell the user what is theirs to do**
 
 In the hand-off message, not in a file:
+
 - The privacy notice now says the email route collects an address and asks for a name. It goes to EzCabinet's counsel with the rest of the draft.
 - EzCabinet's sending domain needs SPF, DKIM and DMARC before launch.
 - The migration `20261009000000_rate_limit` must be applied before the new code serves production traffic.

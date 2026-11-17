@@ -34,10 +34,12 @@
 ### Task 1: `previewFrame` — camera placement from a cabinet's size
 
 **Files:**
+
 - Create: `src/components/admin/previewFrame.ts`
 - Test: `src/components/admin/__tests__/previewFrame.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces:
 
@@ -98,6 +100,7 @@ describe("previewFrame", () => {
 
 Run: `pnpm vitest run src/components/admin/__tests__/previewFrame.test.ts`
 Expected: FAIL — cannot resolve `../previewFrame`.
+
 - [ ] **Step 3: Write minimal implementation**
 
 `src/components/admin/previewFrame.ts`:
@@ -148,6 +151,7 @@ export function previewFrame(sizeMm: [number, number, number]): PreviewFrame {
 
 Run: `pnpm vitest run src/components/admin/__tests__/previewFrame.test.ts`
 Expected: PASS, 4 tests.
+
 - [ ] **Step 5: Lint and commit**
 
 ```bash
@@ -163,10 +167,12 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
 ### Task 2: `DesignViewer` renders the planner's cabinet, with controls
 
 **Files:**
+
 - Modify (full rewrite): `src/components/admin/DesignViewer.tsx`
 - Modify: `src/app/admin/cabinet-designs/CabinetDesignsClient.tsx` — imports (top of file), and the `<DesignViewer … />` element inside the modal (search for `<DesignViewer`; around line 1573).
 
 **Interfaces:**
+
 - Consumes:
   - `previewFrame(sizeMm: [number, number, number]): { target, camera }` — Task 1.
   - `buildRenderMesh(objText: string): RenderMesh | null` and types `RenderMesh` (`{ groups: MeshGroup[]; sizeMm: Vec3; triangleCount: number }`), `MeshGroup` (`role: "carcass" | "door" | "drawerFront" | "shelf" | "hardware" | "other"`, …) — `src/lib/mesh/renderMesh.ts`.
@@ -191,6 +197,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
   ```
 
 No unit test: the component is R3F rendering, verified in the browser (Step 8), and its one piece of pure logic is Task 1's `previewFrame`.
+
 - [ ] **Step 1: Replace `src/components/admin/DesignViewer.tsx` with:**
 
 ```tsx
@@ -597,16 +604,19 @@ with:
 - [ ] **Step 4: Format, typecheck, lint, test**
 
 Run:
+
 ```bash
 pnpm biome check --write src/components/admin/DesignViewer.tsx src/app/admin/cabinet-designs/CabinetDesignsClient.tsx
 pnpm typecheck 2>&1 | grep "error TS" | grep -v prisma.config.ts
 pnpm lint && pnpm test
 ```
 Expected: the `grep` prints nothing; lint clean; all tests pass, including Task 1's 4.
+
 - [ ] **Step 5: Confirm the planner and engine were not touched**
 
 Run: `git diff --stat src/components/planner src/lib`
 Expected: empty output.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -634,9 +644,11 @@ sed -E 's/(Door|door|DOOR|Drawer|drawer)/Pnl/g' .playwright-mcp/src.bin > .playw
 ```
 
 Get a design id from the page's network panel or `GET /api/admin/cabinet-designs`.
+
 - [ ] **Step 8: Browser verification** (dev server on `http://localhost:3000`, Playwright or Chrome; viewport 2560×1080, then 390×844)
 
 On `/admin/cabinet-designs`:
+
 1. **Edit an existing design** (row → Edit). Expected: preview is painted in the first finish with studio lighting and a floor shadow — not flat grey. Finish swatches, door style chips and a Doors shut / Open / Hidden switch appear under it.
 2. **Switch finishes.** Expected: door and drawer fronts change colour; carcass does not. If a finish has a decor photo uploaded in Site content, its swatch shows the photo and the fronts wear it.
 3. **Pick the glass door style.** Expected: fronts become see-through.

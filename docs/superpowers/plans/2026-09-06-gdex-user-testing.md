@@ -31,6 +31,7 @@ The adapter now refuses a bad day locally (`f9c8322`), which turns the first int
 ### Observed API facts this plan depends on
 
 All verified against the sandbox on 2026-09-06. Several contradict or extend the documentation.
+
 - **`GET /GetPickUpDateListing?PostCode=<sender postcode>`** → `data: ["2026-09-07T00:00:00", … 5 entries]`. Naive Malaysian local, always midnight. Requires the postcode; without it, 400 `"Please Provide PostCode"`. This is the authoritative list — the documented "5 days" is a coincidence of the day it was asked, and weekends and holidays are already excluded.
 - **`GET /CheckeWalletBalance`** → `data` is a bare number (`1020.0000`). Cancelling a consignment refunds it.
 - **`GET /GetUpcomingPickUpDetails`** → `data: []` when nothing is scheduled. **Its populated shape has never been observed** — Task 3 observes it before parsing it.
@@ -72,10 +73,12 @@ All verified against the sandbox on 2026-09-06. Several contradict or extend the
 Replaces the hardcoded five-day window with GDEX's own list, which already excludes weekends and holidays. The window check in `pickupDay` stays as the cheap local guard; this is the authoritative answer the UI offers.
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/gdex.ts`
 - Modify: `src/lib/logistics/__tests__/gdex.test.ts`
 
 **Interfaces:**
+
 - Produces: `pickupDays(): Promise<string[]>` — `YYYY-MM-DD` strings, soonest first.
 
 - [ ] **Step 1: Write the failing test**
@@ -119,6 +122,7 @@ pnpm vitest run src/lib/logistics/__tests__/gdex.test.ts -t pickupDays
 ```
 
 Expected: FAIL — `pickupDays` is not exported.
+
 - [ ] **Step 3: Implement**
 
 ```ts
@@ -172,11 +176,13 @@ git commit -m "feat(logistics): ask GDEX which days it will collect"
 Wallet treatment **B**, chosen 2026-09-06. The balance is not displayed as a number on the comparison; a warning appears on the GDEX row only when the wallet is short. Parity is broken only where it buys something.
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/gdex.ts`, `src/lib/logistics/types.ts`
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx`
 - Modify: `src/lib/logistics/__tests__/gdex.test.ts`
 
 **Interfaces:**
+
 - Consumes: `CarrierQuote` from `../types`.
 - Produces: `CarrierQuote.warning?: string` — advisory, never a refusal. A warned quote is still bookable.
 
@@ -304,6 +310,7 @@ git commit -m "feat(logistics): warn when GDEX's wallet will not cover the booki
 The task this plan exists for. After booking, the admin sees GDEX's own confirmation rather than inferring it from our own success.
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/gdex.ts`
 - Create: `src/app/api/admin/deliveries/[id]/pickup/route.ts`
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx`
@@ -321,6 +328,7 @@ console.log(await (await fetch(`${B}/GetUpcomingPickUpDetails`,{headers:H})).tex
 ```
 
 **Write the observed JSON into `src/lib/logistics/__tests__/fixtures/gdex.ts` verbatim.** Do not invent this shape — the `IsValid` field on `GetLastShipmentStatus` is not in the documentation either, and reading a status off a row that did not exist reported a phantom parcel as booked.
+
 - [ ] **Step 2: Implement against what you observed**
 
 ```ts
@@ -355,6 +363,7 @@ export async function pickupConfirmation(
 From the Compare partners artboard. A 500 kg cabinet must not read as a plausible parcel next to a lorry quote 16× cheaper.
 
 **Files:** `src/app/admin/logistics/LogisticsManager.tsx`, `src/app/admin/logistics/tracking.ts`
+
 - [ ] **Step 1:** Split the quote list by `KIND[carrierId]` (`carriers.ts` already carries it) into "Vehicle partners" and "Parcel partners", each with the one-line explanation from the artboard.
 - [ ] **Step 2:** Restate the job above the list — items, total weight, longest edge, destination.
 - [ ] **Step 3:** Give the three failure kinds three looks, as designed: dashed grey for _no credentials, nothing was asked_; amber for _this job is wrong for this carrier_ (a `GdexNotDeliverable` / `EasyParcelNotDeliverable` message, which the admin can act on); red for _the carrier refused_.
@@ -367,6 +376,7 @@ From the Compare partners artboard. A 500 kg cabinet must not read as a plausibl
 **Files:** `src/app/admin/logistics/tracking.ts`, `src/app/admin/logistics/LogisticsManager.tsx`
 
 `JOURNEY` is a module constant of five states including `DRIVER_ASSIGNED`. A GDEX job can never reach it, so the tracker always shows one dead stop.
+
 - [ ] **Step 1:** Write the failing test — `journeySteps` for a GDEX job returns four stops, for a Lalamove job five.
 - [ ] **Step 2:** Take the carrier id as an argument and drop `DRIVER_ASSIGNED` when the carrier's status table has no entry mapping to it. Derived from `CARRIER_STATUS_MAPS`, not hardcoded per carrier — a partner that starts reporting drivers gets the stop back for free.
 - [ ] **Step 3:** Add the explanatory line from the artboard, so the absence reads as a fact about parcel networks rather than a missing feature.
@@ -377,9 +387,11 @@ From the Compare partners artboard. A 500 kg cabinet must not read as a plausibl
 ## Task 6: The user-testing script
 
 Not code. This is what a tester follows, and what "it works" means.
+
 - [ ] **Step 1: Write `docs/gdex-user-testing.md`** containing exactly this run-through:
 
 **Before starting**
+
 1. `pnpm gdex:ping` — expect `GetUserTokenValidity` 200, a wallet balance, and a rate in RM. Any 401 stops the test: the message names which credential and which portal.
 2. Confirm the wallet covers a few bookings. It reached `0.0000` once already.
 
@@ -395,6 +407,7 @@ Not code. This is what a tester follows, and what "it works" means.
 11. Cancel the job. The wallet balance returns to what it was — cancelling refunds, and it cancels the collection too.
 
 **What is not a bug**
+
 - No driver is ever named on a GDEX job. Use Lalamove when a named driver matters.
 - Status updates lag up to ten minutes; the cron polls on that interval. "Refresh from carrier" is immediate.
 

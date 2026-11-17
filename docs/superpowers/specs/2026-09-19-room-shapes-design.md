@@ -96,6 +96,7 @@ placement engine in `layout.ts` is unchanged.
 
 An inside vertex is **active** when walls _i_ and _i+1_ both hold cabinets, or
 the vertex holds a corner unit.
+
 - An active corner reserves the square on both walls: `EMPTY_CORNER_MM`
   (607 floor / 397 wall), or the unit's width when one is placed.
 - Activating it runs today's `cascadeCorner` for that vertex. It slides
@@ -189,6 +190,7 @@ and **EzCabinet should be told** before a re-priced old design surprises them.
 ## Testing
 
 `lib/planner` gets its tests before any caller, per CLAUDE.md:
+
 - **`floorplan.test.ts`:** each template closes; vertex kinds; the winding rule
   (each wall's start is the previous wall's end, inward normals point in);
   `setWallLength` maps and clamps.
@@ -206,6 +208,7 @@ and **EzCabinet should be told** before a re-priced old design surprises them.
   apart from the flush-end panel change above.
 
 Then `pnpm test`, `pnpm lint` and `pnpm typecheck`. In the browser:
+
 1. Pick the L and edit the notch in plan view.
 2. Tap each wall and build a U.
 3. Drag a design in near a side wall.
@@ -216,6 +219,7 @@ Then `pnpm test`, `pnpm lint` and `pnpm typecheck`. In the browser:
 ## Order of work
 
 Each step is its own commit.
+
 1. `floorplan.ts` and its tests.
 2. `reserved` as span lists; `EndWalls` per end.
 3. `room.ts` v3, the order schema v3 and migrations, `validate.ts`,
@@ -232,6 +236,7 @@ flag. Add the last when an open-plan room needs it.
 ## 5. Free-standing cabinets (added 2026-09-19, user decision)
 
 A cabinet can stand anywhere on the floor, not only against a wall.
+
 - **Document:** `RoomLayout.free: FreeModule[]`, where `FreeModule = PlacedModule` with `xMm, zMm` = the centre of its footprint in plan mm, and `rotationDeg` = its yaw relative to the back wall. In zod it is optional and defaults to `[]`, so saved v3 designs still parse with no version bump.
 - **Who may go free:** base and tall units only. Wall-hung units need a wall; corner units need their corner.
 - **Drop rule:** on release, if the cabinet's back edge is within **150 mm** (`SNAP_TO_WALL_MM`) of the nearest wall, it joins that wall's run (the Task 8 `moveToRun` path). Otherwise it becomes, or stays, free at the drop point. A cabinet going from a wall to free keeps facing the way its wall faced it.

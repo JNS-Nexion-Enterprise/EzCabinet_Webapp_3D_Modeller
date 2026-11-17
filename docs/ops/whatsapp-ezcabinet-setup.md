@@ -25,6 +25,7 @@ In **Meta Business Suite** (business.facebook.com), under Security Centre,
 verify the business in **EzCabinet Sdn Bhd's legal name**.
 
 Have ready:
+
 - SSM registration (company certificate / Form 9 or Section 17 equivalent)
 - A utility bill or bank statement showing the registered address
 - A business website on the company's own domain, with the same name and
@@ -41,6 +42,7 @@ customers messaged per day and cannot get a display name approved.
 
 A number used with the Cloud API **cannot also be used in the WhatsApp or
 WhatsApp Business phone app**. Do not use the number sales already chats on.
+
 - A new mobile or landline number EzCabinet owns long-term. It must be able to
   receive one SMS or voice call for the verification code.
 - If the number was ever on WhatsApp, delete that WhatsApp account first.
@@ -52,6 +54,7 @@ WhatsApp Business phone app**. Do not use the number sales already chats on.
 ## 3. Access for JNS Nexion
 
 In Meta Business Suite, under Business settings:
+
 1. Create a **Meta app** (type: Business) and add the **WhatsApp** product to
    it, linked to EzCabinet's WhatsApp Business Account.
 2. Create a **system user** (admin role), assign it the app and the WhatsApp
@@ -115,36 +118,45 @@ fixed at submission and the app appends the private link token.
 | `order_refunded`     | View order     | `https://<domain>/order/{{1}}` |
 
 **`order_placed`**
+
 > Hi {{1}}, thank you for your order with EzCabinet. Your order number is
 > {{2}}, total RM {{3}}. Please complete the bank transfer shown on your order
 > page. We'll message you here as your cabinets are made and delivered.
 
 **`payment_confirmed`**
+
 > Payment received for order {{1}}. We'll contact you to arrange the site
 > re-measure, then update you here at each production step.
 
 **`production_stage`**
+
 > Update on order {{1}} — current step: {{2}}.
 
 **`delivery_booked`**
+
 > Your order {{1}} is ready and delivery is booked with {{2}}. Tracking number:
 > {{3}}.
 
 **`delivery_picked_up`**
+
 > Your order {{1}} has been picked up and is on its way to you.
 
 **`delivery_delivered`**
+
 > Your order {{1}} has been delivered. Thank you for choosing EzCabinet.
 
 **`delivery_failed`**
+
 > We couldn't complete the delivery of order {{1}}. Our team will contact you
 > to arrange a new time.
 
 **`order_refunded`**
+
 > Your order {{1}} has been cancelled and RM {{2}} has been refunded to you.
 > It can take a few working days to show in your account.
 
 Tips that get templates approved first time:
+
 - No promotional wording ("discount", "offer", "don't miss") — that moves a
   template into the Marketing category, which costs more and can be refused.
 - Provide sample values when Meta asks for them (e.g. `IC-20260922-001`).
@@ -161,6 +173,7 @@ The design uses placeholders:
 **Site re-measure → Cutting → Edge banding → Assembly → Quality check → Ready for delivery**
 
 EzCabinet's factory manager should confirm:
+
 - The real steps, in order, and what each is called on the floor.
 - What a customer should see for each — the floor's name may not be the right
   customer-facing word.

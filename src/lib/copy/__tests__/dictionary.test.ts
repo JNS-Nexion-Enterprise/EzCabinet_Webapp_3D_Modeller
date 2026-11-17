@@ -27,6 +27,8 @@ const at = (dict: unknown, path: string): string =>
 const SHARED = new Set([
 	"common.brand",
 	"landing.footer.email",
+	// Only the `{seller}` token: the company's own name and address fill it.
+	"landing.footer.seller",
 	// Malay borrows the word outright — "Menu" is the Malay for it, not an
 	// untranslated string.
 	"landing.nav.menu",

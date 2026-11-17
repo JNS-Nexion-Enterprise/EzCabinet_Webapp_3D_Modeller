@@ -60,6 +60,7 @@ the start screen carries the language links instead.
 ## Studio
 
 Top to bottom:
+
 1. Header: back pill **Rooms** → room picker; title = the room's label;
    subtitle "{m} m wall" (the targeted wall's length, 2 decimals); right, the
    tutorials link.
@@ -103,6 +104,7 @@ the app wins:
 | Admin link                                                 | Not built                                                                   | No admin link on public pages        |
 
 And where the design has no home for something the app does:
+
 - **Room tab = `RoomPanel` + the Setup (defaults) body under it.** The design's
   Room tab already mixes the room with "Wall units hang at", so kick board,
   wall-units mode, hang height, flush tops and close gaps follow it there.

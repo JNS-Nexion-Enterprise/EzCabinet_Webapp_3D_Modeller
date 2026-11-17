@@ -1,10 +1,12 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 /**
  * The one layout the privacy notice, the terms of sale and the refund policy
  * share: a title, the draft banner, an intro and heading-plus-paragraph
- * sections. The wording is EzCabinet's to approve, so every page that uses
- * this says it is a draft.
+ * sections. The wording is the seller's counsel's to approve, so every page
+ * says it is a draft until that approval is recorded at /admin/company,
+ * which empties `draft`.
  */
 export function LegalPage({
 	lang,
@@ -13,6 +15,7 @@ export function LegalPage({
 	draft,
 	intro,
 	sections,
+	children,
 }: {
 	lang: string;
 	back: string;
@@ -20,6 +23,8 @@ export function LegalPage({
 	draft: string;
 	intro: string;
 	sections: readonly (readonly [heading: string, body: string])[];
+	/** After the sections: a control the page needs, like cookie settings. */
+	children?: ReactNode;
 }) {
 	return (
 		// Paints its own ground: `body` goes near-black under a dark OS theme
@@ -34,9 +39,11 @@ export function LegalPage({
 						{back}
 					</Link>
 					<h1 className="mt-4 font-semibold text-[28px]">{title}</h1>
-					<p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
-						{draft}
-					</p>
+					{draft && (
+						<p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[13px] text-amber-900">
+							{draft}
+						</p>
+					)}
 					<p className="mt-4 text-[15px] text-neutral-600 leading-6">{intro}</p>
 				</div>
 				{sections.map(([heading, body]) => (
@@ -47,6 +54,7 @@ export function LegalPage({
 						</p>
 					</section>
 				))}
+				{children}
 			</main>
 		</div>
 	);

@@ -20,6 +20,7 @@
 ## Global Constraints
 
 Every task's requirements implicitly include this section.
+
 - **The site is trilingual.** `LOCALES = ["en", "zh", "ms"]` (`src/lib/copy/locales.ts`). Public routes are `/[lang]/…`. Every FAQ entry carries all three languages; the assistant answers in the visitor's locale and never switches language unprompted.
 - **UI copy is sentence case. Prices in RM.** (`CLAUDE.md` § Conventions.)
 - **The assistant must never state a price it computed itself.** It may quote a rung price that appears verbatim in a FAQ answer. Anything else is a handoff to WhatsApp. A wrong RM figure screenshotted into WhatsApp is a lost sale and a support incident.
@@ -48,6 +49,7 @@ Every task's requirements implicitly include this section.
 | Error banner   | `rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[12px] text-red-700`                                                                  |
 
 Accent green is `#1f5138`. Page ground is `#f4f3f1`. Muted ink is `#5c574e`. Hairlines are `#ecebe7`.
+
 - **Never use `window.confirm`, `alert` or `prompt`.** A browser modal blocks the browser-automation tooling this project uses for verification. Destructive actions use an inline two-step button.
 
 ## File Structure
@@ -77,12 +79,14 @@ Tests live in `src/lib/faq/__tests__/`, matching `src/lib/planner/__tests__/`.
 ### Task 1: Data layer — model, schemas, read path
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 - Create: `src/lib/faq/schema.ts`
 - Create: `src/lib/faq/store.ts`
 - Test: `src/lib/faq/__tests__/schema.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Locale` from `@/lib/copy/locales`; `prisma` from `@/lib/catalogue/db`.
 - Produces:
   - `type LocaleText = Record<Locale, string>`
@@ -146,6 +150,7 @@ describe("faqEntryInputSchema", () => {
 
 Run: `pnpm test src/lib/faq/__tests__/schema.test.ts`
 Expected: FAIL — `Cannot find module '../schema'`
+
 - [ ] **Step 3: Write the schema**
 
 `src/lib/faq/schema.ts`:
@@ -205,6 +210,7 @@ export type LocalisedEntry = {
 
 Run: `pnpm test src/lib/faq/__tests__/schema.test.ts`
 Expected: PASS, 3 tests
+
 - [ ] **Step 5: Add the Prisma model**
 
 Append to `prisma/schema.prisma`:
@@ -241,6 +247,7 @@ Verify the client knows the model:
 
 Run: `pnpm typecheck`
 Expected: no errors.
+
 - [ ] **Step 7: Write the read path**
 
 `src/lib/faq/store.ts`:
@@ -316,10 +323,12 @@ git commit -m "feat(faq): add FaqEntry model, locale schemas and read path"
 The accordion answers for free; this decides when it can. A hit returns the stored answer with no model call at all.
 
 **Files:**
+
 - Create: `src/lib/faq/match.ts`
 - Test: `src/lib/faq/__tests__/match.test.ts`
 
 **Interfaces:**
+
 - Consumes: `LocalisedEntry` from `./schema`.
 - Produces: `matchEntry(question: string, entries: LocalisedEntry[]): LocalisedEntry | null`, `normalise(text: string): string`, `MATCH_THRESHOLD: number`.
 
@@ -396,6 +405,7 @@ describe("matchEntry", () => {
 
 Run: `pnpm test src/lib/faq/__tests__/match.test.ts`
 Expected: FAIL — `Cannot find module '../match'`
+
 - [ ] **Step 3: Write the matcher**
 
 `src/lib/faq/match.ts`:
@@ -472,6 +482,7 @@ export function matchEntry(
 
 Run: `pnpm test src/lib/faq/__tests__/match.test.ts`
 Expected: PASS, 8 tests
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -484,10 +495,12 @@ git commit -m "feat(faq): match a question against the written corpus"
 ### Task 3: The prompt and its guardrails
 
 **Files:**
+
 - Create: `src/lib/faq/prompt.ts`
 - Test: `src/lib/faq/__tests__/prompt.test.ts`
 
 **Interfaces:**
+
 - Consumes: `LocalisedEntry` from `./schema`; `Locale` from `@/lib/copy/locales`.
 - Produces: `buildSystemPrompt(entries: LocalisedEntry[], locale: Locale): string`, `MAX_QUESTION_CHARS: number`, `MAX_TURNS: number`, `WHATSAPP_URL: string`.
 
@@ -549,6 +562,7 @@ describe("buildSystemPrompt", () => {
 
 Run: `pnpm test src/lib/faq/__tests__/prompt.test.ts`
 Expected: FAIL — `Cannot find module '../prompt'`
+
 - [ ] **Step 3: Write the prompt builder**
 
 `src/lib/faq/prompt.ts`:
@@ -615,6 +629,7 @@ export function buildSystemPrompt(
 
 Run: `pnpm test src/lib/faq/__tests__/prompt.test.ts`
 Expected: PASS, 6 tests
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -629,10 +644,12 @@ git commit -m "feat(faq): build the grounded system prompt and its guardrails"
 The one thing standing between a public, login-free model endpoint and someone else's script spending the client's credits.
 
 **Files:**
+
 - Create: `src/lib/faq/rateLimit.ts`
 - Test: `src/lib/faq/__tests__/rateLimit.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `takeToken(key: string, now?: number): boolean`, `resetBuckets(): void`, `RATE_LIMIT: { capacity: number; refillMs: number }`.
 
@@ -683,6 +700,7 @@ describe("takeToken", () => {
 
 Run: `pnpm test src/lib/faq/__tests__/rateLimit.test.ts`
 Expected: FAIL — `Cannot find module '../rateLimit'`
+
 - [ ] **Step 3: Write the limiter**
 
 `src/lib/faq/rateLimit.ts`:
@@ -745,6 +763,7 @@ export function takeToken(key: string, now: number = Date.now()): boolean {
 
 Run: `pnpm test src/lib/faq/__tests__/rateLimit.test.ts`
 Expected: PASS, 5 tests
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -757,11 +776,13 @@ git commit -m "feat(faq): rate limit the public ask endpoint per IP"
 ### Task 5: The public ask endpoint
 
 **Files:**
+
 - Create: `src/app/api/faq/ask/route.ts`
 - Modify: `package.json` (add `ai`, `@ai-sdk/react`)
 - Modify: `.env.example` (document `AI_GATEWAY_API_KEY`)
 
 **Interfaces:**
+
 - Consumes: `publishedEntries` (Task 1), `matchEntry` (Task 2), `buildSystemPrompt` / `MAX_QUESTION_CHARS` / `MAX_TURNS` (Task 3), `takeToken` (Task 4).
 - Produces: `POST /api/faq/ask` taking `{ messages: UIMessage[]; locale: Locale }`, returning a UI message stream.
 
@@ -780,6 +801,7 @@ grep -rl "useChat" node_modules/@ai-sdk/react/docs/ node_modules/ai/docs/ | head
 ```
 
 Confirm three things before writing code: the `streamText` options shape, the name of the helper that turns its result into a `Response`, and the import path for `useChat`. **If the local docs contradict Step 3 below, follow the docs.**
+
 - [ ] **Step 2: Wire the gateway credential**
 
 The AI Gateway resolves `AI_GATEWAY_API_KEY` first, then `VERCEL_OIDC_TOKEN`. For local dev:
@@ -797,6 +819,7 @@ AI_GATEWAY_API_KEY=
 ```
 
 **Set a hard budget cap in the Vercel dashboard** under AI Gateway → Budgets before the endpoint ships. The endpoint handles the resulting 402 in Step 3; without the cap there is nothing to handle.
+
 - [ ] **Step 3: Write the route**
 
 `src/app/api/faq/ask/route.ts`:
@@ -933,6 +956,7 @@ done
 ```
 
 Expected: `200` up to the capacity, then `429`.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -945,6 +969,7 @@ git commit -m "feat(faq): stream grounded answers through AI Gateway"
 ### Task 6: Admin CRUD
 
 **Files:**
+
 - Create: `src/app/api/admin/faq/route.ts`
 - Create: `src/app/api/admin/faq/[id]/route.ts`
 - Create: `src/app/admin/faq/page.tsx`
@@ -952,10 +977,12 @@ git commit -m "feat(faq): stream grounded answers through AI Gateway"
 - Reference: `src/app/admin/tutorials/TutorialManager.tsx` (read before writing — it is the design language)
 
 **Interfaces:**
+
 - Consumes: `faqEntryInputSchema` (Task 1), `listEntries` (Task 1), `prisma`.
 - Produces: `GET/POST /api/admin/faq`, `PATCH/DELETE /api/admin/faq/[id]`.
 
 Auth is handled by `src/proxy.ts` on the `/api/admin` prefix. Do not add an auth check here — the existing tutorials routes don't, and a second one would be a second thing to keep right.
+
 - [ ] **Step 1: Write the list and create route**
 
 `src/app/api/admin/faq/route.ts`:
@@ -1198,9 +1225,11 @@ export function FaqManager({ initial }: { initial: FaqEntry[] }) {
 ```
 
 **The tab UI matters more than it looks.** An admin who fills in English and saves gets a rejection; the tabs have to make the two unfilled languages visible at a glance. Mark a tab whose question or answer is still blank — a dot, a colour change, anything — so incompleteness is seen before the save button is reached, not after.
+
 - [ ] **Step 5: Verify by hand**
 
 Sign in at `/admin/login`, go to `/admin/faq`, and:
+
 1. Create an entry with all three languages. Expect a 201 and the row appears.
 2. Try to save with the Malay answer blank. Expect the save button disabled.
 3. Publish it, then re-run the `matched` curl from Task 5 Step 4. Expect the free path to hit it.
@@ -1219,12 +1248,14 @@ git commit -m "feat(faq): admin CRUD for FAQ entries in three languages"
 ### Task 7: The public page
 
 **Files:**
+
 - Create: `src/app/[lang]/faq/page.tsx`
 - Create: `src/components/faq/FaqAccordion.tsx`
 - Create: `src/components/faq/FaqAsk.tsx`
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/zh.ts`, `src/lib/copy/ms.ts`
 
 **Interfaces:**
+
 - Consumes: `publishedEntries` (Task 1), `matchEntry` (Task 2), `POST /api/faq/ask` (Task 5), `getDictionary` from `@/lib/copy/dictionary`.
 - Produces: the route `/[lang]/faq`.
 
@@ -1233,6 +1264,7 @@ git commit -m "feat(faq): admin CRUD for FAQ entries in three languages"
 Add a `faq` section to the `Dictionary` type in `src/lib/copy/en.ts` and the matching values in all three files. `en.ts` defines the type, so start there and let `pnpm typecheck` name what `zh.ts` and `ms.ts` are missing.
 
 Keys needed: `title`, `subtitle`, `askLabel`, `askPlaceholder`, `askSubmit`, `askThinking`, `askEmpty`, `whatsappCta`.
+
 - [ ] **Step 2: Build the accordion**
 
 `src/components/faq/FaqAccordion.tsx` — a server component. Native `<details>`, no JavaScript: this is the SEO surface _and_ the no-JS fallback, and `<details>` is the platform's own disclosure widget.
@@ -1401,6 +1433,7 @@ export function FaqAsk({ entries, locale, copy }: Props) {
 ```
 
 **Read the streaming branch carefully when you wire it.** The `content-type` check is what separates a `{ matched }` JSON reply (the server's own free path) from a token stream. If `toUIMessageStreamResponse` frames its chunks — check the local docs — decode that framing rather than appending raw bytes, or the visitor sees protocol noise.
+
 - [ ] **Step 4: Build the page**
 
 `src/app/[lang]/faq/page.tsx`, following `src/app/[lang]/tutorials/page.tsx` — read it for the nav chrome and copy that, rather than inventing a second public header:
@@ -1479,6 +1512,7 @@ pnpm dev
 ```
 
 Check, in order:
+
 1. `/en/faq`, `/ms/faq`, `/zh/faq` each render every published entry in that language.
 2. With JavaScript disabled in devtools, the accordion still opens and closes.
 3. Typing a question that matches an entry scrolls to it and makes no network request (Network tab stays empty).
@@ -1499,6 +1533,7 @@ git commit -m "feat(faq): trilingual FAQ page with accordion and grounded assist
 The site publishes in three languages. Model choice is a quality decision, and at this traffic the price spread across every candidate is about RM 13 a month — so decide it on answers, not on rates.
 
 **Files:**
+
 - Create: `scripts/faq-eval.mjs`
 - Modify: `package.json` (add `faq:eval` script)
 - Modify: `src/app/api/faq/ask/route.ts` (set `MODEL` to the winner)
@@ -1507,6 +1542,7 @@ The site publishes in three languages. Model choice is a quality decision, and a
 - [ ] **Step 1: Write the question set**
 
 Thirty questions inside `scripts/faq-eval.mjs`: ten English, ten Malay, ten Chinese. Include, deliberately:
+
 - four questions the corpus answers directly, one per language plus one paraphrase
 - four the corpus does **not** answer (must produce a handoff, not an invention)
 - three that ask for a price (must refuse to compute)
@@ -1514,6 +1550,7 @@ Thirty questions inside `scripts/faq-eval.mjs`: ten English, ten Malay, ten Chin
 - one code-switched (`"delivery berapa lama ya?"`)
 
 Store the expected behaviour per question as one of `answer` / `handoff` / `refuse-price`.
+
 - [ ] **Step 2: Write the runner**
 
 The script loads the published corpus straight from the database, builds the prompt with `buildSystemPrompt`, and asks each candidate model each question:
@@ -1526,9 +1563,11 @@ anthropic/claude-haiku-4.5      $1.00 / $5.00
 ```
 
 Write every answer to `docs/faq-model-eval.md` as a table, grouped by question, with the actual token usage per call from the response's `usage` field.
+
 - [ ] **Step 3: Grade by hand**
 
 Three checks per answer. They are not equally weighted — the first is a veto:
+
 1. **Did it invent a price or a promise?** Any yes disqualifies the model outright.
 2. Is the language natural to a Malaysian reader? (Malay that reads as Indonesian is a fail. Traditional characters are a fail — the site publishes Simplified.)
 3. Did it hand off when it should have?
@@ -1536,6 +1575,7 @@ Three checks per answer. They are not equally weighted — the first is a veto:
 - [ ] **Step 4: Record and set the model**
 
 Write the verdict at the top of `docs/faq-model-eval.md`: the chosen model, the date, the measured cost per conversation in RM, and which candidates were disqualified and why. Then set `MODEL` in `src/app/api/faq/ask/route.ts`.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1559,6 +1599,7 @@ Measured shape: ~2,600-token stable prefix (guardrails + 20-entry corpus), 4-tur
 The accordion serves most traffic for nothing, so the real bill sits below these. AI Gateway takes **zero markup** — you pay provider list price out of prepaid credits.
 
 **Two billing facts worth knowing before the first top-up:**
+
 - The **$5/month free tier covers a model subset only** — `minimax/*`, `perplexity/sonar*`, `fish-audio/*`, `inclusionai/*`, `poolside/*`. None of the four candidates above are on it. Budget from day one.
 - **The first credit purchase ends the monthly free credit permanently.**
 
@@ -1571,6 +1612,7 @@ The accordion serves most traffic for nothing, so the real bill sits below these
 ## What this plan does not do
 
 Stated so nobody assumes otherwise:
+
 - **No lead capture.** The handoff is a `wa.me` link, not a form. Phase 3 lead capture is separate work.
 - **No conversation storage.** Nothing is written to Postgres, so there is no PDPA question about transcripts holding phone numbers. Adding analytics later means answering that question first.
 - **No layout generation.** The "describe your kitchen → starter layout" idea was researched in the same session and deferred; the blocker is catalogue vocabulary (no sink base, no hob unit, no oven housing), not model capability.

@@ -40,10 +40,12 @@ Tasks 1 and 2 are independent of each other. Task 3 precedes 4. Tasks 5 and 6 ar
 ### Task 1: Catalogue health derivations
 
 **Files:**
+
 - Create: `src/lib/catalogue/health.ts`
 - Test: `src/lib/catalogue/__tests__/health.test.ts`
 
 **Interfaces:**
+
 - Consumes: `PlannerCatalogue` from `@/lib/planner/catalogueSchema`; `PLANNER_CATALOGUE` from `@/lib/planner/catalogue` (tests only).
 - Produces:
   - `type PriceBlocker = { familyId: string; familyLabel: string; widthMm: number; meshDesignId?: string }`
@@ -135,6 +137,7 @@ describe("strandedFamilyIds", () => {
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/health.test.ts`
 Expected: FAIL — `Failed to resolve import "../health"`.
+
 - [ ] **Step 3: Write the implementation**
 
 Create `src/lib/catalogue/health.ts`:
@@ -207,6 +210,7 @@ Run: `pnpm vitest run src/lib/catalogue/__tests__/health.test.ts`
 Expected: PASS, 7 tests.
 
 If "finds nothing in a catalogue where every rung is priced" fails, the seed catalogue has a rung at 0 — that is a real finding, not a test bug. Report it rather than weakening the assertion.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -223,11 +227,13 @@ editor. Both are now values the review screen can render."
 ### Task 2: Design pushes stack instead of forking
 
 **Files:**
+
 - Modify: `src/lib/catalogue/versions.ts` (append after `createDraftVersion`)
 - Modify: `src/lib/catalogue/publishDesigns.ts:274-300`
 - Test: `src/lib/catalogue/__tests__/versions.test.ts` (create)
 
 **Interfaces:**
+
 - Consumes: `prisma` from `./db`; `Product` from `@/generated/prisma/enums`.
 - Produces: `latestDraftVersion(product: Product): Promise<{ id: string; version: number; data: unknown } | null>`
 
@@ -242,6 +248,7 @@ const {
 ```
 
 Because the base is always the published version, publishing design A then design B produces two drafts, the second built without A. Publishing the second silently discards A.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/lib/catalogue/__tests__/versions.test.ts`:
@@ -294,10 +301,12 @@ describe("latestDraftVersion", () => {
 ```
 
 The `orderBy` assertion is the point of this test. A draft picked in insertion order rather than by version is the same data-loss bug wearing a different hat.
+
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/versions.test.ts`
 Expected: FAIL — `latestDraftVersion is not a function`.
+
 - [ ] **Step 3: Add `latestDraftVersion`**
 
 Append to `src/lib/catalogue/versions.ts`, after `createDraftVersion`:
@@ -327,6 +336,7 @@ export async function latestDraftVersion(product: Product) {
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/versions.test.ts`
 Expected: PASS, 3 tests.
+
 - [ ] **Step 5: Merge onto the draft in `publishDesigns.ts`**
 
 Add to the imports at the top of `src/lib/catalogue/publishDesigns.ts` — the file already imports `createDraftVersion` from `./versions` at line 30, so extend that import:
@@ -359,6 +369,7 @@ import { plannerCatalogueSchema } from "@/lib/planner/catalogueSchema";
 ```
 
 Nothing else in the function changes. `base.construction` at `:281-296` reads the same field either way; `publishedVersion: version` at `:352` and `:376` keeps reporting the published version, which is what the UI means by it.
+
 - [ ] **Step 6: Name both sources in the draft's note**
 
 Replace the `createDraftVersion` call at `publishDesigns.ts:364-368` with:
@@ -379,6 +390,7 @@ const draft = await createDraftVersion({
 
 Run: `pnpm test && pnpm typecheck`
 Expected: all tests pass; no type errors.
+
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -396,9 +408,11 @@ A push now merges onto the newest open draft when there is one."
 ### Task 3: The page opens on the draft, and says which version it is on
 
 **Files:**
+
 - Modify: `src/app/admin/catalogue/page.tsx:377` (state), `:436-470` (load effect), `:550-556` (header)
 
 **Interfaces:**
+
 - Consumes: nothing from tasks 1-2.
 - Produces: component state `openedVersion: OpenedVersion | null`, where
 
@@ -419,6 +433,7 @@ type OpenedVersion = {
 Task 4 reads `openedVersion` and calls `publish(openedVersion.id)`.
 
 The versions endpoint already returns `id, version, status, note, createdAt, publishedAt` ordered `version: "desc"` (`api/admin/catalogue/versions/route.ts:22-36`), so nothing server-side changes.
+
 - [ ] **Step 1: Add the state**
 
 After line 377 (`const [draft, setDraft] = useState<PlannerCatalogue | null>(null);`) add:
@@ -543,16 +558,19 @@ The link carries the published version's **id**, not an empty `?version=`. An
 empty value comes back from `useSearchParams().get("version")` as `""`, which
 is falsy, so the resolution in step 2 would fall straight back to the draft and
 the link would appear to do nothing.
+
 - [ ] **Step 4: Verify types and lint**
 
 Run: `pnpm typecheck && pnpm lint`
 Expected: no errors. Biome will flag an unused `published` binding if step 2 was applied partially — that is a real signal, re-read the hunk.
+
 - [ ] **Step 5: Verify in the running app**
 
 Run: `pnpm dev`, sign in at `/admin/login`, open `/admin/catalogue`.
 Expected: with a DRAFT in the database, the page opens on it and the header reads `Draft vN · not live`. Follow the "open the live catalogue" link: the header flips to `Live · vN`. With no draft in the database, the page opens live as before.
 
 If there is no DRAFT to test against, create one: `/admin/cabinet-designs` → any design → "Add to planner".
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -571,9 +589,11 @@ and the header says which version is on screen and whether it is live."
 ### Task 4: Review panel above the tabs, gated on unpriced rungs
 
 **Files:**
+
 - Modify: `src/app/admin/catalogue/page.tsx` — imports, a `blockers` memo beside `issues` (`:477-484`), a new panel above the tab bar (`:567`), and the publish button's `disabled` (`:1330`)
 
 **Interfaces:**
+
 - Consumes: `blockersOf`, `PriceBlocker` from `@/lib/catalogue/health` (Task 1); `openedVersion` (Task 3).
 - Produces: nothing later tasks read.
 
@@ -666,6 +686,7 @@ Insert immediately before `<div className="flex flex-wrap gap-1.5">` (the tab ro
 ```
 
 The price field writes `draft.families[fi].sizes[si].priceRm` — the same path the Cabinets tab edits, through the same `edit` helper. One state object, two views.
+
 - [ ] **Step 3: Gate publishing on the blockers**
 
 The publish button at `:1330` currently reads:
@@ -704,10 +725,12 @@ In the existing review block, immediately after the `{issues.length > 0 && (` re
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: clean.
+
 - [ ] **Step 6: Verify in the running app**
 
 Run: `pnpm dev`, open `/admin/catalogue` on a draft, set any rung's price to 0 on the Cabinets tab.
 Expected: the rung appears in the "Needs you" panel within a render; the publish button greys out; typing a price into the panel's field clears the row and re-enables the button. Confirm the Cabinets tab shows the same number — one state, two views.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -725,13 +748,16 @@ they are gone."
 ### Task 5: Room-first Cabinets tab
 
 **Files:**
+
 - Modify: `src/app/admin/catalogue/page.tsx:584-901` — the `{tab === "families" && (` block
 
 **Interfaces:**
+
 - Consumes: `strandedFamilyIds` from `@/lib/catalogue/health` (Task 1).
 - Produces: nothing later tasks read.
 
 The family card body (name/type/depth/height/sizes) is **unchanged** — only the wrapper around it changes: families are grouped by room, and each card gains a room-membership row.
+
 - [ ] **Step 1: Import and derive the groups**
 
 Add to the imports:
@@ -793,6 +819,7 @@ const familyGroups = useMemo(() => {
 ```
 
 `Family` is already imported from `@/lib/planner/catalogueSchema` at the top of the file.
+
 - [ ] **Step 2: Wrap the families list in the groups**
 
 The block at `:584` opens:
@@ -870,6 +897,7 @@ Find the end of the families map — the `))}` that closes `draft.families.map((
 ```
 
 so the family card closes, then the group map, then the group div.
+
 - [ ] **Step 4: Put room membership on the family card**
 
 Inside the family `SectionCard`, immediately before the `Sizes & prices` block (`:807`, the `<div className="mt-3 border-neutral-100 border-t pt-3">` that holds it), insert:
@@ -919,14 +947,17 @@ Inside the family `SectionCard`, immediately before the `Sizes & prices` block (
 ```
 
 `chipClass` is already imported from `@/components/admin/styles` at the top of the file. This mirrors the toggle on the Rooms tab (`:1184-1210`) including its starter cleanup — the Rooms tab keeps its own copy, since it is still the right place to edit a room.
+
 - [ ] **Step 5: Verify types, lint and the suite**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: clean. A JSX nesting mistake in step 3 surfaces here as a parse error — re-read that hunk rather than guessing.
+
 - [ ] **Step 6: Verify in the running app**
 
 Run: `pnpm dev`, open `/admin/catalogue` → Cabinets.
 Expected: families grouped under Kitchen / Living room / Bedroom / Foyer with per-group counts; `Testing123` under "In no room — customers cannot see these"; typing `900` filters to families carrying a 900 rung; typing a family name filters by name; ticking a room on a family card moves it into that group; unticking every room moves it to the stranded group and shows the amber note.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -946,9 +977,11 @@ how anyone will navigate this once there is one design per width."
 ### Task 6: "What it holds" becomes a derived line
 
 **Files:**
+
 - Modify: `src/app/admin/catalogue/page.tsx:686-806` (the geometry block), `:664` (the top-level `Drawers` field)
 
 **Interfaces:**
+
 - Consumes: `fitOutOf`, `standOf` from `@/lib/planner/parts`; `constructionOf` from `@/lib/planner/catalogue`.
 - Produces: nothing.
 
@@ -1073,6 +1106,7 @@ Replace with:
 ```
 
 The nine `Num`/checkbox controls between them, and every `withGeometry(...)` writer, are untouched — they now live inside the disclosure.
+
 - [ ] **Step 5: Make the top-level `Drawers` field read-only when a design set it**
 
 At `:662-671` the field reads:
@@ -1121,12 +1155,14 @@ At `:662-671` the field reads:
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: clean.
+
 - [ ] **Step 7: Verify in the running app**
 
 Run: `pnpm dev`, open `/admin/catalogue` → Cabinets.
 Expected: every family shows one "What it holds" line. Base cabinet (which has geometry) reads something like `1 shelf · 2 door leafs at 900 mm · back panel · 4 legs, 100 mm × ⌀57, 17 mm in — measured from a design`; Drawer base reads `no shelf · 3 drawers · … — no design yet, planner defaults`. "Override these" reveals the nine inputs, and editing one still changes the line above it.
 
 Check the pluralisation reads correctly — "2 door leafs" is wrong English; if the line shows it, fix `fitOutSummary` to use `leaf`/`leaves` and re-run.
+
 - [ ] **Step 8: Commit**
 
 ```bash

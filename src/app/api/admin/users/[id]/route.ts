@@ -79,9 +79,9 @@ export const PATCH = withAuth<{ params: Promise<{ id: string }> }>(
 );
 
 /**
- * Delete, for someone who has left. Irreversible, so the table asks twice;
- * an account with orders is refused and can only be suspended — see
- * `deleteUser`.
+ * Delete, for someone who has left or a customer who asked. Irreversible,
+ * so the table asks twice. A customer with orders is anonymised and the
+ * orders kept; a staff account with orders is refused — see `deleteUser`.
  */
 export const DELETE = withAuth<{ params: Promise<{ id: string }> }>(
 	"users:manage",
@@ -95,12 +95,15 @@ export const DELETE = withAuth<{ params: Promise<{ id: string }> }>(
 			return NextResponse.json({ error: "not_found" }, { status: 404 });
 		}
 		const result = await deleteUser(target.id, actor.id);
-		if (result !== "ok") {
+		if (result !== "ok" && result !== "anonymised") {
 			return NextResponse.json({ error: result }, { status: 409 });
 		}
 		// Ids only, no emails.
-		console.info("User deleted", { actor: actor.id, target: target.id });
-		return NextResponse.json({ ok: true });
+		console.info(
+			result === "ok" ? "User deleted" : "Customer anonymised, orders kept",
+			{ actor: actor.id, target: target.id },
+		);
+		return NextResponse.json({ ok: true, result });
 	},
 	{ stepUp: true },
 );

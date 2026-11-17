@@ -100,15 +100,17 @@ export const ms: Dictionary = {
 		faq: {
 			heading: "Soalan lazim",
 			q1: "Berapa lama tempoh penghantaran?",
-			a1: "Kebanyakan pesanan tiba dalam 4-6 minggu selepas pelan anda disahkan, bergantung pada kemasan dan saiz kabinet.",
+			a1: "Kebanyakan pesanan tiba dalam {deliveryWeeks} minggu selepas kami mengukur semula tapak anda, bergantung pada kemasan dan saiz kabinet.",
 			q2: "Bolehkah saya minta kabinet dipasang sekali?",
-			a2: "Boleh. Pemasangan boleh ditambah apabila anda menghantar pelan kepada pasukan kami untuk sebut harga akhir.",
+			a2: "Boleh. Minta pemasangan apabila pasukan kami mengesahkan pelan anda, dan kami akan memberi sebut harga berasingan.",
+			a2None:
+				"Pemasangan tidak termasuk. Pasukan kami boleh membincangkannya apabila mengesahkan pelan anda.",
 			q3: "Kabinet ini diperbuat daripada apa?",
-			a3: "Badan kabinet solid dengan pilihan kemasan venir, laminat atau bersalut, julat penuh boleh dilihat dalam alat reka bentuk.",
+			a3: "Kemasan bagi setiap kabinet ditunjukkan dalam alat reka bentuk, dan pasukan kami mengesahkan bahannya dengan anda sebelum pengeluaran.",
 			q4: "Bolehkah saya ubah reka bentuk selepas membuat pesanan?",
-			a4: "Perubahan adalah percuma sebelum pengeluaran bermula. Pasukan kami akan sahkan pelan anda terlebih dahulu.",
+			a4: "Anda boleh membetulkan reka bentuk sehingga pengeluaran bermula. Jika ukur semula mengubahnya, kami memberi sebut harga perbezaannya sebelum pengeluaran.",
 			q5: "Adakah anda menawarkan waranti?",
-			a5: "Setiap kabinet disertakan waranti 5 tahun untuk perkakasan dan binaan.",
+			a5: "Setiap kabinet disertakan waranti {warrantyYears} tahun. Termanya disertakan bersama pengesahan pesanan anda.",
 		},
 		footer: {
 			tagline:
@@ -123,6 +125,8 @@ export const ms: Dictionary = {
 			privacy: "Privasi",
 			terms: "Terma jualan",
 			refunds: "Polisi bayaran balik",
+			cookieSettings: "Tetapan kuki",
+			seller: "{seller}",
 			copyright: "© 2026 {brand}. Hak cipta terpelihara.",
 		},
 	},
@@ -432,7 +436,8 @@ export const ms: Dictionary = {
 		errorAddressRequired: "Masukkan alamat penghantaran.",
 		errorAddressShort: "Alamat itu kelihatan terlalu pendek.",
 		errorRemeasure: "Tandakan ini untuk meneruskan.",
-		termsAgree: "Saya bersetuju dengan terma jualan dan polisi bayaran balik.",
+		termsAgree:
+			"Saya berumur 18 tahun ke atas dan bersetuju dengan terma jualan dan polisi bayaran balik.",
 		termsLink: "Terma jualan",
 		refundsLink: "Polisi bayaran balik",
 		errorTerms: "Tandakan ini untuk membuat pesanan.",
@@ -646,25 +651,33 @@ export const ms: Dictionary = {
 			"Apabila anda membuat pesanan, kami menyimpan nama, nombor telefon, e-mel, alamat penghantaran, reka bentuk yang dipesan dan harganya sebagai rekod jualan.",
 		recipientsHeading: "Siapa lagi yang menerima data anda",
 		recipients:
-			"Pemproses pembayaran kami menerima butiran kad dan bil anda — butiran ini tidak sampai ke pelayan kami. Syarikat kurier yang menghantar pesanan anda menerima nama, nombor telefon dan alamat anda. Penyedia log masuk yang anda pilih mengendalikan log masuk anda, dan perkhidmatan e-mel kami menghantar kod log masuk ke alamat anda. Mux menstrim video tutorial kami dan oleh itu melihat alamat IP penonton. Sebahagian syarikat ini memproses data di luar Malaysia.",
+			"Pemproses pembayaran kami menerima butiran kad dan bil anda — butiran ini tidak sampai ke pelayan kami. Syarikat kurier yang menghantar pesanan anda menerima nama, nombor telefon dan alamat anda. Penyedia log masuk yang anda pilih mengendalikan log masuk anda, dan perkhidmatan e-mel kami menghantar kod log masuk ke alamat anda. Mux menstrim video tutorial kami dan oleh itu melihat alamat IP penonton. Hos kami, Vercel, memeriksa permintaan log masuk dan pembayaran untuk mengesan bot dan mengira paparan halaman tanpa kuki. Sebahagian syarikat ini memproses data di luar Malaysia.",
 		obligatoryHeading: "Apa yang anda mesti berikan",
 		obligatory:
-			"Semua ini datang terus daripada anda, atau daripada penyedia log masuk yang anda pilih. Melayari dan merancang tidak memerlukan apa-apa data. Untuk membuat pesanan, anda mesti memberikan nama, nombor telefon dan alamat penghantaran — tanpanya kami tidak dapat menghantar pesanan. E-mel dan kemas kini WhatsApp adalah pilihan.",
+			"Semua ini datang terus daripada anda, atau daripada penyedia log masuk yang anda pilih. Melayari dan merancang tidak memerlukan apa-apa data. Untuk membuat pesanan, anda mesti memberikan nama, nombor telefon, e-mel dan alamat penghantaran — tanpanya kami tidak dapat mengesahkan atau menghantar pesanan. E-mel pesanan adalah sebahagian daripada perkhidmatan; kemas kini WhatsApp adalah pilihan.",
 		retentionHeading: "Tempoh simpanan",
 		retention:
-			"Rekod pesanan disimpan selama yang dikehendaki oleh undang-undang cukai dan perakaunan. Akaun tanpa pesanan disimpan sehingga anda meminta kami memadamnya.",
+			"Rekod pesanan disimpan selama tujuh tahun, seperti yang dikehendaki oleh undang-undang cukai Malaysia. Jika anda meminta kami memadam akaun anda, kami membuang butiran log masuk, nama dan kunci laluan anda, dan hanya menyimpan rekod pesanan tersebut.",
 		rightsHeading: "Hak anda",
 		rights:
-			"Anda boleh meminta untuk melihat data peribadi yang kami simpan tentang anda, membetulkannya, menerima salinan dalam bentuk mudah alih, menarik balik persetujuan, atau meminta kami berhenti menggunakannya untuk pemasaran langsung. Tulis kepada alamat hubungan di bawah.",
+			"Anda boleh meminta untuk melihat data peribadi yang kami simpan tentang anda, membetulkannya, menerima salinan dalam bentuk mudah alih, menarik balik persetujuan, meminta kami memadam akaun anda, atau meminta kami berhenti menggunakannya untuk pemasaran langsung. Tulis kepada alamat hubungan di bawah.",
 		otherLawsHeading: "Undang-undang lain",
 		otherLaws:
 			"Notis ini diberikan di bawah Akta Perlindungan Data Peribadi 2010 Malaysia. Penyedia analitik kami memproses data penggunaan di Kesatuan Eropah di bawah perjanjian pemprosesan datanya sendiri; {brand} menjual di Malaysia sahaja.",
+		cookiesHeading: "Kuki dan storan tempatan",
+		cookies:
+			"Kami menetapkan kuki log masuk apabila anda log masuk, yang mengekalkan log masuk anda dan diperlukan untuk pembayaran. Pelayar anda menyimpan reka bentuk anda yang belum siap dan pilihan analitik anda dalam storan tempatan, pada peranti anda sahaja. Jika anda membenarkan analitik, PostHog menetapkan kukinya sendiri untuk mengenali lawatan anda. Pemproses pembayaran kami menetapkan kuki dalam borang pembayaran untuk mencegah penipuan.",
+		cookieSettings: "Tukar pilihan anda",
+		dpoHeading: "Pegawai perlindungan data",
+		dpo: "Pegawai perlindungan data kami ialah {dpoName}. Tulis kepada {dpoEmail} untuk sebarang pertanyaan atau permintaan tentang data peribadi anda.",
+		dpoUnnamed:
+			"Tulis kepada {dpoEmail} untuk sebarang pertanyaan atau permintaan tentang data peribadi anda.",
 		choiceHeading: "Pilihan anda",
 		choice:
-			"Jika anda menolak, kami hanya mengira lawatan tanpa kuki atau storan tempatan, dengan pengecam yang ditetapkan semula setiap hari, dan tiada rakaman dibuat. Anda boleh menukar pilihan pada bila-bila masa dengan memadam data laman ini dalam pelayar anda.",
+			"Jika anda menolak, kami hanya mengira lawatan tanpa kuki atau storan tempatan, dengan pengecam yang ditetapkan semula setiap hari, dan tiada rakaman dibuat. Anda boleh menukar pilihan pada bila-bila masa melalui Tetapan kuki, di bahagian bawah laman utama atau di bawah.",
 		contactHeading: "Hubungi kami",
 		contact:
-			"Pertanyaan, atau permintaan untuk mengakses atau membetulkan data anda: {email}",
+			"Pertanyaan, atau permintaan untuk mengakses, membetulkan atau memadam data anda: {email}",
 		back: "Kembali ke laman utama",
 	},
 	terms: {
@@ -687,7 +700,7 @@ export const ms: Dictionary = {
 			"Pereka akan mengukur tapak anda sebelum pengeluaran. Jika reka bentuk perlu diubah, kami akan memberi sebut harga perubahan itu dan mendapatkan persetujuan anda sebelum pengeluaran bermula.",
 		deliveryHeading: "Penghantaran",
 		delivery:
-			"Kami menghantar ke alamat yang anda berikan semasa pembayaran, biasanya dalam masa 4 hingga 6 minggu selepas ukur semula, dan memaklumkan anda apabila penghantaran ditempah. Sila pastikan ada orang untuk menerimanya.",
+			"Kami menghantar ke alamat yang anda berikan semasa pembayaran, biasanya dalam masa {deliveryWeeks} minggu selepas ukur semula, dan memaklumkan anda apabila penghantaran ditempah. Sila pastikan ada orang untuk menerimanya.",
 		changesHeading: "Membetulkan pesanan anda",
 		changes:
 			"Anda boleh mengubah reka bentuk dan butiran anda pada bila-bila masa sebelum membayar. Jika anda menyedari kesilapan selepas itu, tulis kepada {email} dengan segera; kami boleh membetulkannya sehingga pengeluaran bermula.",
@@ -697,6 +710,8 @@ export const ms: Dictionary = {
 		complaintsHeading: "Aduan",
 		complaints:
 			"Tulis kepada {email} dengan rujukan pesanan anda dan kami akan membalas. Jika kami tidak dapat menyelesaikannya, anda boleh membawa perkara itu ke Tribunal Tuntutan Pengguna Malaysia.",
+		ageHeading: "Siapa boleh membuat pesanan",
+		age: "Anda mesti berumur 18 tahun ke atas untuk membuat pesanan. Jika anda lebih muda, minta ibu bapa atau penjaga membuat pesanan untuk anda.",
 		lawHeading: "Undang-undang yang mentadbir",
 		law: "Terma ini ditadbir oleh undang-undang Malaysia.",
 	},
@@ -712,13 +727,13 @@ export const ms: Dictionary = {
 			"Setelah pengeluaran bermula, pesanan tidak boleh dibatalkan atau dibayar balik kerana kabinet sedang dibuat mengikut reka bentuk anda.",
 		damagedHeading: "Rosak atau cacat semasa penghantaran",
 		damaged:
-			"Maklumkan kami dalam masa 7 hari selepas penghantaran, bersama gambar. Kami akan membaiki atau menggantikan kabinet yang terjejas tanpa kos kepada anda, termasuk penghantaran semula.",
+			"Maklumkan kami dalam masa {damageReportDays} hari selepas penghantaran, bersama gambar. Kami akan membaiki atau menggantikan kabinet yang terjejas tanpa kos kepada anda, termasuk penghantaran semula.",
 		remeasureHeading: "Jika reka bentuk berubah semasa ukur semula",
 		remeasure:
 			"Kami memberi sebut harga baharu untuk reka bentuk yang diubah. Sebarang perbezaan dibayar balik kepada anda atau dicaj sebelum pengeluaran bermula.",
 		howPaidHeading: "Cara bayaran balik dibuat",
 		howPaid:
-			"Bayaran balik dikembalikan ke kaedah pembayaran yang anda gunakan, dalam masa 14 hari bekerja selepas kami bersetuju dengan bayaran balik itu.",
+			"Bayaran balik dikembalikan ke kaedah pembayaran yang anda gunakan, dalam masa {refundWorkingDays} hari bekerja selepas kami bersetuju dengan bayaran balik itu.",
 		howToAskHeading: "Cara memohon",
 		howToAsk:
 			"Tulis kepada {email} dengan rujukan pesanan anda, contohnya {orderPrefix}-20261007-001.",

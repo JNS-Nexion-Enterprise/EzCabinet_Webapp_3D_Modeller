@@ -26,6 +26,7 @@ A route group `src/app/[lang]/(account)/` holds `orders/` and `order/[token]/`
 buttons, Stripe's `return_url` and the admin "customer view" link keep working.
 
 `(account)/layout.tsx` (server component):
+
 - reads `currentUser()` (nullable) — it does **not** redirect or decide access:
   a layout is not given the current URL, so it cannot build the sign-in `next`;
 - renders `SiteHeader` and, beside the page, the "Your account" side nav;
@@ -43,6 +44,7 @@ unchanged.
 
 Design's header: **EzCabinet** (→ `/[lang]`), **Room planner**
 (→ `/[lang]/planner`), **Tutorials** (→ `/[lang]/tutorials`), and on the right:
+
 - **Signed in:** a round avatar with the user's initials (from `name`, falling
   back to the email's first letter) and a chevron; it opens a menu with the
   name and email, **My orders**, and **Sign out**
@@ -82,6 +84,7 @@ orderCard(order: {
 ```
 
 Card (design layout, no 3D preview box):
+
 - **Title:** `{room label} · {n} units` — room from `ROOM_TYPES`, unit count from
   the stored breakdown's cabinet lines (`summaryLines` quantities summed). No run
   length: a room can have several walls.
@@ -103,6 +106,7 @@ latest delivery's `publicToken` to its `select`.
 ## Order detail — `/[lang]/order/[token]`
 
 Same data and behaviour as today, laid out as the design's detail view:
+
 - **← My orders** button; **title** (as the card), ref and date; payment
   **badge** right.
 - **Status line** under the title: today's heading/body pairs (confirming,

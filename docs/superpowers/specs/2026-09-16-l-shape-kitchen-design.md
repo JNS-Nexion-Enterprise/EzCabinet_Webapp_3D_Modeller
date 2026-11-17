@@ -56,6 +56,7 @@ Stays framework-free: `(layout, catalogue) => result`.
 
 **Each run is a straight layout.** Engine functions take `(layout, id)` and ids are
 unique across the whole layout, so:
+
 - `runOf(layout, id)` — which run holds this module.
 - `runView(layout, i)` — a single-wall `PlannerLayout` built from the shared
   settings plus that run's rows, `wallWidthMm` set to the run's length.
@@ -68,6 +69,7 @@ are not rewritten.
 **The corner square is a reserved span, not a coordinate shift.** `xMm` stays in
 true wall coordinates on both runs. The square enters each row's
 `occupiedSpans`:
+
 - main run: `[0, d]` when `side` is left, `[W − d, W]` when right;
 - return run: always `[0, d]`.
 
@@ -77,6 +79,7 @@ checked against both rows' corner spans, the same cross-row rule it already has
 against wall units.
 
 **New functions**
+
 - `setShape(layout, "straight" | "L", side?)` — adds an empty return run and an
   empty corner, or removes them. Removing is refused while the return run or the
   corner holds anything.

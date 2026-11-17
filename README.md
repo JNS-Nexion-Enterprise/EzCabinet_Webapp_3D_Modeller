@@ -31,6 +31,7 @@ pnpm dev
 ```
 
 Routes:
+
 - `/en` (also `/ms`, `/zh`) — landing page.
 - `/en/planner` — the planner. `?room=kitchen|living|bedroom|foyer`.
 - `/en/orders`, `/en/order/[token]`, `/en/track/[token]` — a customer's orders and delivery tracking.

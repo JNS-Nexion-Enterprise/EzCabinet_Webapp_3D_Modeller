@@ -62,10 +62,12 @@ place that knows a floor unit has no vertical freedom and that ceiling mode
 takes the choice away from every wall unit.
 
 **Files:**
+
 - Modify: `src/lib/planner/layout.ts` (inside `plannerEngine`, above `starterFor`, and added to the returned object)
 - Test: `src/lib/planner/__tests__/layout.test.ts`
 
 **Interfaces:**
+
 - Consumes: `find`, `moveModule`, `setHangAt` — all already in scope inside `plannerEngine`.
 - Produces: `dragModule(layout: PlannerLayout, id: string, to: { xMm: number; hangAtMm?: number }): PlannerLayout` on the engine object.
 
@@ -132,6 +134,7 @@ describe("dragModule", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts -t dragModule`
 Expected: FAIL — `dragModule is not a function`.
+
 - [ ] **Step 3: Implement it**
 
 In `src/lib/planner/layout.ts`, inside `plannerEngine`, immediately above
@@ -175,10 +178,12 @@ function dragModule(
 
 Then add `dragModule,` to the returned object (alphabetical — after
 `dropModule`).
+
 - [ ] **Step 4: Run the tests and watch them pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts`
 Expected: PASS, whole file.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -195,9 +200,11 @@ needs it. This task changes nothing a user sees; it is the seam the next task
 builds on.
 
 **Files:**
+
 - Modify: `src/components/planner/PlannerScene.tsx` (`runXFromRay`, and its two call sites)
 
 **Interfaces:**
+
 - Produces: `runPointFromRay(e, planeZ, runWidthMm): { xMm: number; yMm: number }`, where `xMm` is measured from the left end of the run exactly as before, and `yMm` is height above the floor.
 - `runXFromRay` stays, as a one-line wrapper, because `DropPicker` and the existing pointer handlers only want the one number.
 
@@ -251,6 +258,7 @@ Expected: all pass, no behaviour change.
 
 In `pnpm dev`: drag a cabinet along the wall and drop a family from the
 palette onto the canvas. Both behave exactly as before.
+
 - [ ] **Step 3: Commit**
 
 ```bash
@@ -266,9 +274,11 @@ The drag becomes two-axis. A floor unit is unaffected — `dragModule` drops the
 vertical for it — so there is no branch in the pointer handler.
 
 **Files:**
+
 - Modify: `src/components/planner/PlannerScene.tsx` (`dragRef`, `beginDrag`, the drag plane's `onPointerMove`, and the engine destructure in `Run`)
 
 **Interfaces:**
+
 - Consumes: `dragModule` (Task 1), `runPointFromRay` (Task 2), `floorHeightMmOf` (existing).
 - Produces: `dragRef.current.grabYMm` — how far up the carcass the pointer took hold, so a cabinet does not jump its underside to the cursor.
 
@@ -337,12 +347,14 @@ In the drag plane's `onPointerMove`, replace the body with:
 The vertical needs no re-anchoring: `setHangAt` clamps to a range rather than
 against a neighbour, so the cabinet never lags behind the pointer the way a
 blocked sideways move does.
+
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm test && pnpm exec biome check src/components/planner/`
 Expected: all pass.
 
 In `pnpm dev`, with a wall cabinet selected:
+
 - dragging it sideways still stops against its neighbours and lands flush;
 - dragging it upwards raises it and stops at 1800mm; downwards stops at 1200mm;
 - the selection panel's "hangs at … mm" line counts along with the drag;
@@ -366,9 +378,11 @@ which reads as belonging to whatever is standing underneath. It should ride
 the cabinet it moves, and it should say it moves in two directions.
 
 **Files:**
+
 - Modify: `src/components/planner/PlannerScene.tsx` (`MoveHandle`, and the call site in `Run`)
 
 **Interfaces:**
+
 - Consumes: `floorHeightMmOf(position, layout)` — where the underside of this cabinet actually is, ceiling mode included.
 - Produces: `MoveHandle` gains `floorHeightMm: number` and `vertical: boolean`.
 
@@ -407,6 +421,7 @@ function MoveHandle({
 ```
 
 `roomDepthMm` stays a prop; it is still what the world plane is measured from.
+
 - [ ] **Step 2: Stand it up when it hangs**
 
 A handle lying flat on the floor is legible from above; one hanging in the air
@@ -486,6 +501,7 @@ Run: `pnpm typecheck && pnpm test && pnpm exec biome check src/components/planne
 Expected: all pass.
 
 In `pnpm dev`:
+
 - select a base cabinet — the handle lies on the floor in front of it and
   shows a left/right bar only;
 - select a wall cabinet — the handle hangs just under it, faces the room, and

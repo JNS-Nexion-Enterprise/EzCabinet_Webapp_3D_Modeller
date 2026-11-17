@@ -65,6 +65,7 @@ a one-line swap back to the old two lights. Phase 2 sits behind the tier, so
 
 New `components/planner/Lighting.tsx`, exporting `<StudioLighting />`, replaces
 the two light lines in `PlannerScene.tsx`.
+
 - **Tone mapping:** `NeutralToneMapping` on the Canvas `gl` (three 0.185 has
   it). Built for product rendering; keeps sRGB swatch and wall-paint colours
   close to what the admin typed.
@@ -166,6 +167,7 @@ no caller.
 
 No `lib/planner` change, so no engine tests. The frustum fit is a min/max over
 existing `outlineOf`, no new helper. Verification is visual and measured:
+
 1. Before/after screenshots of the same kitchen (straight run, wall units, a
    glass door) in 3D, elevation and plan, plus one L room, against `pnpm dev`.
 2. Each finish's door beside its swatch — neutral tone mapping must keep them

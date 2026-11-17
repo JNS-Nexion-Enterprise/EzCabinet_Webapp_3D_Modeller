@@ -192,7 +192,7 @@ export function UsersTable({
 	const deleteUser = (id: string) =>
 		guarded(id, "DELETE", (reason) =>
 			reason === "has_orders"
-				? "This account has orders, so it can't be deleted. Suspend it instead."
+				? "This staff account has orders, so it can't be deleted. Suspend it instead."
 				: reason === "not_yourself"
 					? "You can't delete yourself."
 					: "Could not delete that account.",
@@ -487,8 +487,11 @@ export function UsersTable({
 											disabled={busyId === user.id}
 											onClick={() =>
 												setConfirming({
-													title: `Delete ${user.name}?`,
-													body: "The account, its sign-ins and its second factor are removed for good. Suspend instead if they might come back.",
+													title: `Delete ${user.name || user.email}?`,
+													body:
+														user.role === "CUSTOMER"
+															? "The account, its name, email and every way to sign in are removed for good. If they placed orders, the orders are kept for tax records with the details given at checkout. Use this when a customer asks for their data to be deleted."
+															: "The account, its sign-ins and its second factor are removed for good. Suspend instead if they might come back.",
 													confirmLabel: "Delete account",
 													danger: true,
 													stepUp: true,

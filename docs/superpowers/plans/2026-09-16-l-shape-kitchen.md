@@ -59,12 +59,14 @@
 ### Task 1: Spec amendments, corner categories in the catalogue schema
 
 **Files:**
+
 - Modify: `docs/superpowers/specs/2026-09-16-l-shape-kitchen-design.md`
 - Modify: `src/lib/planner/catalogueSchema.ts:77-86`
 - Modify: `src/lib/planner/catalogue.ts` (add `isCorner`; seed families in a separate commit)
 - Test: `src/lib/planner/__tests__/catalogue.test.ts`
 
 **Interfaces:**
+
 - Produces: `isCorner(family: Pick<Family, "category">): boolean` exported from `src/lib/planner/catalogue.ts`; seed families `corner-base` (900×880×900, RM 1150) and `corner-wall` (600×880×600, RM 680) in the kitchen.
 
 - [ ] **Step 1: Amend the spec**
@@ -130,10 +132,12 @@ describe("isCorner", () => {
 ```
 
 Import `familySchema` from `../catalogueSchema` if the file does not already.
+
 - [ ] **Step 4: Run it to verify it fails**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/catalogue.test.ts`
 Expected: FAIL — `isCorner` is not exported / corner category rejected by the enum.
+
 - [ ] **Step 5: Implement**
 
 In `src/lib/planner/catalogueSchema.ts`, extend the `category` enum in `familySchema`:
@@ -171,6 +175,7 @@ export const isCorner = (family: Pick<Family, "category">): boolean =>
 
 Run: `pnpm vitest run src/lib/planner/__tests__/catalogue.test.ts && pnpm test`
 Expected: PASS.
+
 - [ ] **Step 7: Commit the code**
 
 ```bash
@@ -211,10 +216,12 @@ In `src/lib/planner/catalogue.ts`, append inside `FAMILIES`, after `fridge-housi
 ```
 
 Add `"corner-base", "corner-wall"` to the end of the kitchen's `familyIds`.
+
 - [ ] **Step 9: Run the full suite**
 
 Run: `pnpm test`
 Expected: PASS. If a test that loops over _every_ seed family now fails (e.g. it places each family on a wall), exclude corners in that loop with `.filter((family) => !isCorner(family))` and a one-line comment: `// Corner units have no place in a run; room.test.ts covers them.`
+
 - [ ] **Step 10: Commit the seed on its own**
 
 ```bash
@@ -229,10 +236,12 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 2: Reserved spans in the one-wall engine
 
 **Files:**
+
 - Modify: `src/lib/planner/layout.ts`
 - Test: `src/lib/planner/__tests__/reserved.test.ts` (create)
 
 **Interfaces:**
+
 - Produces (exported from `layout.ts`): `type PlacedModule`, `type Span = { startMm: number; endMm: number }`, `newId(): string`, optional `PlannerLayout.reserved?: Partial<Record<Row, Span>>`, and `isClear(layout: PlannerLayout): boolean` on the object `plannerEngine` returns.
 
 - [ ] **Step 1: Write the failing tests**
@@ -340,6 +349,7 @@ describe("a reserved corner span", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/reserved.test.ts`
 Expected: FAIL — typecheck-level `reserved` unknown is tolerated by vitest, so the failures are behavioural: cabinets land at `0`, `isClear` is not a function.
+
 - [ ] **Step 3: Implement in `src/lib/planner/layout.ts`**
 
 3a. Export the module type and span type. Change `type PlacedModule = {` to `export type PlacedModule = {`, and `type Span = { startMm: number; endMm: number };` to `export type Span = { startMm: number; endMm: number };`.
@@ -408,10 +418,12 @@ let cursor = startOf("floor");
 and the second `cursor = 0;` (before the wall loop) with `cursor = startOf("wall");`.
 
 3g. Add `isClear,` to the object `plannerEngine` returns (after `swapWithNeighbour,`).
+
 - [ ] **Step 4: Run tests and typecheck**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/reserved.test.ts && pnpm test && pnpm typecheck`
 Expected: PASS.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -427,10 +439,12 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 3: The room document and its per-run dispatch
 
 **Files:**
+
 - Create: `src/lib/planner/room.ts`
 - Test: `src/lib/planner/__tests__/room.test.ts` (create)
 
 **Interfaces:**
+
 - Consumes: `PlannerLayout`, `PlacedModule`, `Span`, `Row`, `HingeSide`, `emptyLayout`, `plannerEngine`, `newId` from `layout.ts`.
 - Produces (from `room.ts`):
   - types `Run`, `CornerSide = "left" | "right"`, `Corner`, `RoomLayout`, `RoomShape = "straight" | CornerSide`
@@ -647,6 +661,7 @@ describe("runYawRad", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts`
 Expected: FAIL — `Cannot find module '../room'`.
+
 - [ ] **Step 3: Implement `src/lib/planner/room.ts`**
 
 ```ts
@@ -1059,10 +1074,12 @@ export type RoomEngine = ReturnType<typeof roomEngine>;
 ```
 
 Note on `setting`: TS may not infer `V` from `wall.setWallToCeiling` etc.; if typecheck complains, give each an explicit type argument, e.g. `setting<"wallToCeiling", boolean>("wallToCeiling", wall.setWallToCeiling)`.
+
 - [ ] **Step 4: Run tests, typecheck, lint**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts && pnpm typecheck && pnpm biome check --write src/lib/planner/room.ts src/lib/planner/__tests__/room.test.ts`
 Expected: PASS. (`minWallWidthMm` for a right corner: base at 2000 w600 ends at 2600, + 607 = 3207.)
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1077,10 +1094,12 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 4: Shape, corner units, exposure and the corner worktop
 
 **Files:**
+
 - Modify: `src/lib/planner/room.ts`
 - Test: `src/lib/planner/__tests__/room.test.ts`
 
 **Interfaces:**
+
 - Consumes: Task 3's `roomEngine` internals; `spreadMm`, `inRun`, `newId`, `type EndPanel` from `layout.ts`; `constructionOf` from `catalogue.ts`; `type ExposedSides` from `exposure.ts`.
 - Produces (added to `roomEngine`'s return): `setShape(room, shape: RoomShape)`, `setCornerSide(room, side)`, `placeCorner(room, familyId, id?)`, `cornerPositions(room): Positioned[]` (in main-run coordinates; right-corner units carry `rotationDeg: 270`), `exposureOf(room): Map<string, ExposedSides>`, `endPanels(room): EndPanel[]`, `cornerWorktop(room): { sizeMm: number; topMm: number } | null`. `addModule`/`fits` route corner families to `placeCorner`; `allPositions` includes corner units; `widthOptionsFor` answers for corner units.
 
@@ -1259,10 +1278,12 @@ describe("cornerWorktop", () => {
 ```
 
 Add `setDoor` to the `../room` import at the top of the file. The seed's door style ids are whatever `PLANNER_CATALOGUE.doorStyles` holds — if `"shaker"` is not one of them, use `PLANNER_CATALOGUE.doorStyles[1].id` instead.
+
 - [ ] **Step 2: Run to verify failure**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts`
 Expected: FAIL — `engine.setShape is not a function`.
+
 - [ ] **Step 3: Implement in `src/lib/planner/room.ts`**
 
 3a. Imports: add `constructionOf` to the `./catalogue` import; add `type EndPanel`, `inRun`, `newId`, `spreadMm` to the `./layout` import; add `import type { ExposedSides } from "./exposure";`.
@@ -1523,10 +1544,12 @@ change `widthOptionsFor` to
 ```
 
 and add `setShape, setCornerSide, placeCorner, cornerPositions, exposureOf, endPanels, cornerWorktop,` to it.
+
 - [ ] **Step 4: Run tests, typecheck, lint**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/room.test.ts && pnpm test && pnpm typecheck && pnpm biome check --write src/lib/planner/room.ts src/lib/planner/__tests__/room.test.ts`
 Expected: PASS. If "are refused when a run cannot give way" passes vacuously because the second add was refused, assert `room.runs[1].floor` has length 2 before the `fits` expectation and pick widths that fill `[607, 2000]` exactly (900 + 493 is not on the ladder — use 900 then 400 as written: 607+900=1507, 1507+400=1907, leaving 93 mm, which is less than the 293 mm a 900 corner needs).
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1541,10 +1564,12 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 5: Price a room
 
 **Files:**
+
 - Modify: `src/lib/planner/pricing.ts`
 - Test: `src/lib/planner/__tests__/pricing.test.ts`
 
 **Interfaces:**
+
 - Consumes: `roomEngine`, `type RoomLayout`, `asRoom` from `room.ts`.
 - Produces: `worktopFt(room: RoomLayout, catalogue)`, `ceilingTrimFt(room, catalogue)`, `skirtingFt(room, catalogue)`, `endPanelPriceRm(room, catalogue)`, `computePlannerPrice(room: RoomLayout, finish, catalogue)` — same return shapes as today.
 
@@ -1620,6 +1645,7 @@ describe("an L-shaped room", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/pricing.test.ts`
 Expected: FAIL — the L tests fail (the one-wall pricing reads `layout.floor`, which a room does not have); the older tests may also fail for the same reason.
+
 - [ ] **Step 3: Implement in `src/lib/planner/pricing.ts`**
 
 - Replace the `layout` import: import `type PlannerLayout` no longer; import `inRun, type Positioned` from `./layout` as before, and add `import { type RoomLayout, roomEngine } from "./room";`. Remove `plannerEngine` from the `./layout` import if nothing else uses it.
@@ -1668,6 +1694,7 @@ Expected: FAIL — the L tests fail (the one-wall pricing reads `layout.floor`, 
 
 Run: `pnpm vitest run src/lib/planner/__tests__/pricing.test.ts && pnpm test`
 Expected: pricing tests PASS. `pnpm typecheck` will now FAIL in the orders code and UI callers that still pass a `PlannerLayout` — expected; Tasks 6 and 8 fix them. Confirm the only errors are in `src/lib/orders`, `src/app`, `src/components`.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1683,16 +1710,19 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 6: Orders store and validate a room (design v2)
 
 **Files:**
+
 - Modify: `src/lib/orders/layoutSchema.ts`, `src/lib/orders/validate.ts`, `src/lib/orders/price.ts`, `src/lib/orders/items.ts`, `src/app/api/orders/route.ts`
 - Test: `src/lib/orders/__tests__/orders.test.ts`
 
 **Interfaces:**
+
 - Consumes: `RoomLayout`, `asRoom`, `roomEngine`, `isCorner`.
 - Produces: `roomLayoutSchema` (zod, `satisfies z.ZodType<RoomLayout>`), `ORDER_DESIGN_VERSION = 2`, `OrderDesign = { schemaVersion: 2; layout: RoomLayout }`, `orderDesignSchema` accepting v1 and v2 and always outputting v2; `validateOrder(layout: RoomLayout, …)`, `priceOrder(layout: RoomLayout, …)`, `deliveryItemsFor(layout: RoomLayout, …)`.
 
 - [ ] **Step 1: Point the tests at rooms and add the new ones**
 
 In `src/lib/orders/__tests__/orders.test.ts`:
+
 - Change `import { plannerLayoutSchema } from "../layoutSchema";` to `import { orderDesignSchema, plannerLayoutSchema, roomLayoutSchema } from "../layoutSchema";`.
 - Add `import { asRoom, emptyRoom, roomEngine } from "@/lib/planner/room";`.
 - Change `check` to `validateOrder(asRoom(layout), "kitchen", finishId, cat)`.
@@ -1803,6 +1833,7 @@ describe("orderDesignSchema", () => {
 
 Run: `pnpm vitest run src/lib/orders/__tests__/orders.test.ts`
 Expected: FAIL — `roomLayoutSchema` not exported; validators read `layout.floor`.
+
 - [ ] **Step 3: `src/lib/orders/layoutSchema.ts`**
 
 Replace from `export const plannerLayoutSchema` to the end of the file with:
@@ -1872,6 +1903,7 @@ export const orderDesignSchema = z.union([
 ```
 
 Update the file's imports: `import type { PlannerLayout } from "@/lib/planner/layout";` and `import { asRoom, type RoomLayout } from "@/lib/planner/room";`.
+
 - [ ] **Step 4: `src/lib/orders/validate.ts`**
 
 - Imports: add `isCorner` to the `@/lib/planner/catalogue` import; replace the `@/lib/planner/layout` import with `import { rowFor, WALL_LIMITS } from "@/lib/planner/layout";` and add `import { type RoomLayout, roomEngine } from "@/lib/planner/room";`.
@@ -1925,6 +1957,7 @@ const rows = [
 
 Run: `pnpm vitest run src/lib/orders && pnpm test`
 Expected: PASS. `pnpm typecheck` errors remain only under `src/components` and `src/app/[lang]` (Task 8).
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1940,12 +1973,14 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 7: Corner categories in the design library, and a mock corner design
 
 **Files:**
+
 - Modify: `prisma/schema.prisma:62-68`
 - Create: `prisma/migrations/20260916000000_corner_categories/migration.sql`
 - Modify: `src/lib/catalogue/cabinetDesignLabels.ts`, `src/lib/mesh/measureDesign.ts:28-33`, `src/app/api/admin/cabinet-designs/route.ts:19-25`, `src/app/api/admin/cabinet-designs/[id]/route.ts:20-27`
 - Create: `src/lib/mesh/__tests__/cornerMock.ts`, `src/lib/mesh/__tests__/cornerMock.test.ts`, `scripts/generate-corner-mock.ts`
 
 **Interfaces:**
+
 - Produces: `cornerObj(size: { sizeMm: number; heightMm: number; armMm: number; legMm: number }): string` — OBJ text in millimetres, Y up, +z toward the room, drawn for the left corner.
 
 - [ ] **Step 1: Write the failing mesh test**
@@ -1988,6 +2023,7 @@ describe("the mock corner base", () => {
 
 Run: `pnpm vitest run src/lib/mesh/__tests__/cornerMock.test.ts`
 Expected: FAIL — `Cannot find module './cornerMock'`.
+
 - [ ] **Step 3: Write the generator**
 
 Create `src/lib/mesh/__tests__/cornerMock.ts`:
@@ -2091,6 +2127,7 @@ export function cornerObj({
 
 Run: `pnpm vitest run src/lib/mesh/__tests__/cornerMock.test.ts`
 Expected: FAIL — `measureDesign` reports `{ widthMm: 900, heightMm: 900, depthMm: 870 }`. This is not a mock bug; it is a genuine intake bug every real corner export would hit. `inferUpAxis` in `src/lib/mesh/normalise.ts` settles **depth first as the smallest extent**, which holds for a run and for every single unit so far (BC 800 is 800 × 870 × 588) but not for a corner unit: its footprint is square (900 × 900) and it is _shorter_ than it is deep (870), so height is taken for depth and the cabinet is read lying on its back. A 600 × 720 × 600 wall corner has the opposite problem: width and depth tie, `indexOf` picks the first (x, the wall axis), and the axis permutation becomes a reflection — the mesh would render with inward normals.
+
 - [ ] **Step 5: Teach `inferUpAxis` about square footprints and ties**
 
 In `src/lib/mesh/normalise.ts`, add above `inferUpAxis`:
@@ -2164,6 +2201,7 @@ describe("the render mesh of a corner base", () => {
 
 Run: `pnpm vitest run src/lib/mesh`
 Expected: PASS — the corner tests and every existing pipeline, measureDesign, renderMesh and roles test (no existing fixture has a square footprint or a tied width/depth, so their inferred axes do not move). If an existing test fails, the tolerance is catching a real cabinet: print its spans and tighten `SAME_EXTENT` rather than special-casing the test.
+
 - [ ] **Step 7: The script that writes the files for upload**
 
 Create `scripts/generate-corner-mock.ts`:
@@ -2192,6 +2230,7 @@ console.log(`wrote ${outDir}/CB 900mm.obj and ${outDir}/CW 600mm.obj`);
 ```
 
 With `legMm: 0` the generator draws no levellers. Run once: `pnpm tsx scripts/generate-corner-mock.ts /tmp/corner-mocks` — expected output names both files.
+
 - [ ] **Step 8: Database enum and migration**
 
 In `prisma/schema.prisma`, add to `enum CabinetCategory` after `FRIDGE_HOUSING`:
@@ -2210,6 +2249,7 @@ ALTER TYPE "CabinetCategory" ADD VALUE 'CORNER_WALL_CABINET';
 ```
 
 Run: `pnpm prisma generate`. If a local database is running (`pnpm db:up`), also `pnpm prisma migrate deploy`. Do not run migrations against any remote database.
+
 - [ ] **Step 9: Labels, measure type, API enums**
 
 `src/lib/catalogue/cabinetDesignLabels.ts` — add `| "CORNER_BASE_CABINET" | "CORNER_WALL_CABINET"` to `Category`, and to each record:
@@ -2251,6 +2291,7 @@ Both admin API routes — append `"CORNER_BASE_CABINET", "CORNER_WALL_CABINET",`
 
 Run: `pnpm test`
 Expected: PASS (including `buildCatalogue.test.ts`). `pnpm typecheck` errors remain only in the Task 8 UI files.
+
 - [ ] **Step 11: Commit**
 
 ```bash
@@ -2266,13 +2307,16 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 8: The client holds a room (still drawn as one wall)
 
 **Files:**
+
 - Modify: `src/components/planner/CatalogueContext.tsx`, `src/app/[lang]/planner/PlannerApp.tsx`, `src/components/planner/StudioScreen.tsx`, `src/components/planner/QuoteScreen.tsx`, `src/components/planner/studio/SelectionPanel.tsx`, `src/components/planner/studio/RoomPanel.tsx`, `src/components/planner/PlannerScene.tsx` (root component only)
 
 **Interfaces:**
+
 - Consumes: `roomEngine`, `RoomLayout`, `emptyRoom`, `runView`, `withRun`, `runIndexOf`, `setDoors`, `setHinge` from `room.ts`.
 - Produces: `useRoomEngine(): RoomEngine` from `CatalogueContext.tsx`; `PlannerScene`'s `layout` prop and `onLayoutChangeAction` are `RoomLayout`; `RoomPanel`'s `layout` prop is `RoomLayout`.
 
 This task changes types, not behaviour: after it the planner looks and works exactly as before. Straight rooms only (no UI can make an L yet).
+
 - [ ] **Step 1: `CatalogueContext.tsx`**
 
 ```ts
@@ -2310,6 +2354,7 @@ export const useRoomEngine = (): RoomEngine => useCatalogueValue().rooms;
 - [ ] **Step 4: `RoomPanel.tsx`**
 
 `import { WALL_LIMITS } from "@/lib/planner/layout";` + `import type { RoomLayout } from "@/lib/planner/room";`, `layout: RoomLayout`.
+
 - [ ] **Step 5: `StudioScreen.tsx`**
 
 - Imports: remove `type PlannerLayout`, `setDoors`, `setHinge` from the `@/lib/planner/layout` import (keep `rowFor`, `type Positioned` and whatever else it still uses); add `import { runIndexOf, type RoomLayout, setDoors, setHinge } from "@/lib/planner/room";`; `useEngine` → `useRoomEngine`.
@@ -2346,6 +2391,7 @@ const gapCount = layout.runs.reduce(
 - [ ] **Step 6: `PlannerScene.tsx` root only**
 
 In the default export `PlannerScene`:
+
 - Props: `layout: RoomLayout;` and `onLayoutChangeAction: (next: RoomLayout) => void;` (import `type RoomLayout, runView, withRun` from `@/lib/planner/room`).
 - At the top of the body add `const main = runView(layout, 0);` and change `const runWidthMm = layout.wallWidthMm;` to `const runWidthMm = main.wallWidthMm;`.
 - `positioned`/`offsets`: use `main` — `engine.allPositions(main)`, `engine.offsetsOf(main, lonelyId)`.
@@ -2358,9 +2404,11 @@ In the default export `PlannerScene`:
 
 Run: `pnpm typecheck && pnpm test && pnpm lint`
 Expected: all clean. Fix any remaining `PlannerLayout`→`RoomLayout` mismatch the compiler names; do not change engine behaviour to satisfy a type.
+
 - [ ] **Step 8: Smoke test in the browser**
 
 Run `pnpm dev`, open `http://localhost:3000/en/planner`, pick Kitchen, add three cabinets, drag one, resize one, measure, open the quote. Expected: identical to before; no console errors.
+
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -2375,9 +2423,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 9: Draw every wall, the corner units and the corner worktop
 
 **Files:**
+
 - Modify: `src/components/planner/PlannerScene.tsx`, `src/components/planner/Room.tsx`
 
 **Interfaces:**
+
 - Consumes: `runView`, `runYawRad`, `withRun` from `room.ts`; `useRoomEngine`.
 - Produces: `pickerRef` signature `(clientX: number, clientY: number, run: number) => number`; `Room` prop `walls: { left: boolean; right: boolean }` replacing `sideWalls`; new `PlannerView` member `"side"`.
 
@@ -2398,9 +2448,11 @@ Replace the prop `sideWalls = false` / `sideWalls?: boolean` with:
 ```
 
 and the `{sideWalls && (<> …two meshes… </>)}` block with the two meshes each guarded: `{walls.left && (<mesh …left…/>)}` and `{walls.right && (<mesh …right…/>)}` (same positions/rotations/materials as today).
+
 - [ ] **Step 2: Ray helpers take a ray, and a run's ray is turned into its frame**
 
 In `PlannerScene.tsx`:
+
 - Add `Matrix4` and `type Ray` to the `three` import.
 - Change `runPointFromRay(e: ThreeEvent<PointerEvent>, planeZ, runWidthMm)` to take `ray: Ray` as its first parameter and read `const { origin, direction } = ray;`. Same for `planPointFromRay(ray: Ray, planeY)`.
 - Add below them:
@@ -2448,6 +2500,7 @@ Add props to `Run`:
 (Import `type ExposedSides` from `@/lib/planner/exposure` if not already.)
 
 Inside `Run`:
+
 - Every `runPointFromRay(e, …)` → `runPointFromRay(localRay(e, yaw), …)`; every `planPointFromRay(e, …)` → `planPointFromRay(localRay(e, yaw), …)`.
 - In `snapAt`, turn the hit into the run's frame and the answer back out. Replace the `hitMm` construction with:
 
@@ -2459,6 +2512,7 @@ const hitMm: Vec3Mm = turnMm(
 ```
 
 and wherever `snapAt` returns a `SnapPoint` built from local geometry, return it with `point: turnMm(point, yaw)` _before_ `constrainToAxis` is applied (the anchor is in world space). Concretely: in the rotated-cabinet branch set `point: turnMm(hitMm, yaw)`; after `const snap = snapToCabinet(…)` add `const worldSnap = { ...snap, point: turnMm(snap.point, yaw) };` and use `worldSnap` in the final `return`.
+
 - The exposure memo: the prop is now the answer, so the memo only computes gaps. Replace `const { map: exposure, gaps: sideGaps } = useMemo(() => { … return { map, gaps }; }, [layout, positionsOf, exposureOf]);` with `const sideGaps = useMemo(() => { … return gaps; }, [layout, positionsOf]);` — delete the `const map = exposureOf(layout);` line inside it — and remove `exposureOf` from the engine destructuring. `exposure.get(...)` further down now reads the prop.
 - Cabinets: change `{allPositions(layout).map((position) => (` to `{[...allPositions(layout), ...corners].map((position) => (`. In its `onPointerDown`, guard the drag: wrap the `beginDrag(…)` call in `if (!corners.includes(position)) { … }`. For corner positions `floorHeightMmOf(position, layout)` still works (kind is base/wall).
 - `MoveHandle` list: `allPositions(layout).filter(...)` stays as is (corners are not in it, so they get no handle).
@@ -2495,6 +2549,7 @@ and wherever `snapAt` returns a `SnapPoint` built from local geometry, return it
 ```
 
 (`20` is the same front overhang `Worktop` uses.) For a right corner the reserved floor span is `[W − d, W]`, so the same expression puts the square at the right end.
+
 - [ ] **Step 4: `DropPicker` answers along a chosen run**
 
 Replace `DropPicker`'s props and body:
@@ -2546,6 +2601,7 @@ function DropPicker({
 - [ ] **Step 5: The root draws one group per run, and a side view**
 
 In the default export `PlannerScene`:
+
 - Replace Task 8's `main`-only wiring. Use `const rooms = useRoomEngine();` and:
 
 ```tsx
@@ -2572,6 +2628,7 @@ const lonelyRun = lonelyId
 ```
 
 and compute `positioned`/`offsets` against `runs[lonelyRun].view` when `lonelyRun >= 0` (otherwise `undefined`/`null`).
+
 - `props.layout.prop` for `onLayoutChangeAction` wiring must read the latest room: keep a ref `const roomRef = useRef(layout); roomRef.current = layout;` and write back with `onLayoutChangeAction(withRun(roomRef.current, i, next))`.
 - Replace the single `<Run …/>` and `<PositionDimensions …/>` with:
 
@@ -2621,6 +2678,7 @@ and compute `positioned`/`offsets` against `runs[lonelyRun].view` when `lonelyRu
 ```
 
 `PositionDimensions` and `MeasureOverlay` draw in world coordinates computed from the unturned run frame; inside the turned group the dimension lines land on the side wall. `MeasureOverlay` stays outside the groups (its points are world points — Step 3 turned them).
+
 - `<Room … walls={{ left: layout.wallToWall || layout.corner?.side === "left", right: layout.wallToWall || layout.corner?.side === "right" }} />`
 - `<DropPicker runs={pickerRuns} pickerRef={pickerRef} />`, and update the `pickerRef` prop type to `(clientX: number, clientY: number, run: number) => number`.
 - The side view. Change `export type PlannerView = "3d" | "elevation" | "plan";` to add `| "side"`, then:
@@ -2636,9 +2694,11 @@ and compute `positioned`/`offsets` against `runs[lonelyRun].view` when `lonelyRu
 
 Run: `pnpm typecheck && pnpm test && pnpm lint`
 Expected: clean. Every holder of `pickerRef` needs the new signature — `StudioScreen`'s `useRef` type, and `QuoteScreen` if it passes one to `PlannerScene`. `dropCarcass` passes `0` as the run for now (Task 10 wires the wall picker).
+
 - [ ] **Step 7: Verify in the browser with a hand-made L**
 
 Temporarily, in `PlannerApp.tsx`'s `initialRooms`, wrap the kitchen with `roomEngine(catalogue).setShape(emptyRoom(room.defaultWallWidthMm), "left")` (do **not** commit this). Run `pnpm dev`, open the kitchen and check:
+
 1. The left side wall is drawn; the 3D view shows both walls.
 2. Add a cabinet (click in the menu): it lands on the main wall past the empty corner (607 mm from the left wall).
 3. Using the browser console is not available for layout edits, so also temporarily add a side-run cabinet in the same `initialRooms` line (`.addModule(…, "base-cabinet", 2000, "s", 600, 1)` via the room engine) and reload: it stands against the left wall, doors facing into the room.
@@ -2648,6 +2708,7 @@ Temporarily, in `PlannerApp.tsx`'s `initialRooms`, wrap the kitchen with `roomEn
 7. If the seed catalogue is the one running (no published version locally), add `corner-base` to the temporary chain: it renders in the back-left corner as an L; with `"right"` it renders back-right, turned (not mirrored). If it appears turned the wrong way, change `270` in `cornerPositions` to `90` and update its test.
 
 Revert the temporary `initialRooms` change.
+
 - [ ] **Step 8: Commit**
 
 ```bash
@@ -2663,9 +2724,11 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 10: The customer's controls
 
 **Files:**
+
 - Modify: `src/components/planner/studio/RoomPanel.tsx`, `src/components/planner/StudioScreen.tsx`, `src/lib/copy/en.ts`, `src/lib/copy/ms.ts`, `src/lib/copy/zh.ts`
 
 **Interfaces:**
+
 - Consumes: `rooms.setShape`, `shapeOf`, `rooms.minRoomDepthMm`, `rooms.fits(…, run)`, `rooms.addModule(…, run)`, `pickerRef(x, y, run)`.
 - Produces: `RoomPanel` props `shape: RoomShape`, `canStraighten: boolean`, `minDepthMm: number`, `onShapeAction: (shape: RoomShape) => void`.
 
@@ -2815,6 +2878,7 @@ Change the room-depth field to:
 ```
 
 If `track`'s event union in `src/lib/analytics.ts` does not accept `"room_shape_changed"`, add it there as `| { event: "room_shape_changed"; props: { shape: "straight" | "left" | "right" } }` following the existing union's shape (check how other events are declared and copy that form exactly).
+
 - `dropCarcass`: `const runXMm = pickerRef.current?.(clientX, clientY, run) ?? 0;` and `addModule(prev, familyId, runXMm, undefined, undefined, run)`.
 - In `addBody`, before `{CATEGORIES.map(…)}` insert:
 
@@ -2874,9 +2938,11 @@ useEffect(() => {
 
 Run: `pnpm typecheck && pnpm test && pnpm lint`
 Expected: clean.
+
 - [ ] **Step 5: Verify in the browser**
 
 `pnpm dev` → `/en/planner` → Kitchen:
+
 1. Room tool → Layout → "L, corner on the left": side wall appears; the depth field reads "Side wall length".
 2. Add tool → "Add to: Side wall" → add a base cabinet: it lands on the side wall. Drag it; drag one on the main wall.
 3. Corner categories show only in the L. With a published corner design (or the seed), add one: it fills the corner and the worktop joins across it.
@@ -2902,11 +2968,13 @@ Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>"
 ### Task 11: End-to-end with an uploaded corner design, and the docs
 
 **Files:**
+
 - Modify: `CLAUDE.md`
 
 - [ ] **Step 1: Upload the mock corner designs locally**
 
 With the local database up (`pnpm db:up`, `pnpm prisma migrate deploy`) and `pnpm dev` running:
+
 1. `pnpm tsx scripts/generate-corner-mock.ts /tmp/corner-mocks`
 2. `/admin/cabinet-designs` → upload `CB 900mm.obj` as "Corner base cabinet (draw for the left corner)", room Kitchen, price RM 1150; upload `CW 600mm.obj` as the corner wall cabinet, RM 680.
 3. The design rows show a triangle count (a mesh converted), not "no mesh — drawn procedurally".
@@ -2915,6 +2983,7 @@ With the local database up (`pnpm db:up`, `pnpm prisma migrate deploy`) and `pnp
 6. Check out the L design (manual bank transfer): the order is created (201) and its admin page lists the corner units.
 
 If step 3 shows "no mesh", read the conversion error in the server log before touching anything; the mock must pass `cornerMock.test.ts` first.
+
 - [ ] **Step 2: Document the room in `CLAUDE.md`**
 
 - In **The core rule** diagram, replace the layout document block with:
@@ -2969,6 +3038,7 @@ Stored orders are design v2; v1 reads as a one-wall room.
 
 Run: `pnpm typecheck && pnpm test && pnpm lint`
 Expected: all clean.
+
 - [ ] **Step 4: Commit**
 
 ```bash

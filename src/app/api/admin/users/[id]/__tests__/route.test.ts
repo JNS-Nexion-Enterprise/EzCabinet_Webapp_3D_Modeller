@@ -71,6 +71,17 @@ describe("DELETE /api/admin/users/[id]", () => {
 		});
 	});
 
+	it("answers 200 for an anonymised customer and says so in the log", async () => {
+		deleteUser.mockResolvedValue("anonymised");
+		const response = await call("u1");
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ ok: true, result: "anonymised" });
+		expect(console.info).toHaveBeenCalledWith(
+			"Customer anonymised, orders kept",
+			{ actor: "boss", target: "u1" },
+		);
+	});
+
 	it.each(["not_yourself", "has_orders"])(
 		"answers 409 %s and logs nothing",
 		async (reason) => {

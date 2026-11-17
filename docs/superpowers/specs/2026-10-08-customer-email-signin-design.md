@@ -26,6 +26,7 @@ design keeps all three properties.
 ## The journey
 
 Aiman has `aiman@outlook.com` and no Google account.
+
 1. He plans and prices anonymously, as today. The design autosaves in his browser (`lib/plannerDraft.ts`).
 2. **Place order** sends him to `/[lang]/sign-in?next=…`. The page offers Google, then "or continue with email".
 3. He types his address and presses **Continue**. The page says a code was sent.
@@ -61,6 +62,7 @@ saved design is absent and passkeys do not work (known issue 15).
 Before a customer's first passkey, the mailbox is the only lock, and whoever
 reads it can enrol their own. The account's address is therefore told, every
 time, for every role:
+
 - a passkey was added;
 - a passkey was removed;
 - staff reset the account's passkeys.
@@ -79,6 +81,7 @@ configured, nothing is sent and nothing sensitive is logged.
 
 Staff sign in with a password and an authenticator code, or Google. A mailed
 code would be a way round both.
+
 - Never mailed: a request for a code for an address whose row is not `CUSTOMER` sends nothing, logs nothing, and answers exactly as a customer request does.
 - Never a session: a session born on `/sign-in/email-otp` for a non-`CUSTOMER` user is refused where the session is created, even with a correct code (one may exist from before a promotion). This is the only place a staff code sign-in is stopped.
 - Otherwise treated like any address, so it cannot be told apart: the request is counted against the per-address cap and its stored code dropped past it, the stored code is otherwise kept, and the plugin counts wrong tries against it. Staff are not refused before the plugin runs — that made the fourth wrong guess answer differently for a staff address.
@@ -88,6 +91,7 @@ code would be a way round both.
 
 Better Auth's `emailOTP` plugin (shipped with 1.7.5, already installed) exposes
 nine routes. Two stay open:
+
 - `/email-otp/send-verification-otp`, for type `sign-in` only
 - `/sign-in/email-otp`
 
@@ -110,6 +114,7 @@ follow. A plugin upgrade that adds a route gets a 403 until it is allow-listed.
 ### On Vercel
 
 Checked against Vercel's documentation on 2026-10-09.
+
 - **The visitor's address can be trusted.** Vercel overwrites `x-forwarded-for` and does not forward a client-supplied value, so the per-network limit cannot be dodged by sending a forged header. (A post-deploy check still confirms Better Auth reads it as one address.)
 - **A firewall rule in front of the code route.** A Vercel WAF rate-limit rule on `POST /api/auth/email-otp/send-verification-otp`, keyed by IP, stops a flood before it reaches a function or the database. It is configuration (`vercel firewall rules add … --action rate_limit`), set looser than the app's own limit so it never fires first for a real customer. The app's limits remain the rule; this is the outer wall.
 - **BotID needs both halves.** The path is listed in `instrumentation-client.ts` and checked on the server, at the same level; a path checked on the server but not listed in the client fails every real visitor. Locally `checkBotId` answers "human".

@@ -44,6 +44,7 @@ Three things about GDEX are structurally different from Lalamove, and every desi
 The postcode row is the one that costs work. `Delivery` stores free-text addresses and a geocoded pin; the word "postcode" does not appear anywhere in `src/`. The weight row costs the second-most: `DeliveryItem.weightKg` is nullable and the catalogue carries no weights, so the honest answer for an unweighed job is a refusal that names the fix, not an invented kilogram.
 
 **Decisions taken with the user, 2026-09-06:**
+
 1. **Credentials: one held, one missing.** `GDEX_PRIMARY_API_KEY` is the APIM subscription key and works. The `User-Token` is _not_ `GDEX_PUBLIC_KEY`, which the API rejects — it is an Integration Token from the myGDEX web application, and the client has yet to supply it. Every task below reads `GDEX_USER_TOKEN`, so GDEX stays an honest "no credentials" row until it is set.
 2. **Weight is entered by the admin.** The item row already has a Weight kg input (`LogisticsManager.tsx:451-467`); its supporting copy currently tells the admin weight is optional. GDEX refuses to quote without it and says so on its own comparison row.
 3. **Request a pickup.** `CreateConsignment` sends the optional `Pickup` block so a GDEX driver collects from the workshop — the same shape as a Lalamove job. Nobody drives to a branch.
@@ -54,6 +55,7 @@ The postcode row is the one that costs work. `Delivery` stores free-text address
 ## Global constraints
 
 Every task's requirements implicitly include these.
+
 - **Zod is the source of truth for types.** Define the schema, infer the TS type. Validate every payload that arrives from outside the process.
 - **`lib/logistics/adapters/*` is `server-only`.** These modules hold booking credentials and must never be reachable from a client bundle. `carriers.ts` is the isomorphic half; nothing secret goes there.
 - **No Prisma migration.** `Delivery.carrierId` is deliberately a `String?` validated against `CARRIER_IDS`, not an enum — `schema.prisma:245-247` says so explicitly. If a task seems to need a column, stop and re-read this line.
@@ -140,15 +142,18 @@ postcode _and_ its `LocationId` together, already agreeing with each other. See
 the open question about an edited `pickupAddress` at the end of this plan.
 
 Nothing to write, nothing to commit. Go to Task 3.
+
 ## Task 3: The GDEX payload builders, pure
 
 Same split as `lalamove.test.ts`: everything that turns a `DeliveryJob` into a request body is a plain exported function, tested with no mocking at all, before a single call is made. This is where every refusal lives, because a refusal is cheaper than a round trip and its message is what the admin reads on the comparison row.
 
 **Files:**
+
 - Modify (replace wholesale): `src/lib/logistics/adapters/gdex.ts`
 - Test: `src/lib/logistics/__tests__/gdex.test.ts`
 
 **Interfaces:**
+
 - Consumes: `suggestVehicle` from `../measure`; `toE164` from `../phone`; `DeliveryJob`, `CarrierQuote` from `../types`. The postcode comes off `job.sitePostcode` — see Task 2.
 - Produces, for Task 4:
   - `class GdexNotDeliverable extends Error`
@@ -374,6 +379,7 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: FAIL — every named export is missing from the stub module.
+
 - [ ] **Step 3: Write the builders**
 
 Replace the whole of `src/lib/logistics/adapters/gdex.ts` with the module below. Task 4 appends the adapter object to the same file; the `CarrierAdapter` export disappears for one commit, which is why Task 3 and Task 4 are one branch and not two.
@@ -658,6 +664,7 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: PASS. `pnpm exec tsc --noEmit` will still fail on `registry.ts`, which imports a `gdexAdapter` this commit removed — that is expected and Task 4 fixes it. Do not paper over it by leaving the stub in place.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -673,14 +680,17 @@ here because its message is what the admin reads on the comparison row."
 ## Task 4: The adapter — quote, book, track, cancel
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/gdex.ts` (append)
 - Modify: `src/lib/logistics/__tests__/gdex.test.ts` (append)
 
 **Interfaces:**
+
 - Consumes: everything Task 3 produced; `carrierFetch` from `../http`; `mapCarrierStatus` from `../status` (Task 6 fills its table — until then it returns null, which `applyTrackingUpdate` correctly treats as "leave the row alone").
 - Produces: `export const gdexAdapter: CarrierAdapter` — the name `registry.ts:4` already imports.
 
 **Do not implement `verifyWebhook`.** GDEX documents no callback operation. Leaving the method off is the correct signal: `webhooks/[carrier]/route.ts:43-47` answers `200 {received:true}` for an adapter without one, and the cron sweep at `*/10 * * * *` is the only tracking channel.
+
 - [ ] **Step 1: Write the failing tests**
 
 Append to `src/lib/logistics/__tests__/gdex.test.ts`:
@@ -941,6 +951,7 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: FAIL — `gdexAdapter` is not exported.
+
 - [ ] **Step 3: Append the adapter**
 
 Append to `src/lib/logistics/adapters/gdex.ts`. Header names come from Task 1's recorded answer — if the ping proved a different env var carries the `User-Token`, change `USER_TOKEN` here and nowhere else.
@@ -1205,6 +1216,7 @@ pnpm test && pnpm exec tsc --noEmit && pnpm lint
 ```
 
 Expected: all green. `registry.ts` resolves again because `gdexAdapter` is back.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1232,11 +1244,13 @@ start, add them here: `labelUrl: string | null` on `CarrierBooking` in
 `book/route.ts`. Do not invent a second field name.
 
 **Files:**
+
 - Modify: `src/lib/logistics/adapters/gdex.ts` (the `book` method)
 - Modify: `src/lib/logistics/__tests__/gdex.test.ts`
 - Possibly modify: `src/lib/logistics/types.ts`, `src/app/api/admin/deliveries/[id]/book/route.ts` — only if the EasyParcel work has not already
 
 **Two things make this awkward, and both are load-bearing:**
+
 1. **The reply is a PDF, not JSON.** `carrierFetch` reads every 2xx body and
    `JSON.parse`s it, throwing `CarrierHttpError` when that fails — correct for
    every other call in this file and wrong for this one. The label fetch uses a
@@ -1327,6 +1341,7 @@ pnpm test src/lib/logistics/__tests__/gdex.test.ts
 ```
 
 Expected: FAIL — `labelUrl` is undefined, and only two fetches happen.
+
 - [ ] **Step 3: Fetch and store the label**
 
 Add to `src/lib/logistics/adapters/gdex.ts`:
@@ -1408,6 +1423,7 @@ is the consignment number, which is guessable. **Raise this with the user
 before merging**; the alternative is a private blob behind an
 `/api/admin/deliveries/[id]/label` route, which is one more route and one more
 auth check. Record whichever is chosen in a comment.
+
 - [ ] **Step 5: Run everything**
 
 ```bash
@@ -1432,10 +1448,12 @@ by then, and a lost consignment number is a parcel nothing points at."
 `CARRIER_STATUS_MAPS.gdex` is `{}` today and its docblock says why: a guessed table maps statuses nobody sends and silently misses the ones they do. Fill it from what the sandbox actually returned in Task 1, plus the states named in the API documentation's own error copy (`Pending` in the status example, "already cancelled" and "already shipped" in the cancel rules).
 
 **Files:**
+
 - Modify: `src/lib/logistics/status.ts` (the `gdex: {}` entry)
 - Modify: `src/lib/logistics/__tests__/status.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing new.
 - Produces: `mapCarrierStatus("gdex", …)` starts returning statuses; Task 4's `track` already calls it.
 
@@ -1477,6 +1495,7 @@ pnpm test src/lib/logistics/__tests__/status.test.ts
 ```
 
 Expected: FAIL — every `mapCarrierStatus("gdex", …)` returns null against the empty table.
+
 - [ ] **Step 3: Fill the table**
 
 Replace `gdex: {},` in `src/lib/logistics/status.ts` with:
@@ -1519,6 +1538,7 @@ pnpm test src/lib/logistics/__tests__/status.test.ts
 ```
 
 Expected: PASS.
+
 - [ ] **Step 5: Commit — on its own, and say where the words came from**
 
 ```bash
@@ -1538,12 +1558,14 @@ Found while tracing the booking path, and GDEX makes it matter: `book/route.ts` 
 For Lalamove that cost a `LalamoveNotDeliverable` explanation. For GDEX it costs **"Insufficient Credit"** — the single most likely booking failure, entirely fixable by the person reading the screen, and today invisible to them. `advance/route.ts` already does this correctly with `carrier_refused_cancel`; this is the same shape on the booking path.
 
 **Files:**
+
 - Modify: `src/app/api/admin/deliveries/[id]/book/route.ts:95-118` (the catch block)
 - Modify: `src/app/admin/logistics/errors.ts`
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx` (the booking error branch)
 - Test: `src/app/admin/logistics/__tests__/errors.test.ts`
 
 **Interfaces:**
+
 - Produces: a `502 { error: "carrier_refused", message: string }` body. The `DeliveryEvent` write in that catch block stays exactly as it is.
 
 - [ ] **Step 1: Write the failing test**
@@ -1565,6 +1587,7 @@ pnpm test src/app/admin/logistics/__tests__/errors.test.ts
 ```
 
 Expected: FAIL — returns the fallback `"Booking failed"`.
+
 - [ ] **Step 3: Add the code to `errors.ts`**
 
 In the map inside `messageFor`, alongside `carrier_not_configured`:
@@ -1590,6 +1613,7 @@ In `src/app/api/admin/deliveries/[id]/book/route.ts`, in the catch block, replac
 - [ ] **Step 5: Show the message in the UI**
 
 In `LogisticsManager.tsx`, in the booking error branch, mirror what the cancel path already does with `carrier_refused_cancel`: when the body's `error` is `carrier_refused`, render `messageFor(...)` followed by the body's `message`. Do not replace the generic sentence — append the carrier's, so an unreadable carrier reply still leaves something on screen.
+
 - [ ] **Step 6: Run everything**
 
 ```bash
@@ -1597,6 +1621,7 @@ pnpm test && pnpm exec tsc --noEmit && pnpm lint
 ```
 
 Expected: all green.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -1616,6 +1641,7 @@ kind the admin can fix."
 The Weight kg input already exists (`LogisticsManager.tsx:451-467`). The sentence under the item list says weight is optional and a guessed figure would be quoted against — true when Lalamove was the only partner, and now the reason GDEX cannot quote. Change the copy, not the schema: `weightKg` stays nullable because a lorry job genuinely does not need one.
 
 **Files:**
+
 - Modify: `src/app/admin/logistics/LogisticsManager.tsx:493-499`
 - Modify: `README.md` (the env-var table, lines ~62-71)
 
@@ -1644,6 +1670,7 @@ The table documents `GDEX_API_KEY`, which is not what `.env.local` holds and not
 | `GDEX_LIVE`            | `1` to book against GDEX production. Anything else, including unset, uses the sandbox host.                                                                                                                                                                               |
 
 While there, correct the two stale claims the same table sits under: only Lalamove was implemented (now Lalamove and GDEX), and unconfigured carriers do still appear in the comparison as an explanatory row.
+
 - [ ] **Step 3: Run the checks**
 
 ```bash
@@ -1665,6 +1692,7 @@ reads and .env.local never held."
 ## Verification
 
 Run in order. Steps 1–3 need no GDEX account; step 4 spends sandbox e-Wallet credit and should be done with the user watching.
+
 1. **The suite.** `pnpm test` — expect the existing 969 plus roughly 40 new. `pnpm exec tsc --noEmit`, `pnpm lint`.
 2. **The ping.** `pnpm gdex:ping` — `GetUserTokenValidity` answers 200, `GetUserDetails` returns the workshop's registered address and a numeric `LocationId`, `GetShippingRate` returns a rate for the hardcoded postcode pair.
 3. **The comparison screen.** `pnpm db:up && pnpm dev`, then `/admin/logistics`:

@@ -46,14 +46,17 @@ Tasks run in order. 1 and 2 both edit the admin form; 3 is independent of 2 but 
 ### Task 1: `hasWorktop` is derived from `kind`
 
 **Files:**
+
 - Modify: `src/lib/planner/catalogueSchema.ts`, `src/lib/planner/catalogue.ts`, `src/lib/planner/pricing.ts`, `src/components/planner/PlannerScene.tsx`, `src/lib/catalogue/cabinetDesignLabels.ts`, `src/lib/mesh/mergeIntoCatalogue.ts`, `src/app/admin/catalogue/page.tsx`
 - Test: `src/lib/planner/__tests__/pricing.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: `Family` no longer has `hasWorktop`. Any code wanting the answer asks `family.kind === "base"`.
 
 **Why this is safe:** every family the repo ships has `hasWorktop === (kind === "base")`, and intake already computes it that way (`mergeIntoCatalogue.ts:275`). The `hasWorktop` half of `CATEGORY_TO_FAMILY_SHAPE` is already dead — `publishDesigns.ts:199` reads only `shape.kind`.
+
 - [ ] **Step 1: Write the failing test**
 
 In `src/lib/planner/__tests__/pricing.test.ts`, add to the existing `describe("worktop", …)` block. The file already provides `empty()` (an `emptyLayout(6000)`) and a destructured `addModule` from `plannerEngine(PLANNER_CATALOGUE)` — use them:
@@ -80,10 +83,12 @@ it("bills nothing for a tall unit", () => {
 `MM_PER_FT` and `worktopFt` are already imported at the top of that file; add nothing.
 
 If the file already carries an equivalent assertion, extend it rather than duplicating — read the `describe("worktop", …)` block before writing.
+
 - [ ] **Step 2: Run the test to verify it passes for the wrong reason**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/pricing.test.ts`
 Expected: PASS — the seed data already satisfies it, because `hasWorktop` and `kind` agree today. That is fine and expected: this test is a **characterisation** test, pinning the behaviour _before_ the field is removed so the removal cannot change it. Note this in your report.
+
 - [ ] **Step 3: Remove the field from the schema and the seed**
 
 In `src/lib/planner/catalogueSchema.ts`, delete this line from `familySchema`:
@@ -93,6 +98,7 @@ In `src/lib/planner/catalogueSchema.ts`, delete this line from `familySchema`:
 ```
 
 In `src/lib/planner/catalogue.ts`, delete every `hasWorktop: true,` and `hasWorktop: false,` line from the family literals (there are ten).
+
 - [ ] **Step 4: Point the two readers at `kind`**
 
 `src/lib/planner/pricing.ts`, in `worktopFt`:
@@ -110,6 +116,7 @@ Update that function's doc comment: it says "Only families that carry one count"
 ```
 
 The comment above that loop ends "and `hasWorktop` is the same flag pricing charges against." Replace that clause: pricing and the scene now both read `kind`, which is what makes them agree.
+
 - [ ] **Step 5: Drop the dead half of the category map**
 
 In `src/lib/catalogue/cabinetDesignLabels.ts`, `CATEGORY_TO_FAMILY_SHAPE` maps each category to `{ kind, hasWorktop }`. Only `kind` was ever read (`publishDesigns.ts:199`). Reduce it to a kind map and rename it to match what it now is:
@@ -125,6 +132,7 @@ export const CATEGORY_TO_KIND: Record<Category, "base" | "wall" | "tall"> = {
 ```
 
 Keep the existing doc comment above it — it explains why `category` is a better source of `kind` than anything inferred from the file, which is still true. Update `publishDesigns.ts` to import and use the new name; `shape.kind` becomes the mapped value directly.
+
 - [ ] **Step 6: Stop writing the field at intake**
 
 In `src/lib/mesh/mergeIntoCatalogue.ts`, delete:
@@ -138,10 +146,12 @@ In `src/lib/mesh/mergeIntoCatalogue.ts`, delete:
 In `src/app/admin/catalogue/page.tsx`, delete the whole `<label>` element containing the `Worktop` checkbox — the one whose `checked` reads `family.hasWorktop` and whose `onChange` writes `n.families[fi].hasWorktop`. Also remove `hasWorktop: true,` from the object literal that `+ Add cabinet` pushes.
 
 **Leave the Rates & build tab alone.** It has a "Worktop RM per running foot" rate and a "Worktop thickness mm" build constant. Those are run-level and unaffected.
+
 - [ ] **Step 8: Verify**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all tests pass — including the characterisation test from Step 1, which must still pass unchanged. `tsc` will name every site that still reads `hasWorktop`; there should be none left.
+
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -161,9 +171,11 @@ an impossible one. Pricing and the scene now read kind directly."
 ### Task 2: Inapplicable controls stop rendering
 
 **Files:**
+
 - Modify: `src/app/admin/catalogue/page.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 1's removal of the Worktop control (same region of the file).
 - Produces: nothing later tasks read.
 
@@ -189,6 +201,7 @@ The engine's own rule is `geometry?.drawers ?? family.drawers` (`parts.ts:181`).
 ```
 
 and compute `const drawers = family.geometry?.drawers ?? family.drawers;` at the top of the map callback for that family.
+
 - [ ] **Step 2: Hide Off floor mm for a wall family**
 
 Wrap the `<Num label="Off floor mm" … />` element:
@@ -203,21 +216,26 @@ Wrap the `<Num label="Off floor mm" … />` element:
 ```
 
 Copy the element's existing props verbatim — read them off the file rather than retyping from memory.
+
 - [ ] **Step 3: Hide the four leg controls for a wall family**
 
 The four `<Num>` elements labelled `Legs`, `Leg height mm`, `Leg ⌀ mm` and `Leg inset mm` sit together inside the Override disclosure. Wrap the group in one `{family.kind !== "wall" && ( … )}` — one guard, not four.
+
 - [ ] **Step 4: Hide Shelves and Door leaves on a drawer bank**
 
 Wrap each in `{drawers === 0 && ( … )}`. They are not adjacent (Fixed shelves and Drawer fronts sit between them), so this is two guards.
 
 **Leave Fixed shelves and Drawer fronts rendering unconditionally.** Fixed shelves is summed with Shelves by `parts.ts:192` and records a real `shelfFixed` role from the drawing; Drawer fronts is the field the whole condition is keyed on.
+
 - [ ] **Step 5: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: clean. A JSX nesting mistake surfaces here as a parse error — re-read the hunk rather than guessing.
+
 - [ ] **Step 6: Read the result back**
 
 You cannot run a browser. Instead, re-read your own edited region and write out, in your report, what the form renders for each of: a base family with 0 drawers, a base family with 3 drawers, and a wall family. Name every control that appears and every one that does not.
+
 - [ ] **Step 7: Commit**
 
 ```bash
@@ -237,9 +255,11 @@ and matchesFamily routes on floorHeightMm."
 ### Task 3: An unpriced door blocks a publish
 
 **Files:**
+
 - Modify: `src/lib/catalogue/health.ts`, `src/lib/catalogue/__tests__/health.test.ts`, `src/app/admin/catalogue/page.tsx`
 
 **Interfaces:**
+
 - Consumes: `blockersOf` / `PriceBlocker` from the existing `health.ts`.
 - Produces:
   - `type DoorBlocker = { doorStyleId: string; doorStyleLabel: string; widthMm: number }`
@@ -248,6 +268,7 @@ and matchesFamily routes on floorHeightMm."
 **The defect:** `doorPriceRmIn` (`src/lib/planner/catalogue.ts:371-385`) resolves an exact width, else the next rung of `doorWidthLadderMm`, else `?? 0`; an unknown `doorStyleId` returns 0 outright. So a cabinet width no door style prices charges the customer nothing for the door, server-side, with no warning.
 
 The fallbacks stay — a runtime that threw on a missing price would take the planner down for a customer, and zero is the safe render. The gate is what stops a zero being published.
+
 - [ ] **Step 1: Write the failing test**
 
 Add to `src/lib/catalogue/__tests__/health.test.ts`:
@@ -301,10 +322,12 @@ describe("doorBlockersOf", () => {
 ```
 
 Add `doorBlockersOf` to the import at the top of the file.
+
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/health.test.ts`
 Expected: FAIL — `doorBlockersOf is not a function`.
+
 - [ ] **Step 3: Write the implementation**
 
 Add to `src/lib/catalogue/health.ts`:
@@ -355,12 +378,14 @@ export function doorBlockersOf(catalogue: PlannerCatalogue): DoorBlocker[] {
 ```
 
 Import `doorPriceRmIn` from `@/lib/planner/catalogue`. That is `lib/catalogue` importing from `lib/planner`, which is the permitted direction.
+
 - [ ] **Step 4: Run the test to verify it passes**
 
 Run: `pnpm vitest run src/lib/catalogue/__tests__/health.test.ts`
 Expected: PASS, all cases including the four pre-existing `blockersOf` ones.
 
 If "finds nothing when every offered width is priced" fails, the seed catalogue genuinely has a width no style prices. That is a real finding about the data — report it, do not weaken the assertion.
+
 - [ ] **Step 5: Wire it into the page**
 
 In `src/app/admin/catalogue/page.tsx`, beside the existing `blockers` memo:
@@ -415,10 +440,12 @@ And render them in the "Needs you" panel, after the existing rung-blocker rows. 
 ```
 
 Also extend the amber line in the Review card that explains why publishing is held, so it counts door blockers as well as rung blockers.
+
 - [ ] **Step 6: Verify**
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: clean.
+
 - [ ] **Step 7: Commit**
 
 ```bash

@@ -83,10 +83,12 @@ rows — a wall cabinet cannot become a tall unit in place, because the two rows
 are different arrays.
 
 **Files:**
+
 - Modify: `src/lib/planner/layout.ts` (add the function inside `plannerEngine`, before `starterFor`, and to the returned object)
 - Test: `src/lib/planner/__tests__/layout.test.ts`
 
 **Interfaces:**
+
 - Consumes: `find`, `occupiedSpans`, `overlapsAnything`, `familyIn`, `rowFor` — all already in scope inside `plannerEngine`.
 - Produces: `replaceFamily(layout: PlannerLayout, id: string, familyId: string): PlannerLayout` on the engine object.
 
@@ -152,6 +154,7 @@ describe("replaceFamily", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts -t replaceFamily`
 Expected: FAIL — `replaceFamily is not a function`.
+
 - [ ] **Step 3: Implement it**
 
 In `src/lib/planner/layout.ts`, inside `plannerEngine`, immediately above
@@ -206,10 +209,12 @@ function replaceFamily(
 
 Then add `replaceFamily,` to the returned object (alphabetical — after
 `removeModules`).
+
 - [ ] **Step 4: Run the tests and watch them pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts`
 Expected: PASS, whole file.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -233,11 +238,13 @@ cabinet's shadow behind; that is fixed in the same task because it is the same
 bug.
 
 **Files:**
+
 - Modify: `src/lib/planner/layout.ts` (`PlacedModule`, `floorHeightMmOf`, new `setHangAt`, engine exports)
 - Modify: `src/components/planner/PlannerScene.tsx:717,747` (contact shadows)
 - Test: `src/lib/planner/__tests__/layout.test.ts`
 
 **Interfaces:**
+
 - Consumes: `WALL_HANG_LIMITS` (`{ minMm: 1200, maxMm: 1800 }`, already imported in `layout.ts`), `CEILING_TRIM_MM`, `find`, `hangingHeightMmOf`.
 - Produces: `hangAtMm?: number` on `PlacedModule`; `setHangAt(layout, id, hangAtMm): PlannerLayout` on the engine; `floorHeightMmOf(position, layout)` now returns the override when there is one.
 
@@ -298,6 +305,7 @@ describe("setHangAt", () => {
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts -t setHangAt`
 Expected: FAIL — `setHangAt is not a function`.
+
 - [ ] **Step 3: Add the field**
 
 In `src/lib/planner/layout.ts`, in `type PlacedModule`, after `xMm`:
@@ -368,10 +376,12 @@ function setHangAt(
 ```
 
 Add `setHangAt,` to the returned object (after `setCeilingHeight`).
+
 - [ ] **Step 6: Run the tests and watch them pass**
 
 Run: `pnpm vitest run src/lib/planner/__tests__/layout.test.ts`
 Expected: PASS.
+
 - [ ] **Step 7: Fix the contact shadows, which read the row height directly**
 
 In `src/components/planner/PlannerScene.tsx`, line 717 destructures
@@ -388,6 +398,7 @@ In `src/components/planner/PlannerScene.tsx`, line 717 destructures
 
 Run: `pnpm test && pnpm typecheck && pnpm lint`
 Expected: all pass.
+
 - [ ] **Step 9: Commit**
 
 ```bash
@@ -404,10 +415,12 @@ means no UI task has to stop and invent copy, and `dictionary.test.ts` proves
 the three files stayed the same shape.
 
 **Files:**
+
 - Modify: `src/lib/copy/en.ts`, `src/lib/copy/zh.ts`, `src/lib/copy/ms.ts`
 - Test: `src/lib/copy/__tests__/dictionary.test.ts` (existing — no new test needed; it walks every leaf)
 
 **Interfaces:**
+
 - Produces: `t.planner.tools.*`, `t.planner.panel.*`, three new `t.planner.room.*` keys, `t.planner.selection.*` verb keys, `t.planner.design.*`, `t.planner.gizmo.*`, two new `t.planner.price.*`, one new `t.planner.canvas.*`. Later tasks reference these exact paths.
 
 - [ ] **Step 1: Add the English keys**
@@ -719,6 +732,7 @@ Run: `pnpm vitest run src/lib/copy/__tests__/dictionary.test.ts`
 Expected: PASS. A failure naming a path means that path is missing from one
 locale or is identical to English in another — fix the locale, do not add the
 path to `SHARED`.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -734,11 +748,13 @@ Three class-string helpers used by every panel, and the 60px rail itself. The
 rail is pure — it knows nothing about panels, only which key is lit.
 
 **Files:**
+
 - Create: `src/components/planner/studio/chrome.ts`
 - Create: `src/components/planner/studio/ToolRail.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx` (render the rail, hold the tool state)
 
 **Interfaces:**
+
 - Produces:
   - `chip(active: boolean): string`, `listBtn(active: boolean): string`, `verbBtn(active: boolean, danger?: boolean): string` from `chrome.ts`
   - `export type StudioTool = "select" | "add" | "measure" | "view" | "doors" | "defaults"`
@@ -929,12 +945,14 @@ row, before the room `<aside>`:
 Remove the Measure button and the view `<fieldset>` from `PlannerHeader` — both
 move to the rail and its panels in Task 5. Keep the tutorials link, the change-room
 button and `<AdminLink />`.
+
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. `pnpm dev`, open `/en/planner`, choose a room: the rail renders
 on the left, `Measure` lights up and behaves as the old header button did, and
 the other five do nothing yet (the panel arrives next task).
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -952,10 +970,12 @@ dropped: the Add cards keep their `draggable` behaviour and the drop target on
 the canvas is untouched.
 
 **Files:**
+
 - Create: `src/components/planner/studio/StudioPanel.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx` (render it, pass handlers; delete the moved markup)
 
 **Interfaces:**
+
 - Consumes: `StudioTool` (Task 4), `chip` / `listBtn` (Task 4), `t.planner.panel.*` (Task 3), engine `closeGaps`, `flushWallToTallTops`, `setBaseSkirting`, `setWallToCeiling`, `setWallToWall`, `setHangingHeight`, `fits`, `addModule`.
 - Produces: `<StudioPanel panel={Exclude<StudioTool,"select"|"measure">} … />` with props listed in the code below.
 
@@ -1256,6 +1276,7 @@ Delete the moved markup from the left `<aside>`: the wall-units fieldset, the
 base fieldset, the run fieldset, the doors fieldset, the flush button and the
 whole "Add cabinets" section. The room card keeps only its heading, the room
 chips and the three `DimensionField`s (Task 6 finishes it).
+
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -1263,6 +1284,7 @@ Expected: pass. In `pnpm dev`: each of Add / View / Doors / Setup opens the
 overlay with the right body; ✕ and pressing the lit tool both close it;
 dragging a card from Add onto the canvas still drops a cabinet; Close gaps and
 Flush tops still work and still disable when they should.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -1278,10 +1300,12 @@ The 236px column: room chips, three dimension fields, the fit line, the
 overhang warning, and the button that opens Defaults.
 
 **Files:**
+
 - Create: `src/components/planner/studio/RoomPanel.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: `chip` (Task 4), `t.planner.room.fitFree` / `fitOver` / `moreSettings` (Task 3), `DimensionField`, engine `setWallWidth`, `setCeilingHeight`, `setRoomDepth`, `minWallWidthMm`, `overhangMm`, `runExtentMm`.
 - Produces: `<RoomPanel … />` — props exactly as in the code below.
 
@@ -1440,12 +1464,14 @@ In `StudioScreen.tsx`, delete the whole left `<aside>` and render instead:
 ```
 
 Add `runExtentMm` to the `useEngine()` destructure.
+
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. In `pnpm dev`: the three sliders still clamp as before, the fit
 line flips to the over-length sentence when you shorten the wall under the run,
 the overhang warning still appears, and the settings button opens Defaults.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1463,10 +1489,12 @@ style is not a verb — it is a property of the cabinet, and the design's own
 mock has a permanent finish section for exactly that reason.
 
 **Files:**
+
 - Create: `src/components/planner/studio/SelectionPanel.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: `replaceFamily` (Task 1), `setHangAt` (Task 2), `verbBtn` / `chip` (Task 4), `t.planner.selection.*` (Task 3), engine `setWidth`, `widthOptionsFor`, `duplicateModule`, `moveModule`, `leavesOn` (already in `StudioScreen.tsx`).
 - Produces: `export type SelectionVerb = "resize" | "replace" | "move" | "doors" | null` and `<SelectionPanel … />`.
 
@@ -1798,6 +1826,7 @@ branch with `<SelectionPanel … />`, passing:
 `rowFor` is exported from `@/lib/planner/layout`; add `replaceFamily` and
 `moveModule` to the `useEngine()` destructure. **Leave the multi-selection
 branch exactly as it is** — it moves nowhere and loses nothing.
+
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -1806,6 +1835,7 @@ with unfittable rungs greyed; Replace lists only floor families and swapping to
 Drawer base keeps the left edge; Move's mm field slides it; Open doors toggles
 and shows the hinge chips for a single-leaf front; Duplicate and Remove work;
 shift-clicking two cabinets still shows the multi-select branch.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -1822,10 +1852,12 @@ plus the run list, reset and the add button, so nothing from today's panel is
 homeless.
 
 **Files:**
+
 - Create: `src/components/planner/studio/DesignRecap.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: `t.planner.design.*` (Task 3), `t.planner.run.*` (existing).
 - Produces: `<DesignRecap … />`.
 
@@ -2004,12 +2036,14 @@ Lift `const freeMm = layout.wallWidthMm - runExtentMm(layout);` next to
 
 The finish swatch row stays where it is, above the footer — the design keeps it
 visible in both states.
+
 - [ ] **Step 3: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. In `pnpm dev`: with nothing selected the recap reads correctly,
 the run list still multi-selects with its checkboxes, reset restores the
 starter, "Add a cabinet" opens the Add panel.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -2026,10 +2060,12 @@ as a button; the modal carries the lines. The quote CTA still calls
 `onGoToQuoteAction` — the modal collects nothing.
 
 **Files:**
+
 - Create: `src/components/planner/studio/PriceFooter.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: `computePlannerPrice` result (already computed in `StudioScreen` as `price`), `priceLineLabel` / `priceLineDetail` from `./priceLineCopy`, `t.planner.price.breakdown` / `breakdownTitle` (Task 3).
 - Produces: `<PriceFooter … />`.
 
@@ -2196,6 +2232,7 @@ Run: `pnpm typecheck && pnpm lint && pnpm test`
 Expected: pass. In `pnpm dev`: the total matches what the sidebar showed before,
 the modal lists the same categories with the same amounts, ✕ closes it, the CTA
 still lands on the quote screen and is still disabled on an empty wall.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -2213,10 +2250,12 @@ the ⌘D / Esc shortcuts. No scene change is needed: `hitTestRef` already answer
 menu needs.
 
 **Files:**
+
 - Create: `src/components/planner/studio/CabinetMenu.tsx`
 - Modify: `src/components/planner/StudioScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: `hitTestRef` (existing), `SelectionVerb` (Task 7), `t.planner.canvas.selectHint` (Task 3).
 - Produces: `<CabinetMenu x={number} y={number} items={{ key, label, danger?, press }[]} onDismissAction={() => void} />`.
 
@@ -2339,6 +2378,7 @@ and render, inside that wrapper:
 
 Each `press` runs before the window listener closes the menu; `setMenu(null)`
 in the dismiss handler covers all of them, so no item needs to close it itself.
+
 - [ ] **Step 3: Add the chips and the hint**
 
 Replace the existing top-left readout with the design's two chips, and add the
@@ -2370,6 +2410,7 @@ select hint under the canvas when nothing is selected and no panel is open:
 ```
 
 Keep the existing measure overlay block and the measuring hint untouched.
+
 - [ ] **Step 4: Add ⌘D and Esc**
 
 `PlannerApp.tsx` already owns the Delete/Backspace handler. Extend that same
@@ -2389,6 +2430,7 @@ effect rather than adding a second listener — one place, one set of guards:
 ```
 
 Add `duplicateModule` to the `useEngine()` destructure in `PlannerScreens`.
+
 - [ ] **Step 5: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -2397,6 +2439,7 @@ menu at the pointer; picking Resize opens that section in the right panel;
 clicking elsewhere dismisses the menu without leaving a stray selection; ⌘D
 duplicates; Esc clears; Delete still removes; the browser's own context menu
 never appears over a cabinet but still works over the panels.
+
 - [ ] **Step 6: Commit**
 
 ```bash
@@ -2415,11 +2458,13 @@ overlay positioned from a one-off projection would drift the moment the user
 rotates the view.
 
 **Files:**
+
 - Create: `src/components/planner/studio/MoveGizmo.tsx`
 - Modify: `src/components/planner/PlannerScene.tsx` (one optional prop)
 - Modify: `src/components/planner/StudioScreen.tsx`
 
 **Interfaces:**
+
 - Consumes: `setHangAt` (Task 2), `moveModule` (existing), `SNAP_MM` (existing, 60), `t.planner.gizmo.*` (Task 3).
 - Produces: `<MoveGizmo … />`; `PlannerScene` prop `gizmo?: { anchorMm: [number, number, number]; node: React.ReactNode }`.
 
@@ -2592,6 +2637,7 @@ const gizmo =
 Pass `gizmo={gizmo}` to `<PlannerScene …/>`, and add `floorHeightMmOf`,
 `moveModule` and `setHangAt` to the `useEngine()` destructure. Import `SNAP_MM`
 from `@/lib/planner/layout`.
+
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -2601,6 +2647,7 @@ stop against a neighbour; ↑ ↓ raise and lower that one cabinet between 1200 
 1800mm while its neighbour stays put; on a base cabinet ↑ ↓ are disabled and
 carry the locked tooltip; switching to plan view or clearing the verb removes
 the cluster.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -2617,6 +2664,7 @@ panels, so the last task is the one that makes the screen read as one thing.
 Planner surfaces only — the admin pages keep their own blue links.
 
 **Files:**
+
 - Modify: `src/components/planner/Cabinet.tsx:240`
 - Modify: `src/components/planner/DesignedCabinet.tsx:455`
 - Modify: `src/components/planner/MeasureOverlay.tsx:12`
@@ -2626,6 +2674,7 @@ Planner surfaces only — the admin pages keep their own blue links.
 
 Run: `grep -rn '2b6cb0\|f2f6fb' src/components/planner/`
 Expected: the three constants above, plus whatever survived in `StudioScreen`.
+
 - [ ] **Step 2: Change them**
 
 - `Cabinet.tsx:240` — the selected emissive: `"#2b6cb0"` → `"#1f5138"`.
@@ -2641,6 +2690,7 @@ Expected: the three constants above, plus whatever survived in `StudioScreen`.
 
 In `StudioScreen.tsx`, the `<main>` background `bg-[#e9e7e3]` → `bg-[#f4f3f1]`,
 and the canvas wrapper gains `bg-[#faf9f7]`. `PlannerHeader`'s `h-14` → `h-[52px]`.
+
 - [ ] **Step 4: Verify**
 
 Run: `pnpm typecheck && pnpm lint && pnpm test`
@@ -2648,6 +2698,7 @@ Expected: pass. In `pnpm dev`: a selected cabinet glows green in 3D and its
 panel row is green-tinted; hovering it in measure mode is still visibly
 distinct from selected; the measure markers and dimension line are green;
 `grep -rn '2b6cb0\|f2f6fb' src/components/planner/` returns nothing.
+
 - [ ] **Step 5: Commit**
 
 ```bash

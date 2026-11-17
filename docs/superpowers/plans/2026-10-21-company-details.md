@@ -53,6 +53,7 @@
 ## Before Task 1: workspace
 
 Other Claude sessions edit the main checkout, so this work goes in its own worktree with its own database.
+
 - [ ] Create the worktree from `feature/development`. The branch is `feature/company-details` at `.claude/worktrees/company-details`; enter it with `EnterWorktree`. Inside it, every git command is plain and alone.
 - [ ] Run `pnpm install`.
 - [ ] Copy `.env.local` from the main checkout. Set its `DATABASE_URL` database name to `cabinet_company`.
@@ -67,12 +68,14 @@ Below, `PSQL` means `docker compose -f /Users/tenghaoooi/Documents/JNS_Nexion_Pr
 ### Task 1: The company details schema and the seed
 
 **Files:**
+
 - Create: `src/lib/company/details.ts`
 - Create: `src/lib/company/__tests__/company.fixture.ts`
 - Test: `src/lib/company/__tests__/details.test.ts`
 - Modify: `src/lib/tenant.ts` (docblock only)
 
 **Interfaces:**
+
 - Produces, all from `@/lib/company/details` (pure and isomorphic; imports only zod, `tenant`, `toE164` and `MALAYSIAN_STATES`):
   - `companyDetailsSchema` (zod object), `type CompanyDetails = z.output<typeof companyDetailsSchema>` with fields `brand, legalName, ssmNumber: string | null, contactEmail, phone, address, postcode, city, state, lat: number, lng: number, closeTime, bankName, bankAccountName, bankAccountNumber, orderPrefix`
   - `seedCompany(): CompanyDetails`
@@ -269,10 +272,12 @@ it("mapsLink opens the pin in Google Maps", () =>
 ### Task 2: The table, the stored prefixes and the delivery backfill
 
 **Files:**
+
 - Modify: `prisma/schema.prisma`
 - Create: `prisma/migrations/20261022000000_company_details/migration.sql`
 
 **Interfaces:**
+
 - Produces:
   - Prisma model `CompanyDetails`, with the Task 1 fields as columns (`ssmNumber String?`, `lat Float`, `lng Float`, the rest `String`), plus `id String @id @default(cuid())`, `savedById String?`, `savedByName String`, `savedAt DateTime @default(now())`, and `@@index([savedAt])`.
   - `Order.refPrefix String?`
@@ -310,6 +315,7 @@ PSQL "SELECT id, \"fromWorkshop\", \"pickupLat\", \"pickupPostcode\", \"refPrefi
 ```
 
 Expected: `legacy-other | f | (null) | (null) | (null)` and `legacy-workshop | t | 2.9848868 | 43800 | (null)`.
+
 - [ ] **Step 6: Check the schema matches the database:** `pnpm exec prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --script`. Expected: an empty migration (`-- This is an empty migration.`).
 
 - [ ] **Step 7: Clean up and regenerate:** `PSQL "DELETE FROM \"Delivery\" WHERE id LIKE 'legacy-%';"`, then `pnpm exec prisma generate`, then `pnpm typecheck`. Expected: typecheck passes; nothing reads the new columns yet.
@@ -321,10 +327,12 @@ Expected: `legacy-other | f | (null) | (null) | (null)` and `legacy-workshop | t
 ### Task 3: Reading the live company
 
 **Files:**
+
 - Create: `src/lib/company/store.ts`
 - Test: `src/lib/company/__tests__/store.test.ts`
 
 **Interfaces:**
+
 - Consumes: `CompanyDetails`, `seedCompany` (Task 1); `prisma.companyDetails` (Task 2).
 - Produces, from `@/lib/company/store` (`server-only`):
   - `COMPANY_CACHE_TAG = "company"`
@@ -392,12 +400,14 @@ it("reserves the seed brand and every brand ever saved, once each", async () => 
 ### Task 4: References fixed when they are made
 
 **Files:**
+
 - Modify: `src/lib/orders/ref.ts`, `src/lib/logistics/publicTracking.ts`
 - Modify (write the prefix): `src/app/api/orders/route.ts`, `src/app/api/admin/deliveries/route.ts`, `src/app/api/admin/deliveries/[id]/split/route.ts`
 - Modify (readers): `src/app/admin/orders/page.tsx`, `src/app/admin/orders/[id]/page.tsx`, `src/app/admin/logistics/[id]/page.tsx`, `src/app/[lang]/(account)/order/[token]/page.tsx`, `src/app/[lang]/(account)/orders/page.tsx`, `src/app/[lang]/track/[token]/page.tsx`, `src/lib/auth/userRow.ts`, `src/lib/orders/refund.ts`, `src/lib/payments/start.ts`, `src/lib/orders/payment.ts`, `src/lib/email/templates/order.ts`, `src/lib/email/orderMail.ts`, `src/lib/whatsapp/templates.ts`
 - Test: `src/lib/orders/__tests__/orders.test.ts`, `src/lib/logistics/__tests__/publicTracking.test.ts`, `src/app/api/orders/__tests__/route.test.ts`, `src/app/api/admin/deliveries/__tests__/route.test.ts`, plus fixtures the typecheck flags (`orderTemplate.test.ts`, `userRow.test.ts`, whatsapp tests)
 
 **Interfaces:**
+
 - Consumes: `seedCompany` (Task 1), `getCompany` (Task 3), `refPrefix` columns (Task 2).
 - Produces:
   - `orderRef(order: { refPrefix: string | null; number: number; createdAt: Date | string }): string` in `@/lib/orders/ref`
@@ -442,6 +452,7 @@ describe("orderRef", () => {
 `src/app/api/orders/__tests__/route.test.ts`: mock `@/lib/company/store` with `getCompany` resolving `testCompany({ orderPrefix: "PO" })`. Add: `it("stamps the order with the prefix live when it is placed")` — assert `tx.order.create` was called with `data` containing `refPrefix: "PO"`. This is the ref snapshot: an order keeps that prefix whatever the company changes to later, because `orderRef` reads only the stored one.
 
 `src/app/api/admin/deliveries/__tests__/route.test.ts`: mock `@/lib/company/store` likewise; assert `create` data contains `refPrefix: "PO"`.
+
 - [ ] **Step 2: Run** `pnpm vitest run src/lib/orders src/lib/logistics/__tests__/publicTracking.test.ts src/app/api/orders/__tests__/route.test.ts src/app/api/admin/deliveries/__tests__/route.test.ts`. Expected: FAIL.
 - [ ] **Step 3: Change `orderRef` and `deliveryRef`.** Their docblocks say the prefix is the stored one, and that null means legacy, read as the seed.
 - [ ] **Step 4: Write the prefix at creation.**
@@ -457,10 +468,12 @@ describe("orderRef", () => {
 ### Task 5: The dictionary, the checkout seller block, terms and the error page
 
 **Files:**
+
 - Modify: `src/lib/copy/dictionary.ts`, `src/lib/copy/en.ts`, `src/lib/copy/ms.ts`, `src/lib/copy/zh.ts`, `src/components/planner/QuoteScreen.tsx`, `src/app/[lang]/terms/page.tsx`, `src/app/[lang]/error.tsx`
 - Test: `src/lib/copy/__tests__/dictionary.test.ts` (new); `src/lib/copy/__tests__/brand.test.ts` keeps passing
 
 **Interfaces:**
+
 - Consumes: `getCompany` (Task 3), `sellerLine` (Task 1).
 - Produces: `getDictionary(locale)` keeps its signature. It now returns `quote.soldBy` and `terms.seller` already filled, and fills `{brand}`, `{legalName}` and `{orderPrefix}` everywhere.
 
@@ -527,10 +540,12 @@ it("shows a saved change on the next call", async () => {
 ### Task 6: Carrier adapters read the job, not constants
 
 **Files:**
+
 - Modify: `src/lib/logistics/types.ts` (`DeliveryJob`), `src/lib/logistics/store.ts` (`toJob`), `src/app/api/admin/deliveries/[id]/quotes/route.ts`, `src/app/api/admin/deliveries/[id]/book/route.ts`, `src/lib/logistics/adapters/lalamove.ts`, `easyparcel.ts`, `fedex.ts`, `gdex.ts`
 - Test: `src/lib/logistics/__tests__/lalamove.test.ts`, `easyparcel.test.ts`, `fedex.test.ts`, `gdex.test.ts`; create `src/lib/logistics/__tests__/toJob.test.ts`
 
 **Interfaces:**
+
 - Consumes: `CompanyDetails` (Task 1), `getCompany` (Task 3), `deliveryRef` (Task 4).
 - Produces:
   - `DeliveryJob` gains `ref: string` and `sender: { brand: string; legalName: string; phone: string; closeTime: string }`
@@ -561,10 +576,12 @@ it("shows a saved change on the next call", async () => {
 ### Task 7: A delivery records where it leaves from
 
 **Files:**
+
 - Modify: `src/lib/logistics/carriers.ts`, `src/app/api/admin/deliveries/route.ts`, `src/app/api/admin/deliveries/[id]/route.ts`, `src/app/api/admin/deliveries/[id]/split/route.ts`, `src/app/admin/logistics/page.tsx`
 - Test: `src/lib/logistics/__tests__/carriers.test.ts` (rewrite the pickup blocks), `src/app/api/admin/deliveries/__tests__/route.test.ts`
 
 **Interfaces:**
+
 - Consumes: `CompanyDetails` (Task 1), `getCompany` (Task 3).
 - Produces, from `@/lib/logistics/carriers` (still isomorphic; the `CompanyDetails` import is type-only):
   - `type PickupColumns = { pickupAddress: string; pickupLat: number; pickupLng: number; pickupGeocodedFor: string; pickupPostcode: string; pickupCity: string; pickupState: string }`
@@ -602,6 +619,7 @@ describe("workshopPickup", () => {
 ```
 
 `deliveries/__tests__/route.test.ts`, with `getCompany` mocked to `testCompany()`:
+
 - `it("writes the workshop's pickup without geocoding it")`: posting `pickupAddress: testCompany().address` creates with `fromWorkshop: true` and `pickupLat: testCompany().lat`. `resolveCoordinates` is called once (the site only).
 - `it("geocodes any other pickup and does not mark it from the workshop")`: the existing body (`"Workshop, Klang"`) creates with `fromWorkshop: false`.
 
@@ -620,10 +638,12 @@ describe("workshopPickup", () => {
 ### Task 8: Mail reads the saved company
 
 **Files:**
+
 - Modify: `src/lib/email/copy.ts`, `src/lib/email/layout.ts`, `src/lib/email/templates/{order,signInCode,staffInvite,staffReset,passkeyChange}.ts`, `src/lib/email/orderMail.ts`, `src/lib/auth/{emailCodeMail,passkeyMail,inviteMail,passwordReset}.ts`, `src/lib/orders/payment.ts`, `src/app/[lang]/(account)/order/[token]/page.tsx`
 - Test: `src/lib/email/__tests__/{layout,accountTemplates,orderTemplate,orderMail,copy}.test.ts`, `src/lib/auth/__tests__/{passkeyMail,emailCodeMail,inviteMail,passwordReset}.test.ts`
 
 **Interfaces:**
+
 - Consumes: `CompanyDetails`, `sellerLine` (Task 1); `getCompany` (Task 3); `orderRef(order)` (Task 4).
 - Produces:
   - `type MailCompany = Pick<CompanyDetails, "brand" | "legalName" | "ssmNumber" | "address" | "phone">`, exported from `lib/email/layout.ts`; `EmailContent` gains `company: MailCompany`
@@ -652,10 +672,12 @@ describe("workshopPickup", () => {
 ### Task 9: Admin chrome, 2FA issuer and the Stripe description
 
 **Files:**
+
 - Modify: `src/app/admin/AdminUserContext.tsx`, `src/app/admin/layout.tsx`, `src/components/admin/AdminHeader.tsx`, `src/app/admin/login/page.tsx`, `src/app/admin/setup-2fa/SetupTwoFactor.tsx`, `src/lib/auth.ts`, `src/lib/payments/types.ts`, `src/lib/payments/start.ts`, `src/lib/payments/stripe.ts`
 - Test: `src/lib/payments/__tests__/stripe.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getCompany` (Task 3), `seedCompany` (Task 1).
 - Produces:
   - `AdminUserProvider` takes `brand: string`; `useAdminBrand(): string`
@@ -677,10 +699,12 @@ describe("workshopPickup", () => {
 ### Task 10: Every brand the company has used stays reserved
 
 **Files:**
+
 - Modify: `src/lib/auth/customerName.ts`, `src/app/api/account/name/route.ts`
 - Test: `src/lib/auth/__tests__/customerName.test.ts`, `src/app/api/account/name/__tests__/route.test.ts`
 
 **Interfaces:**
+
 - Consumes: `getReservedBrands` (Task 3).
 - Produces: `parseCustomerName(input: unknown, brands: readonly string[]): { name: string } | { error: "name_required" | "name_refused" }`. The `tenant` import and the literal `"ezcabinet"` go. `customerNameSchema` becomes `customerNameSchema(brands: readonly string[])`.
 
@@ -698,11 +722,13 @@ describe("workshopPickup", () => {
 ### Task 11: Saving, and moving the open deliveries with the workshop
 
 **Files:**
+
 - Modify: `src/lib/auth/permissions.ts`
 - Create: `src/lib/company/save.ts`, `src/app/api/admin/company/route.ts`
 - Test: `src/lib/auth/__tests__/permissions.test.ts`, `src/lib/auth/__tests__/coverage.test.ts`, `src/lib/company/__tests__/save.test.ts`, `src/app/api/admin/company/__tests__/route.test.ts`
 
 **Interfaces:**
+
 - Consumes: `companyDetailsSchema`, `workshopMoved` (Task 1); `readCompany`, `COMPANY_CACHE_TAG` (Task 3); `workshopColumns` (Task 7).
 - Produces:
   - `"company:manage"` in `PERMISSIONS` and `SUPERADMIN_ONLY`
@@ -720,6 +746,7 @@ describe("workshopPickup", () => {
 `coverage.test.ts`: add `["company/route.ts", "POST"]` to `guarded`.
 
 `save.test.ts`:
+
 - Mock `@/lib/catalogue/db` with `prisma.delivery.findMany` (the plan) and `$transaction(fn)` over a `tx` that has `companyDetails.create`, `delivery.findMany`, `delivery.updateMany` and `deliveryEvent.create`.
 - Mock `@/lib/company/store`'s `readCompany` and `next/cache`'s `revalidateTag` and `revalidatePath`.
 - Shared setup: `prev = testCompany()`, `moved = testCompany({ address: "Lot 9, Jalan Baru, 47500 Subang Jaya, Selangor", postcode: "47500", city: "Subang Jaya", lat: 3.0757, lng: 101.5951 })`, `actor = { id: "u1", name: "Aisyah" }`.
@@ -814,6 +841,7 @@ it("moves without asking when no delivery is affected", async () => {
 ```
 
 `route.test.ts`:
+
 - Mock `requireAuth` the way `deliveries/__tests__/route.test.ts` does, and mock `saveCompany`. A superadmin with `passkeyVerifiedAt` = now.
 - `400 invalid_body` for `{ details: { ...testCompany(), lat: 101.86, lng: 2.98 } }`.
 - `409` passes `move` through.
@@ -836,11 +864,13 @@ it("moves without asking when no delivery is affected", async () => {
 ### Task 12: A bank change is announced
 
 **Files:**
+
 - Create: `src/lib/email/templates/bankChange.ts`, `src/lib/company/bankMail.ts`
 - Modify: `src/lib/company/save.ts`
 - Test: `src/lib/email/__tests__/accountTemplates.test.ts`, `src/lib/company/__tests__/bankMail.test.ts`, `src/lib/company/__tests__/save.test.ts`
 
 **Interfaces:**
+
 - Consumes: `renderEmail`, `MailCompany`, `when` (Task 8); `bankChanged`, `lastFour` (Task 1).
 - Produces:
   - `bankChange(input: { company: MailCompany; actorName: string; when: string; before: { bankName: string; last4: string }; after: { bankName: string; last4: string } }): { subject: string; html: string; text: string }`
@@ -863,11 +893,13 @@ it("moves without asking when no delivery is affected", async () => {
 ### Task 13: The `/admin/company` page
 
 **Files:**
+
 - Create: `src/app/admin/company/page.tsx`, `src/app/admin/company/CompanyForm.tsx`, `src/app/admin/company/form.ts`, `src/app/api/admin/company/geocode/route.ts`
 - Modify: `src/components/admin/AdminHeader.tsx` (tab)
 - Test: `src/app/admin/company/__tests__/form.test.ts`, `src/app/api/admin/company/geocode/__tests__/route.test.ts`
 
 **Interfaces:**
+
 - Consumes: `companyDetailsSchema`, `mapsLink` (Task 1); `readCompany` (Task 3); `gdexSenderPostcode`, `gdexAdapter` (Task 6); `MovePlan` (Task 11); `fetchGuarded` and `ConfirmDialog` (existing); `geocodeAddress`, `refreshGeocoderHealth`, `geocoderFault` (existing); `parseCoords` (existing).
 - Produces, from `src/app/admin/company/form.ts` (pure):
   - `readPin(text: string): { ok: true; lat: number; lng: number } | { ok: false; message: string }`
@@ -964,6 +996,7 @@ describe("gdexNotice", () => {
 ```
 
 `geocode/__tests__/route.test.ts`, with `requireAuth` mocked as in the other admin route tests and `@/lib/logistics/geocode` mocked: a superadmin posting `{ address: "Lot 5, Jalan Kilang 2, Dengkil" }` gets `{ found, fault: null }` with `geocodeAddress` called on the trimmed address; an empty address gets 400.
+
 - [ ] **Step 2: Run** `pnpm vitest run src/app/admin/company src/app/api/admin/company`. Expected: FAIL.
 - [ ] **Step 3: Implement `form.ts` and the geocode route.**
 - [ ] **Step 4: Implement the page.**
@@ -1010,10 +1043,12 @@ describe("gdexNotice", () => {
 ### Task 14: The guard test, and the docs that described constants
 
 **Files:**
+
 - Create: `src/lib/company/__tests__/noCompanyConstants.test.ts`
 - Modify: `CLAUDE.md`, `docs/superpowers/plans/2026-10-11-multi-company-rollout.md`, `docs/superpowers/specs/2026-10-19-company-details-design.md` (status line)
 
 **Interfaces:** none new.
+
 - [ ] **Step 1: Write the guard test.** Walk `src` (not `__tests__`, not `src/generated`):
   - The files that import `@/lib/tenant` are exactly `["src/app/admin/login/page.tsx", "src/lib/company/details.ts", "src/lib/finishPhotos.ts"]`. The login page and `finishPhotos` read switches; `details.ts` reads the seed.
   - No file matches `/WORKSHOP_[A-Z]+|BANK_TRANSFER/`.

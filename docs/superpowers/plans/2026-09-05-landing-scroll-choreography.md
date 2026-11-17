@@ -40,14 +40,17 @@
 ### Task 1: Pure scroll math
 
 **Files:**
+
 - Create: `src/lib/scroll/beats.ts`
 - Test: `src/lib/scroll/__tests__/beats.test.ts`
 
 **Interfaces:**
+
 - Consumes: nothing.
 - Produces: `clamp01(v: number): number`, `trackProgress(rectTop: number, trackHeight: number, viewportHeight: number): number`, `beatsEnabled(env: { reducedMotion: boolean; wideEnough: boolean }): boolean`.
 
 Range-slicing a track's progress into individual beats is **not** a function here. The stylesheet does it inline with `clamp(0, calc((var(--p) - start) / (end - start)), 1)`, at the point of use. A TypeScript twin of that arithmetic would have no caller and would drift from the CSS that actually runs.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/lib/scroll/__tests__/beats.test.ts`:
@@ -114,6 +117,7 @@ describe("beatsEnabled", () => {
 
 Run: `pnpm vitest run src/lib/scroll`
 Expected: FAIL — `Failed to resolve import "../beats"`.
+
 - [ ] **Step 3: Write the minimal implementation**
 
 Create `src/lib/scroll/beats.ts`:
@@ -179,6 +183,7 @@ export function beatsEnabled(env: {
 
 Run: `pnpm vitest run src/lib/scroll`
 Expected: PASS — 9 tests.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -191,14 +196,17 @@ git commit -m "feat(scroll): pure track-progress and beat maths"
 ### Task 2: The `ScrollTrack` island
 
 **Files:**
+
 - Create: `src/components/scroll/ScrollTrack.tsx`
 - Modify: `src/app/globals.css` (append; currently 27 lines)
 
 **Interfaces:**
+
 - Consumes: `trackProgress`, `beatsEnabled` from `@/lib/scroll/beats`.
 - Produces: `<ScrollTrack viewports={number} className?: string>{children}</ScrollTrack>` — a default export React client component. It renders a track `div` of height `viewports × 100svh` containing a `position: sticky` stage of `100svh`, sets `--p` on the track element, and sets `data-beats="on"` on it only while active.
 
 The island holds no scroll arithmetic of its own; it wires the DOM to Task 1's functions. It is verified in a browser in Task 4, not by a unit test — `jsdom` is not a declared dependency of this repo and this plan does not add one.
+
 - [ ] **Step 1: Write the island**
 
 Create `src/components/scroll/ScrollTrack.tsx`:
@@ -391,6 +399,7 @@ Append to `src/app/globals.css`:
 
 Run: `pnpm test && pnpm lint && pnpm build`
 Expected: PASS on all three. The island is not referenced yet, so this only proves it compiles and Biome is happy with it.
+
 - [ ] **Step 4: Commit**
 
 ```bash
@@ -403,13 +412,16 @@ git commit -m "feat(scroll): pinned track island publishing progress as a CSS va
 ### Task 3: Reveal-on-entry island
 
 **Files:**
+
 - Create: `src/components/scroll/RevealOnEnter.tsx`
 
 **Interfaces:**
+
 - Consumes: nothing from earlier tasks.
 - Produces: `<RevealOnEnter />` — a default export React client component rendering no DOM of its own. Mounted once per page; it sets `data-reveal-armed` on `<body>` and observes every `[data-reveal]` element, setting `data-revealed` on each the first time it enters view.
 
 One observer for the whole page, and it stops observing an element once revealed — the alternative, an observer per card, is the shape that makes a long page stutter.
+
 - [ ] **Step 1: Write the island**
 
 Create `src/components/scroll/RevealOnEnter.tsx`:
@@ -489,6 +501,7 @@ export default function RevealOnEnter() {
 
 Run: `pnpm lint && pnpm build`
 Expected: PASS.
+
 - [ ] **Step 3: Commit**
 
 ```bash
@@ -501,13 +514,16 @@ git commit -m "feat(scroll): one-observer reveal-on-entry island"
 ### Task 4: Wire the landing page
 
 **Files:**
+
 - Modify: `src/app/[lang]/page.tsx` — hero `<section>` opens at line 243; the sections to mark are at lines 311 (facts `<dl>`), 334 (`#how`), 360 (gallery), 408 (`#finishes`), 457 (FAQ).
 
 **Interfaces:**
+
 - Consumes: `ScrollTrack` (Task 2), `RevealOnEnter` (Task 3), and the `data-beat` / `data-reveal` contract in `globals.css`.
 - Produces: nothing for later tasks.
 
 The page stays a **server component**. Only two client islands are introduced, and neither receives any of the page's data — the copy, the prices and the images are still rendered on the server.
+
 - [ ] **Step 1: Import the islands**
 
 At the top of `src/app/[lang]/page.tsx`, alongside the existing imports:
@@ -585,6 +601,7 @@ Wrap that entire `<section>` — through its existing closing tag — in a track
 ```
 
 Three things to keep right while editing:
+
 - The inner `<section>` gains `h-full` and loses nothing else — the sticky stage already owns the viewport height.
 - The copy block keeps its existing `min-h-[clamp(460px,68vh,640px)]`. Inside a `h-svh` stage that clamp is what keeps the words vertically centred at every window height; replacing it with `h-full` re-centres them against the wrong box.
 - Nothing in the copy block gets an opacity or transform in its own `className`. Its default rendering must stay the finished state — that is the whole contract.
@@ -607,6 +624,7 @@ Then mount the observer once, immediately before the closing element of the page
 
 Run: `pnpm test && pnpm lint && pnpm build`
 Expected: PASS on all three.
+
 - [ ] **Step 5: Commit**
 
 ```bash
@@ -619,25 +637,32 @@ git commit -m "feat(landing): pinned hero beat and reveal-on-entry sections"
 ### Task 5: Verify in a browser, at both ends of the contract
 
 **Files:** none modified — this task is the gate.
+
 - [ ] **Step 1: Start the dev server**
 
 Run: `pnpm dev`
 Open `http://localhost:3000/en`.
+
 - [ ] **Step 2: Check the beats land where the plan says**
 
 With the Playwright or Chrome MCP tools, screenshot at five scroll positions through the hero track — 0 %, 25 %, 50 %, 75 %, 100 % of its height. Expected: the eyebrow/headline/subtitle are fully legible at 0 % and stay put until roughly 55 %, then drift up and fade as the track finishes; the photograph's scale eases from 1.08 to 1.00 across 75 %; The headline must be **fully legible in the 0 % screenshot** — it is the LCP element and it starts resolved.
+
 - [ ] **Step 3: Confirm no layout shift**
 
 In DevTools → Performance, record a scroll through the hero. Expected: zero layout-shift entries, and no `Recalculate Style` costing more than a millisecond per frame. If a shift appears, something in the track is animating a layout property — find it and move it onto `transform`.
+
 - [ ] **Step 4: Reduced motion**
 
 Emulate `prefers-reduced-motion: reduce` (DevTools → Rendering). Reload. Expected: the hero renders in its finished state at every scroll position, no `--p` is ever written, `data-beats` never appears on the track in the elements panel, and the sections below still become visible.
+
 - [ ] **Step 5: Narrow viewport**
 
 Resize below 900px and reload. Expected: same as Step 4 — the track pins nothing, no listener is attached. Confirm in DevTools → Event Listeners that no `scroll` listener exists on `window`.
+
 - [ ] **Step 6: No JavaScript**
 
 Disable JavaScript (DevTools → Settings → Debugger → Disable JavaScript) and reload. Expected: **every headline, price, room card, finish swatch and FAQ answer is visible and readable.** No blank hero, no empty sticky void, no invisible sections. This is the check the whole design exists to pass; if it fails, the `[data-beats="on"]` / `[data-reveal-armed]` scoping has been broken somewhere.
+
 - [ ] **Step 7: Commit anything the verification turned up**
 
 ```bash

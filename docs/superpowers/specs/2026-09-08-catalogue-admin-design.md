@@ -10,6 +10,7 @@ sees the live catalogue with none of their work in it and no sign a draft
 exists. The page never says what it is for, so neither does the admin.
 
 Three things cause that, and they are separable:
+
 1. **The page ignores the draft it was sent to review.** `page.tsx:450-468`
    resolves the version as `?version ?? published`. `/admin/import` passes
    `?version=`; the design library does not — it tells the admin to "publish it
@@ -71,6 +72,7 @@ live  = published                          (unchanged — the diff baseline)
 A "viewing draft v13 · open the live catalogue instead" link is the escape.
 
 **State header**, replacing the static subtitle at `page.tsx:555`:
+
 - on a draft — `Draft v13 · not live`, plus the `note` `createDraftVersion`
   already writes ("BC 900mm added from the design library")
 - on published — `Live · v11 · published 6 Sep`
@@ -96,6 +98,7 @@ changes, and nesting them under Cabinets would hide half of them. Both are
 absent when `live` and `draft` are equal; the page then opens on the tabs.
 
 **The attention list** is rung-level and capped:
+
 - every rung that blocks publishing — price 0 — listed in full, with an inline
   RM field
 - everything else as one line per change type ("14 rungs now drawn from a
@@ -189,6 +192,7 @@ since `fitOutOf:181` discards it in that case.
 ## Testing
 
 New logic lands in the pure modules, which are already tested:
+
 - **`publishDesigns` stacking** — publish A, publish B, assert the second draft
   carries both families. This is the data-loss defect; it must have a test.
 - **`blockersOf(catalogue)`** in `lib/catalogue/`, returning `{familyId,
