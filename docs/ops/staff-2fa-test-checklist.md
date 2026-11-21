@@ -187,7 +187,7 @@ Run these from the console while signed in as the customer, on any `/en/...` pag
 
   → `403`
 - [ ] Verified session, customer with exactly one passkey, same delete call → `400` ("An account keeps at least one passkey")
-  Unknown passkey routes are refused by default; this cannot be provoked by hand and is covered by `src/lib/auth/__tests__/passkeyHooks.test.ts`.
+      Unknown passkey routes are refused by default; this cannot be provoked by hand and is covered by `src/lib/auth/__tests__/passkeyHooks.test.ts`.
 
 - [ ] On a device that holds a passkey for **another** account (second Google account enrolled on the same browser or virtual authenticator), sign in as the first account and press **Use passkey**, choosing the other account's passkey → "That passkey belongs to a different account"; still not verified, still the first account
 

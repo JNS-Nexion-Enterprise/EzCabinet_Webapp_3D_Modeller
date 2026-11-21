@@ -121,6 +121,6 @@ The prompt appears when no passkey was used in the last five minutes.
 Deploy-day checklist:
 
 - [ ] Every staff member enrols a passkey under **Security** on the day this
-  ships. Until an account has one, the passkey step protects nothing for it:
-  a first passkey needs no confirmation, so whoever holds that session could
-  set one up and confirm any guarded action with it.
+      ships. Until an account has one, the passkey step protects nothing for it:
+      a first passkey needs no confirmation, so whoever holds that session could
+      set one up and confirm any guarded action with it.

@@ -149,7 +149,7 @@ git commit -m "feat(planner): phone tab rules and the phone media hook"
 (`{mode}` is filled with the existing `planner.room.doorsClosed` / `doorsOpen` / `doorsHidden`. "Susunan" and "布局" match the words `planner.run.heading` already uses.)
 
 - [ ] **Step 1: Add the copy** to all three dictionaries, then run `pnpm typecheck && pnpm vitest run src/lib/copy`.
-  Expected: clean. The dictionary tests pass, including "has no empty strings".
+      Expected: clean. The dictionary tests pass, including "has no empty strings".
 
 - [ ] **Step 2: Write `PhoneChrome.tsx`** to the spec's values. No `"use client"` directive: it has no hooks, and every caller (`StartScreen`, `StudioScreen`, `QuoteScreen`) is already inside `PlannerApp`'s client tree. No three imports.
 

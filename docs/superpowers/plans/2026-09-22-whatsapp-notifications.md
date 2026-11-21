@@ -1906,7 +1906,7 @@ export const POST = withAuth<{
 ```
 
 - [ ] **Step 3: Auth coverage.** Run: `pnpm vitest run src/lib/auth`
-  Expected: PASS — both new routes export only `withAuth`-wrapped `POST`.
+      Expected: PASS — both new routes export only `withAuth`-wrapped `POST`.
 
 - [ ] **Step 4: Admin page data.** In `src/app/admin/orders/[id]/page.tsx`, extend the `include` of `prisma.order.findUnique` with:
 
